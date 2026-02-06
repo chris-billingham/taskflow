@@ -5,7 +5,7 @@ import {
   selectTasksBySection,
   selectSubtasks,
 } from '@/stores/taskStore';
-import type { TaskQuery } from '@/stores/taskStore';
+import type { TaskQuery, TodayViewData, UpcomingViewData } from '@/stores/taskStore';
 
 export function useTasks(query?: TaskQuery) {
   const tasks = useTaskStore((s) => {
@@ -91,6 +91,44 @@ export function useReorderTasks() {
   return useTaskStore((s) => s.reorderTasks);
 }
 
+export function useTodayView() {
+  const todayView = useTaskStore((s) => s.todayView);
+  const loading = useTaskStore((s) => s.viewLoading);
+  const error = useTaskStore((s) => s.error);
+  const fetchTodayView = useTaskStore((s) => s.fetchTodayView);
+  const rescheduleOverdue = useTaskStore((s) => s.rescheduleOverdue);
+
+  useEffect(() => {
+    fetchTodayView();
+  }, [fetchTodayView]);
+
+  return {
+    todayView,
+    loading,
+    error,
+    refetch: fetchTodayView,
+    rescheduleOverdue,
+  };
+}
+
+export function useUpcomingView(days: number = 14, includeNoDate: boolean = true) {
+  const upcomingView = useTaskStore((s) => s.upcomingView);
+  const loading = useTaskStore((s) => s.viewLoading);
+  const error = useTaskStore((s) => s.error);
+  const fetchUpcomingView = useTaskStore((s) => s.fetchUpcomingView);
+
+  useEffect(() => {
+    fetchUpcomingView(days, includeNoDate);
+  }, [fetchUpcomingView, days, includeNoDate]);
+
+  return {
+    upcomingView,
+    loading,
+    error,
+    refetch: () => fetchUpcomingView(days, includeNoDate),
+  };
+}
+
 export function useTaskActions() {
   const createTask = useTaskStore((s) => s.createTask);
   const updateTask = useTaskStore((s) => s.updateTask);
@@ -101,6 +139,7 @@ export function useTaskActions() {
   const duplicateTask = useTaskStore((s) => s.duplicateTask);
   const quickAddTask = useTaskStore((s) => s.quickAddTask);
   const reorderTasks = useTaskStore((s) => s.reorderTasks);
+  const rescheduleTask = useTaskStore((s) => s.rescheduleTask);
 
   return {
     createTask,
@@ -112,5 +151,6 @@ export function useTaskActions() {
     duplicateTask,
     quickAddTask,
     reorderTasks,
+    rescheduleTask,
   };
 }

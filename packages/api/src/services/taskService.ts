@@ -10,7 +10,7 @@ import type {
 import { parseQuickAdd } from '../utils/quickAddParser.js';
 import { getNextOccurrence } from '../utils/recurrence.js';
 
-const taskInclude = {
+export const taskInclude = {
   taskLabels: {
     include: { label: true },
   },

@@ -6,6 +6,7 @@ import { sectionRoutes } from './sections.js';
 import { taskRoutes } from './tasks.js';
 import { labelRoutes } from './labels.js';
 import { filterRoutes } from './filters.js';
+import { viewRoutes } from './views.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
@@ -15,4 +16,5 @@ export async function registerRoutes(app: FastifyInstance) {
   app.register(taskRoutes, { prefix: '/api/v1/tasks' });
   app.register(labelRoutes, { prefix: '/api/v1/labels' });
   app.register(filterRoutes, { prefix: '/api/v1/filters' });
+  app.register(viewRoutes, { prefix: '/api/v1/views' });
 }

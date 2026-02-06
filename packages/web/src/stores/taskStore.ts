@@ -59,10 +59,41 @@ export interface TaskQuery {
   search?: string;
 }
 
+export interface TodayViewData {
+  overdue: Task[];
+  morning: Task[];
+  afternoon: Task[];
+  evening: Task[];
+  noTime: Task[];
+  counts: {
+    overdue: number;
+    morning: number;
+    afternoon: number;
+    evening: number;
+    noTime: number;
+    total: number;
+  };
+}
+
+export interface UpcomingViewData {
+  overdue: Task[];
+  byDate: Record<string, Task[]>;
+  noDate: Task[];
+  counts: {
+    overdue: number;
+    total: number;
+  };
+}
+
 interface TaskState {
   tasks: Map<string, Task>;
   loading: boolean;
   error: string | null;
+
+  // View data
+  todayView: TodayViewData | null;
+  upcomingView: UpcomingViewData | null;
+  viewLoading: boolean;
 
   // Actions
   fetchTasks: (query?: TaskQuery) => Promise<void>;
@@ -94,12 +125,21 @@ interface TaskState {
   reorderTasks: (taskIds: string[]) => Promise<void>;
   setTask: (task: Task) => void;
   removeTask: (id: string) => void;
+
+  // View actions
+  fetchTodayView: () => Promise<void>;
+  fetchUpcomingView: (days?: number, includeNoDate?: boolean) => Promise<void>;
+  rescheduleOverdue: (targetDate: string) => Promise<void>;
+  rescheduleTask: (id: string, newDate: string) => Promise<Task>;
 }
 
 export const useTaskStore = create<TaskState>()((set, get) => ({
   tasks: new Map(),
   loading: false,
   error: null,
+  todayView: null,
+  upcomingView: null,
+  viewLoading: false,
 
   fetchTasks: async (query) => {
     set({ loading: true, error: null });
@@ -366,6 +406,84 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       set({ tasks: prevTasks });
       throw err;
     }
+  },
+
+  fetchTodayView: async () => {
+    set({ viewLoading: true, error: null });
+    try {
+      const { data } = await api.get('/views/today');
+      const viewData = data.data as TodayViewData;
+      // Merge all tasks into the main map
+      set((state) => {
+        const tasks = new Map(state.tasks);
+        const allViewTasks = [
+          ...viewData.overdue,
+          ...viewData.morning,
+          ...viewData.afternoon,
+          ...viewData.evening,
+          ...viewData.noTime,
+        ];
+        for (const t of allViewTasks) {
+          tasks.set(t.id, t);
+          if (t.subtasks && Array.isArray(t.subtasks)) {
+            for (const sub of t.subtasks) {
+              tasks.set(sub.id, sub);
+            }
+          }
+        }
+        return { tasks, todayView: viewData, viewLoading: false };
+      });
+    } catch (err: any) {
+      set({
+        error: err.response?.data?.message || 'Failed to fetch today view',
+        viewLoading: false,
+      });
+    }
+  },
+
+  fetchUpcomingView: async (days = 14, includeNoDate = true) => {
+    set({ viewLoading: true, error: null });
+    try {
+      const params = new URLSearchParams({
+        days: String(days),
+        includeNoDate: includeNoDate ? 'true' : 'false',
+      });
+      const { data } = await api.get(`/views/upcoming?${params.toString()}`);
+      const viewData = data.data as UpcomingViewData;
+      // Merge all tasks into the main map
+      set((state) => {
+        const tasks = new Map(state.tasks);
+        const allViewTasks = [
+          ...viewData.overdue,
+          ...viewData.noDate,
+          ...Object.values(viewData.byDate).flat(),
+        ];
+        for (const t of allViewTasks) {
+          tasks.set(t.id, t);
+          if (t.subtasks && Array.isArray(t.subtasks)) {
+            for (const sub of t.subtasks) {
+              tasks.set(sub.id, sub);
+            }
+          }
+        }
+        return { tasks, upcomingView: viewData, viewLoading: false };
+      });
+    } catch (err: any) {
+      set({
+        error: err.response?.data?.message || 'Failed to fetch upcoming view',
+        viewLoading: false,
+      });
+    }
+  },
+
+  rescheduleOverdue: async (targetDate) => {
+    await api.post('/views/reschedule-overdue', { targetDate });
+    // Refetch both views
+    await get().fetchTodayView();
+  },
+
+  rescheduleTask: async (id, newDate) => {
+    return get().updateTask(id, { dueDate: newDate });
   },
 
   setTask: (task) => {
