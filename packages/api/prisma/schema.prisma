@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,53 +7,483 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum ProjectRole {
+  ADMIN
+  MEMBER
+  COMMENTER
+  VIEWER
+}
+
+enum ViewStyle {
+  LIST
+  BOARD
+  CALENDAR
+}
+
+enum ReminderType {
+  ABSOLUTE
+  RELATIVE
+}
+
+enum ReminderMethod {
+  PUSH
+  EMAIL
+}
+
+enum ActivityAction {
+  CREATED
+  UPDATED
+  DELETED
+  COMPLETED
+  UNCOMPLETED
+  MOVED
+  ASSIGNED
+  UNASSIGNED
+  COMMENTED
+  ARCHIVED
+  UNARCHIVED
+  SHARED
+}
+
+enum EntityType {
+  TASK
+  PROJECT
+  SECTION
+  COMMENT
+  LABEL
+  WORKSPACE
+}
+
+// ─── User ───────────────────────────────────────────────────────────────────
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String
+  name             String
+  avatarUrl        String?
+  timezone         String    @default("UTC")
+  weekStart        Int       @default(0) // 0 = Sunday, 6 = Saturday
+  dateFormat       String?
+  timeFormat       String?
+  theme            String?
+  defaultProjectId String?
+  emailVerified    Boolean   @default(false)
+  emailVerifyToken String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  lastLoginAt      DateTime?
 
-  tasks    Task[]
-  projects Project[]
+  // Relations
+  refreshTokens     RefreshToken[]
+  ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
+  workspaceMemberships WorkspaceMember[]
+  ownedProjects     Project[]         @relation("ProjectOwner")
+  projectMemberships ProjectMember[]
+  createdTasks      Task[]            @relation("TaskCreator")
+  assignedTasks     Task[]            @relation("TaskAssignee")
+  labels            Label[]
+  filters           Filter[]
+  comments          Comment[]
+  reminders         Reminder[]
+  attachments       Attachment[]      @relation("AttachmentUploader")
+  templates         Template[]
+  activityLogs      ActivityLog[]
 
+  @@index([email])
   @@map("users")
 }
 
-model Project {
-  id        String   @id @default(cuid())
-  name      String
-  color     String   @default("#3B82F6")
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ─── RefreshToken ───────────────────────────────────────────────────────────
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tasks Task[]
+model RefreshToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  userId     String
+  deviceInfo String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@map("projects")
+  @@index([token])
+  @@map("refresh_tokens")
 }
 
-model Task {
-  id          String    @id @default(cuid())
-  title       String
+// ─── Workspace ──────────────────────────────────────────────────────────────
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
   description String?
-  completed   Boolean   @default(false)
-  priority    Int       @default(0)
-  dueDate     DateTime?
+  avatarUrl   String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner   User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members WorkspaceMember[]
+  invites WorkspaceInvite[]
+  projects Project[]
+  labels  WorkspaceLabel[]
+  templates Template[]      @relation("WorkspaceTemplates")
+
+  @@index([ownerId])
+  @@index([slug])
+  @@map("workspaces")
+}
+
+// ─── WorkspaceMember ────────────────────────────────────────────────────────
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
   userId      String
-  projectId   String?
-  order       Int       @default(0)
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+// ─── WorkspaceInvite ────────────────────────────────────────────────────────
+
+model WorkspaceInvite {
+  id          String        @id @default(cuid())
+  workspaceId String
+  email       String
+  role        WorkspaceRole @default(MEMBER)
+  token       String        @unique
+  expiresAt   DateTime
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([email])
+  @@index([token])
+  @@map("workspace_invites")
+}
+
+// ─── Project ────────────────────────────────────────────────────────────────
+
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  color       String    @default("#3B82F6")
+  description String?
+  ownerId     String?
+  workspaceId String?
+  parentId    String?
+  viewStyle   ViewStyle @default(LIST)
+  isFavorite  Boolean   @default(false)
+  isArchived  Boolean   @default(false)
+  isInbox     Boolean   @default(false)
+  sortOrder   Int       @default(0)
+  isShared    Boolean   @default(false)
+  shareLink   String?   @unique
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  owner     User?           @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  workspace Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent    Project?        @relation("ProjectHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Project[]       @relation("ProjectHierarchy")
+  members   ProjectMember[]
+  sections  Section[]
+  tasks     Task[]
+  comments  Comment[]       @relation("ProjectComments")
+
+  @@index([ownerId])
+  @@index([workspaceId])
+  @@index([parentId])
+  @@map("projects")
+}
+
+// ─── ProjectMember ──────────────────────────────────────────────────────────
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  projectId String
+  userId    String
+  role      ProjectRole @default(MEMBER)
+  addedAt   DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+// ─── Section ────────────────────────────────────────────────────────────────
+
+model Section {
+  id          String   @id @default(cuid())
+  name        String
+  projectId   String
+  sortOrder   Int      @default(0)
+  isCollapsed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@index([projectId])
+  @@map("sections")
+}
+
+// ─── Task ───────────────────────────────────────────────────────────────────
+
+model Task {
+  id             String    @id @default(cuid())
+  content        String
+  description    String?
+  projectId      String
+  sectionId      String?
+  parentId       String?
+  creatorId      String
+  assigneeId     String?
+  dueDate        DateTime?
+  dueTime        String?   // HH:mm format
+  deadline       DateTime?
+  duration       Int?      // in minutes
+  isRecurring    Boolean   @default(false)
+  recurrenceRule String?   // RRULE string
+  priority       Int       @default(4) // 1 = highest, 4 = lowest
+  isCompleted    Boolean   @default(false)
+  completedAt    DateTime?
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section    Section?    @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  parent     Task?       @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: Cascade)
+  subtasks   Task[]      @relation("TaskSubtasks")
+  creator    User        @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  assignee   User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  taskLabels TaskLabel[]
+  comments   Comment[]   @relation("TaskComments")
+  reminders  Reminder[]
+  attachments Attachment[] @relation("TaskAttachments")
+  activityLogs ActivityLog[]
+
+  @@index([projectId])
+  @@index([sectionId])
+  @@index([parentId])
+  @@index([creatorId])
+  @@index([assigneeId])
+  @@index([dueDate])
+  @@index([isCompleted])
+  @@index([priority])
+  @@map("tasks")
+}
+
+// ─── Label ──────────────────────────────────────────────────────────────────
+
+model Label {
+  id         String   @id @default(cuid())
+  name       String
+  color      String   @default("#6B7280")
+  userId     String
+  isFavorite Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskLabels TaskLabel[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("labels")
+}
+
+// ─── WorkspaceLabel ─────────────────────────────────────────────────────────
+
+model WorkspaceLabel {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   @default("#6B7280")
+  workspaceId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("workspace_labels")
+}
+
+// ─── TaskLabel (join table) ─────────────────────────────────────────────────
+
+model TaskLabel {
+  taskId  String
+  labelId String
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+  @@index([taskId])
+  @@index([labelId])
+  @@map("task_labels")
+}
+
+// ─── Filter ─────────────────────────────────────────────────────────────────
+
+model Filter {
+  id        String    @id @default(cuid())
+  name      String
+  query     String
+  color     String    @default("#6B7280")
+  userId    String
+  isFavorite Boolean  @default(false)
+  sortOrder Int       @default(0)
+  viewStyle ViewStyle @default(LIST)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@map("filters")
+}
+
+// ─── Comment ────────────────────────────────────────────────────────────────
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   // markdown
+  authorId  String
+  taskId    String?
+  projectId String?
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  task        Task?      @relation("TaskComments", fields: [taskId], references: [id], onDelete: Cascade)
+  project     Project?   @relation("ProjectComments", fields: [projectId], references: [id], onDelete: Cascade)
+  parent      Comment?   @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[]  @relation("CommentThread")
+  attachments Attachment[] @relation("CommentAttachments")
+
+  @@index([taskId])
   @@index([projectId])
-  @@index([completed])
-  @@map("tasks")
+  @@index([authorId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+// ─── Reminder ───────────────────────────────────────────────────────────────
+
+model Reminder {
+  id            String         @id @default(cuid())
+  taskId        String
+  userId        String
+  type          ReminderType
+  triggerAt     DateTime?      // for ABSOLUTE
+  minutesBefore Int?           // for RELATIVE
+  method        ReminderMethod @default(PUSH)
+  isSent        Boolean        @default(false)
+  sentAt        DateTime?
+  createdAt     DateTime       @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([triggerAt])
+  @@index([isSent])
+  @@map("reminders")
+}
+
+// ─── Attachment ─────────────────────────────────────────────────────────────
+
+model Attachment {
+  id           String   @id @default(cuid())
+  filename     String
+  mimeType     String
+  size         Int
+  url          String
+  taskId       String?
+  commentId    String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  task       Task?    @relation("TaskAttachments", fields: [taskId], references: [id], onDelete: SetNull)
+  comment    Comment? @relation("CommentAttachments", fields: [commentId], references: [id], onDelete: SetNull)
+  uploadedBy User     @relation("AttachmentUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([commentId])
+  @@index([uploadedById])
+  @@map("attachments")
+}
+
+// ─── Template ───────────────────────────────────────────────────────────────
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  data        Json
+  userId      String?
+  workspaceId String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  workspace Workspace? @relation("WorkspaceTemplates", fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@map("templates")
+}
+
+// ─── ActivityLog ────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id         String         @id @default(cuid())
+  userId     String
+  action     ActivityAction
+  entityType EntityType
+  entityId   String
+  oldData    Json?
+  newData    Json?
+  taskId     String?
+  createdAt  DateTime       @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([taskId])
+  @@index([createdAt])
+  @@map("activity_logs")
 }
