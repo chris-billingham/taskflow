@@ -20,6 +20,7 @@ import { SectionHeader } from './SectionHeader';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import type { ProjectSection } from '@/stores/projectStore';
+import type { ReactNode } from 'react';
 
 interface SectionListProps {
   sections: ProjectSection[];
@@ -30,12 +31,14 @@ interface SectionListProps {
   ) => Promise<unknown>;
   onDeleteSection: (id: string) => Promise<void>;
   onReorderSections: (sectionIds: string[]) => Promise<void>;
+  renderSectionContent?: (section: ProjectSection) => ReactNode;
 }
 
 function SortableSectionItem({
   section,
   onUpdate,
   onDelete,
+  renderContent,
 }: {
   section: ProjectSection;
   onUpdate: (
@@ -43,6 +46,7 @@ function SortableSectionItem({
     data: Partial<{ name: string; isCollapsed: boolean }>,
   ) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
+  renderContent?: (section: ProjectSection) => ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: section.id });
@@ -63,9 +67,11 @@ function SortableSectionItem({
         onDelete={() => onDelete(section.id)}
       />
       {!section.isCollapsed && (
-        <div className="pl-7 py-2">
-          <p className="text-sm text-gray-400 italic">No tasks yet</p>
-        </div>
+        renderContent ? renderContent(section) : (
+          <div className="pl-7 py-2">
+            <p className="text-sm text-gray-400 italic">No tasks yet</p>
+          </div>
+        )
       )}
     </div>
   );
@@ -77,6 +83,7 @@ export function SectionList({
   onUpdateSection,
   onDeleteSection,
   onReorderSections,
+  renderSectionContent,
 }: SectionListProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -137,6 +144,7 @@ export function SectionList({
                 section={section}
                 onUpdate={onUpdateSection}
                 onDelete={onDeleteSection}
+                renderContent={renderSectionContent}
               />
             ))}
           </div>

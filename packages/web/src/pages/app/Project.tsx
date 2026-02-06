@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Spinner } from '@/components/ui/Spinner';
 import { ProjectHeader } from '@/components/project/ProjectHeader';
 import { SectionList } from '@/components/project/SectionList';
+import { TaskList } from '@/components/task/TaskList';
+import { QuickAdd } from '@/components/task/QuickAdd';
+import { TaskDetail } from '@/components/task/TaskDetail';
 import { useProject, useProjectSections } from '@/hooks/useProjects';
 import { useProjectStore } from '@/stores/projectStore';
+import { useTasks, useTaskActions } from '@/hooks/useTasks';
+import { useTaskStore } from '@/stores/taskStore';
+import type { Task } from '@/stores/taskStore';
 
 export default function Project() {
   const { id } = useParams<{ id: string }>();
@@ -23,7 +29,40 @@ export default function Project() {
     reorderSections,
   } = useProjectSections(id);
 
+  const queryObj = useMemo(() => (id ? { projectId: id } : undefined), [id]);
+  const { tasks, refetch: refetchTasks } = useTasks(queryObj);
+  const taskMap = useTaskStore((s) => s.tasks);
+  const {
+    createTask,
+    updateTask,
+    deleteTask,
+    completeTask,
+    uncompleteTask,
+    quickAddTask,
+    reorderTasks,
+    duplicateTask: duplicateTaskAction,
+  } = useTaskActions();
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Split tasks into unsectioned and by section
+  const unsectionedTasks = useMemo(
+    () => tasks.filter((t) => !t.sectionId && !t.parentId),
+    [tasks],
+  );
+
+  const tasksBySection = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    for (const t of tasks) {
+      if (t.sectionId && !t.parentId) {
+        const list = map.get(t.sectionId) || [];
+        list.push(t);
+        map.set(t.sectionId, list);
+      }
+    }
+    return map;
+  }, [tasks]);
 
   if (loading && !project) {
     return (
@@ -65,6 +104,65 @@ export default function Project() {
     }
   };
 
+  const handleQuickAdd = async (text: string) => {
+    await quickAddTask(text, project.id);
+    refetchTasks();
+  };
+
+  const handleComplete = async (taskId: string) => {
+    await completeTask(taskId);
+  };
+
+  const handleUncomplete = async (taskId: string) => {
+    await uncompleteTask(taskId);
+  };
+
+  const handleUpdateTask = async (taskId: string, data: Record<string, any>) => {
+    await updateTask(taskId, data);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    await deleteTask(taskId);
+    if (selectedTask?.id === taskId) {
+      setSelectedTask(null);
+    }
+  };
+
+  const handleDuplicate = async (taskId: string) => {
+    await duplicateTaskAction(taskId);
+    refetchTasks();
+  };
+
+  const handleReorder = async (taskIds: string[]) => {
+    await reorderTasks(taskIds);
+  };
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+  };
+
+  const handleAddSubtask = async (text: string) => {
+    if (!selectedTask) return;
+    await createTask({
+      content: text,
+      projectId: selectedTask.projectId,
+      parentId: selectedTask.id,
+    });
+    refetchTasks();
+  };
+
+  // Get subtasks for selected task
+  const selectedTaskSubtasks = selectedTask
+    ? Array.from(taskMap.values())
+        .filter((t) => t.parentId === selectedTask.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+    : [];
+
+  // Get the full task data for the selected task (may have been updated)
+  const currentSelectedTask = selectedTask
+    ? taskMap.get(selectedTask.id) || selectedTask
+    : null;
+
   return (
     <div>
       <ProjectHeader
@@ -79,21 +177,85 @@ export default function Project() {
         onDelete={() => setShowDeleteConfirm(true)}
       />
 
-      {/* Unsectioned tasks placeholder */}
+      {/* Unsectioned tasks */}
       <div className="mb-4">
-        <p className="text-sm text-gray-400 italic">
-          Tasks will appear here.
-        </p>
+        <TaskList
+          tasks={unsectionedTasks}
+          allTasks={taskMap}
+          onComplete={handleComplete}
+          onUncomplete={handleUncomplete}
+          onTaskClick={handleTaskClick}
+          onUpdate={handleUpdateTask}
+          onDelete={handleDeleteTask}
+          onDuplicate={handleDuplicate}
+          onReorder={handleReorder}
+          emptyMessage="No tasks yet. Add one below!"
+        />
+        <div className="mt-2">
+          <QuickAdd
+            projectId={project.id}
+            onSubmit={(text) => handleQuickAdd(text)}
+            placeholder="Add task"
+          />
+        </div>
       </div>
 
-      {/* Sections */}
+      {/* Sections with tasks */}
       <SectionList
         sections={sections}
         onCreateSection={createSection}
         onUpdateSection={updateSection}
         onDeleteSection={deleteSection}
         onReorderSections={reorderSections}
+        renderSectionContent={(section) => {
+          const sectionTasks = tasksBySection.get(section.id) || [];
+          return (
+            <div className="pl-7 py-1">
+              <TaskList
+                tasks={sectionTasks}
+                allTasks={taskMap}
+                onComplete={handleComplete}
+                onUncomplete={handleUncomplete}
+                onTaskClick={handleTaskClick}
+                onUpdate={handleUpdateTask}
+                onDelete={handleDeleteTask}
+                onDuplicate={handleDuplicate}
+                onReorder={handleReorder}
+                emptyMessage="No tasks in this section"
+              />
+              <div className="mt-1">
+                <QuickAdd
+                  projectId={project.id}
+                  sectionId={section.id}
+                  onSubmit={async (text) => {
+                    await createTask({
+                      content: text,
+                      projectId: project.id,
+                      sectionId: section.id,
+                    });
+                    refetchTasks();
+                  }}
+                  placeholder="Add task"
+                />
+              </div>
+            </div>
+          );
+        }}
       />
+
+      {/* Task detail panel */}
+      {currentSelectedTask && (
+        <TaskDetail
+          task={currentSelectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={handleUpdateTask}
+          onComplete={handleComplete}
+          onUncomplete={handleUncomplete}
+          onDelete={handleDeleteTask}
+          onAddSubtask={handleAddSubtask}
+          subtasks={selectedTaskSubtasks}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (
