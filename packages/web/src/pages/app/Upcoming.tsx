@@ -9,6 +9,7 @@ import {
   useSensor,
   useSensors,
   useDroppable,
+  pointerWithin,
 } from '@dnd-kit/core';
 import { ViewHeader } from '@/components/views/ViewHeader';
 import { OverdueSection } from '@/components/views/OverdueSection';
@@ -220,6 +221,7 @@ export default function Upcoming() {
 
       <DndContext
         sensors={sensors}
+        collisionDetection={pointerWithin}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
@@ -353,6 +355,7 @@ function DroppableDateSection({
         onDuplicate={onDuplicate}
         onReorder={onReorder}
         onAddTask={onAddTask}
+        externalDnd
       />
     </div>
   );

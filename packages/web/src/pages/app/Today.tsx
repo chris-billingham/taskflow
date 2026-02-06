@@ -232,9 +232,11 @@ export default function Today() {
         </div>
       )}
 
-      <div className="mt-4">
-        <QuickAdd onSubmit={handleQuickAdd} placeholder="Add task" />
-      </div>
+      {(isEmpty || hasTimedTasks) && (
+        <div className="mt-4">
+          <QuickAdd onSubmit={handleQuickAdd} placeholder="Add task" />
+        </div>
+      )}
 
       {currentSelectedTask && (
         <TaskDetail

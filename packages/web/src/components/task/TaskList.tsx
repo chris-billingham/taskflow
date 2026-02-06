@@ -5,6 +5,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDraggable,
   DragEndEvent,
 } from '@dnd-kit/core';
 import {
@@ -28,6 +29,7 @@ interface TaskListProps {
   onDuplicate: (id: string) => void;
   onReorder: (taskIds: string[]) => void;
   emptyMessage?: string;
+  externalDnd?: boolean;
 }
 
 function SortableTaskItem({
@@ -89,6 +91,64 @@ function SortableTaskItem({
   );
 }
 
+function DraggableTaskItem({
+  task,
+  allTasks,
+  onComplete,
+  onUncomplete,
+  onTaskClick,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+}: {
+  task: Task;
+  allTasks?: Map<string, Task>;
+  onComplete: (id: string) => void;
+  onUncomplete: (id: string) => void;
+  onTaskClick: (task: Task) => void;
+  onUpdate: (id: string, data: Record<string, any>) => void;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({ id: task.id });
+
+  const style = {
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const subtasks = allTasks
+    ? Array.from(allTasks.values())
+        .filter((t) => t.parentId === task.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+    : task.subtasks;
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <TaskItem
+        task={task}
+        onComplete={onComplete}
+        onUncomplete={onUncomplete}
+        onClick={onTaskClick}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
+        dragHandleProps={listeners}
+        showSubtasks
+        subtasks={subtasks}
+      />
+    </div>
+  );
+}
+
 export function TaskList({
   tasks,
   allTasks,
@@ -100,6 +160,7 @@ export function TaskList({
   onDuplicate,
   onReorder,
   emptyMessage = 'No tasks yet',
+  externalDnd = false,
 }: TaskListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -127,6 +188,28 @@ export function TaskList({
   if (tasks.length === 0) {
     return (
       <p className="text-sm text-gray-400 italic py-3 px-2">{emptyMessage}</p>
+    );
+  }
+
+  // When externalDnd is true, skip the inner DndContext and render
+  // draggable (not sortable) items so the parent DndContext handles drops.
+  if (externalDnd) {
+    return (
+      <div className="space-y-0.5">
+        {tasks.map((task) => (
+          <DraggableTaskItem
+            key={task.id}
+            task={task}
+            allTasks={allTasks}
+            onComplete={onComplete}
+            onUncomplete={onUncomplete}
+            onTaskClick={onTaskClick}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+            onDuplicate={onDuplicate}
+          />
+        ))}
+      </div>
     );
   }
 

@@ -5,7 +5,7 @@ import {
   selectTasksBySection,
   selectSubtasks,
 } from '@/stores/taskStore';
-import type { TaskQuery, TodayViewData, UpcomingViewData } from '@/stores/taskStore';
+import type { TaskQuery } from '@/stores/taskStore';
 
 export function useTasks(query?: TaskQuery) {
   const tasks = useTaskStore((s) => {

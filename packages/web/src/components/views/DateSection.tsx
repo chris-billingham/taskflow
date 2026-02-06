@@ -15,6 +15,7 @@ interface DateSectionProps {
   onDuplicate: (id: string) => void;
   onReorder: (taskIds: string[]) => void;
   onAddTask?: (text: string) => Promise<void>;
+  externalDnd?: boolean;
 }
 
 function formatDateHeader(dateStr: string): string {
@@ -44,6 +45,7 @@ export function DateSection({
   onDuplicate,
   onReorder,
   onAddTask,
+  externalDnd = false,
 }: DateSectionProps) {
   const headerText = formatDateHeader(date);
   const subText = formatDateSub(date);
@@ -79,6 +81,7 @@ export function DateSection({
         onDuplicate={onDuplicate}
         onReorder={onReorder}
         emptyMessage="No tasks"
+        externalDnd={externalDnd}
       />
       {onAddTask && (
         <div className="mt-1">
