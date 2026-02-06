@@ -2,11 +2,13 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { AppLayout } from '@/layouts/AppLayout';
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
 import ResetPassword from '@/pages/auth/ResetPassword';
 import Today from '@/pages/app/Today';
+import Project from '@/pages/app/Project';
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -24,31 +26,19 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Protected routes */}
+        {/* Protected routes with AppLayout */}
         <Route
-          path="/today"
           element={
             <ProtectedRoute>
-              <Today />
+              <AppLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/upcoming"
-          element={
-            <ProtectedRoute>
-              <Today />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/projects/*"
-          element={
-            <ProtectedRoute>
-              <Today />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="/today" element={<Today />} />
+          <Route path="/upcoming" element={<Today />} />
+          <Route path="/filters" element={<Today />} />
+          <Route path="/projects/:id" element={<Project />} />
+        </Route>
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/today" replace />} />
