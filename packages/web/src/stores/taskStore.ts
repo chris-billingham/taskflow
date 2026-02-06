@@ -114,6 +114,13 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       const tasks = new Map<string, Task>();
       for (const t of data.data) {
         tasks.set(t.id, t);
+        // Also flatten nested subtasks into the Map so they're
+        // individually accessible (e.g. for the task detail panel).
+        if (t.subtasks && Array.isArray(t.subtasks)) {
+          for (const sub of t.subtasks) {
+            tasks.set(sub.id, sub);
+          }
+        }
       }
       set({ tasks, loading: false });
     } catch (err: any) {
@@ -130,6 +137,11 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
     set((state) => {
       const tasks = new Map(state.tasks);
       tasks.set(task.id, task);
+      if (task.subtasks && Array.isArray(task.subtasks)) {
+        for (const sub of task.subtasks) {
+          tasks.set(sub.id, sub);
+        }
+      }
       return { tasks };
     });
     return task;
@@ -395,8 +407,8 @@ export const selectSubtasks = (parentId: string) => (state: TaskState) =>
 export const selectOverdueTasks = (state: TaskState) => {
   const now = new Date().toISOString().split('T')[0];
   return Array.from(state.tasks.values())
-    .filter((t) => t.dueDate && t.dueDate < now && !t.isCompleted)
-    .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
+    .filter((t) => t.dueDate && t.dueDate.slice(0, 10) < now && !t.isCompleted)
+    .sort((a, b) => (a.dueDate || '').slice(0, 10).localeCompare((b.dueDate || '').slice(0, 10)));
 };
 
 export const selectIncompleteTasks = (state: TaskState) =>

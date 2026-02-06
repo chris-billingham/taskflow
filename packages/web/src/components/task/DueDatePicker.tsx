@@ -7,9 +7,20 @@ interface DueDatePickerProps {
   onChange: (date: string | null, time?: string | null) => void;
 }
 
+// Normalize any date string (full ISO or YYYY-MM-DD) to YYYY-MM-DD
+function toYMD(dateStr: string): string {
+  return dateStr.slice(0, 10);
+}
+
+function parseLocalDate(dateStr: string): Date {
+  const ymd = toYMD(dateStr);
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function formatDateDisplay(dateStr: string | null): string {
   if (!dateStr) return 'No date';
-  const date = new Date(dateStr + 'T00:00:00');
+  const date = parseLocalDate(dateStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -23,7 +34,7 @@ function formatDateDisplay(dateStr: string | null): string {
 
 function getDateColor(dateStr: string | null): string {
   if (!dateStr) return 'text-gray-400';
-  const date = new Date(dateStr + 'T00:00:00');
+  const date = parseLocalDate(dateStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -40,7 +51,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
   const [showTime, setShowTime] = useState(!!time);
   const [timeValue, setTimeValue] = useState(time || '');
   const [calendarDate, setCalendarDate] = useState(() => {
-    if (value) return new Date(value + 'T00:00:00');
+    if (value) return parseLocalDate(value);
     return new Date();
   });
   const ref = useRef<HTMLDivElement>(null);
@@ -109,7 +120,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
                 <opt.icon className={`w-4 h-4 ${opt.color}`} />
                 <span className="text-gray-700">{opt.label}</span>
                 <span className="ml-auto text-xs text-gray-400">
-                  {new Date(opt.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
+                  {parseLocalDate(opt.date).toLocaleDateString('en-US', { weekday: 'short' })}
                 </span>
               </button>
             ))}
@@ -147,7 +158,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
               {days.map((day, i) => {
                 if (day === null) return <span key={`empty-${i}`} />;
                 const dateStr = toDateStr(new Date(year, month, day));
-                const isSelected = value === dateStr;
+                const isSelected = value ? toYMD(value) === dateStr : false;
                 const isToday = dateStr === toDateStr(today);
                 return (
                   <button

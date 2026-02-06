@@ -4,8 +4,9 @@ import {
   Trash2,
   Copy,
   GripVertical,
-  ChevronRight,
+  ChevronDown,
   User,
+  GitBranch,
 } from 'lucide-react';
 import { TaskCheckbox } from './TaskCheckbox';
 import { DueDateBadge } from './DueDatePicker';
@@ -25,6 +26,7 @@ interface TaskItemProps {
   dragHandleProps?: Record<string, any>;
   showSubtasks?: boolean;
   subtasks?: Task[];
+  isSubtask?: boolean;
 }
 
 const priorityBorderColors: Record<number, string> = {
@@ -45,11 +47,12 @@ export function TaskItem({
   dragHandleProps,
   showSubtasks,
   subtasks,
+  isSubtask,
 }: TaskItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(task.content);
   const [showMenu, setShowMenu] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -92,27 +95,49 @@ export function TaskItem({
   };
 
   const subtaskCount = task._count?.subtasks ?? subtasks?.length ?? 0;
+  const completedSubtasks = subtasks?.filter((s) => s.isCompleted).length ?? 0;
+  const hasSubtasks = subtaskCount > 0;
   const borderColor = priorityBorderColors[task.priority] || priorityBorderColors[4];
 
   return (
     <div>
       <div
-        className={`group flex items-start gap-2 px-2 py-2 rounded-lg border-l-2 ${borderColor} hover:bg-gray-50 transition-colors ${
+        className={`group flex items-start gap-0 border-b border-gray-100 hover:bg-gray-50/50 transition-colors ${
           task.isCompleted ? 'opacity-60' : ''
-        }`}
+        } ${!isSubtask ? `border-l-2 ${borderColor}` : ''}`}
       >
-        {/* Drag handle */}
-        {dragHandleProps && (
+        {/* Drag handle — only for top-level tasks */}
+        {dragHandleProps && !isSubtask && (
           <div
-            className="pt-0.5 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+            className="pt-3 pl-1 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
             {...dragHandleProps}
           >
             <GripVertical className="w-4 h-4 text-gray-300" />
           </div>
         )}
 
+        {/* Expand/collapse chevron — only when task has subtasks */}
+        {showSubtasks && hasSubtasks ? (
+          <button
+            className="pt-3 px-1 flex-shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
+          >
+            <ChevronDown
+              className={`w-4 h-4 text-gray-400 transition-transform ${
+                expanded ? '' : '-rotate-90'
+              }`}
+            />
+          </button>
+        ) : showSubtasks ? (
+          /* Spacer to keep alignment when other tasks in the list have chevrons */
+          <div className="w-6 flex-shrink-0" />
+        ) : null}
+
         {/* Checkbox */}
-        <div className="pt-0.5">
+        <div className="pt-3 pr-2 flex-shrink-0">
           <TaskCheckbox
             checked={task.isCompleted}
             priority={task.priority}
@@ -122,7 +147,7 @@ export function TaskItem({
 
         {/* Content area */}
         <div
-          className="flex-1 min-w-0 cursor-pointer"
+          className="flex-1 min-w-0 py-2.5 cursor-pointer"
           onClick={() => {
             if (!isEditing) onClick(task);
           }}
@@ -158,15 +183,16 @@ export function TaskItem({
           )}
 
           {/* Meta info row */}
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {task.dueDate && (
               <DueDateBadge dueDate={task.dueDate} dueTime={task.dueTime} />
             )}
             <LabelBadges labels={task.taskLabels} />
-            {subtaskCount > 0 && (
-              <span className="text-xs text-gray-400 flex items-center gap-0.5">
-                <ChevronRight className="w-3 h-3" />
-                {subtaskCount}
+            {/* Subtask count with branch icon like the reference */}
+            {hasSubtasks && (
+              <span className="text-xs text-gray-400 flex items-center gap-1">
+                <GitBranch className="w-3 h-3" />
+                {completedSubtasks}/{subtaskCount}
               </span>
             )}
             {task.assignee && (
@@ -188,7 +214,7 @@ export function TaskItem({
         </div>
 
         {/* Hover actions */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 pt-2 pr-1">
           <DueDatePicker
             value={task.dueDate}
             time={task.dueTime}
@@ -252,34 +278,22 @@ export function TaskItem({
         </div>
       </div>
 
-      {/* Subtasks toggle + list */}
-      {showSubtasks && subtaskCount > 0 && (
-        <div className="ml-8">
-          <button
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 py-1"
-            onClick={() => setExpanded(!expanded)}
-          >
-            <ChevronRight
-              className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+      {/* Inline subtask list — rendered directly below parent, indented */}
+      {showSubtasks && hasSubtasks && expanded && subtasks && (
+        <div className="ml-16 border-l border-gray-200">
+          {subtasks.map((sub) => (
+            <TaskItem
+              key={sub.id}
+              task={sub}
+              onComplete={onComplete}
+              onUncomplete={onUncomplete}
+              onClick={onClick}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              onDuplicate={onDuplicate}
+              isSubtask
             />
-            {subtaskCount} subtask{subtaskCount !== 1 ? 's' : ''}
-          </button>
-          {expanded && subtasks && (
-            <div className="space-y-0.5">
-              {subtasks.map((sub) => (
-                <TaskItem
-                  key={sub.id}
-                  task={sub}
-                  onComplete={onComplete}
-                  onUncomplete={onUncomplete}
-                  onClick={onClick}
-                  onUpdate={onUpdate}
-                  onDelete={onDelete}
-                  onDuplicate={onDuplicate}
-                />
-              ))}
-            </div>
-          )}
+          ))}
         </div>
       )}
     </div>
