@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, GripVertical, Pencil, Trash2, Check, X, Star } from 'lucide-react';
 import { useLabelStore, selectLabelsArray } from '@/stores/labelStore';
 import type { Label } from '@/stores/labelStore';
@@ -10,6 +11,7 @@ const DEFAULT_COLORS = [
 ];
 
 export function LabelManager() {
+  const navigate = useNavigate();
   const labels = useLabelStore(selectLabelsArray);
   const createLabel = useLabelStore((s) => s.createLabel);
   const updateLabel = useLabelStore((s) => s.updateLabel);
@@ -194,7 +196,12 @@ export function LabelManager() {
                     className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: label.color }}
                   />
-                  <span className="flex-1 text-sm text-gray-700">{label.name}</span>
+                  <button
+                    className="flex-1 text-sm text-gray-700 text-left hover:text-[#db4c3f] cursor-pointer"
+                    onClick={() => navigate(`/labels/${label.id}`)}
+                  >
+                    {label.name}
+                  </button>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                     <button
                       className="p-1 rounded hover:bg-gray-200"

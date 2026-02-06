@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Play, Star } from 'lucide-react';
 import { useFilterStore, selectFiltersArray } from '@/stores/filterStore';
 import { FilterQueryInput } from './FilterQueryInput';
@@ -11,6 +12,7 @@ const DEFAULT_COLORS = [
 ];
 
 export function FilterEditor() {
+  const navigate = useNavigate();
   const filters = useFilterStore(selectFiltersArray);
   const createFilter = useFilterStore((s) => s.createFilter);
   const updateFilter = useFilterStore((s) => s.updateFilter);
@@ -217,10 +219,13 @@ export function FilterEditor() {
                     className="w-3 h-3 rounded flex-shrink-0"
                     style={{ backgroundColor: filter.color }}
                   />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-gray-700">{filter.name}</div>
+                  <button
+                    className="flex-1 min-w-0 text-left cursor-pointer"
+                    onClick={() => navigate(`/filters/${filter.id}`)}
+                  >
+                    <div className="text-sm text-gray-700 hover:text-[#db4c3f]">{filter.name}</div>
                     <div className="text-xs text-gray-400 font-mono truncate">{filter.query}</div>
-                  </div>
+                  </button>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                     <button
                       className="p-1 rounded hover:bg-gray-200"
