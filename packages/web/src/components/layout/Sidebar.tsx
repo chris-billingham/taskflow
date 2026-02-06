@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   CheckSquare,
@@ -11,10 +11,13 @@ import {
   Settings,
   LogOut,
   X,
+  Tag,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectStore } from '@/stores/projectStore';
+import { useLabelStore, selectFavoriteLabels } from '@/stores/labelStore';
+import { useFilterStore, selectFavoriteFilters } from '@/stores/filterStore';
 import { ProjectList } from '@/components/project/ProjectList';
 import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
@@ -34,11 +37,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const deleteProject = useProjectStore((s) => s.deleteProject);
   const archiveProject = useProjectStore((s) => s.archiveProject);
 
+  const fetchLabels = useLabelStore((s) => s.fetchLabels);
+  const fetchFilters = useFilterStore((s) => s.fetchFilters);
+  const favoriteLabels = useLabelStore(selectFavoriteLabels);
+  const favoriteFilters = useFilterStore(selectFavoriteFilters);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
+  const [filtersLabelsExpanded, setFiltersLabelsExpanded] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  useEffect(() => {
+    fetchLabels();
+    fetchFilters();
+  }, [fetchLabels, fetchFilters]);
 
   const handleLogout = async () => {
     await logout();
@@ -56,8 +70,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navItems = [
     { path: '/today', label: 'Today', icon: CalendarDays },
     { path: '/upcoming', label: 'Upcoming', icon: CalendarRange },
-    { path: '/filters', label: 'Filters & Labels', icon: Filter },
+    { path: '/filters-labels', label: 'Filters & Labels', icon: Filter },
   ];
+
+  const hasFavoriteFiltersOrLabels = favoriteFilters.length > 0 || favoriteLabels.length > 0;
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#FAFAFA] border-r border-gray-200">
@@ -136,6 +152,82 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <span className="truncate">{p.name}</span>
                   </button>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Filters & Labels section */}
+        {hasFavoriteFiltersOrLabels && (
+          <div className="mb-4">
+            <button
+              className="flex items-center justify-between w-full px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700"
+              onClick={() => setFiltersLabelsExpanded(!filtersLabelsExpanded)}
+            >
+              <span className="flex items-center gap-1">
+                <Tag className="w-3.5 h-3.5" />
+                Filters & Labels
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  filtersLabelsExpanded ? '' : '-rotate-90'
+                }`}
+              />
+            </button>
+            {filtersLabelsExpanded && (
+              <div className="mt-1 space-y-0.5">
+                {/* Favorite filters */}
+                {favoriteFilters.map((f) => (
+                  <button
+                    key={`filter-${f.id}`}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
+                      location.pathname === `/filters/${f.id}`
+                        ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                    onClick={() => {
+                      navigate(`/filters/${f.id}`);
+                      onClose();
+                    }}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded flex-shrink-0"
+                      style={{ backgroundColor: f.color }}
+                    />
+                    <span className="truncate">{f.name}</span>
+                  </button>
+                ))}
+                {/* Favorite labels */}
+                {favoriteLabels.map((l) => (
+                  <button
+                    key={`label-${l.id}`}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
+                      location.pathname === `/labels/${l.id}`
+                        ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                    onClick={() => {
+                      navigate(`/labels/${l.id}`);
+                      onClose();
+                    }}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: l.color }}
+                    />
+                    <span className="truncate">{l.name}</span>
+                  </button>
+                ))}
+                {/* Show all link */}
+                <button
+                  className="w-full text-left px-2 py-1 text-xs text-gray-400 hover:text-[#db4c3f]"
+                  onClick={() => {
+                    navigate('/filters-labels');
+                    onClose();
+                  }}
+                >
+                  Show all
+                </button>
               </div>
             )}
           </div>

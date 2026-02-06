@@ -9,6 +9,9 @@ import ForgotPassword from '@/pages/auth/ForgotPassword';
 import ResetPassword from '@/pages/auth/ResetPassword';
 import Today from '@/pages/app/Today';
 import Project from '@/pages/app/Project';
+import Label from '@/pages/app/Label';
+import Filter from '@/pages/app/Filter';
+import FiltersLabels from '@/pages/app/FiltersLabels';
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -36,7 +39,9 @@ function App() {
         >
           <Route path="/today" element={<Today />} />
           <Route path="/upcoming" element={<Today />} />
-          <Route path="/filters" element={<Today />} />
+          <Route path="/filters-labels" element={<FiltersLabels />} />
+          <Route path="/labels/:id" element={<Label />} />
+          <Route path="/filters/:id" element={<Filter />} />
           <Route path="/projects/:id" element={<Project />} />
         </Route>
 

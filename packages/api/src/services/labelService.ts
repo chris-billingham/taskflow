@@ -55,6 +55,37 @@ export async function deleteLabel(id: string, userId: string) {
   if (!label) throw new NotFoundError('Label not found');
   if (label.userId !== userId) throw new ForbiddenError('You do not own this label');
 
+  // Remove label from all tasks first, then delete label
+  await prisma.taskLabel.deleteMany({ where: { labelId: id } });
   await prisma.label.delete({ where: { id } });
   return { message: 'Label deleted successfully' };
+}
+
+export async function reorderLabels(labelIds: string[], userId: string) {
+  if (labelIds.length === 0) return { message: 'Nothing to reorder' };
+
+  const labels = await prisma.label.findMany({
+    where: { id: { in: labelIds } },
+  });
+
+  if (labels.length !== labelIds.length) {
+    throw new NotFoundError('One or more labels not found');
+  }
+
+  for (const label of labels) {
+    if (label.userId !== userId) {
+      throw new ForbiddenError('You do not own all of these labels');
+    }
+  }
+
+  const updates = labelIds.map((id, index) =>
+    prisma.label.update({
+      where: { id },
+      data: { sortOrder: index },
+    }),
+  );
+
+  await prisma.$transaction(updates);
+
+  return { message: 'Labels reordered successfully' };
 }

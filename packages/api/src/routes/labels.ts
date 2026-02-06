@@ -4,6 +4,7 @@ import {
   createLabelSchema,
   updateLabelSchema,
   labelParamsSchema,
+  reorderLabelsSchema,
 } from '../schemas/label.js';
 import * as labelService from '../services/labelService.js';
 import { ValidationError } from '../errors/index.js';
@@ -56,6 +57,20 @@ export async function labelRoutes(app: FastifyInstance) {
     }
 
     const data = await labelService.deleteLabel(params.data.id, request.user.id);
+    return reply.send({ success: true, ...data });
+  });
+
+  // PUT /api/v1/labels/reorder - Reorder labels
+  app.put('/reorder', async (request, reply) => {
+    const result = reorderLabelsSchema.safeParse(request.body);
+    if (!result.success) {
+      throw new ValidationError(result.error.issues[0].message);
+    }
+
+    const data = await labelService.reorderLabels(
+      result.data.labelIds,
+      request.user.id,
+    );
     return reply.send({ success: true, ...data });
   });
 }
