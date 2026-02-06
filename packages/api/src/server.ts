@@ -1,17 +1,16 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
-
-const PORT = process.env.API_PORT ? parseInt(process.env.API_PORT) : 3001;
-const HOST = process.env.HOST || '0.0.0.0';
+import { env } from './config/env.js';
+import { registerRoutes } from './routes/index.js';
+import { closeRedis } from './config/redis.js';
 
 const server = Fastify({
   logger: {
-    level: process.env.LOG_LEVEL || 'info',
+    level: env.LOG_LEVEL,
     transport:
-      process.env.NODE_ENV === 'development'
+      env.NODE_ENV === 'development'
         ? {
             target: 'pino-pretty',
             options: {
@@ -26,28 +25,56 @@ const server = Fastify({
 
 // Register plugins
 await server.register(cors, {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: env.CORS_ORIGIN,
   credentials: true,
-});
-
-await server.register(jwt, {
-  secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
-  cookie: {
-    cookieName: 'token',
-    signed: false,
-  },
 });
 
 await server.register(cookie);
 await server.register(websocket);
 
+// Global error handler - must be set before routes
+server.setErrorHandler((error, request, reply) => {
+  const err = error as Error & { statusCode?: number; code?: string; validation?: unknown };
+
+  // Custom AppError or any error with statusCode
+  if (err.statusCode && err.statusCode >= 400 && err.statusCode < 500) {
+    return reply.status(err.statusCode).send({
+      success: false,
+      error: err.code ?? 'ERROR',
+      message: err.message,
+    });
+  }
+
+  // Fastify validation errors
+  if (err.validation) {
+    return reply.status(400).send({
+      success: false,
+      error: 'VALIDATION_ERROR',
+      message: err.message,
+    });
+  }
+
+  request.log.error(error);
+  return reply.status(500).send({
+    success: false,
+    error: 'INTERNAL_SERVER_ERROR',
+    message:
+      env.NODE_ENV === 'production'
+        ? 'Internal server error'
+        : err.message,
+  });
+});
+
+// Register routes
+await server.register(registerRoutes);
+
 // Health check route
-server.get('/health', async (request, reply) => {
+server.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
 });
 
 // API info route
-server.get('/', async (request, reply) => {
+server.get('/', async () => {
   return {
     name: 'Taskflow API',
     version: '1.0.0',
@@ -55,11 +82,24 @@ server.get('/', async (request, reply) => {
   };
 });
 
+// Graceful shutdown
+async function shutdown() {
+  server.log.info('Shutting down...');
+  await server.close();
+  await closeRedis();
+  process.exit(0);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
 // Start server
 const start = async () => {
   try {
-    await server.listen({ port: PORT, host: HOST });
-    console.log(`\n🚀 Taskflow API server listening on http://${HOST}:${PORT}\n`);
+    await server.listen({ port: env.API_PORT, host: env.HOST });
+    server.log.info(
+      `Taskflow API server listening on http://${env.HOST}:${env.API_PORT}`,
+    );
   } catch (err) {
     server.log.error(err);
     process.exit(1);
