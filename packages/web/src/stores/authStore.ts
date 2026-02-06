@@ -21,6 +21,11 @@ interface AuthState {
   initialize: () => Promise<void>;
 }
 
+// Deduplicates concurrent initialize() calls so that React StrictMode's
+// double-fired effect doesn't send the same refresh token twice (which
+// triggers the API's reuse-detection and invalidates all tokens).
+let initPromise: Promise<void> | null = null;
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -35,7 +40,7 @@ export const useAuthStore = create<AuthState>()(
         setAccessToken(accessToken);
         localStorage.setItem('refreshToken', refreshToken);
 
-        set({ user, isAuthenticated: true });
+        set({ user, isAuthenticated: true, isLoading: false });
       },
 
       register: async (name: string, email: string, password: string) => {
@@ -49,7 +54,7 @@ export const useAuthStore = create<AuthState>()(
         setAccessToken(accessToken);
         localStorage.setItem('refreshToken', refreshToken);
 
-        set({ user, isAuthenticated: true });
+        set({ user, isAuthenticated: true, isLoading: false });
       },
 
       logout: async () => {
@@ -86,32 +91,46 @@ export const useAuthStore = create<AuthState>()(
       },
 
       initialize: async () => {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          set({ isLoading: false, isAuthenticated: false });
-          return;
-        }
+        // Return the in-flight promise so concurrent calls (e.g. from
+        // StrictMode double-firing useEffect) share one request.
+        if (initPromise) return initPromise;
+
+        initPromise = (async () => {
+          const refreshToken = localStorage.getItem('refreshToken');
+          if (!refreshToken) {
+            set({ isLoading: false, isAuthenticated: false });
+            return;
+          }
+
+          try {
+            // Refresh access token
+            const { data } = await api.post('/auth/refresh', {
+              refreshToken,
+            });
+            const { accessToken, refreshToken: newRefreshToken } = data.data;
+
+            setAccessToken(accessToken);
+            localStorage.setItem('refreshToken', newRefreshToken);
+
+            // Fetch current user profile
+            const userResponse = await api.get('/users/me');
+
+            set({
+              user: userResponse.data.data,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+          } catch {
+            setAccessToken(null);
+            localStorage.removeItem('refreshToken');
+            set({ user: null, isAuthenticated: false, isLoading: false });
+          }
+        })();
 
         try {
-          // Refresh access token
-          const { data } = await api.post('/auth/refresh', { refreshToken });
-          const { accessToken, refreshToken: newRefreshToken } = data.data;
-
-          setAccessToken(accessToken);
-          localStorage.setItem('refreshToken', newRefreshToken);
-
-          // Fetch current user profile
-          const userResponse = await api.get('/users/me');
-
-          set({
-            user: userResponse.data.data,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } catch {
-          setAccessToken(null);
-          localStorage.removeItem('refreshToken');
-          set({ user: null, isAuthenticated: false, isLoading: false });
+          await initPromise;
+        } finally {
+          initPromise = null;
         }
       },
     }),
