@@ -6,6 +6,7 @@ import { SectionList } from '@/components/project/SectionList';
 import { TaskList } from '@/components/task/TaskList';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { TaskDetail } from '@/components/task/TaskDetail';
+import { CalendarView } from '@/components/views/CalendarView';
 import { useProject, useProjectSections } from '@/hooks/useProjects';
 import { useProjectStore } from '@/stores/projectStore';
 import { useTasks, useTaskActions } from '@/hooks/useTasks';
@@ -177,84 +178,100 @@ export default function Project() {
         onDelete={() => setShowDeleteConfirm(true)}
       />
 
-      {/* Unsectioned tasks */}
-      <div className="mb-4">
-        <TaskList
-          tasks={unsectionedTasks}
+      {project.viewStyle === 'CALENDAR' ? (
+        <CalendarView
+          tasks={tasks.filter((t) => !t.parentId)}
           allTasks={taskMap}
-          onComplete={handleComplete}
-          onUncomplete={handleUncomplete}
-          onTaskClick={handleTaskClick}
-          onUpdate={handleUpdateTask}
-          onDelete={handleDeleteTask}
-          onDuplicate={handleDuplicate}
-          onReorder={handleReorder}
-          emptyMessage="No tasks yet. Add one below!"
-        />
-        <div className="mt-2">
-          <QuickAdd
-            projectId={project.id}
-            onSubmit={(text) => handleQuickAdd(text)}
-            placeholder="Add task"
-          />
-        </div>
-      </div>
-
-      {/* Sections with tasks */}
-      <SectionList
-        sections={sections}
-        onCreateSection={createSection}
-        onUpdateSection={updateSection}
-        onDeleteSection={deleteSection}
-        onReorderSections={reorderSections}
-        renderSectionContent={(section) => {
-          const sectionTasks = tasksBySection.get(section.id) || [];
-          return (
-            <div className="pl-7 py-1">
-              <TaskList
-                tasks={sectionTasks}
-                allTasks={taskMap}
-                onComplete={handleComplete}
-                onUncomplete={handleUncomplete}
-                onTaskClick={handleTaskClick}
-                onUpdate={handleUpdateTask}
-                onDelete={handleDeleteTask}
-                onDuplicate={handleDuplicate}
-                onReorder={handleReorder}
-                emptyMessage="No tasks in this section"
-              />
-              <div className="mt-1">
-                <QuickAdd
-                  projectId={project.id}
-                  sectionId={section.id}
-                  onSubmit={async (text) => {
-                    await createTask({
-                      content: text,
-                      projectId: project.id,
-                      sectionId: section.id,
-                    });
-                    refetchTasks();
-                  }}
-                  placeholder="Add task"
-                />
-              </div>
-            </div>
-          );
-        }}
-      />
-
-      {/* Task detail panel */}
-      {currentSelectedTask && (
-        <TaskDetail
-          task={currentSelectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={handleUpdateTask}
-          onComplete={handleComplete}
-          onUncomplete={handleUncomplete}
-          onDelete={handleDeleteTask}
+          onUpdateTask={handleUpdateTask}
+          onCompleteTask={handleComplete}
+          onUncompleteTask={handleUncomplete}
+          onDeleteTask={handleDeleteTask}
           onAddSubtask={handleAddSubtask}
-          subtasks={selectedTaskSubtasks}
+          onQuickAdd={handleQuickAdd}
+          defaultProjectId={project.id}
         />
+      ) : (
+        <>
+          {/* Unsectioned tasks */}
+          <div className="mb-4">
+            <TaskList
+              tasks={unsectionedTasks}
+              allTasks={taskMap}
+              onComplete={handleComplete}
+              onUncomplete={handleUncomplete}
+              onTaskClick={handleTaskClick}
+              onUpdate={handleUpdateTask}
+              onDelete={handleDeleteTask}
+              onDuplicate={handleDuplicate}
+              onReorder={handleReorder}
+              emptyMessage="No tasks yet. Add one below!"
+            />
+            <div className="mt-2">
+              <QuickAdd
+                projectId={project.id}
+                onSubmit={(text) => handleQuickAdd(text)}
+                placeholder="Add task"
+              />
+            </div>
+          </div>
+
+          {/* Sections with tasks */}
+          <SectionList
+            sections={sections}
+            onCreateSection={createSection}
+            onUpdateSection={updateSection}
+            onDeleteSection={deleteSection}
+            onReorderSections={reorderSections}
+            renderSectionContent={(section) => {
+              const sectionTasks = tasksBySection.get(section.id) || [];
+              return (
+                <div className="pl-7 py-1">
+                  <TaskList
+                    tasks={sectionTasks}
+                    allTasks={taskMap}
+                    onComplete={handleComplete}
+                    onUncomplete={handleUncomplete}
+                    onTaskClick={handleTaskClick}
+                    onUpdate={handleUpdateTask}
+                    onDelete={handleDeleteTask}
+                    onDuplicate={handleDuplicate}
+                    onReorder={handleReorder}
+                    emptyMessage="No tasks in this section"
+                  />
+                  <div className="mt-1">
+                    <QuickAdd
+                      projectId={project.id}
+                      sectionId={section.id}
+                      onSubmit={async (text) => {
+                        await createTask({
+                          content: text,
+                          projectId: project.id,
+                          sectionId: section.id,
+                        });
+                        refetchTasks();
+                      }}
+                      placeholder="Add task"
+                    />
+                  </div>
+                </div>
+              );
+            }}
+          />
+
+          {/* Task detail panel */}
+          {currentSelectedTask && (
+            <TaskDetail
+              task={currentSelectedTask}
+              onClose={() => setSelectedTask(null)}
+              onUpdate={handleUpdateTask}
+              onComplete={handleComplete}
+              onUncomplete={handleUncomplete}
+              onDelete={handleDeleteTask}
+              onAddSubtask={handleAddSubtask}
+              subtasks={selectedTaskSubtasks}
+            />
+          )}
+        </>
       )}
 
       {/* Delete confirmation modal */}

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Pencil, Star } from 'lucide-react';
+import { Pencil, Star, Calendar, List } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { TaskList } from '@/components/task/TaskList';
 import { TaskDetail } from '@/components/task/TaskDetail';
+import { CalendarView } from '@/components/views/CalendarView';
 import { useLabelStore } from '@/stores/labelStore';
 import { useFilterStore } from '@/stores/filterStore';
 import { useTaskStore } from '@/stores/taskStore';
@@ -26,6 +27,7 @@ export default function Label() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   const fetchTasks = useCallback(async () => {
     if (!label) return;
@@ -167,6 +169,30 @@ export default function Label() {
                 )}
               </button>
             )}
+            <div className="flex items-center gap-0.5 ml-2">
+              <button
+                className={`p-1 rounded transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-gray-200 text-gray-900'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                }`}
+                onClick={() => setViewMode('list')}
+                title="List view"
+              >
+                <List className="w-4 h-4" />
+              </button>
+              <button
+                className={`p-1 rounded transition-colors ${
+                  viewMode === 'calendar'
+                    ? 'bg-gray-200 text-gray-900'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                }`}
+                onClick={() => setViewMode('calendar')}
+                title="Calendar view"
+              >
+                <Calendar className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -176,39 +202,55 @@ export default function Label() {
         <div className="flex items-center justify-center py-10">
           <Spinner size="lg" />
         </div>
-      ) : (
-        <TaskList
-          tasks={tasks}
+      ) : viewMode === 'calendar' ? (
+        <CalendarView
+          tasks={tasks.filter((t) => !t.parentId)}
           allTasks={taskMap}
-          onComplete={handleComplete}
-          onUncomplete={handleUncomplete}
-          onTaskClick={setSelectedTask}
-          onUpdate={async (id, data) => {
+          onUpdateTask={async (id, data) => {
             await updateTask(id, data);
             fetchTasks();
           }}
-          onDelete={handleDeleteTask}
-          onDuplicate={handleDuplicate}
-          onReorder={reorderTasks}
-          emptyMessage="No tasks with this label"
-        />
-      )}
-
-      {/* Task detail panel */}
-      {currentSelectedTask && (
-        <TaskDetail
-          task={currentSelectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={async (id: string, data: Record<string, any>) => {
-            await updateTask(id, data);
-            fetchTasks();
-          }}
-          onComplete={handleComplete}
-          onUncomplete={handleUncomplete}
-          onDelete={handleDeleteTask}
+          onCompleteTask={handleComplete}
+          onUncompleteTask={handleUncomplete}
+          onDeleteTask={handleDeleteTask}
           onAddSubtask={async () => {}}
-          subtasks={selectedTaskSubtasks}
+          onQuickAdd={async () => {}}
         />
+      ) : (
+        <>
+          <TaskList
+            tasks={tasks}
+            allTasks={taskMap}
+            onComplete={handleComplete}
+            onUncomplete={handleUncomplete}
+            onTaskClick={setSelectedTask}
+            onUpdate={async (id, data) => {
+              await updateTask(id, data);
+              fetchTasks();
+            }}
+            onDelete={handleDeleteTask}
+            onDuplicate={handleDuplicate}
+            onReorder={reorderTasks}
+            emptyMessage="No tasks with this label"
+          />
+
+          {/* Task detail panel */}
+          {currentSelectedTask && (
+            <TaskDetail
+              task={currentSelectedTask}
+              onClose={() => setSelectedTask(null)}
+              onUpdate={async (id: string, data: Record<string, any>) => {
+                await updateTask(id, data);
+                fetchTasks();
+              }}
+              onComplete={handleComplete}
+              onUncomplete={handleUncomplete}
+              onDelete={handleDeleteTask}
+              onAddSubtask={async () => {}}
+              subtasks={selectedTaskSubtasks}
+            />
+          )}
+        </>
       )}
     </div>
   );

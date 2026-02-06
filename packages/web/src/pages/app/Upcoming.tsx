@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { format, addDays, startOfDay } from 'date-fns';
-import { CalendarRange, ChevronDown } from 'lucide-react';
+import { CalendarRange, ChevronDown, Calendar, List } from 'lucide-react';
 import {
   DndContext,
   DragEndEvent,
@@ -12,6 +12,7 @@ import {
   pointerWithin,
 } from '@dnd-kit/core';
 import { ViewHeader } from '@/components/views/ViewHeader';
+import { CalendarView } from '@/components/views/CalendarView';
 import { OverdueSection } from '@/components/views/OverdueSection';
 import { DateSection } from '@/components/views/DateSection';
 import { CalendarStrip } from '@/components/views/CalendarStrip';
@@ -43,6 +44,7 @@ export default function Upcoming() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [noDateCollapsed, setNoDateCollapsed] = useState(false);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -183,125 +185,173 @@ export default function Upcoming() {
     totalCount === 0 &&
     (upcomingView?.counts.overdue ?? 0) === 0;
 
+  // Flatten all upcoming tasks for calendar view
+  const allUpcomingTasks = useMemo(() => {
+    if (!upcomingView) return [];
+    return [
+      ...upcomingView.overdue,
+      ...Object.values(upcomingView.byDate).flat(),
+      ...upcomingView.noDate,
+    ];
+  }, [upcomingView]);
+
   return (
     <div>
-      <ViewHeader title="Upcoming" taskCount={totalCount} />
+      <ViewHeader title="Upcoming" taskCount={totalCount}>
+        <button
+          className={`p-1.5 rounded transition-colors ${
+            viewMode === 'list'
+              ? 'bg-gray-200 text-gray-900'
+              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+          }`}
+          onClick={() => setViewMode('list')}
+          title="List view"
+        >
+          <List className="w-4 h-4" />
+        </button>
+        <button
+          className={`p-1.5 rounded transition-colors ${
+            viewMode === 'calendar'
+              ? 'bg-gray-200 text-gray-900'
+              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+          }`}
+          onClick={() => setViewMode('calendar')}
+          title="Calendar view"
+        >
+          <Calendar className="w-4 h-4" />
+        </button>
+      </ViewHeader>
 
-      <CalendarStrip
-        days={UPCOMING_DAYS}
-        taskCountByDate={taskCountByDate}
-        onDateClick={handleDateClick}
-      />
-
-      {upcomingView && upcomingView.overdue.length > 0 && (
-        <OverdueSection
-          tasks={upcomingView.overdue}
+      {viewMode === 'calendar' ? (
+        <CalendarView
+          tasks={allUpcomingTasks.filter((t) => !t.parentId)}
           allTasks={taskMap}
-          onComplete={handleComplete}
-          onUncomplete={handleUncomplete}
-          onTaskClick={setSelectedTask}
-          onUpdate={handleUpdateTask}
-          onDelete={handleDeleteTask}
-          onDuplicate={handleDuplicate}
-          onRescheduleAll={handleRescheduleAll}
+          onUpdateTask={handleUpdateTask}
+          onCompleteTask={handleComplete}
+          onUncompleteTask={handleUncomplete}
+          onDeleteTask={handleDeleteTask}
+          onAddSubtask={handleAddSubtask}
+          onQuickAdd={handleQuickAdd}
         />
-      )}
+      ) : (
+        <>
+          <CalendarStrip
+            days={UPCOMING_DAYS}
+            taskCountByDate={taskCountByDate}
+            onDateClick={handleDateClick}
+          />
 
-      {isEmpty && (
-        <div className="text-center py-16">
-          <CalendarRange className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-gray-500 mb-1">
-            Nothing upcoming
-          </h3>
-          <p className="text-sm text-gray-400">
-            Add tasks with due dates to see them here.
-          </p>
-        </div>
-      )}
-
-      <DndContext
-        sensors={sensors}
-        collisionDetection={pointerWithin}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        {dateKeys.map((date) => {
-          const tasks = upcomingView?.byDate[date] || [];
-          return (
-            <DroppableDateSection
-              key={date}
-              date={date}
-              tasks={tasks}
+          {upcomingView && upcomingView.overdue.length > 0 && (
+            <OverdueSection
+              tasks={upcomingView.overdue}
               allTasks={taskMap}
-              isOver={dragOverDate === date}
               onComplete={handleComplete}
               onUncomplete={handleUncomplete}
               onTaskClick={setSelectedTask}
               onUpdate={handleUpdateTask}
               onDelete={handleDeleteTask}
               onDuplicate={handleDuplicate}
-              onReorder={handleReorder}
-              onAddTask={handleQuickAddForDate(date)}
+              onRescheduleAll={handleRescheduleAll}
             />
-          );
-        })}
-      </DndContext>
+          )}
 
-      {upcomingView && upcomingView.noDate.length > 0 && (
-        <div className="mb-4">
-          <button
-            className="flex items-center gap-2 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200 w-full"
-            onClick={() => setNoDateCollapsed(!noDateCollapsed)}
-          >
-            <ChevronDown
-              className={`w-4 h-4 transition-transform ${noDateCollapsed ? '-rotate-90' : ''}`}
-            />
-            No date
-            <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
-              {upcomingView.noDate.length}
-            </span>
-          </button>
-          {!noDateCollapsed && (
-            <div className="space-y-0.5">
-              {upcomingView.noDate.map((task) => {
-                const subtasks = Array.from(taskMap.values())
-                  .filter((t) => t.parentId === task.id)
-                  .sort((a, b) => a.sortOrder - b.sortOrder);
-                return (
-                  <TaskItem
-                    key={task.id}
-                    task={task}
-                    onComplete={handleComplete}
-                    onUncomplete={handleUncomplete}
-                    onClick={setSelectedTask}
-                    onUpdate={handleUpdateTask}
-                    onDelete={handleDeleteTask}
-                    onDuplicate={handleDuplicate}
-                    showSubtasks
-                    subtasks={subtasks}
-                  />
-                );
-              })}
+          {isEmpty && (
+            <div className="text-center py-16">
+              <CalendarRange className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <h3 className="text-lg font-medium text-gray-500 mb-1">
+                Nothing upcoming
+              </h3>
+              <p className="text-sm text-gray-400">
+                Add tasks with due dates to see them here.
+              </p>
             </div>
           )}
-        </div>
-      )}
 
-      <div className="mt-4">
-        <QuickAdd onSubmit={handleQuickAdd} placeholder="Add task" />
-      </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={pointerWithin}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            {dateKeys.map((date) => {
+              const tasks = upcomingView?.byDate[date] || [];
+              return (
+                <DroppableDateSection
+                  key={date}
+                  date={date}
+                  tasks={tasks}
+                  allTasks={taskMap}
+                  isOver={dragOverDate === date}
+                  onComplete={handleComplete}
+                  onUncomplete={handleUncomplete}
+                  onTaskClick={setSelectedTask}
+                  onUpdate={handleUpdateTask}
+                  onDelete={handleDeleteTask}
+                  onDuplicate={handleDuplicate}
+                  onReorder={handleReorder}
+                  onAddTask={handleQuickAddForDate(date)}
+                />
+              );
+            })}
+          </DndContext>
 
-      {currentSelectedTask && (
-        <TaskDetail
-          task={currentSelectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={handleUpdateTask}
-          onComplete={handleComplete}
-          onUncomplete={handleUncomplete}
-          onDelete={handleDeleteTask}
-          onAddSubtask={handleAddSubtask}
-          subtasks={selectedTaskSubtasks}
-        />
+          {upcomingView && upcomingView.noDate.length > 0 && (
+            <div className="mb-4">
+              <button
+                className="flex items-center gap-2 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200 w-full"
+                onClick={() => setNoDateCollapsed(!noDateCollapsed)}
+              >
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${noDateCollapsed ? '-rotate-90' : ''}`}
+                />
+                No date
+                <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                  {upcomingView.noDate.length}
+                </span>
+              </button>
+              {!noDateCollapsed && (
+                <div className="space-y-0.5">
+                  {upcomingView.noDate.map((task) => {
+                    const subtasks = Array.from(taskMap.values())
+                      .filter((t) => t.parentId === task.id)
+                      .sort((a, b) => a.sortOrder - b.sortOrder);
+                    return (
+                      <TaskItem
+                        key={task.id}
+                        task={task}
+                        onComplete={handleComplete}
+                        onUncomplete={handleUncomplete}
+                        onClick={setSelectedTask}
+                        onUpdate={handleUpdateTask}
+                        onDelete={handleDeleteTask}
+                        onDuplicate={handleDuplicate}
+                        showSubtasks
+                        subtasks={subtasks}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-4">
+            <QuickAdd onSubmit={handleQuickAdd} placeholder="Add task" />
+          </div>
+
+          {currentSelectedTask && (
+            <TaskDetail
+              task={currentSelectedTask}
+              onClose={() => setSelectedTask(null)}
+              onUpdate={handleUpdateTask}
+              onComplete={handleComplete}
+              onUncomplete={handleUncomplete}
+              onDelete={handleDeleteTask}
+              onAddSubtask={handleAddSubtask}
+              subtasks={selectedTaskSubtasks}
+            />
+          )}
+        </>
       )}
     </div>
   );
