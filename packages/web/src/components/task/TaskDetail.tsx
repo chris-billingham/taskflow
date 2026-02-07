@@ -7,8 +7,6 @@ import {
   Clock,
   Trash2,
   AlertCircle,
-  MessageSquare,
-  Activity,
 } from 'lucide-react';
 import { TaskCheckbox } from './TaskCheckbox';
 import { DueDatePicker } from './DueDatePicker';
@@ -16,6 +14,8 @@ import { PriorityPicker } from './PriorityPicker';
 import { DurationPicker } from './DurationPicker';
 import { LabelPicker, LabelBadges } from './LabelPicker';
 import { QuickAdd } from './QuickAdd';
+import { CommentList } from '@/components/comment/CommentList';
+import { ActivityLog } from '@/components/activity/ActivityLog';
 import type { Task } from '@/stores/taskStore';
 
 interface TaskDetailProps {
@@ -290,22 +290,14 @@ export function TaskDetail({
             />
           </div>
 
-          {/* Comments placeholder */}
+          {/* Comments */}
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-              <MessageSquare className="w-4 h-4" />
-              Comments
-            </h3>
-            <p className="text-xs text-gray-400 italic">Comments coming soon...</p>
+            <CommentList taskId={task.id} />
           </div>
 
-          {/* Activity placeholder */}
+          {/* Activity */}
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-              <Activity className="w-4 h-4" />
-              Activity
-            </h3>
-            <p className="text-xs text-gray-400 italic">Activity log coming soon...</p>
+            <ActivityLog taskId={task.id} />
           </div>
         </div>
 

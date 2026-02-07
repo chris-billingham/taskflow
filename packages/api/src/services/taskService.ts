@@ -9,6 +9,7 @@ import type {
 } from '../schemas/task.js';
 import { parseQuickAdd } from '../utils/quickAddParser.js';
 import { getNextOccurrence } from '../utils/recurrence.js';
+import { logActivity } from './activityService.js';
 
 export const taskInclude = {
   taskLabels: {
@@ -197,6 +198,15 @@ export async function createTask(data: CreateTaskInput, userId: string) {
     include: taskInclude,
   });
 
+  logActivity({
+    action: 'CREATED',
+    entityType: 'TASK',
+    entityId: task.id,
+    userId,
+    taskId: task.id,
+    newData: { content: data.content, projectId: data.projectId },
+  }).catch(console.error);
+
   return task;
 }
 
@@ -205,7 +215,7 @@ export async function updateTask(
   data: UpdateTaskInput,
   userId: string,
 ) {
-  await verifyTaskAccess(id, userId);
+  const oldTask = await verifyTaskAccess(id, userId);
 
   const { labelIds, ...updateData } = data;
 
@@ -234,14 +244,32 @@ export async function updateTask(
     include: taskInclude,
   });
 
+  logActivity({
+    action: 'UPDATED',
+    entityType: 'TASK',
+    entityId: id,
+    userId,
+    taskId: id,
+    oldData: { content: oldTask.content, priority: oldTask.priority, dueDate: oldTask.dueDate?.toISOString() ?? null },
+    newData: data as Record<string, unknown>,
+  }).catch(console.error);
+
   return task;
 }
 
 export async function deleteTask(id: string, userId: string) {
-  await verifyTaskAccess(id, userId);
+  const task = await verifyTaskAccess(id, userId);
 
   // Cascade delete handles subtasks via Prisma schema
   await prisma.task.delete({ where: { id } });
+
+  logActivity({
+    action: 'DELETED',
+    entityType: 'TASK',
+    entityId: id,
+    userId,
+    oldData: { content: task.content, projectId: task.projectId },
+  }).catch(console.error);
 
   return { message: 'Task deleted successfully' };
 }
@@ -291,17 +319,35 @@ export async function completeTask(id: string, userId: string) {
     include: taskInclude,
   });
 
+  logActivity({
+    action: 'COMPLETED',
+    entityType: 'TASK',
+    entityId: id,
+    userId,
+    taskId: id,
+    newData: { content: task.content },
+  }).catch(console.error);
+
   return updated;
 }
 
 export async function uncompleteTask(id: string, userId: string) {
-  await verifyTaskAccess(id, userId);
+  const oldTask = await verifyTaskAccess(id, userId);
 
   const task = await prisma.task.update({
     where: { id },
     data: { isCompleted: false, completedAt: null },
     include: taskInclude,
   });
+
+  logActivity({
+    action: 'UNCOMPLETED',
+    entityType: 'TASK',
+    entityId: id,
+    userId,
+    taskId: id,
+    newData: { content: oldTask.content },
+  }).catch(console.error);
 
   return task;
 }
@@ -311,7 +357,7 @@ export async function moveTask(
   data: MoveTaskInput,
   userId: string,
 ) {
-  await verifyTaskAccess(id, userId);
+  const oldTask = await verifyTaskAccess(id, userId);
 
   if (data.projectId) {
     await verifyProjectAccess(data.projectId, userId);
@@ -327,6 +373,16 @@ export async function moveTask(
     data: updateData,
     include: taskInclude,
   });
+
+  logActivity({
+    action: 'MOVED',
+    entityType: 'TASK',
+    entityId: id,
+    userId,
+    taskId: id,
+    oldData: { projectId: oldTask.projectId, sectionId: oldTask.sectionId },
+    newData: data as Record<string, unknown>,
+  }).catch(console.error);
 
   return task;
 }

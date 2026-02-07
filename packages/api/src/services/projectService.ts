@@ -1,6 +1,7 @@
 import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.js';
+import { logActivity } from './activityService.js';
 
 async function verifyProjectAccess(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
@@ -115,6 +116,14 @@ export async function createProject(data: CreateProjectInput, userId: string) {
     },
   });
 
+  logActivity({
+    action: 'CREATED',
+    entityType: 'PROJECT',
+    entityId: project.id,
+    userId,
+    newData: { name: data.name },
+  }).catch(console.error);
+
   return project;
 }
 
@@ -123,7 +132,7 @@ export async function updateProject(
   data: UpdateProjectInput,
   userId: string,
 ) {
-  await verifyProjectAccess(id, userId);
+  const oldProject = await verifyProjectAccess(id, userId);
 
   const project = await prisma.project.update({
     where: { id },
@@ -141,13 +150,22 @@ export async function updateProject(
     },
   });
 
+  logActivity({
+    action: 'UPDATED',
+    entityType: 'PROJECT',
+    entityId: id,
+    userId,
+    oldData: { id: oldProject.id },
+    newData: data as Record<string, unknown>,
+  }).catch(console.error);
+
   return project;
 }
 
 export async function deleteProject(id: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: { id },
-    select: { id: true, ownerId: true, isInbox: true },
+    select: { id: true, ownerId: true, isInbox: true, name: true },
   });
 
   if (!project) {
@@ -162,6 +180,14 @@ export async function deleteProject(id: string, userId: string) {
 
   await prisma.project.delete({ where: { id } });
 
+  logActivity({
+    action: 'DELETED',
+    entityType: 'PROJECT',
+    entityId: id,
+    userId,
+    oldData: { name: project.name },
+  }).catch(console.error);
+
   return { message: 'Project deleted successfully' };
 }
 
@@ -173,6 +199,14 @@ export async function archiveProject(id: string, userId: string) {
     data: { isArchived: true },
   });
 
+  logActivity({
+    action: 'ARCHIVED',
+    entityType: 'PROJECT',
+    entityId: id,
+    userId,
+    newData: { name: project.name },
+  }).catch(console.error);
+
   return project;
 }
 
@@ -183,6 +217,14 @@ export async function unarchiveProject(id: string, userId: string) {
     where: { id },
     data: { isArchived: false },
   });
+
+  logActivity({
+    action: 'UNARCHIVED',
+    entityType: 'PROJECT',
+    entityId: id,
+    userId,
+    newData: { name: project.name },
+  }).catch(console.error);
 
   return project;
 }
