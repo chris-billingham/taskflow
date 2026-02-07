@@ -25,6 +25,7 @@ interface CommentState {
   comments: Map<string, Comment>;
   loading: boolean;
   error: string | null;
+  version: number;
 
   fetchTaskComments: (taskId: string) => Promise<void>;
   createComment: (taskId: string, content: string, parentId?: string) => Promise<Comment>;
@@ -37,6 +38,7 @@ export const useCommentStore = create<CommentState>()((set, get) => ({
   comments: new Map(),
   loading: false,
   error: null,
+  version: 0,
 
   fetchTaskComments: async (taskId) => {
     set({ loading: true, error: null });
@@ -76,7 +78,7 @@ export const useCommentStore = create<CommentState>()((set, get) => ({
       } else {
         comments.set(comment.id, comment);
       }
-      return { comments };
+      return { comments, version: state.version + 1 };
     });
 
     return comment;
@@ -105,7 +107,7 @@ export const useCommentStore = create<CommentState>()((set, get) => ({
         }
       }
 
-      return { comments };
+      return { comments, version: state.version + 1 };
     });
 
     return updated;
@@ -114,6 +116,7 @@ export const useCommentStore = create<CommentState>()((set, get) => ({
   deleteComment: async (id) => {
     // Optimistic delete
     const prev = get().comments;
+    const prevVersion = get().version;
     set((state) => {
       const comments = new Map(state.comments);
 
@@ -132,14 +135,14 @@ export const useCommentStore = create<CommentState>()((set, get) => ({
         }
       }
 
-      return { comments };
+      return { comments, version: state.version + 1 };
     });
 
     try {
       await api.delete(`/comments/${id}`);
     } catch (err) {
       // Revert on failure
-      set({ comments: prev });
+      set({ comments: prev, version: prevVersion });
       throw err;
     }
   },

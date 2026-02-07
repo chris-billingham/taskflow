@@ -72,6 +72,17 @@ export async function projectRoutes(app: FastifyInstance) {
     return reply.send({ success: true, ...data });
   });
 
+  // GET /api/v1/projects/:id/members - List project members
+  app.get('/:id/members', async (request, reply) => {
+    const params = projectParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      throw new ValidationError(params.error.issues[0].message);
+    }
+
+    const data = await projectService.getProjectMembers(params.data.id, request.user.id);
+    return reply.send({ success: true, data });
+  });
+
   // POST /api/v1/projects/:id/archive - Archive project
   app.post('/:id/archive', async (request, reply) => {
     const params = projectParamsSchema.safeParse(request.params);

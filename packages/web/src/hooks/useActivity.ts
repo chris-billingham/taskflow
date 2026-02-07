@@ -20,12 +20,12 @@ export interface ActivityItem {
   user: ActivityUser;
 }
 
-export function useTaskActivity(taskId: string, limit?: number) {
+export function useTaskActivity(taskId: string, limit?: number, refreshKey?: string | number) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
+  const fetchActivity = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -40,10 +40,10 @@ export function useTaskActivity(taskId: string, limit?: number) {
   }, [taskId, limit]);
 
   useEffect(() => {
-    fetch();
-  }, [fetch]);
+    fetchActivity();
+  }, [fetchActivity, refreshKey]);
 
-  return { activities, loading, error, refetch: fetch };
+  return { activities, loading, error, refetch: fetchActivity };
 }
 
 export function useProjectActivity(projectId: string, limit?: number) {

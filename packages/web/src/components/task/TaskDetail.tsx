@@ -7,12 +7,14 @@ import {
   Clock,
   Trash2,
   AlertCircle,
+  User,
 } from 'lucide-react';
 import { TaskCheckbox } from './TaskCheckbox';
 import { DueDatePicker } from './DueDatePicker';
 import { PriorityPicker } from './PriorityPicker';
 import { DurationPicker } from './DurationPicker';
 import { LabelPicker, LabelBadges } from './LabelPicker';
+import { AssigneePicker } from './AssigneePicker';
 import { QuickAdd } from './QuickAdd';
 import { CommentList } from '@/components/comment/CommentList';
 import { ActivityLog } from '@/components/activity/ActivityLog';
@@ -230,6 +232,20 @@ export function TaskDetail({
               </div>
             </div>
 
+            {/* Assignee */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 w-24 flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Assignee
+              </span>
+              <AssigneePicker
+                projectId={task.projectId}
+                value={task.assigneeId}
+                assignee={task.assignee}
+                onChange={(assigneeId) => onUpdate(task.id, { assigneeId })}
+              />
+            </div>
+
             {/* Duration */}
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-500 w-24 flex items-center gap-2">
@@ -297,7 +313,7 @@ export function TaskDetail({
 
           {/* Activity */}
           <div className="mb-6">
-            <ActivityLog taskId={task.id} />
+            <ActivityLog taskId={task.id} taskUpdatedAt={task.updatedAt} />
           </div>
         </div>
 

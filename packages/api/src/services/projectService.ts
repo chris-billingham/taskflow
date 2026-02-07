@@ -229,6 +229,49 @@ export async function unarchiveProject(id: string, userId: string) {
   return project;
 }
 
+export async function getProjectMembers(projectId: string, userId: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      ownerId: true,
+      owner: {
+        select: { id: true, name: true, email: true, avatarUrl: true },
+      },
+      members: {
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, avatarUrl: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new NotFoundError('Project not found');
+  }
+
+  // Verify the requesting user has access
+  const hasAccess =
+    project.ownerId === userId ||
+    project.members.some((m) => m.userId === userId);
+  if (!hasAccess) {
+    throw new ForbiddenError('You do not have access to this project');
+  }
+
+  // Build list: owner + members, deduplicated
+  const usersMap = new Map<string, { id: string; name: string; email: string; avatarUrl: string | null }>();
+  if (project.owner) {
+    usersMap.set(project.owner.id, project.owner);
+  }
+  for (const m of project.members) {
+    usersMap.set(m.user.id, m.user);
+  }
+
+  return Array.from(usersMap.values());
+}
+
 export async function duplicateProject(
   id: string,
   userId: string,
