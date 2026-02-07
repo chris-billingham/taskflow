@@ -7,6 +7,7 @@ import { TaskList } from '@/components/task/TaskList';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { TaskDetail } from '@/components/task/TaskDetail';
 import { CalendarView } from '@/components/views/CalendarView';
+import { BoardView } from '@/components/views/BoardView';
 import { useProject, useProjectSections } from '@/hooks/useProjects';
 import { useProjectStore } from '@/stores/projectStore';
 import { useTasks, useTaskActions } from '@/hooks/useTasks';
@@ -39,6 +40,7 @@ export default function Project() {
     deleteTask,
     completeTask,
     uncompleteTask,
+    moveTask,
     quickAddTask,
     reorderTasks,
     duplicateTask: duplicateTaskAction,
@@ -189,6 +191,26 @@ export default function Project() {
           onAddSubtask={handleAddSubtask}
           onQuickAdd={handleQuickAdd}
           defaultProjectId={project.id}
+        />
+      ) : project.viewStyle === 'BOARD' ? (
+        <BoardView
+          tasks={tasks}
+          allTasks={taskMap}
+          sections={sections}
+          projectId={project.id}
+          onUpdateTask={handleUpdateTask}
+          onCompleteTask={handleComplete}
+          onUncompleteTask={handleUncomplete}
+          onDeleteTask={handleDeleteTask}
+          onDuplicateTask={handleDuplicate}
+          onAddSubtask={handleAddSubtask}
+          onCreateTask={createTask}
+          onReorderTasks={handleReorder}
+          onMoveTask={moveTask}
+          onCreateSection={createSection}
+          onUpdateSection={updateSection}
+          onDeleteSection={deleteSection}
+          onReorderSections={reorderSections}
         />
       ) : (
         <>
