@@ -13,6 +13,7 @@ import {
 import { TaskCheckbox } from './TaskCheckbox';
 import { DueDatePicker } from './DueDatePicker';
 import { PriorityPicker } from './PriorityPicker';
+import { DurationPicker } from './DurationPicker';
 import { LabelPicker, LabelBadges } from './LabelPicker';
 import { QuickAdd } from './QuickAdd';
 import type { Task } from '@/stores/taskStore';
@@ -235,9 +236,10 @@ export function TaskDetail({
                 <Clock className="w-4 h-4" />
                 Duration
               </span>
-              <span className="text-sm text-gray-700">
-                {task.duration ? `${Math.floor(task.duration / 60)}h ${task.duration % 60}m` : 'None'}
-              </span>
+              <DurationPicker
+                value={task.duration}
+                onChange={(duration) => onUpdate(task.id, { duration })}
+              />
             </div>
           </div>
 

@@ -13,6 +13,7 @@ interface WeekViewProps {
   onComplete: (id: string) => void;
   onUncomplete: (id: string) => void;
   onSlotClick: (dateStr: string, time: string) => void;
+  onResizeDuration: (taskId: string, duration: number) => void;
 }
 
 const HOUR_HEIGHT = 48; // px per hour
@@ -47,6 +48,7 @@ export function WeekView({
   onComplete,
   onUncomplete,
   onSlotClick,
+  onResizeDuration,
 }: WeekViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -212,6 +214,7 @@ export function WeekView({
                       onTaskClick={onTaskClick}
                       onComplete={onComplete}
                       onUncomplete={onUncomplete}
+                      onResizeDuration={onResizeDuration}
                     />
                   );
                 })}

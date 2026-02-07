@@ -1,3 +1,4 @@
+import { useRef, useState, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { TaskCheckbox } from '@/components/task/TaskCheckbox';
 import type { Task } from '@/stores/taskStore';
@@ -9,6 +10,7 @@ interface CalendarTaskProps {
   onTaskClick: (task: Task) => void;
   onComplete: (id: string) => void;
   onUncomplete: (id: string) => void;
+  onResizeDuration?: (taskId: string, duration: number) => void;
 }
 
 const priorityBorderColors: Record<number, string> = {
@@ -19,11 +21,14 @@ const priorityBorderColors: Record<number, string> = {
 };
 
 const priorityBgColors: Record<number, string> = {
-  1: 'bg-red-50',
-  2: 'bg-orange-50',
-  3: 'bg-blue-50',
-  4: 'bg-gray-50',
+  1: 'bg-red-100',
+  2: 'bg-orange-100',
+  3: 'bg-blue-100',
+  4: 'bg-gray-100',
 };
+
+// Must match WeekView HOUR_HEIGHT
+const HOUR_HEIGHT = 48;
 
 function formatEndTime(startTime: string, durationMinutes: number): string {
   const [h, m] = startTime.split(':').map(Number);
@@ -47,6 +52,7 @@ export function CalendarTask({
   onTaskClick,
   onComplete,
   onUncomplete,
+  onResizeDuration,
 }: CalendarTaskProps) {
   const {
     attributes,
@@ -56,13 +62,59 @@ export function CalendarTask({
     isDragging,
   } = useDraggable({ id: task.id });
 
+  const [resizeHeightOverride, setResizeHeightOverride] = useState<number | null>(null);
+  const resizingRef = useRef(false);
+  const pendingDurationRef = useRef<number>(0);
+
+  const handleResizePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Prevent dnd-kit drag and click-through
+      e.stopPropagation();
+      e.preventDefault();
+
+      const startY = e.clientY;
+      const startDuration = task.duration || 30;
+      const handle = e.currentTarget;
+      handle.setPointerCapture(e.pointerId);
+      resizingRef.current = true;
+      pendingDurationRef.current = startDuration;
+
+      const onMove = (moveE: PointerEvent) => {
+        const deltaY = moveE.clientY - startY;
+        const deltaMinutes = (deltaY / HOUR_HEIGHT) * 60;
+        // Snap to 15-min intervals, minimum 15 minutes
+        const newDuration = Math.max(15, Math.round((startDuration + deltaMinutes) / 15) * 15);
+        pendingDurationRef.current = newDuration;
+        setResizeHeightOverride(Math.max((newDuration / 60) * HOUR_HEIGHT, 20));
+      };
+
+      const onUp = () => {
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
+        handle.removeEventListener('lostpointercapture', onUp);
+        resizingRef.current = false;
+        setResizeHeightOverride(null);
+
+        if (pendingDurationRef.current !== startDuration && onResizeDuration) {
+          onResizeDuration(task.id, pendingDurationRef.current);
+        }
+      };
+
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
+      handle.addEventListener('lostpointercapture', onUp);
+    },
+    [task.id, task.duration, onResizeDuration],
+  );
+
   const dragStyle: React.CSSProperties = {
     ...style,
+    ...(resizeHeightOverride !== null ? { height: `${resizeHeightOverride}px` } : {}),
     transform: transform
       ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
       : undefined,
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : undefined,
+    zIndex: isDragging || resizeHeightOverride !== null ? 50 : undefined,
   };
 
   const borderColor = priorityBorderColors[task.priority] || priorityBorderColors[4];
@@ -107,9 +159,12 @@ export function CalendarTask({
   }
 
   // Week variant
+  const displayDuration = resizeHeightOverride !== null
+    ? pendingDurationRef.current
+    : (task.duration || 30);
   const timeLabel = task.dueTime
-    ? task.duration
-      ? `${formatTime12(task.dueTime)} - ${formatTime12(formatEndTime(task.dueTime, task.duration))}`
+    ? displayDuration
+      ? `${formatTime12(task.dueTime)} - ${formatTime12(formatEndTime(task.dueTime, displayDuration))}`
       : formatTime12(task.dueTime)
     : '';
 
@@ -119,7 +174,7 @@ export function CalendarTask({
       style={dragStyle}
       {...attributes}
       {...listeners}
-      className={`absolute left-0.5 right-0.5 border-l-2 ${borderColor} ${bgColor} rounded px-1.5 py-1 cursor-pointer overflow-hidden group/task hover:shadow-md transition-shadow`}
+      className={`absolute left-0.5 right-0.5 border-l-2 ${borderColor} ${bgColor} rounded px-1.5 py-1 cursor-pointer overflow-hidden group/task shadow-sm ring-1 ring-black/5 hover:shadow-md transition-shadow`}
       onClick={(e) => {
         e.stopPropagation();
         onTaskClick(task);
@@ -151,7 +206,10 @@ export function CalendarTask({
         </div>
       </div>
       {/* Resize handle */}
-      <div className="absolute bottom-0 left-0 right-0 h-1.5 cursor-s-resize opacity-0 group-hover/task:opacity-100 bg-gray-300/30 rounded-b" />
+      <div
+        className="absolute bottom-0 left-0 right-0 h-2.5 cursor-s-resize opacity-0 group-hover/task:opacity-100 hover:!opacity-100 bg-gray-400/30 rounded-b"
+        onPointerDown={handleResizePointerDown}
+      />
     </div>
   );
 }

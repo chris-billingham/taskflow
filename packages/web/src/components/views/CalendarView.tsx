@@ -101,6 +101,13 @@ export function CalendarView({
     [],
   );
 
+  const handleResizeDuration = useCallback(
+    async (taskId: string, duration: number) => {
+      await onUpdateTask(taskId, { duration });
+    },
+    [onUpdateTask],
+  );
+
   const handleQuickAddSubmit = useCallback(
     async (text: string) => {
       const { dateStr, time } = quickAddState;
@@ -165,6 +172,7 @@ export function CalendarView({
             onComplete={onCompleteTask}
             onUncomplete={onUncompleteTask}
             onSlotClick={handleSlotClick}
+            onResizeDuration={handleResizeDuration}
           />
         ) : (
           <MonthView

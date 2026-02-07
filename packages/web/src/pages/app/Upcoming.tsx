@@ -162,6 +162,16 @@ export default function Upcoming() {
     refetch();
   };
 
+  // Flatten all upcoming tasks for calendar view (must be before early return to satisfy rules of hooks)
+  const allUpcomingTasks = useMemo(() => {
+    if (!upcomingView) return [];
+    return [
+      ...upcomingView.overdue,
+      ...Object.values(upcomingView.byDate).flat(),
+      ...upcomingView.noDate,
+    ];
+  }, [upcomingView]);
+
   if (loading && !upcomingView) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -184,16 +194,6 @@ export default function Upcoming() {
   const isEmpty =
     totalCount === 0 &&
     (upcomingView?.counts.overdue ?? 0) === 0;
-
-  // Flatten all upcoming tasks for calendar view
-  const allUpcomingTasks = useMemo(() => {
-    if (!upcomingView) return [];
-    return [
-      ...upcomingView.overdue,
-      ...Object.values(upcomingView.byDate).flat(),
-      ...upcomingView.noDate,
-    ];
-  }, [upcomingView]);
 
   return (
     <div>
