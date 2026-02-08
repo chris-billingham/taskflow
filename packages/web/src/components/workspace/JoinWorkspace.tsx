@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -15,13 +15,16 @@ export function JoinWorkspace() {
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const acceptedRef = useRef(false);
 
   useEffect(() => {
     if (isLoading) return;
 
     if (!isAuthenticated) {
-      // Redirect to login with return URL
-      navigate(`/login?redirect=${encodeURIComponent(`/join?token=${token}`)}`);
+      navigate(
+        `/login?redirect=${encodeURIComponent(`/join?token=${token}`)}`,
+        { replace: true },
+      );
       return;
     }
 
@@ -30,6 +33,10 @@ export function JoinWorkspace() {
       setErrorMessage('Invalid invite link');
       return;
     }
+
+    // Guard against double-firing (React StrictMode)
+    if (acceptedRef.current) return;
+    acceptedRef.current = true;
 
     acceptInvite(token)
       .then(() => setStatus('success'))

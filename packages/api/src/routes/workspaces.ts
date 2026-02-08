@@ -146,6 +146,23 @@ export async function workspaceRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data });
   });
 
+  // POST /api/v1/workspaces/:id/invites/:inviteId/resend - Resend invite
+  app.post('/:id/invites/:inviteId/resend', async (request, reply) => {
+    const params = workspaceParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      throw new ValidationError(params.error.issues[0].message);
+    }
+
+    const { inviteId } = request.params as { inviteId: string };
+
+    const data = await workspaceService.resendInvite(
+      params.data.id,
+      inviteId,
+      request.user.id,
+    );
+    return reply.send({ success: true, data });
+  });
+
   // DELETE /api/v1/workspaces/:id/invites/:inviteId - Cancel invite
   app.delete('/:id/invites/:inviteId', async (request, reply) => {
     const params = workspaceParamsSchema.safeParse(request.params);

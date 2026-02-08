@@ -1,4 +1,4 @@
-import { Shield, ShieldCheck, Crown, Eye, MoreHorizontal, UserMinus, ArrowUpDown } from 'lucide-react';
+import { Shield, ShieldCheck, Crown, Eye, MoreHorizontal, UserMinus, ArrowUpDown, RefreshCw, Copy, Check } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { WorkspaceMember, WorkspaceInvite, WorkspaceRole } from '@/stores/workspaceStore';
 
@@ -17,6 +17,7 @@ interface MemberListProps {
   onChangeRole: (userId: string, role: string) => void;
   onRemoveMember: (userId: string) => void;
   onCancelInvite: (inviteId: string) => void;
+  onResendInvite: (inviteId: string) => Promise<WorkspaceInvite>;
 }
 
 export function MemberList({
@@ -27,6 +28,7 @@ export function MemberList({
   onChangeRole,
   onRemoveMember,
   onCancelInvite,
+  onResendInvite,
 }: MemberListProps) {
   const canManage = currentUserRole === 'OWNER' || currentUserRole === 'ADMIN';
 
@@ -54,28 +56,13 @@ export function MemberList({
             </h4>
           </div>
           {invites.map((invite) => (
-            <div
+            <InviteRow
               key={invite.id}
-              className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm font-medium">
-                  ?
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">{invite.email}</p>
-                  <p className="text-xs text-gray-400">Invited as {invite.role.toLowerCase()}</p>
-                </div>
-              </div>
-              {canManage && (
-                <button
-                  className="text-xs text-red-500 hover:text-red-700"
-                  onClick={() => onCancelInvite(invite.id)}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
+              invite={invite}
+              canManage={canManage}
+              onCancelInvite={onCancelInvite}
+              onResendInvite={onResendInvite}
+            />
           ))}
         </>
       )}
@@ -119,7 +106,7 @@ function MemberRow({
   }, [showMenu]);
 
   return (
-    <div className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50">
+    <div className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 group">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-[#db4c3f] flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
           {member.user.avatarUrl ? (
@@ -215,6 +202,94 @@ function MemberRow({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function InviteRow({
+  invite,
+  canManage,
+  onCancelInvite,
+  onResendInvite,
+}: {
+  invite: WorkspaceInvite;
+  canManage: boolean;
+  onCancelInvite: (inviteId: string) => void;
+  onResendInvite: (inviteId: string) => Promise<WorkspaceInvite>;
+}) {
+  const [resending, setResending] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const updated = await onResendInvite(invite.id);
+      const link = `${window.location.origin}/join?token=${updated.token}`;
+      setInviteLink(link);
+    } catch {
+      // Error handled upstream
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!inviteLink) return;
+    await navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="px-3 py-2 rounded-lg hover:bg-gray-50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm font-medium">
+            ?
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">{invite.email}</p>
+            <p className="text-xs text-gray-400">Invited as {invite.role.toLowerCase()}</p>
+          </div>
+        </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <button
+              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+              onClick={handleResend}
+              disabled={resending}
+            >
+              <RefreshCw className={`w-3 h-3 ${resending ? 'animate-spin' : ''}`} />
+              Resend
+            </button>
+            <button
+              className="text-xs text-red-500 hover:text-red-700"
+              onClick={() => onCancelInvite(invite.id)}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+      {inviteLink && (
+        <div className="mt-2 ml-11 flex items-center gap-2">
+          <code className="flex-1 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded truncate">
+            {inviteLink}
+          </code>
+          <button
+            className="flex-shrink-0 p-1 rounded hover:bg-gray-200"
+            onClick={handleCopy}
+            title="Copy invite link"
+          >
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+              <Copy className="w-3.5 h-3.5 text-gray-400" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

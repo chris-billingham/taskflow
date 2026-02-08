@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock } from 'lucide-react';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { Input } from '@/components/ui/Input';
@@ -19,8 +19,11 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const login = useAuthStore((s) => s.login);
   const [error, setError] = useState('');
+
+  const redirect = searchParams.get('redirect');
 
   const {
     register,
@@ -34,7 +37,7 @@ export default function Login() {
     try {
       setError('');
       await login(formData.email, formData.password);
-      navigate('/today', { replace: true });
+      navigate(redirect || '/today', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid email or password');
     }
@@ -90,7 +93,7 @@ export default function Login() {
         <p className="text-center text-sm text-gray-600">
           Don&apos;t have an account?{' '}
           <Link
-            to="/register"
+            to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : '/register'}
             className="text-[#db4c3f] hover:text-[#c53727] font-medium"
           >
             Sign up

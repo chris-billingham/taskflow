@@ -26,6 +26,7 @@ export function WorkspaceSettings() {
     updateMemberRole,
     removeMember,
     cancelInvite,
+    resendInvite,
   } = useWorkspaceStore();
   const user = useAuthStore((s) => s.user);
 
@@ -184,6 +185,9 @@ export function WorkspaceSettings() {
                 }
                 onCancelInvite={(inviteId) =>
                   cancelInvite(workspace.id, inviteId)
+                }
+                onResendInvite={(inviteId) =>
+                  resendInvite(workspace.id, inviteId)
                 }
               />
             </div>

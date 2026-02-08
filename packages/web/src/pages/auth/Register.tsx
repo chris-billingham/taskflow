@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, User } from 'lucide-react';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { Input } from '@/components/ui/Input';
@@ -49,8 +49,11 @@ function getPasswordStrength(password: string) {
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const registerUser = useAuthStore((s) => s.register);
   const [error, setError] = useState('');
+
+  const redirect = searchParams.get('redirect');
 
   const {
     register,
@@ -68,7 +71,7 @@ export default function Register() {
     try {
       setError('');
       await registerUser(formData.name, formData.email, formData.password);
-      navigate('/today', { replace: true });
+      navigate(redirect || '/today', { replace: true });
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -170,7 +173,7 @@ export default function Register() {
         <p className="text-center text-sm text-gray-600">
           Already have an account?{' '}
           <Link
-            to="/login"
+            to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login'}
             className="text-[#db4c3f] hover:text-[#c53727] font-medium"
           >
             Sign in

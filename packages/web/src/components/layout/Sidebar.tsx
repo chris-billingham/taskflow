@@ -52,6 +52,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const currentWorkspace = useWorkspaceStore(selectCurrentWorkspace);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForTeam, setCreateForTeam] = useState(false);
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectsExpanded, setProjectsExpanded] = useState(true);
@@ -278,7 +279,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
             <button
               className="p-0.5 rounded hover:bg-gray-200"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => { setCreateForTeam(false); setShowCreateModal(true); }}
               title="Add project"
             >
               <Plus className="w-4 h-4 text-gray-500" />
@@ -331,7 +332,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </button>
                 <button
                   className="p-0.5 rounded hover:bg-gray-200"
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => { setCreateForTeam(true); setShowCreateModal(true); }}
                   title="Add team project"
                 >
                   <Plus className="w-4 h-4 text-gray-500" />
@@ -421,6 +422,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <CreateProjectModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
+        workspaceId={createForTeam ? currentWorkspace?.id : undefined}
       />
       <CreateWorkspaceModal
         isOpen={showCreateWorkspaceModal}

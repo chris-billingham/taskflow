@@ -448,6 +448,40 @@ export async function getPendingInvites(workspaceId: string, userId: string) {
   });
 }
 
+export async function resendInvite(
+  workspaceId: string,
+  inviteId: string,
+  userId: string,
+) {
+  await verifyWorkspaceAdmin(workspaceId, userId);
+
+  const invite = await prisma.workspaceInvite.findUnique({
+    where: { id: inviteId },
+  });
+
+  if (!invite || invite.workspaceId !== workspaceId) {
+    throw new NotFoundError('Invite not found');
+  }
+
+  const token = generateInviteToken();
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+
+  const updated = await prisma.workspaceInvite.update({
+    where: { id: inviteId },
+    data: { token, expiresAt },
+  });
+
+  return {
+    id: updated.id,
+    email: updated.email,
+    role: updated.role,
+    token: updated.token,
+    expiresAt: updated.expiresAt,
+    createdAt: updated.createdAt,
+  };
+}
+
 export async function cancelInvite(
   workspaceId: string,
   inviteId: string,

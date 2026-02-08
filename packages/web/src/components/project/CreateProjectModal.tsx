@@ -3,7 +3,6 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useProjectStore, selectActiveProjects } from '@/stores/projectStore';
-import { useWorkspaceStore, selectCurrentWorkspace } from '@/stores/workspaceStore';
 
 const PRESET_COLORS = [
   '#DB4C3F', '#FF9933', '#FAD000', '#7ECC49',
@@ -16,16 +15,17 @@ interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   parentId?: string;
+  workspaceId?: string;
 }
 
 export function CreateProjectModal({
   isOpen,
   onClose,
   parentId,
+  workspaceId,
 }: CreateProjectModalProps) {
   const createProject = useProjectStore((s) => s.createProject);
   const projects = useProjectStore(selectActiveProjects);
-  const currentWorkspace = useWorkspaceStore(selectCurrentWorkspace);
   const [name, setName] = useState('');
   const [color, setColor] = useState('#3B82F6');
   const [selectedParentId, setSelectedParentId] = useState(parentId ?? '');
@@ -50,7 +50,7 @@ export function CreateProjectModal({
         color,
         parentId: selectedParentId || undefined,
         viewStyle,
-        workspaceId: currentWorkspace?.id,
+        workspaceId,
       });
       setName('');
       setColor('#3B82F6');

@@ -62,6 +62,7 @@ interface WorkspaceState {
   inviteMember: (workspaceId: string, email: string, role: string) => Promise<WorkspaceInvite>;
   fetchInvites: (workspaceId: string) => Promise<void>;
   cancelInvite: (workspaceId: string, inviteId: string) => Promise<void>;
+  resendInvite: (workspaceId: string, inviteId: string) => Promise<WorkspaceInvite>;
   acceptInvite: (token: string) => Promise<void>;
   updateMemberRole: (workspaceId: string, userId: string, role: string) => Promise<void>;
   removeMember: (workspaceId: string, userId: string) => Promise<void>;
@@ -166,6 +167,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set((state) => ({
           invites: state.invites.filter((i) => i.id !== inviteId),
         }));
+      },
+
+      resendInvite: async (workspaceId, inviteId) => {
+        const { data } = await api.post(
+          `/workspaces/${workspaceId}/invites/${inviteId}/resend`,
+        );
+        const updated = data.data as WorkspaceInvite;
+        set((state) => ({
+          invites: state.invites.map((i) =>
+            i.id === inviteId ? updated : i,
+          ),
+        }));
+        return updated;
       },
 
       acceptInvite: async (token) => {

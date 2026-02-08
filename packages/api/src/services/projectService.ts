@@ -255,6 +255,7 @@ export async function getProjectMembers(projectId: string, userId: string) {
     select: {
       id: true,
       ownerId: true,
+      workspaceId: true,
       owner: {
         select: { id: true, name: true, email: true, avatarUrl: true },
       },
@@ -272,7 +273,29 @@ export async function getProjectMembers(projectId: string, userId: string) {
     throw new NotFoundError('Project not found');
   }
 
-  // Verify the requesting user has access
+  // For workspace projects, return workspace members
+  if (project.workspaceId) {
+    const wsMember = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: { workspaceId: project.workspaceId, userId },
+      },
+    });
+    if (!wsMember) {
+      throw new ForbiddenError('You do not have access to this project');
+    }
+
+    const wsMembers = await prisma.workspaceMember.findMany({
+      where: { workspaceId: project.workspaceId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, avatarUrl: true },
+        },
+      },
+    });
+    return wsMembers.map((m) => m.user);
+  }
+
+  // For personal/shared projects, verify access and return project members
   const hasAccess =
     project.ownerId === userId ||
     project.members.some((m) => m.userId === userId);
