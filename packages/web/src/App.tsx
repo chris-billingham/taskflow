@@ -14,6 +14,7 @@ import Label from '@/pages/app/Label';
 import Filter from '@/pages/app/Filter';
 import FiltersLabels from '@/pages/app/FiltersLabels';
 import WorkspaceSettingsPage from '@/pages/settings/Workspace';
+import NotificationSettings from '@/pages/settings/Notifications';
 import { JoinWorkspace } from '@/components/workspace/JoinWorkspace';
 
 function App() {
@@ -48,6 +49,7 @@ function App() {
           <Route path="/filters/:id" element={<Filter />} />
           <Route path="/projects/:id" element={<Project />} />
           <Route path="/workspace/settings" element={<WorkspaceSettingsPage />} />
+          <Route path="/settings/notifications" element={<NotificationSettings />} />
         </Route>
 
         {/* Default redirect */}

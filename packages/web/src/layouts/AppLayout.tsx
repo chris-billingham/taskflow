@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Menu, Plus } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { NotificationCenter } from '@/components/notification/NotificationCenter';
 import { Modal } from '@/components/ui/Modal';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { useTaskStore } from '@/stores/taskStore';
@@ -55,12 +56,20 @@ export function AppLayout() {
           >
             <Menu className="w-5 h-5 text-gray-700" />
           </button>
-          <button
-            className="p-1.5 rounded hover:bg-gray-100"
-            onClick={() => setQuickAddOpen(true)}
-          >
-            <Plus className="w-5 h-5 text-[#db4c3f]" />
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationCenter />
+            <button
+              className="p-1.5 rounded hover:bg-gray-100"
+              onClick={() => setQuickAddOpen(true)}
+            >
+              <Plus className="w-5 h-5 text-[#db4c3f]" />
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop notification center */}
+        <div className="hidden md:flex fixed top-4 right-20 z-30">
+          <NotificationCenter />
         </div>
 
         {/* Desktop quick add button */}

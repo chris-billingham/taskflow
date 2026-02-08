@@ -10,6 +10,8 @@ import { viewRoutes } from './views.js';
 import { commentRoutes } from './comments.js';
 import { activityRoutes } from './activity.js';
 import { workspaceRoutes } from './workspaces.js';
+import { reminderRoutes } from './reminders.js';
+import { notificationRoutes } from './notifications.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
@@ -23,4 +25,6 @@ export async function registerRoutes(app: FastifyInstance) {
   app.register(viewRoutes, { prefix: '/api/v1/views' });
   app.register(commentRoutes, { prefix: '/api/v1' });
   app.register(activityRoutes, { prefix: '/api/v1' });
+  app.register(reminderRoutes, { prefix: '/api/v1' });
+  app.register(notificationRoutes, { prefix: '/api/v1' });
 }

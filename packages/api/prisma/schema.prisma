@@ -63,6 +63,17 @@ enum EntityType {
   WORKSPACE
 }
 
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  COMMENT_ON_TASK
+  MENTION_IN_COMMENT
+  PROJECT_SHARED
+  WORKSPACE_INVITE
+  REMINDER
+}
+
 // ─── User ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -95,6 +106,8 @@ model User {
   filters           Filter[]
   comments          Comment[]
   reminders         Reminder[]
+  notifications     Notification[]
+  pushSubscriptions PushSubscription[]
   attachments       Attachment[]      @relation("AttachmentUploader")
   templates         Template[]
   activityLogs      ActivityLog[]
@@ -486,4 +499,41 @@ model ActivityLog {
   @@index([taskId])
   @@index([createdAt])
   @@map("activity_logs")
+}
+
+// ─── Notification ──────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?            // { taskId, projectId, commentId, etc. }
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ─── PushSubscription ──────────────────────────────────────────────────────
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

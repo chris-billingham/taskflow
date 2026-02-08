@@ -5,6 +5,7 @@ import websocket from '@fastify/websocket';
 import { env } from './config/env.js';
 import { registerRoutes } from './routes/index.js';
 import { closeRedis } from './config/redis.js';
+import { initializeWorkers } from './worker.js';
 
 const server = Fastify({
   logger: {
@@ -82,9 +83,13 @@ server.get('/', async () => {
   };
 });
 
+// Workers state
+let workersShutdown: (() => Promise<void>) | null = null;
+
 // Graceful shutdown
 async function shutdown() {
   server.log.info('Shutting down...');
+  if (workersShutdown) await workersShutdown();
   await server.close();
   await closeRedis();
   process.exit(0);
@@ -100,6 +105,15 @@ const start = async () => {
     server.log.info(
       `Taskflow API server listening on http://${env.HOST}:${env.API_PORT}`,
     );
+
+    // Initialize background workers (non-blocking)
+    try {
+      const workers = await initializeWorkers();
+      workersShutdown = workers.shutdown;
+      server.log.info('Background workers initialized');
+    } catch (workerErr) {
+      server.log.warn({ err: workerErr }, 'Failed to initialize workers (Redis may be unavailable)');
+    }
   } catch (err) {
     server.log.error(err);
     process.exit(1);

@@ -8,6 +8,7 @@ import {
   Trash2,
   AlertCircle,
   User,
+  Bell,
 } from 'lucide-react';
 import { TaskCheckbox } from './TaskCheckbox';
 import { DueDatePicker } from './DueDatePicker';
@@ -15,6 +16,7 @@ import { PriorityPicker } from './PriorityPicker';
 import { DurationPicker } from './DurationPicker';
 import { LabelPicker, LabelBadges } from './LabelPicker';
 import { AssigneePicker } from './AssigneePicker';
+import { ReminderPicker } from './ReminderPicker';
 import { QuickAdd } from './QuickAdd';
 import { CommentList } from '@/components/comment/CommentList';
 import { ActivityLog } from '@/components/activity/ActivityLog';
@@ -191,6 +193,15 @@ export function TaskDetail({
                 time={task.dueTime}
                 onChange={(date, time) => onUpdate(task.id, { dueDate: date, dueTime: time })}
               />
+            </div>
+
+            {/* Reminders */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 w-24 flex items-center gap-2">
+                <Bell className="w-4 h-4" />
+                Reminders
+              </span>
+              <ReminderPicker taskId={task.id} />
             </div>
 
             {/* Deadline */}
