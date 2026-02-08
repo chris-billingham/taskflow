@@ -35,7 +35,7 @@ export const taskInclude = {
 async function verifyTaskAccess(taskId: string, userId: string) {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    include: { project: { select: { ownerId: true } } },
+    include: { project: { select: { ownerId: true, workspaceId: true } } },
   });
   if (!task) {
     throw new NotFoundError('Task not found');
@@ -45,6 +45,18 @@ async function verifyTaskAccess(taskId: string, userId: string) {
       where: { projectId_userId: { projectId: task.projectId, userId } },
     });
     if (!member) {
+      // Check workspace membership for team projects
+      if (task.project.workspaceId) {
+        const wsMember = await prisma.workspaceMember.findUnique({
+          where: {
+            workspaceId_userId: {
+              workspaceId: task.project.workspaceId,
+              userId,
+            },
+          },
+        });
+        if (wsMember) return task;
+      }
       throw new ForbiddenError('You do not have access to this task');
     }
   }
@@ -54,7 +66,7 @@ async function verifyTaskAccess(taskId: string, userId: string) {
 async function verifyProjectAccess(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, ownerId: true },
+    select: { id: true, ownerId: true, workspaceId: true },
   });
   if (!project) {
     throw new NotFoundError('Project not found');
@@ -64,6 +76,15 @@ async function verifyProjectAccess(projectId: string, userId: string) {
       where: { projectId_userId: { projectId, userId } },
     });
     if (!member) {
+      // Check workspace membership for team projects
+      if (project.workspaceId) {
+        const wsMember = await prisma.workspaceMember.findUnique({
+          where: {
+            workspaceId_userId: { workspaceId: project.workspaceId, userId },
+          },
+        });
+        if (wsMember) return project;
+      }
       throw new ForbiddenError('You do not have access to this project');
     }
   }
@@ -71,11 +92,21 @@ async function verifyProjectAccess(projectId: string, userId: string) {
 }
 
 export async function getTasks(query: TaskQuery, userId: string) {
+  // Get workspace IDs the user belongs to
+  const memberships = await prisma.workspaceMember.findMany({
+    where: { userId },
+    select: { workspaceId: true },
+  });
+  const workspaceIds = memberships.map((m) => m.workspaceId);
+
   const where: any = {
     project: {
       OR: [
         { ownerId: userId },
         { members: { some: { userId } } },
+        ...(workspaceIds.length > 0
+          ? [{ workspaceId: { in: workspaceIds } }]
+          : []),
       ],
     },
   };

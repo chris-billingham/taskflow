@@ -13,6 +13,8 @@ import Project from '@/pages/app/Project';
 import Label from '@/pages/app/Label';
 import Filter from '@/pages/app/Filter';
 import FiltersLabels from '@/pages/app/FiltersLabels';
+import WorkspaceSettingsPage from '@/pages/settings/Workspace';
+import { JoinWorkspace } from '@/components/workspace/JoinWorkspace';
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -29,6 +31,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/join" element={<JoinWorkspace />} />
 
         {/* Protected routes with AppLayout */}
         <Route
@@ -44,6 +47,7 @@ function App() {
           <Route path="/labels/:id" element={<Label />} />
           <Route path="/filters/:id" element={<Filter />} />
           <Route path="/projects/:id" element={<Project />} />
+          <Route path="/workspace/settings" element={<WorkspaceSettingsPage />} />
         </Route>
 
         {/* Default redirect */}

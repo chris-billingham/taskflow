@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   CheckSquare,
@@ -12,15 +12,22 @@ import {
   LogOut,
   X,
   Tag,
+  Building2,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectStore } from '@/stores/projectStore';
 import { useLabelStore, selectFavoriteLabels } from '@/stores/labelStore';
 import { useFilterStore, selectFavoriteFilters } from '@/stores/filterStore';
+import {
+  useWorkspaceStore,
+  selectCurrentWorkspace,
+} from '@/stores/workspaceStore';
 import { ProjectList } from '@/components/project/ProjectList';
 import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
+import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
+import { CreateWorkspaceModal } from '@/components/workspace/CreateWorkspaceModal';
 import type { ProjectTreeNode, Project } from '@/stores/projectStore';
 
 interface SidebarProps {
@@ -42,9 +49,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const favoriteLabels = useLabelStore(selectFavoriteLabels);
   const favoriteFilters = useFilterStore(selectFavoriteFilters);
 
+  const currentWorkspace = useWorkspaceStore(selectCurrentWorkspace);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectsExpanded, setProjectsExpanded] = useState(true);
+  const [teamProjectsExpanded, setTeamProjectsExpanded] = useState(true);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
   const [filtersLabelsExpanded, setFiltersLabelsExpanded] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -67,6 +78,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
   };
 
+  // Separate personal projects from team (workspace) projects
+  const { personalTree, teamTree } = useMemo(() => {
+    const personal = tree.filter((p) => !p.workspaceId);
+    const team = tree.filter(
+      (p) =>
+        p.workspaceId &&
+        (!currentWorkspace || p.workspaceId === currentWorkspace.id),
+    );
+    return { personalTree: personal, teamTree: team };
+  }, [tree, currentWorkspace]);
+
   const navItems = [
     { path: '/today', label: 'Today', icon: CalendarDays },
     { path: '/upcoming', label: 'Upcoming', icon: CalendarRange },
@@ -77,18 +99,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#FAFAFA] border-r border-gray-200">
-      {/* Logo */}
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <CheckSquare className="w-6 h-6 text-[#db4c3f]" />
-          <span className="text-lg font-bold text-gray-900">Taskflow</span>
+      {/* Logo and workspace switcher */}
+      <div className="px-4 py-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="w-6 h-6 text-[#db4c3f]" />
+            <span className="text-lg font-bold text-gray-900">Taskflow</span>
+          </div>
+          <button
+            className="p-1 rounded hover:bg-gray-200 md:hidden"
+            onClick={onClose}
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
         </div>
-        <button
-          className="p-1 rounded hover:bg-gray-200 md:hidden"
-          onClick={onClose}
-        >
-          <X className="w-5 h-5 text-gray-500" />
-        </button>
+
+        {/* Workspace Switcher */}
+        <WorkspaceSwitcher
+          onCreateWorkspace={() => setShowCreateWorkspaceModal(true)}
+        />
       </div>
 
       {/* Navigation */}
@@ -234,7 +263,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         )}
 
         {/* My Projects section */}
-        <div>
+        <div className="mb-4">
           <div className="flex items-center justify-between px-2 py-1">
             <button
               className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700"
@@ -260,16 +289,75 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="mt-1">
               {loading ? (
                 <p className="px-2 py-1 text-xs text-gray-400">Loading...</p>
-              ) : (
+              ) : personalTree.length > 0 ? (
                 <ProjectList
-                  projects={tree}
+                  projects={personalTree}
                   onEdit={(p) => setEditingProject(p)}
                   onDelete={handleDeleteProject}
                 />
+              ) : (
+                <p className="px-2 py-1 text-xs text-gray-400">No projects</p>
               )}
             </div>
           )}
         </div>
+
+        {/* Team Projects section (shown when a workspace is selected) */}
+        {currentWorkspace && (
+          <div>
+            <div className="flex items-center justify-between px-2 py-1">
+              <button
+                className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700"
+                onClick={() => setTeamProjectsExpanded(!teamProjectsExpanded)}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                Team Projects
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform ${
+                    teamProjectsExpanded ? '' : '-rotate-90'
+                  }`}
+                />
+              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  className="p-0.5 rounded hover:bg-gray-200"
+                  onClick={() => {
+                    navigate('/workspace/settings');
+                    onClose();
+                  }}
+                  title="Workspace settings"
+                >
+                  <Settings className="w-3.5 h-3.5 text-gray-500" />
+                </button>
+                <button
+                  className="p-0.5 rounded hover:bg-gray-200"
+                  onClick={() => setShowCreateModal(true)}
+                  title="Add team project"
+                >
+                  <Plus className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            {teamProjectsExpanded && (
+              <div className="mt-1">
+                {loading ? (
+                  <p className="px-2 py-1 text-xs text-gray-400">Loading...</p>
+                ) : teamTree.length > 0 ? (
+                  <ProjectList
+                    projects={teamTree}
+                    onEdit={(p) => setEditingProject(p)}
+                    onDelete={handleDeleteProject}
+                  />
+                ) : (
+                  <p className="px-2 py-1 text-xs text-gray-400">
+                    No team projects yet
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* User menu */}
@@ -291,6 +379,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               onClick={() => setShowUserMenu(false)}
             />
             <div className="absolute left-2 bottom-full mb-1 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+              {currentWorkspace && (
+                <>
+                  <button
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate('/workspace/settings');
+                    }}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    Workspace settings
+                  </button>
+                  <hr className="my-1 border-gray-200" />
+                </>
+              )}
               <button
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
                 onClick={() => {
@@ -318,6 +421,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <CreateProjectModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
+      />
+      <CreateWorkspaceModal
+        isOpen={showCreateWorkspaceModal}
+        onClose={() => setShowCreateWorkspaceModal(false)}
       />
       {editingProject && (
         <EditProjectModal

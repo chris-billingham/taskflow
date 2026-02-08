@@ -9,10 +9,12 @@ import { filterRoutes } from './filters.js';
 import { viewRoutes } from './views.js';
 import { commentRoutes } from './comments.js';
 import { activityRoutes } from './activity.js';
+import { workspaceRoutes } from './workspaces.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
   app.register(userRoutes, { prefix: '/api/v1/users' });
+  app.register(workspaceRoutes, { prefix: '/api/v1/workspaces' });
   app.register(projectRoutes, { prefix: '/api/v1/projects' });
   app.register(sectionRoutes, { prefix: '/api/v1' });
   app.register(taskRoutes, { prefix: '/api/v1/tasks' });

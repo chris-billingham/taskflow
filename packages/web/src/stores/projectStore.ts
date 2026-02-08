@@ -44,6 +44,7 @@ interface ProjectState {
     color?: string;
     parentId?: string;
     viewStyle?: string;
+    workspaceId?: string;
   }) => Promise<Project>;
   updateProject: (
     id: string,
