@@ -1,5 +1,5 @@
 import { Worker, Queue } from 'bullmq';
-import { getRedis } from '../config/redis.js';
+import { createBullMQConnection } from '../config/redis.js';
 import { prisma } from '../config/database.js';
 import { sendEmailNotification } from '../services/notificationService.js';
 
@@ -7,7 +7,7 @@ const QUEUE_NAME = 'notification-digest';
 
 export function createDigestQueue() {
   return new Queue(QUEUE_NAME, {
-    connection: getRedis(),
+    connection: createBullMQConnection(),
     defaultJobOptions: {
       removeOnComplete: 50,
       removeOnFail: 20,
@@ -63,7 +63,7 @@ export function startDigestWorker() {
       }
     },
     {
-      connection: getRedis(),
+      connection: createBullMQConnection(),
       concurrency: 1,
     },
   );

@@ -1,5 +1,5 @@
 import { Worker, Queue } from 'bullmq';
-import { getRedis } from '../config/redis.js';
+import { createBullMQConnection } from '../config/redis.js';
 import { getDueReminders, markReminderSent } from '../services/reminderService.js';
 import {
   createNotification,
@@ -11,7 +11,7 @@ const QUEUE_NAME = 'reminder-check';
 
 export function createReminderQueue() {
   return new Queue(QUEUE_NAME, {
-    connection: getRedis(),
+    connection: createBullMQConnection(),
     defaultJobOptions: {
       removeOnComplete: 100,
       removeOnFail: 50,
@@ -63,7 +63,7 @@ export function startReminderWorker() {
       }
     },
     {
-      connection: getRedis(),
+      connection: createBullMQConnection(),
       concurrency: 1,
     },
   );
