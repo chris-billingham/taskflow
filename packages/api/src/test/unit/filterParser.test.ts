@@ -11,7 +11,7 @@ vi.mock('../../config/database.js', () => ({
 import { validateFilterQuery, parseFilterQuery } from '../../utils/filterParser.js';
 import { prisma } from '../../config/database.js';
 
-const mockPrisma = prisma as {
+const mockPrisma = prisma as unknown as {
   project: { findFirst: ReturnType<typeof vi.fn> };
   label: { findFirst: ReturnType<typeof vi.fn> };
   user: { findFirst: ReturnType<typeof vi.fn> };

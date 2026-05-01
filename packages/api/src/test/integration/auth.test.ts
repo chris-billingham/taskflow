@@ -14,7 +14,7 @@ vi.mock('../../services/authService.js', () => ({
 
 import * as authService from '../../services/authService.js';
 import { authRoutes } from '../../routes/auth.js';
-import { ConflictError, UnauthorizedError, ValidationError } from '../../errors/index.js';
+import { ConflictError, UnauthorizedError } from '../../errors/index.js';
 
 let app: FastifyInstance;
 

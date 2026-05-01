@@ -26,7 +26,7 @@ vi.mock('../../services/syncService.js', () => ({
 
 import * as taskService from '../../services/taskService.js';
 import { taskRoutes } from '../../routes/tasks.js';
-import { NotFoundError, ForbiddenError, ValidationError } from '../../errors/index.js';
+import { NotFoundError, ForbiddenError } from '../../errors/index.js';
 
 const TEST_USER = { id: 'user-test-1', email: 'test@example.com', name: 'Test User' };
 const AUTH_TOKEN = generateAccessToken(TEST_USER);

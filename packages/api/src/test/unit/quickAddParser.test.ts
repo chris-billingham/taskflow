@@ -10,7 +10,7 @@ vi.mock('../../config/database.js', () => ({
 import { parseQuickAdd } from '../../utils/quickAddParser.js';
 import { prisma } from '../../config/database.js';
 
-const mockPrisma = prisma as {
+const mockPrisma = prisma as unknown as {
   project: { findFirst: ReturnType<typeof vi.fn> };
   label: { findMany: ReturnType<typeof vi.fn> };
 };

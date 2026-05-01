@@ -44,7 +44,7 @@ import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../utils/jwt.js';
 import { ConflictError, UnauthorizedError, NotFoundError } from '../../errors/index.js';
 
-const mockPrisma = prisma as {
+const mockPrisma = prisma as unknown as {
   user: {
     findUnique: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
