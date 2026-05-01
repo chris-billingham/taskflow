@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import cookie from '@fastify/cookie';
 
 vi.mock('../../services/authService.js', () => ({
   register: vi.fn(),
@@ -10,6 +11,7 @@ vi.mock('../../services/authService.js', () => ({
   forgotPassword: vi.fn(),
   resetPassword: vi.fn(),
   verifyEmail: vi.fn(),
+  resendVerificationEmail: vi.fn(),
 }));
 
 import * as authService from '../../services/authService.js';
@@ -36,6 +38,9 @@ beforeAll(async () => {
     });
   });
 
+  // Cookie plugin must be registered before authRoutes since the routes call
+  // reply.setCookie / request.cookies
+  await app.register(cookie);
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.ready();
 });
@@ -67,6 +72,9 @@ describe('POST /api/v1/auth/register', () => {
     expect(body.success).toBe(true);
     expect(body.data.user.email).toBe('new@example.com');
     expect(body.data.accessToken).toBe('access-tok');
+    // Refresh token must not be in the response body — it's set as a cookie
+    expect(body.data.refreshToken).toBeUndefined();
+    expect(response.headers['set-cookie']).toBeDefined();
   });
 
   it('returns 409 when email already exists', async () => {
@@ -126,6 +134,9 @@ describe('POST /api/v1/auth/login', () => {
     const body = response.json();
     expect(body.success).toBe(true);
     expect(body.data.accessToken).toBe('access');
+    // Refresh token must not be in the response body — it's set as a cookie
+    expect(body.data.refreshToken).toBeUndefined();
+    expect(response.headers['set-cookie']).toBeDefined();
   });
 
   it('returns 401 for invalid credentials', async () => {
@@ -160,7 +171,19 @@ describe('POST /api/v1/auth/logout', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/logout',
-      payload: { refreshToken: 'some-refresh-token' },
+      // Refresh token is now an httpOnly cookie, not a request body field
+      headers: { cookie: 'refreshToken=some-refresh-token' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().success).toBe(true);
+    expect(vi.mocked(authService.logout)).toHaveBeenCalledWith('some-refresh-token');
+  });
+
+  it('returns 200 even with no refresh token cookie', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/logout',
     });
 
     expect(response.statusCode).toBe(200);
@@ -169,7 +192,7 @@ describe('POST /api/v1/auth/logout', () => {
 });
 
 describe('POST /api/v1/auth/refresh', () => {
-  it('returns 200 with new tokens', async () => {
+  it('returns 200 with new access token (refresh token sent as cookie)', async () => {
     vi.mocked(authService.refreshTokens).mockResolvedValue({
       accessToken: 'new-access',
       refreshToken: 'new-refresh',
@@ -178,12 +201,25 @@ describe('POST /api/v1/auth/refresh', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/refresh',
-      payload: { refreshToken: 'old-refresh-token' },
+      // Refresh token is an httpOnly cookie, not a request body field
+      headers: { cookie: 'refreshToken=old-refresh-token' },
     });
 
     expect(response.statusCode).toBe(200);
     const body = response.json();
     expect(body.data.accessToken).toBe('new-access');
+    // New refresh token must be set as a cookie, not in the response body
+    expect(body.data.refreshToken).toBeUndefined();
+    expect(response.headers['set-cookie']).toBeDefined();
+  });
+
+  it('returns 401 when no refresh token cookie is present', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+    });
+
+    expect(response.statusCode).toBe(401);
   });
 
   it('returns 401 for invalid refresh token', async () => {
@@ -194,7 +230,7 @@ describe('POST /api/v1/auth/refresh', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/refresh',
-      payload: { refreshToken: 'expired-token' },
+      headers: { cookie: 'refreshToken=expired-token' },
     });
 
     expect(response.statusCode).toBe(401);
