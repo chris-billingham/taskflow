@@ -15,6 +15,13 @@
     },
     "clean": {
       "cache": false
+    },
+    "test:unit": {
+      "cache": false
+    },
+    "test:coverage": {
+      "cache": false,
+      "outputs": ["coverage/**"]
     }
   }
 }

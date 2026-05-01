@@ -1,0 +1,57 @@
+# Development overrides — this file is merged automatically with docker-compose.yml
+# when running `docker compose` without specifying a file.
+#
+# Provides hot-reload volumes, exposed debug ports, and disables SSL.
+# Run infrastructure only in dev: docker compose -f docker-compose.dev.yml up -d
+
+services:
+  traefik:
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --log.level=DEBUG
+      # Use self-signed certs in dev instead of Let's Encrypt
+      - --entrypoints.websecure.http.tls=true
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+      target: builder
+    command: ["pnpm", "--filter", "@taskflow/api", "dev"]
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    volumes:
+      - ./packages/api/src:/app/packages/api/src
+      - ./packages/shared/src:/app/packages/shared/src
+    ports:
+      - "3001:3001"
+      - "9229:9229"
+
+  worker:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+      target: builder
+    command: ["pnpm", "--filter", "@taskflow/api", "exec", "tsx", "src/worker-entry.ts"]
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    volumes:
+      - ./packages/api/src:/app/packages/api/src
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+      target: builder
+    command: ["pnpm", "--filter", "@taskflow/web", "dev", "--host"]
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./packages/web/src:/app/packages/web/src
+    ports:
+      - "5173:5173"

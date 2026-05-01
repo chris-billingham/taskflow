@@ -8,7 +8,12 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "clean": "turbo run clean && rm -rf node_modules",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "pnpm --filter @taskflow/api test:integration",
+    "test:e2e": "pnpm --filter @taskflow/e2e test",
+    "test:coverage": "turbo run test:coverage",
+    "test:ci": "turbo run test:unit && pnpm --filter @taskflow/api test:integration"
   },
   "devDependencies": {
     "prettier": "^3.2.4",

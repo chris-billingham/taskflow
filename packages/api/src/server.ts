@@ -3,12 +3,16 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
 import multipart from '@fastify/multipart';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { env } from './config/env.js';
 import { registerRoutes } from './routes/index.js';
-import { closeRedis } from './config/redis.js';
+import { closeRedis, getRedis } from './config/redis.js';
 import { initializeWorkers } from './worker.js';
 import { createWebSocketServer } from './websocket/server.js';
 import { ensureBucketExists } from './config/storage.js';
+import { prisma } from './config/database.js';
+import { openapiSpec } from './docs/openapi.js';
 
 const server = Fastify({
   logger: {
@@ -37,6 +41,17 @@ await server.register(cookie);
 await server.register(websocket);
 await server.register(multipart, {
   limits: { fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024 },
+});
+
+await server.register(swagger, {
+  mode: 'static',
+  specification: { document: openapiSpec as never },
+});
+
+await server.register(swaggerUi, {
+  routePrefix: '/api/docs',
+  uiConfig: { docExpansion: 'list', deepLinking: true },
+  staticCSP: true,
 });
 
 // Global error handler - must be set before routes
@@ -76,8 +91,47 @@ server.setErrorHandler((error, request, reply) => {
 await server.register(registerRoutes);
 
 // Health check route
-server.get('/health', async () => {
-  return { status: 'ok', timestamp: new Date().toISOString() };
+async function healthCheck() {
+  const checks: Record<string, 'ok' | 'error'> = {};
+  let healthy = true;
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    checks.database = 'ok';
+  } catch {
+    checks.database = 'error';
+    healthy = false;
+  }
+
+  try {
+    await getRedis().ping();
+    checks.redis = 'ok';
+  } catch {
+    checks.redis = 'error';
+    healthy = false;
+  }
+
+  return { healthy, checks };
+}
+
+server.get('/health', async (_request, reply) => {
+  const { healthy, checks } = await healthCheck();
+  return reply.status(healthy ? 200 : 503).send({
+    status: healthy ? 'ok' : 'degraded',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    checks,
+  });
+});
+
+server.get('/api/health', async (_request, reply) => {
+  const { healthy, checks } = await healthCheck();
+  return reply.status(healthy ? 200 : 503).send({
+    status: healthy ? 'ok' : 'degraded',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    checks,
+  });
 });
 
 // API info route
