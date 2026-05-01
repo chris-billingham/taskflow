@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Menu, Plus } from 'lucide-react';
+import { Menu, Plus, Search } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationCenter } from '@/components/notification/NotificationCenter';
 import { Modal } from '@/components/ui/Modal';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { SyncStatus } from '@/components/ui/SyncStatus';
+import { SearchModal } from '@/components/search/SearchModal';
 import { useTaskStore } from '@/stores/taskStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useRealTimeSync } from '@/hooks/useRealTimeSync';
@@ -13,6 +14,7 @@ import { useRealTimeSync } from '@/hooks/useRealTimeSync';
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const quickAddTask = useTaskStore((s) => s.quickAddTask);
 
   useSocket();
@@ -33,6 +35,11 @@ export function AppLayout() {
       if (e.key === 'q' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         setQuickAddOpen(true);
+      }
+
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setSearchOpen(true);
       }
     },
     [],
@@ -63,6 +70,13 @@ export function AppLayout() {
             <Menu className="w-5 h-5 text-gray-700" />
           </button>
           <div className="flex items-center gap-1">
+            <button
+              className="p-1.5 rounded hover:bg-gray-100"
+              onClick={() => setSearchOpen(true)}
+              title="Search (/)"
+            >
+              <Search className="w-5 h-5 text-gray-500" />
+            </button>
             <NotificationCenter />
             <button
               className="p-1.5 rounded hover:bg-gray-100"
@@ -73,9 +87,16 @@ export function AppLayout() {
           </div>
         </div>
 
-        {/* Desktop notification center + sync status */}
+        {/* Desktop notification center + sync status + search */}
         <div className="hidden md:flex fixed top-4 right-20 z-30 items-center gap-3">
           <SyncStatus />
+          <button
+            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+            onClick={() => setSearchOpen(true)}
+            title="Search (/)"
+          >
+            <Search className="w-5 h-5 text-gray-500" />
+          </button>
           <NotificationCenter />
         </div>
 
@@ -94,6 +115,9 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Global Search Modal */}
+      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* Global Quick Add Modal */}
       <Modal
