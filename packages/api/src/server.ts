@@ -2,11 +2,13 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
+import multipart from '@fastify/multipart';
 import { env } from './config/env.js';
 import { registerRoutes } from './routes/index.js';
 import { closeRedis } from './config/redis.js';
 import { initializeWorkers } from './worker.js';
 import { createWebSocketServer } from './websocket/server.js';
+import { ensureBucketExists } from './config/storage.js';
 
 const server = Fastify({
   logger: {
@@ -33,6 +35,9 @@ await server.register(cors, {
 
 await server.register(cookie);
 await server.register(websocket);
+await server.register(multipart, {
+  limits: { fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024 },
+});
 
 // Global error handler - must be set before routes
 server.setErrorHandler((error, request, reply) => {
@@ -109,6 +114,14 @@ const start = async () => {
 
     createWebSocketServer(server.server);
     server.log.info('WebSocket server initialized');
+
+    // Initialize S3/MinIO storage bucket
+    try {
+      await ensureBucketExists();
+      server.log.info('Storage bucket ready');
+    } catch (storageErr) {
+      server.log.warn({ err: storageErr }, 'Storage unavailable — file uploads will not work');
+    }
 
     // Initialize background workers (non-blocking)
     try {

@@ -15,6 +15,7 @@ import { notificationRoutes } from './notifications.js';
 import { searchRoutes } from './search.js';
 import { settingsRoutes } from './settings.js';
 import { templateRoutes } from './templates.js';
+import { attachmentRoutes } from './attachments.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
@@ -33,4 +34,5 @@ export async function registerRoutes(app: FastifyInstance) {
   app.register(searchRoutes, { prefix: '/api/v1/search' });
   app.register(settingsRoutes, { prefix: '/api/v1/settings' });
   app.register(templateRoutes, { prefix: '/api/v1/templates' });
+  app.register(attachmentRoutes, { prefix: '/api/v1' });
 }

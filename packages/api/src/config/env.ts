@@ -10,6 +10,13 @@ const envSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.string().default('info'),
+  // S3 / MinIO storage
+  S3_ENDPOINT: z.string().default('http://localhost:9000'),
+  S3_BUCKET: z.string().default('taskflow'),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_ACCESS_KEY: z.string().default('minioadmin'),
+  S3_SECRET_KEY: z.string().default('minioadmin'),
+  MAX_FILE_SIZE_MB: z.coerce.number().default(25),
 });
 
 function loadEnv() {

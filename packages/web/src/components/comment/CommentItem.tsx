@@ -10,7 +10,7 @@ interface CommentItemProps {
   currentUserId: string;
   onEdit: (id: string, content: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onReply?: (content: string) => Promise<void>;
+  onReply?: (content: string, files: File[]) => Promise<void>;
   isReply?: boolean;
 }
 
@@ -38,7 +38,7 @@ export function CommentItem({
       <div className={isReply ? 'ml-8' : ''}>
         <CommentEditor
           initialContent={comment.content}
-          onSubmit={async (content) => {
+          onSubmit={async (content, _files) => {
             await onEdit(comment.id, content);
             setEditing(false);
           }}
@@ -141,8 +141,8 @@ export function CommentItem({
       {replying && onReply && (
         <div className="ml-9 mt-2">
           <CommentEditor
-            onSubmit={async (content) => {
-              await onReply(content);
+            onSubmit={async (content, _files) => {
+              await onReply(content, _files);
               setReplying(false);
             }}
             onCancel={() => setReplying(false)}
@@ -163,6 +163,7 @@ export function CommentItem({
               currentUserId={currentUserId}
               onEdit={onEdit}
               onDelete={onDelete}
+              onReply={onReply}
               isReply
             />
           ))}

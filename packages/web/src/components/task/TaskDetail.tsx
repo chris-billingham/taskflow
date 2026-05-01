@@ -20,6 +20,7 @@ import { ReminderPicker } from './ReminderPicker';
 import { QuickAdd } from './QuickAdd';
 import { CommentList } from '@/components/comment/CommentList';
 import { ActivityLog } from '@/components/activity/ActivityLog';
+import { AttachmentList } from '@/components/attachment/AttachmentList';
 import type { Task } from '@/stores/taskStore';
 
 interface TaskDetailProps {
@@ -315,6 +316,11 @@ export function TaskDetail({
               placeholder="Add subtask"
               inline
             />
+          </div>
+
+          {/* Attachments */}
+          <div className="mb-6">
+            <AttachmentList taskId={task.id} />
           </div>
 
           {/* Comments */}

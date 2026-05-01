@@ -1,13 +1,15 @@
 import { useState, useRef } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Paperclip, X } from 'lucide-react';
+import { ALLOWED_TYPES, MAX_FILE_SIZE_MB, formatFileSize } from '@/hooks/useFileUpload';
 
 interface CommentEditorProps {
-  onSubmit: (content: string) => Promise<void>;
+  onSubmit: (content: string, files: File[]) => Promise<void>;
   onCancel?: () => void;
   initialContent?: string;
   placeholder?: string;
   submitLabel?: string;
   autoFocus?: boolean;
+  showAttachments?: boolean;
 }
 
 export function CommentEditor({
@@ -17,10 +19,14 @@ export function CommentEditor({
   placeholder = 'Write a comment...',
   submitLabel = 'Comment',
   autoFocus = false,
+  showAttachments = false,
 }: CommentEditorProps) {
   const [content, setContent] = useState(initialContent);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async () => {
     const trimmed = content.trim();
@@ -28,8 +34,9 @@ export function CommentEditor({
 
     setSubmitting(true);
     try {
-      await onSubmit(trimmed);
+      await onSubmit(trimmed, pendingFiles);
       setContent('');
+      setPendingFiles([]);
     } finally {
       setSubmitting(false);
     }
@@ -45,6 +52,26 @@ export function CommentEditor({
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    const invalid = files.find((f) => !ALLOWED_TYPES.has(f.type));
+    const oversized = files.find((f) => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
+    if (invalid) {
+      setFileError(`"${invalid.name}" is not a supported file type`);
+    } else if (oversized) {
+      setFileError(`"${oversized.name}" exceeds the ${MAX_FILE_SIZE_MB}MB limit`);
+    } else {
+      setFileError(null);
+      setPendingFiles((prev) => [...prev, ...files]);
+    }
+    e.target.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="space-y-2">
       <textarea
@@ -58,10 +85,62 @@ export function CommentEditor({
         autoFocus={autoFocus}
         disabled={submitting}
       />
+
+      {/* Pending files */}
+      {pendingFiles.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {pendingFiles.map((file, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700"
+            >
+              <Paperclip className="w-3 h-3 text-gray-400" />
+              <span className="max-w-[120px] truncate" title={file.name}>
+                {file.name}
+              </span>
+              <span className="text-gray-400">({formatFileSize(file.size)})</span>
+              <button
+                className="ml-0.5 text-gray-400 hover:text-gray-600"
+                onClick={() => removeFile(i)}
+                type="button"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {fileError && (
+        <div className="text-xs text-red-500">{fileError}</div>
+      )}
+
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-gray-400">
-          Markdown supported &middot; Ctrl+Enter to submit
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-gray-400">
+            Markdown supported &middot; Ctrl+Enter to submit
+          </span>
+          {showAttachments && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <button
+                type="button"
+                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach files"
+                disabled={submitting}
+              >
+                <Paperclip className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {onCancel && (
             <button

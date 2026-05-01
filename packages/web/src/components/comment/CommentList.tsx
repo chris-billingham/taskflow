@@ -3,6 +3,7 @@ import { useComments, useCreateComment, useUpdateComment, useDeleteComment } fro
 import { useAuthStore } from '@/stores/authStore';
 import { CommentEditor } from './CommentEditor';
 import { CommentItem } from './CommentItem';
+import api from '@/services/api';
 
 interface CommentListProps {
   taskId: string;
@@ -32,9 +33,21 @@ export function CommentList({ taskId }: CommentListProps) {
       {/* New comment editor */}
       <div className="mb-4">
         <CommentEditor
-          onSubmit={async (content) => {
-            await createComment(taskId, content);
+          onSubmit={async (content, files) => {
+            const comment = await createComment(taskId, content);
+            if (files.length > 0) {
+              await Promise.all(
+                files.map((file) => {
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  return api.post(`/comments/${comment.id}/attachments`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                  });
+                }),
+              );
+            }
           }}
+          showAttachments
         />
       </div>
 
@@ -74,7 +87,7 @@ export function CommentList({ taskId }: CommentListProps) {
               onDelete={async (id) => {
                 await deleteComment(id);
               }}
-              onReply={async (content) => {
+              onReply={async (content, _files) => {
                 await createComment(taskId, content, comment.id);
               }}
             />
