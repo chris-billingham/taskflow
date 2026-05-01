@@ -6,6 +6,7 @@ import { env } from './config/env.js';
 import { registerRoutes } from './routes/index.js';
 import { closeRedis } from './config/redis.js';
 import { initializeWorkers } from './worker.js';
+import { createWebSocketServer } from './websocket/server.js';
 
 const server = Fastify({
   logger: {
@@ -105,6 +106,9 @@ const start = async () => {
     server.log.info(
       `Taskflow API server listening on http://${env.HOST}:${env.API_PORT}`,
     );
+
+    createWebSocketServer(server.server);
+    server.log.info('WebSocket server initialized');
 
     // Initialize background workers (non-blocking)
     try {

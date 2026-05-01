@@ -5,12 +5,18 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationCenter } from '@/components/notification/NotificationCenter';
 import { Modal } from '@/components/ui/Modal';
 import { QuickAdd } from '@/components/task/QuickAdd';
+import { SyncStatus } from '@/components/ui/SyncStatus';
 import { useTaskStore } from '@/stores/taskStore';
+import { useSocket } from '@/hooks/useSocket';
+import { useRealTimeSync } from '@/hooks/useRealTimeSync';
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const quickAddTask = useTaskStore((s) => s.quickAddTask);
+
+  useSocket();
+  useRealTimeSync();
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -67,8 +73,9 @@ export function AppLayout() {
           </div>
         </div>
 
-        {/* Desktop notification center */}
-        <div className="hidden md:flex fixed top-4 right-20 z-30">
+        {/* Desktop notification center + sync status */}
+        <div className="hidden md:flex fixed top-4 right-20 z-30 items-center gap-3">
+          <SyncStatus />
           <NotificationCenter />
         </div>
 

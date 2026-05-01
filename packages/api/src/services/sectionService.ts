@@ -1,6 +1,11 @@
 import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 import type { CreateSectionInput, UpdateSectionInput } from '../schemas/section.js';
+import {
+  broadcastSectionCreated,
+  broadcastSectionUpdated,
+  broadcastSectionDeleted,
+} from './syncService.js';
 
 async function verifyProjectAccess(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
@@ -63,7 +68,7 @@ export async function createSection(data: CreateSectionInput, userId: string) {
     _max: { sortOrder: true },
   });
 
-  return prisma.section.create({
+  const section = await prisma.section.create({
     data: {
       name: data.name,
       projectId: data.projectId,
@@ -75,6 +80,10 @@ export async function createSection(data: CreateSectionInput, userId: string) {
       },
     },
   });
+
+  broadcastSectionCreated(section);
+
+  return section;
 }
 
 export async function updateSection(
@@ -84,7 +93,7 @@ export async function updateSection(
 ) {
   await verifySectionAccess(id, userId);
 
-  return prisma.section.update({
+  const section = await prisma.section.update({
     where: { id },
     data,
     include: {
@@ -93,10 +102,14 @@ export async function updateSection(
       },
     },
   });
+
+  broadcastSectionUpdated(section);
+
+  return section;
 }
 
 export async function deleteSection(id: string, userId: string) {
-  await verifySectionAccess(id, userId);
+  const section = await verifySectionAccess(id, userId);
 
   // Move tasks to no section
   await prisma.task.updateMany({
@@ -105,6 +118,8 @@ export async function deleteSection(id: string, userId: string) {
   });
 
   await prisma.section.delete({ where: { id } });
+
+  broadcastSectionDeleted(id, section.projectId);
 
   return { message: 'Section deleted successfully' };
 }

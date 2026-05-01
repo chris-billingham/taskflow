@@ -26,12 +26,14 @@ interface CommentState {
   loading: boolean;
   error: string | null;
   version: number;
+  currentTaskId: string | null;
 
   fetchTaskComments: (taskId: string) => Promise<void>;
   createComment: (taskId: string, content: string, parentId?: string) => Promise<Comment>;
   updateComment: (id: string, content: string) => Promise<Comment>;
   deleteComment: (id: string) => Promise<void>;
   clearComments: () => void;
+  setComments: (comments: Map<string, Comment>) => void;
 }
 
 export const useCommentStore = create<CommentState>()((set, get) => ({
@@ -39,9 +41,10 @@ export const useCommentStore = create<CommentState>()((set, get) => ({
   loading: false,
   error: null,
   version: 0,
+  currentTaskId: null,
 
   fetchTaskComments: async (taskId) => {
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, currentTaskId: taskId });
     try {
       const { data } = await api.get(`/tasks/${taskId}/comments`);
       const comments = new Map<string, Comment>();
@@ -148,7 +151,11 @@ export const useCommentStore = create<CommentState>()((set, get) => ({
   },
 
   clearComments: () => {
-    set({ comments: new Map(), loading: false, error: null });
+    set({ comments: new Map(), loading: false, error: null, currentTaskId: null });
+  },
+
+  setComments: (comments) => {
+    set((state) => ({ comments, version: state.version + 1 }));
   },
 }));
 

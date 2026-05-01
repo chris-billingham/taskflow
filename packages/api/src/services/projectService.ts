@@ -2,6 +2,10 @@ import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.js';
 import { logActivity } from './activityService.js';
+import {
+  broadcastProjectUpdated,
+  broadcastProjectDeleted,
+} from './syncService.js';
 
 async function verifyProjectAccess(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
@@ -144,6 +148,8 @@ export async function createProject(data: CreateProjectInput, userId: string) {
     newData: { name: data.name },
   }).catch(console.error);
 
+  broadcastProjectUpdated(project);
+
   return project;
 }
 
@@ -179,13 +185,15 @@ export async function updateProject(
     newData: data as Record<string, unknown>,
   }).catch(console.error);
 
+  broadcastProjectUpdated(project);
+
   return project;
 }
 
 export async function deleteProject(id: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: { id },
-    select: { id: true, ownerId: true, isInbox: true, name: true },
+    select: { id: true, ownerId: true, isInbox: true, name: true, workspaceId: true },
   });
 
   if (!project) {
@@ -208,6 +216,8 @@ export async function deleteProject(id: string, userId: string) {
     oldData: { name: project.name },
   }).catch(console.error);
 
+  broadcastProjectDeleted(id, project.workspaceId);
+
   return { message: 'Project deleted successfully' };
 }
 
@@ -227,6 +237,8 @@ export async function archiveProject(id: string, userId: string) {
     newData: { name: project.name },
   }).catch(console.error);
 
+  broadcastProjectUpdated(project);
+
   return project;
 }
 
@@ -245,6 +257,8 @@ export async function unarchiveProject(id: string, userId: string) {
     userId,
     newData: { name: project.name },
   }).catch(console.error);
+
+  broadcastProjectUpdated(project);
 
   return project;
 }

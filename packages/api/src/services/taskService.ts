@@ -10,6 +10,11 @@ import type {
 import { parseQuickAdd } from '../utils/quickAddParser.js';
 import { getNextOccurrence } from '../utils/recurrence.js';
 import { logActivity } from './activityService.js';
+import {
+  broadcastTaskCreated,
+  broadcastTaskUpdated,
+  broadcastTaskDeleted,
+} from './syncService.js';
 
 export const taskInclude = {
   taskLabels: {
@@ -238,6 +243,8 @@ export async function createTask(data: CreateTaskInput, userId: string) {
     newData: { content: data.content, projectId: data.projectId },
   }).catch(console.error);
 
+  broadcastTaskCreated(task);
+
   return task;
 }
 
@@ -285,6 +292,8 @@ export async function updateTask(
     newData: data as Record<string, unknown>,
   }).catch(console.error);
 
+  broadcastTaskUpdated(task);
+
   return task;
 }
 
@@ -302,6 +311,8 @@ export async function deleteTask(id: string, userId: string) {
     oldData: { content: task.content, projectId: task.projectId },
   }).catch(console.error);
 
+  broadcastTaskDeleted(id, task.projectId);
+
   return { message: 'Task deleted successfully' };
 }
 
@@ -309,37 +320,39 @@ export async function completeTask(id: string, userId: string) {
   const task = await verifyTaskAccess(id, userId);
 
   if (task.isRecurring && task.recurrenceRule) {
-    // Create next occurrence
     const fromDate = task.dueDate || new Date();
     const nextDate = getNextOccurrence(task.recurrenceRule, fromDate);
 
-    // Mark current as complete
-    await prisma.task.update({
-      where: { id },
-      data: { isCompleted: true, completedAt: new Date() },
-    });
+    const [completedTask, newTask] = await Promise.all([
+      prisma.task.update({
+        where: { id },
+        data: { isCompleted: true, completedAt: new Date() },
+        include: taskInclude,
+      }),
+      prisma.task.create({
+        data: {
+          content: task.content,
+          description: task.description,
+          projectId: task.projectId,
+          sectionId: task.sectionId,
+          parentId: task.parentId,
+          creatorId: task.creatorId,
+          assigneeId: task.assigneeId,
+          dueDate: nextDate,
+          dueTime: task.dueTime,
+          deadline: task.deadline,
+          duration: task.duration,
+          priority: task.priority,
+          isRecurring: true,
+          recurrenceRule: task.recurrenceRule,
+          sortOrder: task.sortOrder,
+        },
+        include: taskInclude,
+      }),
+    ]);
 
-    // Create next task
-    const newTask = await prisma.task.create({
-      data: {
-        content: task.content,
-        description: task.description,
-        projectId: task.projectId,
-        sectionId: task.sectionId,
-        parentId: task.parentId,
-        creatorId: task.creatorId,
-        assigneeId: task.assigneeId,
-        dueDate: nextDate,
-        dueTime: task.dueTime,
-        deadline: task.deadline,
-        duration: task.duration,
-        priority: task.priority,
-        isRecurring: true,
-        recurrenceRule: task.recurrenceRule,
-        sortOrder: task.sortOrder,
-      },
-      include: taskInclude,
-    });
+    broadcastTaskUpdated(completedTask);
+    broadcastTaskCreated(newTask);
 
     return newTask;
   }
@@ -358,6 +371,8 @@ export async function completeTask(id: string, userId: string) {
     taskId: id,
     newData: { content: task.content },
   }).catch(console.error);
+
+  broadcastTaskUpdated(updated);
 
   return updated;
 }
@@ -379,6 +394,8 @@ export async function uncompleteTask(id: string, userId: string) {
     taskId: id,
     newData: { content: oldTask.content },
   }).catch(console.error);
+
+  broadcastTaskUpdated(task);
 
   return task;
 }
@@ -414,6 +431,8 @@ export async function moveTask(
     oldData: { projectId: oldTask.projectId, sectionId: oldTask.sectionId },
     newData: data as Record<string, unknown>,
   }).catch(console.error);
+
+  broadcastTaskUpdated(task);
 
   return task;
 }

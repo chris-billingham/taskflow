@@ -2,6 +2,11 @@ import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 import type { CreateCommentInput, UpdateCommentInput } from '../schemas/comment.js';
 import { logActivity } from './activityService.js';
+import {
+  broadcastCommentCreated,
+  broadcastCommentUpdated,
+  broadcastCommentDeleted,
+} from './syncService.js';
 
 async function verifyTaskAccess(taskId: string, userId: string) {
   const task = await prisma.task.findUnique({
@@ -61,7 +66,7 @@ export async function createComment(
   data: CreateCommentInput,
   userId: string,
 ) {
-  await verifyTaskAccess(taskId, userId);
+  const task = await verifyTaskAccess(taskId, userId);
 
   // Validate parentId if provided
   if (data.parentId) {
@@ -91,7 +96,6 @@ export async function createComment(
     },
   });
 
-  // Fire-and-forget activity logging
   logActivity({
     action: 'COMMENTED',
     entityType: 'COMMENT',
@@ -100,6 +104,8 @@ export async function createComment(
     taskId,
     newData: { content: data.content },
   }).catch(console.error);
+
+  broadcastCommentCreated(comment, task.projectId);
 
   return comment;
 }
@@ -135,12 +141,17 @@ export async function updateComment(
     },
   });
 
+  if (comment.task?.projectId) {
+    broadcastCommentUpdated(updated, comment.task.projectId);
+  }
+
   return updated;
 }
 
 export async function deleteComment(id: string, userId: string) {
   const comment = await prisma.comment.findUnique({
     where: { id },
+    include: { task: { select: { projectId: true } } },
   });
 
   if (!comment) {
@@ -151,6 +162,10 @@ export async function deleteComment(id: string, userId: string) {
   }
 
   await prisma.comment.delete({ where: { id } });
+
+  if (comment.task?.projectId) {
+    broadcastCommentDeleted(id, comment.taskId, comment.task.projectId);
+  }
 
   return { message: 'Comment deleted successfully' };
 }

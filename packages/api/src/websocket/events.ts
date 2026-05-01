@@ -1,0 +1,52 @@
+import { Server } from 'socket.io';
+import type { Server as HTTPServer } from 'http';
+import { env } from '../config/env.js';
+
+export const WS_EVENTS = {
+  TASK_CREATED: 'task:created',
+  TASK_UPDATED: 'task:updated',
+  TASK_DELETED: 'task:deleted',
+  PROJECT_UPDATED: 'project:updated',
+  PROJECT_DELETED: 'project:deleted',
+  SECTION_CREATED: 'section:created',
+  SECTION_UPDATED: 'section:updated',
+  SECTION_DELETED: 'section:deleted',
+  COMMENT_CREATED: 'comment:created',
+  COMMENT_UPDATED: 'comment:updated',
+  COMMENT_DELETED: 'comment:deleted',
+  PRESENCE_UPDATED: 'presence:updated',
+  TYPING_START: 'typing:start',
+  TYPING_STOP: 'typing:stop',
+  SUBSCRIBE_PROJECT: 'subscribe:project',
+  UNSUBSCRIBE_PROJECT: 'unsubscribe:project',
+  PRESENCE_UPDATE: 'presence:update',
+} as const;
+
+let io: Server | null = null;
+
+export function initSocketIO(httpServer: HTTPServer): Server {
+  io = new Server(httpServer, {
+    cors: {
+      origin: env.CORS_ORIGIN,
+      credentials: true,
+    },
+    path: '/socket.io',
+  });
+  return io;
+}
+
+export function getIO(): Server | null {
+  return io;
+}
+
+export function emitToUser(userId: string, event: string, data: unknown): void {
+  io?.to(`user:${userId}`).emit(event, data);
+}
+
+export function emitToProject(projectId: string, event: string, data: unknown): void {
+  io?.to(`project:${projectId}`).emit(event, data);
+}
+
+export function emitToWorkspace(workspaceId: string, event: string, data: unknown): void {
+  io?.to(`workspace:${workspaceId}`).emit(event, data);
+}

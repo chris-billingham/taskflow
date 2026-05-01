@@ -63,6 +63,7 @@ interface ProjectState {
   duplicateProject: (id: string, name?: string) => Promise<Project>;
   reorderProjects: (projectIds: string[]) => Promise<void>;
   setProject: (project: Project) => void;
+  removeProject: (id: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>()((set, get) => ({
@@ -240,6 +241,14 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
     set((state) => {
       const projects = new Map(state.projects);
       projects.set(project.id, project);
+      return { projects };
+    });
+  },
+
+  removeProject: (id) => {
+    set((state) => {
+      const projects = new Map(state.projects);
+      projects.delete(id);
       return { projects };
     });
   },
