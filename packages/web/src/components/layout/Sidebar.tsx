@@ -399,7 +399,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
                 onClick={() => {
                   setShowUserMenu(false);
-                  // Settings placeholder
+                  navigate('/settings/profile');
                 }}
               >
                 <Settings className="w-4 h-4" />

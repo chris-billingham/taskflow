@@ -7,6 +7,12 @@ interface User {
   email: string;
   name: string;
   avatarUrl?: string | null;
+  timezone?: string;
+  weekStart?: number;
+  dateFormat?: string | null;
+  timeFormat?: string | null;
+  theme?: string | null;
+  emailVerified?: boolean;
 }
 
 interface AuthState {

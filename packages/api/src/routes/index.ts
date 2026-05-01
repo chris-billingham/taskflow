@@ -13,6 +13,7 @@ import { workspaceRoutes } from './workspaces.js';
 import { reminderRoutes } from './reminders.js';
 import { notificationRoutes } from './notifications.js';
 import { searchRoutes } from './search.js';
+import { settingsRoutes } from './settings.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
@@ -29,4 +30,5 @@ export async function registerRoutes(app: FastifyInstance) {
   app.register(reminderRoutes, { prefix: '/api/v1' });
   app.register(notificationRoutes, { prefix: '/api/v1' });
   app.register(searchRoutes, { prefix: '/api/v1/search' });
+  app.register(settingsRoutes, { prefix: '/api/v1/settings' });
 }

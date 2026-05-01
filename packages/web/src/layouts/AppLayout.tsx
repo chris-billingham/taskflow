@@ -10,6 +10,7 @@ import { SearchModal } from '@/components/search/SearchModal';
 import { useTaskStore } from '@/stores/taskStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useRealTimeSync } from '@/hooks/useRealTimeSync';
+import { useTheme } from '@/hooks/useTheme';
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -19,6 +20,7 @@ export function AppLayout() {
 
   useSocket();
   useRealTimeSync();
+  useTheme();
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

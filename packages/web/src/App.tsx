@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AppLayout } from '@/layouts/AppLayout';
+import { SettingsLayout } from '@/layouts/SettingsLayout';
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
@@ -15,6 +16,11 @@ import Filter from '@/pages/app/Filter';
 import FiltersLabels from '@/pages/app/FiltersLabels';
 import WorkspaceSettingsPage from '@/pages/settings/Workspace';
 import NotificationSettings from '@/pages/settings/Notifications';
+import Profile from '@/pages/settings/Profile';
+import Account from '@/pages/settings/Account';
+import Preferences from '@/pages/settings/Preferences';
+import Integrations from '@/pages/settings/Integrations';
+import DataExport from '@/pages/settings/DataExport';
 import { JoinWorkspace } from '@/components/workspace/JoinWorkspace';
 
 function App() {
@@ -49,7 +55,23 @@ function App() {
           <Route path="/filters/:id" element={<Filter />} />
           <Route path="/projects/:id" element={<Project />} />
           <Route path="/workspace/settings" element={<WorkspaceSettingsPage />} />
+        </Route>
+
+        {/* Settings routes */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <SettingsLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
+          <Route path="/settings/profile" element={<Profile />} />
+          <Route path="/settings/account" element={<Account />} />
+          <Route path="/settings/preferences" element={<Preferences />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />
+          <Route path="/settings/integrations" element={<Integrations />} />
+          <Route path="/settings/export" element={<DataExport />} />
         </Route>
 
         {/* Default redirect */}
