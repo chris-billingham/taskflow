@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, LayoutTemplate } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useProjectStore, selectActiveProjects } from '@/stores/projectStore';
+import { TemplateGallery } from '@/components/template/TemplateGallery';
 
 const PRESET_COLORS = [
   '#DB4C3F', '#FF9933', '#FAD000', '#7ECC49',
@@ -32,8 +33,20 @@ export function CreateProjectModal({
   const [viewStyle, setViewStyle] = useState<'LIST' | 'BOARD' | 'CALENDAR'>('LIST');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showGallery, setShowGallery] = useState(false);
 
   if (!isOpen) return null;
+
+  if (showGallery) {
+    return (
+      <TemplateGallery
+        isOpen
+        onClose={() => setShowGallery(false)}
+        workspaceId={workspaceId}
+        onProjectCreated={() => onClose()}
+      />
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,13 +167,23 @@ export function CreateProjectModal({
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" isLoading={isSubmitting} disabled={!name.trim()}>
-              Add
-            </Button>
+          <div className="flex items-center justify-between pt-2">
+            <button
+              type="button"
+              onClick={() => setShowGallery(true)}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              <LayoutTemplate className="w-4 h-4" />
+              Start from template
+            </button>
+            <div className="flex gap-2">
+              <Button variant="secondary" type="button" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" isLoading={isSubmitting} disabled={!name.trim()}>
+                Add
+              </Button>
+            </div>
           </div>
         </form>
       </div>

@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { User, Lock, Sliders, Bell, Plug, Download } from 'lucide-react';
+import { User, Lock, Sliders, Bell, Plug, Download, LayoutTemplate } from 'lucide-react';
 
 const items = [
   { to: '/settings/profile', label: 'Profile', icon: User },
   { to: '/settings/account', label: 'Account', icon: Lock },
   { to: '/settings/preferences', label: 'Preferences', icon: Sliders },
   { to: '/settings/notifications', label: 'Notifications', icon: Bell },
+  { to: '/settings/templates', label: 'Templates', icon: LayoutTemplate },
   { to: '/settings/integrations', label: 'Integrations', icon: Plug },
   { to: '/settings/export', label: 'Data & Privacy', icon: Download },
 ];

@@ -21,6 +21,7 @@ import Account from '@/pages/settings/Account';
 import Preferences from '@/pages/settings/Preferences';
 import Integrations from '@/pages/settings/Integrations';
 import DataExport from '@/pages/settings/DataExport';
+import TemplatesSettings from '@/pages/settings/Templates';
 import { JoinWorkspace } from '@/components/workspace/JoinWorkspace';
 
 function App() {
@@ -70,6 +71,7 @@ function App() {
           <Route path="/settings/account" element={<Account />} />
           <Route path="/settings/preferences" element={<Preferences />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />
+          <Route path="/settings/templates" element={<TemplatesSettings />} />
           <Route path="/settings/integrations" element={<Integrations />} />
           <Route path="/settings/export" element={<DataExport />} />
         </Route>
