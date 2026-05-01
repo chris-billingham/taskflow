@@ -52,7 +52,10 @@ export async function register(data: RegisterInput) {
   }
 
   const passwordHash = await hashPassword(data.password);
-  const emailVerifyToken = crypto.randomBytes(32).toString('hex');
+  // When SMTP is not configured, auto-verify so users can log in immediately.
+  // Once email delivery is implemented, remove this flag and let verifyEmail() set it.
+  const emailConfigured = !!process.env.SMTP_HOST;
+  const emailVerifyToken = emailConfigured ? crypto.randomBytes(32).toString('hex') : null;
 
   const user = await prisma.user.create({
     data: {
@@ -60,6 +63,7 @@ export async function register(data: RegisterInput) {
       passwordHash,
       name: data.name,
       emailVerifyToken,
+      emailVerified: !emailConfigured,
     },
   });
 
@@ -103,6 +107,10 @@ export async function login(email: string, password: string) {
     throw new UnauthorizedError('Invalid email or password');
   }
 
+  if (!user.emailVerified) {
+    throw new UnauthorizedError('Please verify your email address before signing in');
+  }
+
   await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
@@ -126,28 +134,30 @@ export async function refreshTokens(refreshToken: string) {
     throw new UnauthorizedError('Invalid refresh token');
   }
 
-  const stored = await prisma.refreshToken.findUnique({
-    where: { token: refreshToken },
-  });
-  if (!stored || stored.expiresAt < new Date()) {
-    // If token was already used/deleted, invalidate all tokens for this user (rotation detection)
-    if (payload.id) {
-      await prisma.refreshToken.deleteMany({
-        where: { userId: payload.id },
-      });
+  // Use a transaction so the find + delete is atomic, eliminating the race
+  // window where two concurrent requests could both succeed with the same token.
+  const result = await prisma.$transaction(async (tx) => {
+    const stored = await tx.refreshToken.findUnique({
+      where: { token: refreshToken },
+    });
+    if (!stored || stored.expiresAt < new Date()) {
+      // Token missing or expired — possible reuse attack; revoke all user tokens
+      if (payload.id) {
+        await tx.refreshToken.deleteMany({ where: { userId: payload.id } });
+      }
+      throw new UnauthorizedError('Refresh token expired or already used');
     }
-    throw new UnauthorizedError('Refresh token expired or already used');
-  }
 
-  const user = await prisma.user.findUnique({ where: { id: stored.userId } });
-  if (!user) {
-    throw new UnauthorizedError('User not found');
-  }
+    // Delete before issuing new pair so concurrent reuse fails
+    await tx.refreshToken.delete({ where: { id: stored.id } });
 
-  // Delete the old refresh token (rotation)
-  await prisma.refreshToken.delete({ where: { id: stored.id } });
+    const user = await tx.user.findUnique({ where: { id: stored.userId } });
+    if (!user) throw new UnauthorizedError('User not found');
 
-  return createTokenPair(user);
+    return user;
+  });
+
+  return createTokenPair(result);
 }
 
 export async function forgotPassword(email: string) {
@@ -168,8 +178,11 @@ export async function forgotPassword(email: string) {
   const redis = getRedis();
   await redis.set(`password-reset:${resetTokenHash}`, user.id, 'EX', 3600);
 
-  // In production, send email here. For now, return the token.
-  return { resetToken, message: 'If that email exists, a reset link has been sent' };
+  // TODO: send email with reset link here (email delivery on roadmap)
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(`[DEV] Password reset token for ${email}: ${resetToken}`);
+  }
+  return { message: 'If that email exists, a reset link has been sent' };
 }
 
 export async function resetPassword(token: string, newPassword: string) {
@@ -217,4 +230,25 @@ export async function verifyEmail(token: string) {
   });
 
   return { message: 'Email verified successfully' };
+}
+
+export async function resendVerificationEmail(email: string) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  // Don't reveal whether the email exists
+  if (!user || user.emailVerified) {
+    return { message: 'If that email exists and is unverified, a new link has been sent' };
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { emailVerifyToken: token },
+  });
+
+  // TODO: send verification email once SMTP is implemented
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(`[DEV] Email verification token for ${email}: ${token}`);
+  }
+
+  return { message: 'If that email exists and is unverified, a new link has been sent' };
 }

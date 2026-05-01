@@ -53,7 +53,11 @@ export default function Register() {
   const registerUser = useAuthStore((s) => s.register);
   const [error, setError] = useState('');
 
-  const redirect = searchParams.get('redirect');
+  const rawRedirect = searchParams.get('redirect');
+  const redirect =
+    rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+      ? rawRedirect
+      : null;
 
   const {
     register,

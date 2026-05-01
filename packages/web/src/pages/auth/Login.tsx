@@ -23,7 +23,12 @@ export default function Login() {
   const login = useAuthStore((s) => s.login);
   const [error, setError] = useState('');
 
-  const redirect = searchParams.get('redirect');
+  const rawRedirect = searchParams.get('redirect');
+  // Only allow relative paths to prevent open redirect attacks
+  const redirect =
+    rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+      ? rawRedirect
+      : null;
 
   const {
     register,

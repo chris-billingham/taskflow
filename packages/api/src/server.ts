@@ -1,12 +1,14 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
+import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
 import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { env } from './config/env.js';
 import { registerRoutes } from './routes/index.js';
+import { runWithRequestContext } from './utils/requestContext.js';
 import { closeRedis, getRedis } from './config/redis.js';
 import { initializeWorkers } from './worker.js';
 import { createWebSocketServer } from './websocket/server.js';
@@ -15,6 +17,7 @@ import { prisma } from './config/database.js';
 import { openapiSpec } from './docs/openapi.js';
 
 const server = Fastify({
+  bodyLimit: 1_048_576, // 1MB JSON body limit
   logger: {
     level: env.LOG_LEVEL,
     transport:
@@ -35,6 +38,11 @@ const server = Fastify({
 await server.register(cors, {
   origin: env.CORS_ORIGIN,
   credentials: true,
+});
+
+await server.register(helmet, {
+  // CSP not needed for a pure JSON API, but enable all other protections
+  contentSecurityPolicy: false,
 });
 
 await server.register(cookie);
@@ -85,6 +93,12 @@ server.setErrorHandler((error, request, reply) => {
         ? 'Internal server error'
         : err.message,
   });
+});
+
+// Bind every request to an AsyncLocalStorage context so service-layer code
+// can access the request ID for log correlation without threading it through params.
+server.addHook('onRequest', (request, _reply, done) => {
+  runWithRequestContext({ requestId: request.id }, done);
 });
 
 // Register routes

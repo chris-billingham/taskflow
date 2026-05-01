@@ -85,13 +85,8 @@ services:
       retries: 5
     networks:
       - internal
-      - traefik
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.minio-console.rule=Host(`minio.${DOMAIN}`)
-      - traefik.http.routers.minio-console.entrypoints=websecure
-      - traefik.http.routers.minio-console.tls.certresolver=letsencrypt
-      - traefik.http.services.minio-console.loadbalancer.server.port=9001
+    # MinIO console (port 9001) is intentionally NOT exposed via Traefik.
+    # Access it via `docker compose port minio 9001` or an SSH tunnel.
 
   api:
     build:

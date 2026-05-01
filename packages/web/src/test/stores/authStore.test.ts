@@ -23,7 +23,7 @@ const mockApi = api as {
 const MOCK_USER = { id: 'u1', email: 'test@example.com', name: 'Test User' };
 const MOCK_TOKENS = {
   accessToken: 'access-token-value',
-  refreshToken: 'refresh-token-value',
+  // refreshToken is now an httpOnly cookie set by the server — not in the response body
 };
 
 function getStore() {
@@ -38,6 +38,7 @@ beforeEach(() => {
     isLoading: true,
   });
   localStorage.clear();
+  vi.clearAllMocks();
 });
 
 describe('authStore - login', () => {
@@ -56,19 +57,6 @@ describe('authStore - login', () => {
     expect(store.current.isLoading).toBe(false);
   });
 
-  it('stores refreshToken in localStorage', async () => {
-    mockApi.post.mockResolvedValueOnce({
-      data: { data: { user: MOCK_USER, ...MOCK_TOKENS } },
-    });
-
-    const store = getStore();
-    await act(async () => {
-      await store.current.login('test@example.com', 'password');
-    });
-
-    expect(localStorage.getItem('refreshToken')).toBe(MOCK_TOKENS.refreshToken);
-  });
-
   it('calls setAccessToken with the access token', async () => {
     mockApi.post.mockResolvedValueOnce({
       data: { data: { user: MOCK_USER, ...MOCK_TOKENS } },
@@ -80,6 +68,19 @@ describe('authStore - login', () => {
     });
 
     expect(vi.mocked(setAccessToken)).toHaveBeenCalledWith(MOCK_TOKENS.accessToken);
+  });
+
+  it('does not write refresh token to localStorage (cookie-only)', async () => {
+    mockApi.post.mockResolvedValueOnce({
+      data: { data: { user: MOCK_USER, ...MOCK_TOKENS } },
+    });
+
+    const store = getStore();
+    await act(async () => {
+      await store.current.login('test@example.com', 'password');
+    });
+
+    expect(localStorage.getItem('refreshToken')).toBeNull();
   });
 
   it('throws when API call fails', async () => {
@@ -111,11 +112,8 @@ describe('authStore - register', () => {
 });
 
 describe('authStore - logout', () => {
-  it('clears user state and localStorage', async () => {
-    // Set up authenticated state
+  it('clears user state on logout', async () => {
     useAuthStore.setState({ user: MOCK_USER, isAuthenticated: true });
-    localStorage.setItem('refreshToken', 'some-token');
-
     mockApi.post.mockResolvedValueOnce({ data: {} });
 
     const store = getStore();
@@ -125,13 +123,10 @@ describe('authStore - logout', () => {
 
     expect(store.current.user).toBeNull();
     expect(store.current.isAuthenticated).toBe(false);
-    expect(localStorage.getItem('refreshToken')).toBeNull();
   });
 
   it('clears state even if logout API call fails', async () => {
     useAuthStore.setState({ user: MOCK_USER, isAuthenticated: true });
-    localStorage.setItem('refreshToken', 'some-token');
-
     mockApi.post.mockRejectedValueOnce(new Error('Network error'));
 
     const store = getStore();
@@ -141,6 +136,18 @@ describe('authStore - logout', () => {
 
     expect(store.current.user).toBeNull();
     expect(store.current.isAuthenticated).toBe(false);
+  });
+
+  it('calls POST /auth/logout without a body refresh token', async () => {
+    useAuthStore.setState({ user: MOCK_USER, isAuthenticated: true });
+    mockApi.post.mockResolvedValueOnce({ data: {} });
+
+    const store = getStore();
+    await act(async () => {
+      await store.current.logout();
+    });
+
+    expect(mockApi.post).toHaveBeenCalledWith('/auth/logout', {});
   });
 });
 
@@ -170,23 +177,10 @@ describe('authStore - updateUser', () => {
 });
 
 describe('authStore - initialize', () => {
-  it('sets isLoading to false when no refresh token in localStorage', async () => {
-    localStorage.removeItem('refreshToken');
-
-    const store = getStore();
-    await act(async () => {
-      await store.current.initialize();
-    });
-
-    expect(store.current.isLoading).toBe(false);
-    expect(store.current.isAuthenticated).toBe(false);
-  });
-
-  it('refreshes access token and fetches user when refresh token exists', async () => {
-    localStorage.setItem('refreshToken', 'stored-refresh-token');
-
+  it('sets isAuthenticated when cookie-based refresh succeeds', async () => {
+    // No localStorage setup needed — refresh relies on the httpOnly cookie
     mockApi.post.mockResolvedValueOnce({
-      data: { data: { accessToken: 'new-access', refreshToken: 'new-refresh' } },
+      data: { data: { accessToken: 'new-access' } },
     });
     mockApi.get.mockResolvedValueOnce({
       data: { data: MOCK_USER },
@@ -202,9 +196,8 @@ describe('authStore - initialize', () => {
     expect(store.current.isLoading).toBe(false);
   });
 
-  it('clears auth state when refresh fails', async () => {
-    localStorage.setItem('refreshToken', 'invalid-token');
-    mockApi.post.mockRejectedValueOnce(new Error('Token expired'));
+  it('clears auth state when refresh fails (no valid cookie)', async () => {
+    mockApi.post.mockRejectedValueOnce(new Error('No cookie / token expired'));
 
     const store = getStore();
     await act(async () => {

@@ -41,11 +41,10 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (email: string, password: string) => {
         const { data } = await api.post('/auth/login', { email, password });
-        const { user, accessToken, refreshToken } = data.data;
+        const { user, accessToken } = data.data;
 
         setAccessToken(accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-
+        // Refresh token is set as an httpOnly cookie by the server
         set({ user, isAuthenticated: true, isLoading: false });
       },
 
@@ -55,38 +54,30 @@ export const useAuthStore = create<AuthState>()(
           email,
           password,
         });
-        const { user, accessToken, refreshToken } = data.data;
+        const { user, accessToken } = data.data;
 
         setAccessToken(accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-
+        // Refresh token is set as an httpOnly cookie by the server
         set({ user, isAuthenticated: true, isLoading: false });
       },
 
       logout: async () => {
         try {
-          const refreshToken = localStorage.getItem('refreshToken');
-          if (refreshToken) {
-            await api.post('/auth/logout', { refreshToken });
-          }
+          // Server will read the refresh token from its httpOnly cookie and revoke it
+          await api.post('/auth/logout', {});
         } catch {
           // Ignore logout errors
         } finally {
           setAccessToken(null);
-          localStorage.removeItem('refreshToken');
           set({ user: null, isAuthenticated: false });
         }
       },
 
       refreshToken: async () => {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
-
-        const { data } = await api.post('/auth/refresh', { refreshToken });
-        const { accessToken, refreshToken: newRefreshToken } = data.data;
-
+        // Refresh token is in an httpOnly cookie — no body needed
+        const { data } = await api.post('/auth/refresh', {});
+        const { accessToken } = data.data;
         setAccessToken(accessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
       },
 
       updateUser: (data: Partial<User>) => {
@@ -102,23 +93,14 @@ export const useAuthStore = create<AuthState>()(
         if (initPromise) return initPromise;
 
         initPromise = (async () => {
-          const refreshToken = localStorage.getItem('refreshToken');
-          if (!refreshToken) {
-            set({ isLoading: false, isAuthenticated: false });
-            return;
-          }
-
           try {
-            // Refresh access token
-            const { data } = await api.post('/auth/refresh', {
-              refreshToken,
-            });
-            const { accessToken, refreshToken: newRefreshToken } = data.data;
+            // Attempt to refresh using the httpOnly cookie; if no cookie
+            // exists the server returns 401 and we fall through to unauthenticated.
+            const { data } = await api.post('/auth/refresh', {});
+            const { accessToken } = data.data;
 
             setAccessToken(accessToken);
-            localStorage.setItem('refreshToken', newRefreshToken);
 
-            // Fetch current user profile
             const userResponse = await api.get('/users/me');
 
             set({
@@ -128,7 +110,6 @@ export const useAuthStore = create<AuthState>()(
             });
           } catch {
             setAccessToken(null);
-            localStorage.removeItem('refreshToken');
             set({ user: null, isAuthenticated: false, isLoading: false });
           }
         })();

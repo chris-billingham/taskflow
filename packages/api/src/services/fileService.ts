@@ -15,14 +15,22 @@ const uploaderSelect = {
 async function verifyTaskAccess(taskId: string, userId: string) {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    include: { project: { select: { ownerId: true } } },
+    include: { project: { select: { ownerId: true, workspaceId: true } } },
   });
   if (!task) throw new NotFoundError('Task not found');
   if (task.project.ownerId !== userId && task.creatorId !== userId) {
     const member = await prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId: task.projectId, userId } },
     });
-    if (!member) throw new ForbiddenError('You do not have access to this task');
+    if (!member) {
+      if (task.project.workspaceId) {
+        const wsMember = await prisma.workspaceMember.findUnique({
+          where: { workspaceId_userId: { workspaceId: task.project.workspaceId, userId } },
+        });
+        if (wsMember) return task;
+      }
+      throw new ForbiddenError('You do not have access to this task');
+    }
   }
   return task;
 }
@@ -31,7 +39,7 @@ async function verifyCommentAccess(commentId: string, userId: string) {
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
     include: {
-      task: { include: { project: { select: { ownerId: true, id: true } } } },
+      task: { include: { project: { select: { ownerId: true, id: true, workspaceId: true } } } },
     },
   });
   if (!comment) throw new NotFoundError('Comment not found');
@@ -41,7 +49,15 @@ async function verifyCommentAccess(commentId: string, userId: string) {
       const member = await prisma.projectMember.findUnique({
         where: { projectId_userId: { projectId: task.projectId, userId } },
       });
-      if (!member) throw new ForbiddenError('You do not have access to this comment');
+      if (!member) {
+        if (task.project.workspaceId) {
+          const wsMember = await prisma.workspaceMember.findUnique({
+            where: { workspaceId_userId: { workspaceId: task.project.workspaceId, userId } },
+          });
+          if (wsMember) return comment;
+        }
+        throw new ForbiddenError('You do not have access to this comment');
+      }
     }
   }
   return comment;

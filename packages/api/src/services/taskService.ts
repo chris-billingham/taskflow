@@ -1,5 +1,7 @@
 import { prisma } from '../config/database.js';
+import type { Prisma } from '@prisma/client';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
+import { getRequestId } from '../utils/requestContext.js';
 import type {
   CreateTaskInput,
   UpdateTaskInput,
@@ -16,6 +18,22 @@ import {
   broadcastTaskDeleted,
 } from './syncService.js';
 
+// Runs a post-mutation side effect (logging, broadcast) without blocking the
+// response. Errors are caught and warned so they don't silently swallow.
+function runSideEffect(label: string, fn: () => Promise<unknown> | unknown) {
+  const reqId = getRequestId();
+  const tag = reqId ? `[taskService reqId=${reqId}]` : '[taskService]';
+  try {
+    const result = fn();
+    if (result instanceof Promise) {
+      result.catch((err) => console.warn(`${tag} ${label} failed:`, err));
+    }
+  } catch (err) {
+    console.warn(`${tag} ${label} failed:`, err);
+  }
+}
+
+// Full include used on single-task detail endpoints (includes subtasks)
 export const taskInclude = {
   taskLabels: {
     include: { label: true },
@@ -31,6 +49,19 @@ export const taskInclude = {
         select: { id: true, name: true, email: true, avatarUrl: true },
       },
     },
+  },
+  _count: {
+    select: { subtasks: true, comments: true },
+  },
+};
+
+// Lean include used on list endpoints — omits subtask bodies to keep responses small
+const taskListInclude = {
+  taskLabels: {
+    include: { label: true },
+  },
+  assignee: {
+    select: { id: true, name: true, email: true, avatarUrl: true },
   },
   _count: {
     select: { subtasks: true, comments: true },
@@ -96,6 +127,58 @@ async function verifyProjectAccess(projectId: string, userId: string) {
   return project;
 }
 
+type TaskWithProject = {
+  id: string;
+  projectId: string;
+  creatorId: string;
+  project: { ownerId: string | null; workspaceId: string | null };
+};
+
+async function verifyBulkTaskAccess(tasks: TaskWithProject[], userId: string) {
+  // Collect project IDs where the user is not owner/creator to batch-check membership
+  const projectIdsToCheck = [
+    ...new Set(
+      tasks
+        .filter((t) => t.project.ownerId !== userId && t.creatorId !== userId)
+        .map((t) => t.projectId),
+    ),
+  ];
+  if (projectIdsToCheck.length === 0) return;
+
+  const [projectMembers, workspaceIds] = await Promise.all([
+    prisma.projectMember.findMany({
+      where: { projectId: { in: projectIdsToCheck }, userId },
+      select: { projectId: true },
+    }),
+    Promise.resolve(
+      [
+        ...new Set(
+          tasks
+            .filter((t) => t.project.workspaceId !== null)
+            .map((t) => t.project.workspaceId as string),
+        ),
+      ],
+    ),
+  ]);
+
+  const memberProjectIds = new Set(projectMembers.map((m) => m.projectId));
+
+  const wsMembers = workspaceIds.length > 0
+    ? await prisma.workspaceMember.findMany({
+        where: { workspaceId: { in: workspaceIds }, userId },
+        select: { workspaceId: true },
+      })
+    : [];
+  const memberWorkspaceIds = new Set(wsMembers.map((m) => m.workspaceId));
+
+  for (const task of tasks) {
+    if ((task.project.ownerId && task.project.ownerId === userId) || task.creatorId === userId) continue;
+    if (memberProjectIds.has(task.projectId)) continue;
+    if (task.project.workspaceId && memberWorkspaceIds.has(task.project.workspaceId)) continue;
+    throw new ForbiddenError('You do not have access to all specified tasks');
+  }
+}
+
 export async function getTasks(query: TaskQuery, userId: string) {
   // Get workspace IDs the user belongs to
   const memberships = await prisma.workspaceMember.findMany({
@@ -104,7 +187,7 @@ export async function getTasks(query: TaskQuery, userId: string) {
   });
   const workspaceIds = memberships.map((m) => m.workspaceId);
 
-  const where: any = {
+  const where: Prisma.TaskWhereInput = {
     project: {
       OR: [
         { ownerId: userId },
@@ -114,46 +197,25 @@ export async function getTasks(query: TaskQuery, userId: string) {
           : []),
       ],
     },
+    projectId: query.projectId,
+    sectionId: query.sectionId,
+    parentId: query.parentId ?? null,
+    ...(query.completed !== undefined && { isCompleted: query.completed === 'true' }),
+    ...(query.assigneeId && { assigneeId: query.assigneeId }),
+    ...(query.priority && { priority: { in: query.priority.split(',').map(Number) } }),
+    ...(query.labels && { taskLabels: { some: { labelId: { in: query.labels.split(',') } } } }),
+    ...(query.search && { content: { contains: query.search, mode: 'insensitive' } }),
+    ...((query.dueDateFrom || query.dueDateTo) && {
+      dueDate: {
+        ...(query.dueDateFrom && { gte: new Date(query.dueDateFrom) }),
+        ...(query.dueDateTo && { lte: new Date(query.dueDateTo) }),
+      },
+    }),
   };
-
-  if (query.projectId) {
-    where.projectId = query.projectId;
-  }
-  if (query.sectionId) {
-    where.sectionId = query.sectionId;
-  }
-  if (query.parentId) {
-    where.parentId = query.parentId;
-  } else if (!query.parentId) {
-    // By default, only return top-level tasks
-    where.parentId = null;
-  }
-  if (query.completed !== undefined) {
-    where.isCompleted = query.completed === 'true';
-  }
-  if (query.priority) {
-    const priorities = query.priority.split(',').map(Number);
-    where.priority = { in: priorities };
-  }
-  if (query.assigneeId) {
-    where.assigneeId = query.assigneeId;
-  }
-  if (query.labels) {
-    const labelIds = query.labels.split(',');
-    where.taskLabels = { some: { labelId: { in: labelIds } } };
-  }
-  if (query.dueDateFrom || query.dueDateTo) {
-    where.dueDate = {};
-    if (query.dueDateFrom) where.dueDate.gte = new Date(query.dueDateFrom);
-    if (query.dueDateTo) where.dueDate.lte = new Date(query.dueDateTo);
-  }
-  if (query.search) {
-    where.content = { contains: query.search, mode: 'insensitive' };
-  }
 
   const tasks = await prisma.task.findMany({
     where,
-    include: taskInclude,
+    include: taskListInclude,
     orderBy: { sortOrder: 'asc' },
   });
 
@@ -234,16 +296,15 @@ export async function createTask(data: CreateTaskInput, userId: string) {
     include: taskInclude,
   });
 
-  logActivity({
+  runSideEffect('logActivity:CREATED', () => logActivity({
     action: 'CREATED',
     entityType: 'TASK',
     entityId: task.id,
     userId,
     taskId: task.id,
     newData: { content: data.content, projectId: data.projectId },
-  }).catch(console.error);
-
-  broadcastTaskCreated(task);
+  }));
+  runSideEffect('broadcastTaskCreated', () => broadcastTaskCreated(task));
 
   return task;
 }
@@ -258,13 +319,15 @@ export async function updateTask(
   const { labelIds, ...updateData } = data;
 
   // Prepare date fields
-  const prismaData: any = { ...updateData };
-  if (updateData.dueDate !== undefined) {
-    prismaData.dueDate = updateData.dueDate ? new Date(updateData.dueDate) : null;
-  }
-  if (updateData.deadline !== undefined) {
-    prismaData.deadline = updateData.deadline ? new Date(updateData.deadline) : null;
-  }
+  const prismaData: Prisma.TaskUpdateInput = {
+    ...updateData,
+    ...(updateData.dueDate !== undefined && {
+      dueDate: updateData.dueDate ? new Date(updateData.dueDate) : null,
+    }),
+    ...(updateData.deadline !== undefined && {
+      deadline: updateData.deadline ? new Date(updateData.deadline) : null,
+    }),
+  };
 
   // Handle label updates
   if (labelIds !== undefined) {
@@ -282,7 +345,7 @@ export async function updateTask(
     include: taskInclude,
   });
 
-  logActivity({
+  runSideEffect('logActivity:UPDATED', () => logActivity({
     action: 'UPDATED',
     entityType: 'TASK',
     entityId: id,
@@ -290,9 +353,8 @@ export async function updateTask(
     taskId: id,
     oldData: { content: oldTask.content, priority: oldTask.priority, dueDate: oldTask.dueDate?.toISOString() ?? null },
     newData: data as Record<string, unknown>,
-  }).catch(console.error);
-
-  broadcastTaskUpdated(task);
+  }));
+  runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(task));
 
   return task;
 }
@@ -303,15 +365,14 @@ export async function deleteTask(id: string, userId: string) {
   // Cascade delete handles subtasks via Prisma schema
   await prisma.task.delete({ where: { id } });
 
-  logActivity({
+  runSideEffect('logActivity:DELETED', () => logActivity({
     action: 'DELETED',
     entityType: 'TASK',
     entityId: id,
     userId,
     oldData: { content: task.content, projectId: task.projectId },
-  }).catch(console.error);
-
-  broadcastTaskDeleted(id, task.projectId);
+  }));
+  runSideEffect('broadcastTaskDeleted', () => broadcastTaskDeleted(id, task.projectId));
 
   return { message: 'Task deleted successfully' };
 }
@@ -351,8 +412,8 @@ export async function completeTask(id: string, userId: string) {
       }),
     ]);
 
-    broadcastTaskUpdated(completedTask);
-    broadcastTaskCreated(newTask);
+    runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(completedTask));
+    runSideEffect('broadcastTaskCreated', () => broadcastTaskCreated(newTask));
 
     return newTask;
   }
@@ -363,16 +424,15 @@ export async function completeTask(id: string, userId: string) {
     include: taskInclude,
   });
 
-  logActivity({
+  runSideEffect('logActivity:COMPLETED', () => logActivity({
     action: 'COMPLETED',
     entityType: 'TASK',
     entityId: id,
     userId,
     taskId: id,
     newData: { content: task.content },
-  }).catch(console.error);
-
-  broadcastTaskUpdated(updated);
+  }));
+  runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(updated));
 
   return updated;
 }
@@ -386,16 +446,15 @@ export async function uncompleteTask(id: string, userId: string) {
     include: taskInclude,
   });
 
-  logActivity({
+  runSideEffect('logActivity:UNCOMPLETED', () => logActivity({
     action: 'UNCOMPLETED',
     entityType: 'TASK',
     entityId: id,
     userId,
     taskId: id,
     newData: { content: oldTask.content },
-  }).catch(console.error);
-
-  broadcastTaskUpdated(task);
+  }));
+  runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(task));
 
   return task;
 }
@@ -411,10 +470,15 @@ export async function moveTask(
     await verifyProjectAccess(data.projectId, userId);
   }
 
-  const updateData: any = {};
-  if (data.projectId !== undefined) updateData.projectId = data.projectId;
-  if (data.sectionId !== undefined) updateData.sectionId = data.sectionId;
-  if (data.parentId !== undefined) updateData.parentId = data.parentId;
+  const updateData: Prisma.TaskUpdateInput = {
+    ...(data.projectId !== undefined && { project: { connect: { id: data.projectId } } }),
+    ...(data.sectionId !== undefined && {
+      section: data.sectionId ? { connect: { id: data.sectionId } } : { disconnect: true },
+    }),
+    ...(data.parentId !== undefined && {
+      parent: data.parentId ? { connect: { id: data.parentId } } : { disconnect: true },
+    }),
+  };
 
   const task = await prisma.task.update({
     where: { id },
@@ -422,7 +486,7 @@ export async function moveTask(
     include: taskInclude,
   });
 
-  logActivity({
+  runSideEffect('logActivity:MOVED', () => logActivity({
     action: 'MOVED',
     entityType: 'TASK',
     entityId: id,
@@ -430,9 +494,8 @@ export async function moveTask(
     taskId: id,
     oldData: { projectId: oldTask.projectId, sectionId: oldTask.sectionId },
     newData: data as Record<string, unknown>,
-  }).catch(console.error);
-
-  broadcastTaskUpdated(task);
+  }));
+  runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(task));
 
   return task;
 }
@@ -473,23 +536,14 @@ export async function bulkUpdate(
   // Verify access to all tasks
   const tasks = await prisma.task.findMany({
     where: { id: { in: taskIds } },
-    include: { project: { select: { ownerId: true } } },
+    include: { project: { select: { ownerId: true, workspaceId: true } } },
   });
 
   if (tasks.length !== taskIds.length) {
     throw new NotFoundError('One or more tasks not found');
   }
 
-  for (const task of tasks) {
-    if (task.project.ownerId !== userId && task.creatorId !== userId) {
-      const member = await prisma.projectMember.findUnique({
-        where: { projectId_userId: { projectId: task.projectId, userId } },
-      });
-      if (!member) {
-        throw new ForbiddenError('You do not have access to all specified tasks');
-      }
-    }
-  }
+  await verifyBulkTaskAccess(tasks, userId);
 
   switch (action) {
     case 'complete':
@@ -579,32 +633,26 @@ export async function reorderTasks(taskIds: string[], userId: string) {
 
   const tasks = await prisma.task.findMany({
     where: { id: { in: taskIds } },
-    include: { project: { select: { ownerId: true } } },
+    include: { project: { select: { ownerId: true, workspaceId: true } } },
   });
 
   if (tasks.length !== taskIds.length) {
     throw new NotFoundError('One or more tasks not found');
   }
 
-  for (const task of tasks) {
-    if (task.project.ownerId !== userId && task.creatorId !== userId) {
-      const member = await prisma.projectMember.findUnique({
-        where: { projectId_userId: { projectId: task.projectId, userId } },
-      });
-      if (!member) {
-        throw new ForbiddenError('You do not have access to reorder these tasks');
-      }
-    }
-  }
+  await verifyBulkTaskAccess(tasks, userId);
 
-  const updates = taskIds.map((id, index) =>
-    prisma.task.update({
-      where: { id },
-      data: { sortOrder: index },
-    }),
+  // Single UPDATE via a parameterized VALUES table — one round trip, no injection risk
+  const valuePlaceholders = taskIds.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(', ');
+  const params = taskIds.flatMap((id, index) => [id, index]);
+
+  await prisma.$executeRawUnsafe(
+    `UPDATE tasks t
+     SET "sortOrder" = v.sort_order::int
+     FROM (VALUES ${valuePlaceholders}) AS v(id, sort_order)
+     WHERE t.id = v.id`,
+    ...params,
   );
-
-  await prisma.$transaction(updates);
 
   return { message: 'Tasks reordered successfully' };
 }

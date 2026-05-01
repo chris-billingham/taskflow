@@ -17,6 +17,12 @@ const envSchema = z.object({
   S3_ACCESS_KEY: z.string().default('minioadmin'),
   S3_SECRET_KEY: z.string().default('minioadmin'),
   MAX_FILE_SIZE_MB: z.coerce.number().default(25),
+  // SMTP — optional; when absent email verification is skipped automatically
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default('noreply@taskflow.local'),
 });
 
 function loadEnv() {

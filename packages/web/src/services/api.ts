@@ -15,6 +15,9 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Required so the browser sends the httpOnly refresh token cookie
+  // on cross-origin requests (dev: localhost:5173 → localhost:3001)
+  withCredentials: true,
 });
 
 // Request interceptor: attach access token
@@ -65,22 +68,17 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token');
-        }
-
-        // Use a fresh axios instance to avoid interceptor loops
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken,
-        });
+        // The refresh token is in an httpOnly cookie — no body needed.
+        // Use a fresh axios instance to avoid interceptor loops.
+        const { data } = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          {},
+          { withCredentials: true },
+        );
 
         const newAccessToken = data.data.accessToken;
-        const newRefreshToken = data.data.refreshToken;
 
         setAccessToken(newAccessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         processQueue(null, newAccessToken);
 
@@ -88,7 +86,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         setAccessToken(null);
-        localStorage.removeItem('refreshToken');
+        // Clear persisted user state so the app redirects to login
         localStorage.removeItem('auth-storage');
         window.location.href = '/login';
         return Promise.reject(refreshError);

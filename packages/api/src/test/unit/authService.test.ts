@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../config/database.js', () => ({
-  prisma: {
+vi.mock('../../config/database.js', () => {
+  const mockPrismaClient = {
     user: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
@@ -16,8 +16,11 @@ vi.mock('../../config/database.js', () => ({
       delete: vi.fn(),
       deleteMany: vi.fn(),
     },
-  },
-}));
+    // Simulate $transaction by passing the same client to the callback
+    $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(mockPrismaClient)),
+  };
+  return { prisma: mockPrismaClient };
+});
 
 vi.mock('../../utils/password.js', () => ({
   hashPassword: vi.fn(),
@@ -59,6 +62,7 @@ const mockPrisma = prisma as unknown as {
     delete: ReturnType<typeof vi.fn>;
     deleteMany: ReturnType<typeof vi.fn>;
   };
+  $transaction: ReturnType<typeof vi.fn>;
 };
 
 const mockHashPassword = vi.mocked(hashPassword);
@@ -72,8 +76,8 @@ const TEST_USER = {
   email: 'test@example.com',
   name: 'Test User',
   passwordHash: '$2b$12$hashedpw',
-  emailVerified: false,
-  emailVerifyToken: 'verify-token-123',
+  emailVerified: true,
+  emailVerifyToken: null,
 };
 
 describe('register', () => {
@@ -160,6 +164,11 @@ describe('login', () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
     const err = await login('nobody@example.com', 'pw').catch((e) => e);
     expect(err.message).toBe('Invalid email or password');
+  });
+
+  it('throws UnauthorizedError when email is not verified', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ ...TEST_USER, emailVerified: false });
+    await expect(login('test@example.com', 'correct-password')).rejects.toThrow(UnauthorizedError);
   });
 });
 
