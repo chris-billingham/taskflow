@@ -16,9 +16,12 @@ vi.mock('../../config/database.js', () => {
       delete: vi.fn(),
       deleteMany: vi.fn(),
     },
-    // Simulate $transaction by passing the same client to the callback
-    $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(mockPrismaClient)),
+    $transaction: vi.fn(),
   };
+  // Set after construction to avoid circular type-inference error
+  mockPrismaClient.$transaction.mockImplementation(
+    (fn: (tx: typeof mockPrismaClient) => unknown) => fn(mockPrismaClient),
+  );
   return { prisma: mockPrismaClient };
 });
 
