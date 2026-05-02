@@ -32,8 +32,8 @@ test.describe('Project Management', () => {
   });
 
   test('can navigate to a project', async ({ page }) => {
-    // Wait for projects to load, then click on Inbox in the sidebar
-    await expect(page.locator('aside').getByText('Inbox')).toBeVisible();
+    // Wait for projects to load (API can be slow in CI), then click on Inbox in the sidebar
+    await expect(page.locator('aside').getByText('Inbox')).toBeVisible({ timeout: 15000 });
     await page.locator('aside').getByText('Inbox').click();
 
     await expect(page).toHaveURL(/\/projects/);
@@ -44,7 +44,7 @@ test.describe('Project Management', () => {
     const taskName = `Project Task ${Date.now()}`;
 
     // Navigate to Inbox via sidebar
-    await expect(page.locator('aside').getByText('Inbox')).toBeVisible();
+    await expect(page.locator('aside').getByText('Inbox')).toBeVisible({ timeout: 15000 });
     await page.locator('aside').getByText('Inbox').click();
     await expect(page).toHaveURL(/\/projects/);
 
@@ -77,7 +77,8 @@ test.describe('Project Management', () => {
 
     // Edit name in the dialog
     const editDialog = page.getByRole('dialog');
-    const editInput = editDialog.getByDisplayValue(projectName);
+    const editInput = editDialog.getByLabel('Name');
+    await editInput.clear();
     await editInput.fill(newName);
     await editDialog.getByRole('button', { name: 'Save' }).click();
 

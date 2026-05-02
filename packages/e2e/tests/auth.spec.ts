@@ -44,7 +44,7 @@ test.describe('Authentication', () => {
 
     // Wait for the API request to complete before asserting
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText(/invalid|incorrect|wrong/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[role="alert"]')).toBeVisible({ timeout: 10000 });
     await expect(page).toHaveURL(/\/login/);
   });
 

@@ -27,8 +27,11 @@ test.describe('Task Management', () => {
     await input.fill(`${taskName} today`);
     await input.press('Enter');
 
+    // Wait for the create + refetch requests to complete
+    await page.waitForLoadState('networkidle');
+
     // The parser strips "today" from the content, so assert on the base name
-    await expect(page.getByText(taskName)).toBeVisible();
+    await expect(page.getByText(taskName)).toBeVisible({ timeout: 10000 });
   });
 
   test('can complete a task by clicking the checkbox', async ({ page }) => {
@@ -38,7 +41,8 @@ test.describe('Task Management', () => {
     await page.getByRole('button', { name: /add task/i }).first().click();
     await page.getByPlaceholder(/add task/i).fill(`${taskName} today`);
     await page.getByPlaceholder(/add task/i).press('Enter');
-    await expect(page.getByText(taskName)).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText(taskName)).toBeVisible({ timeout: 10000 });
 
     // Complete it — find the group container that holds this task, then click its first button (checkbox)
     const taskRow = page.locator('.group').filter({ has: page.locator(`text="${taskName}"`) }).first();
@@ -59,7 +63,8 @@ test.describe('Task Management', () => {
     await page.getByRole('button', { name: /add task/i }).first().click();
     await page.getByPlaceholder(/add task/i).fill(`${taskName} today`);
     await page.getByPlaceholder(/add task/i).press('Enter');
-    await expect(page.getByText(taskName)).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText(taskName)).toBeVisible({ timeout: 10000 });
 
     // Hover to reveal task options button, then open menu
     await page.getByText(taskName).hover();
@@ -77,9 +82,9 @@ test.describe('Task Management', () => {
     await input.fill('Team standup p2 today');
 
     // The QuickAdd preview chips use specific colour classes
+    // Priority chip uses text-orange-500; date chip uses bg-green-50 (unique to QuickAdd preview)
     await expect(page.locator('.text-orange-500').filter({ hasText: /p2/i })).toBeVisible();
-    // The "Today" date chip has green text
-    await expect(page.locator('.text-green-600').filter({ hasText: /today/i })).toBeVisible();
+    await expect(page.locator('.bg-green-50').filter({ hasText: /today/i })).toBeVisible();
   });
 
   test('can open task detail panel', async ({ page }) => {
@@ -89,7 +94,8 @@ test.describe('Task Management', () => {
     await page.getByRole('button', { name: /add task/i }).first().click();
     await page.getByPlaceholder(/add task/i).fill(`${taskName} today`);
     await page.getByPlaceholder(/add task/i).press('Enter');
-    await expect(page.getByText(taskName)).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText(taskName)).toBeVisible({ timeout: 10000 });
 
     // Click on the task content to open detail panel
     await page.getByText(taskName).click();

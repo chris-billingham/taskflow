@@ -39,6 +39,7 @@ export function Alert({
 
   return (
     <div
+      role="alert"
       className={`rounded-lg border p-4 flex items-start gap-3 ${styles[variant]} ${className}`}
     >
       <Icon
