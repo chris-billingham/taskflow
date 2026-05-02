@@ -14,7 +14,7 @@ vi.mock('@/services/api', () => ({
 import { useTaskStore } from '@/stores/taskStore';
 import api from '@/services/api';
 
-const mockApi = api as {
+const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>;
   post: ReturnType<typeof vi.fn>;
   patch: ReturnType<typeof vi.fn>;
@@ -122,7 +122,7 @@ describe('taskStore - createTask', () => {
     mockApi.post.mockResolvedValueOnce({ data: { data: SAMPLE_TASK } });
 
     const store = getStore();
-    let result: typeof SAMPLE_TASK | undefined;
+    let result: { id: string } | undefined;
     await act(async () => {
       result = await store.current.createTask({
         content: 'Sample task',

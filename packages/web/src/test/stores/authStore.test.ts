@@ -15,7 +15,7 @@ vi.mock('@/services/api', () => ({
 import { useAuthStore } from '@/stores/authStore';
 import api, { setAccessToken } from '@/services/api';
 
-const mockApi = api as {
+const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>;
   post: ReturnType<typeof vi.fn>;
 };
