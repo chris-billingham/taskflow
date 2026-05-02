@@ -17,8 +17,8 @@ test.describe('Project Management', () => {
   test('can create a new project', async ({ page }) => {
     const projectName = `E2E Project ${Date.now()}`;
 
-    // Click "Add project" button in sidebar (title attribute = accessible name)
-    await page.getByRole('button', { name: 'Add project' }).click();
+    // Use exact: true — without it, substring match also hits "Add team project"
+    await page.getByRole('button', { name: 'Add project', exact: true }).click();
 
     // Fill in project name inside the dialog
     const dialog = page.getByRole('dialog');
@@ -32,28 +32,49 @@ test.describe('Project Management', () => {
   });
 
   test('can navigate to a project', async ({ page }) => {
-    // Wait for projects to load (API can be slow in CI), then click on Inbox in the sidebar
-    await expect(page.locator('aside').getByText('Inbox')).toBeVisible({ timeout: 15000 });
-    await page.locator('aside').getByText('Inbox').click();
+    const projectName = `Nav Test ${Date.now()}`;
+
+    // Create a project so we have something to navigate to without relying on
+    // Inbox (which has workspaceId and only appears under Team Projects)
+    await page.getByRole('button', { name: 'Add project', exact: true }).click();
+    const createDialog = page.getByRole('dialog');
+    await createDialog.getByLabel('Name').fill(projectName);
+    await createDialog.getByRole('button', { name: 'Add' }).click();
+    await expect(page.locator('aside').getByText(projectName)).toBeVisible();
+
+    // Click the project name in the sidebar to navigate
+    await page.locator('aside').getByText(projectName).click();
 
     await expect(page).toHaveURL(/\/projects/);
-    await expect(page.getByText(/inbox/i).first()).toBeVisible();
+    await expect(page.getByText(projectName).first()).toBeVisible();
   });
 
   test('can add a task to a project', async ({ page }) => {
+    const projectName = `Task Project ${Date.now()}`;
     const taskName = `Project Task ${Date.now()}`;
 
-    // Navigate to Inbox via sidebar
-    await expect(page.locator('aside').getByText('Inbox')).toBeVisible({ timeout: 15000 });
-    await page.locator('aside').getByText('Inbox').click();
+    // Create a project to add the task to
+    await page.getByRole('button', { name: 'Add project', exact: true }).click();
+    const createDialog = page.getByRole('dialog');
+    await createDialog.getByLabel('Name').fill(projectName);
+    await createDialog.getByRole('button', { name: 'Add' }).click();
+    await expect(page.locator('aside').getByText(projectName)).toBeVisible();
+
+    // Navigate to the project
+    await page.locator('aside').getByText(projectName).click();
     await expect(page).toHaveURL(/\/projects/);
 
-    // Add task via QuickAdd
+    // Add task via QuickAdd — set up response watch before pressing Enter
     await page.getByRole('button', { name: /add task/i }).first().click();
     await page.getByPlaceholder(/add task/i).fill(taskName);
-    await page.getByPlaceholder(/add task/i).press('Enter');
 
-    await page.waitForLoadState('networkidle');
+    const createDone = page.waitForResponse(
+      (resp) => resp.url().includes('/tasks') && resp.request().method() === 'POST',
+      { timeout: 15000 },
+    );
+    await page.getByPlaceholder(/add task/i).press('Enter');
+    await createDone;
+
     await expect(page.getByText(taskName)).toBeVisible({ timeout: 10000 });
   });
 
@@ -62,7 +83,7 @@ test.describe('Project Management', () => {
     const newName = `Renamed ${Date.now()}`;
 
     // Create project first
-    await page.getByRole('button', { name: 'Add project' }).click();
+    await page.getByRole('button', { name: 'Add project', exact: true }).click();
     const createDialog = page.getByRole('dialog');
     await createDialog.getByLabel('Name').fill(projectName);
     await createDialog.getByRole('button', { name: 'Add' }).click();

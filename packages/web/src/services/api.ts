@@ -55,8 +55,13 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     const isRefreshRequest = originalRequest.url?.includes('/auth/refresh');
+    // Don't attempt token refresh for auth endpoints — a 401 there means bad
+    // credentials, not an expired session.
+    const isAuthEndpoint =
+      originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/register');
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
