@@ -229,6 +229,7 @@ export function TaskItem({
           <div className="relative" ref={menuRef}>
             <button
               className="p-1.5 rounded hover:bg-gray-200"
+              title="Task options"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);

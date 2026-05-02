@@ -93,7 +93,7 @@ export function TaskDetail({
       <div className="fixed inset-0 z-40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-xl z-50 flex flex-col border-l border-gray-200 animate-in slide-in-from-right duration-200">
+      <div role="dialog" aria-modal="true" aria-label="Task detail" className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-xl z-50 flex flex-col border-l border-gray-200 animate-in slide-in-from-right duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <div className="flex items-center gap-2">

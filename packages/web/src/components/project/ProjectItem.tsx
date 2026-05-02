@@ -76,6 +76,7 @@ export function ProjectItem({
         <div className="relative flex-shrink-0">
           <button
             className="w-6 h-6 items-center justify-center rounded hover:bg-gray-200 hidden group-hover:flex"
+            title="Project options"
             onClick={(e) => {
               e.stopPropagation();
               setShowMenu(!showMenu);

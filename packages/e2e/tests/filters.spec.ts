@@ -17,49 +17,52 @@ test.describe('Filter Management', () => {
   test('can create a filter with priority query', async ({ page }) => {
     const filterName = `High Priority ${Date.now()}`;
 
-    // Navigate to filters section
-    await page.getByRole('button', { name: /add filter|new filter/i }).click();
+    // Navigate to Filters & Labels page
+    await page.goto('/filters-labels');
+    await expect(page.getByText('Filters & Labels')).toBeVisible();
+
+    // Open create form
+    await page.getByRole('button', { name: /add filter/i }).click();
 
     // Fill in filter details
-    const nameInput = page.getByLabel(/filter name|name/i);
-    await nameInput.fill(filterName);
+    await page.getByPlaceholder('Filter name').fill(filterName);
+    await page.getByPlaceholder(/filter query/i).fill('p1 | p2');
 
-    const queryInput = page.getByLabel(/query|filter expression/i)
-      .or(page.getByPlaceholder(/p1.*today|filter query/i));
-    await queryInput.fill('p1 | p2');
-
-    await page.getByRole('button', { name: /save|create/i }).click();
+    // Submit — scope to the create form to avoid hitting list "Add" buttons
+    await page.getByRole('button', { name: 'Add' }).first().click();
 
     await expect(page.getByText(filterName)).toBeVisible();
   });
 
   test('can view filter results', async ({ page }) => {
-    // Navigate to a filter view or filters page
-    await page.getByRole('link', { name: /filters/i }).click();
-    await expect(page).toHaveURL(/\/filters/);
+    // Navigate to filters & labels page via direct route
+    await page.goto('/filters-labels');
+    await expect(page).toHaveURL(/\/filters-labels/);
+    await expect(page.getByText('Filters & Labels')).toBeVisible();
   });
 
   test('filter query shows validation error for invalid syntax', async ({ page }) => {
-    await page.getByRole('button', { name: /add filter|new filter/i }).click();
+    await page.goto('/filters-labels');
 
-    const queryInput = page.getByLabel(/query|filter expression/i)
-      .or(page.getByPlaceholder(/filter query/i));
-    await queryInput.fill('p1 &');
+    await page.getByRole('button', { name: /add filter/i }).click();
+    await page.getByPlaceholder(/filter query/i).fill('p1 &');
 
-    // Should show a validation error
-    await expect(page.getByText(/invalid|error|cannot end/i)).toBeVisible({ timeout: 2000 })
-      .catch(() => {
-        // Validation may happen on submit
-        page.getByRole('button', { name: /save|create/i }).click();
-      });
+    // Attempt to submit — the Add button should be disabled due to invalid query,
+    // or a validation error message should appear
+    const addBtn = page.getByRole('button', { name: 'Add' }).first();
+    await expect(addBtn).toBeDisabled({ timeout: 3000 }).catch(async () => {
+      // If the button is not disabled, clicking it should show an error
+      await addBtn.click();
+      await expect(page.getByText(/invalid|error/i)).toBeVisible({ timeout: 3000 });
+    });
   });
 
   test('today filter shows only tasks due today', async ({ page }) => {
-    // Navigate to the built-in Today view
-    await page.getByRole('link', { name: /today/i }).click();
+    // Navigate to the Today view — the sidebar nav item is a button, not a link
+    await page.goto('/today');
     await expect(page).toHaveURL(/\/today/);
 
-    // The Today view should be visible
-    await expect(page.getByText(/today/i).first()).toBeVisible();
+    // The Today view header should be visible
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   });
 });

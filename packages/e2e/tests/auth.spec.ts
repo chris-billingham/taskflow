@@ -42,7 +42,9 @@ test.describe('Authentication', () => {
     await page.getByLabel('Password').fill('wrong-password');
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
-    await expect(page.getByText(/invalid|incorrect|wrong/i)).toBeVisible();
+    // Wait for the API request to complete before asserting
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText(/invalid|incorrect|wrong/i)).toBeVisible({ timeout: 10000 });
     await expect(page).toHaveURL(/\/login/);
   });
 
@@ -53,7 +55,9 @@ test.describe('Authentication', () => {
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     await expect(page).toHaveURL(/\/(today|inbox|app)/);
 
-    await page.getByRole('button', { name: /logout|sign out/i }).click();
+    // The logout button is inside the user menu popup — open it first
+    await page.getByRole('button').filter({ hasText: TEST_USER.name }).click();
+    await page.getByRole('button', { name: 'Log out' }).click();
     await expect(page).toHaveURL(/\/login/);
   });
 

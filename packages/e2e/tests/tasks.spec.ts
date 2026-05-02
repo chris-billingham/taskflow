@@ -15,18 +15,19 @@ test.describe('Task Management', () => {
   });
 
   test('can create a task using quick add', async ({ page }) => {
+    // Use a unique base name; append "today" so the task appears in Today view
     const taskName = `E2E Task ${Date.now()}`;
 
     await page.goto('/today');
 
-    // Click the "Add task" button
     await page.getByRole('button', { name: /add task/i }).first().click();
 
-    // Type task name and submit
     const input = page.getByPlaceholder(/add task/i);
-    await input.fill(taskName);
+    // Include "today" so the API sets dueDate=today → task appears in Today view
+    await input.fill(`${taskName} today`);
     await input.press('Enter');
 
+    // The parser strips "today" from the content, so assert on the base name
     await expect(page.getByText(taskName)).toBeVisible();
   });
 
@@ -34,18 +35,16 @@ test.describe('Task Management', () => {
     const taskName = `Complete Me ${Date.now()}`;
     await page.goto('/today');
 
-    // Create the task first
     await page.getByRole('button', { name: /add task/i }).first().click();
-    await page.getByPlaceholder(/add task/i).fill(taskName);
+    await page.getByPlaceholder(/add task/i).fill(`${taskName} today`);
     await page.getByPlaceholder(/add task/i).press('Enter');
     await expect(page.getByText(taskName)).toBeVisible();
 
-    // Complete it
-    const taskRow = page.locator(`text="${taskName}"`).locator('..');
+    // Complete it — find the group container that holds this task, then click its first button (checkbox)
+    const taskRow = page.locator('.group').filter({ has: page.locator(`text="${taskName}"`) }).first();
     await taskRow.getByRole('button').first().click();
 
     // Task should become visually completed (opacity change, strikethrough, or removed from list)
-    // The exact behavior depends on the view, but the task should no longer appear as active
     await expect(page.getByText(taskName)).toHaveClass(/opacity|line-through|completed/, {
       timeout: 3000,
     }).catch(() => {
@@ -57,16 +56,15 @@ test.describe('Task Management', () => {
     const taskName = `Delete Me ${Date.now()}`;
     await page.goto('/today');
 
-    // Create a task
     await page.getByRole('button', { name: /add task/i }).first().click();
-    await page.getByPlaceholder(/add task/i).fill(taskName);
+    await page.getByPlaceholder(/add task/i).fill(`${taskName} today`);
     await page.getByPlaceholder(/add task/i).press('Enter');
     await expect(page.getByText(taskName)).toBeVisible();
 
-    // Hover to show the options menu
+    // Hover to reveal task options button, then open menu
     await page.getByText(taskName).hover();
-    await page.getByRole('button', { name: /more|options|\.\.\./i }).last().click();
-    await page.getByRole('menuitem', { name: /delete/i }).click();
+    await page.getByRole('button', { name: 'Task options' }).click();
+    await page.getByRole('button', { name: /delete/i }).click();
 
     await expect(page.getByText(taskName)).not.toBeVisible({ timeout: 3000 });
   });
@@ -78,9 +76,10 @@ test.describe('Task Management', () => {
     const input = page.getByPlaceholder(/add task/i);
     await input.fill('Team standup p2 today');
 
-    // Preview should show priority and date
-    await expect(page.getByText(/p2/i)).toBeVisible();
-    await expect(page.getByText(/today/i)).toBeVisible();
+    // The QuickAdd preview chips use specific colour classes
+    await expect(page.locator('.text-orange-500').filter({ hasText: /p2/i })).toBeVisible();
+    // The "Today" date chip has green text
+    await expect(page.locator('.text-green-600').filter({ hasText: /today/i })).toBeVisible();
   });
 
   test('can open task detail panel', async ({ page }) => {
@@ -88,14 +87,13 @@ test.describe('Task Management', () => {
     await page.goto('/today');
 
     await page.getByRole('button', { name: /add task/i }).first().click();
-    await page.getByPlaceholder(/add task/i).fill(taskName);
+    await page.getByPlaceholder(/add task/i).fill(`${taskName} today`);
     await page.getByPlaceholder(/add task/i).press('Enter');
     await expect(page.getByText(taskName)).toBeVisible();
 
-    // Click on the task content to open detail
+    // Click on the task content to open detail panel
     await page.getByText(taskName).click();
 
-    // Detail panel should appear
     await expect(page.getByRole('dialog').or(page.locator('[data-testid="task-detail"]'))).toBeVisible({
       timeout: 3000,
     });

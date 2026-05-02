@@ -87,7 +87,7 @@ export function EditProjectModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+      <div role="dialog" aria-modal="true" aria-label="Edit project" className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Edit project</h2>
           <button
