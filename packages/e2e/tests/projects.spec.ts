@@ -9,6 +9,24 @@ async function loginAsTestUser(page: Page) {
   await expect(page).toHaveURL(/\/(today|inbox|app)/);
 }
 
+/**
+ * Creates a project and waits for the dialog to fully close before returning.
+ * Necessary because the modal's "Parent project" <select> adds an <option> for
+ * every project in the store — if we assert on sidebar text while the modal is
+ * still in the DOM, getByText finds both the sidebar span and the option element,
+ * causing a strict-mode violation.
+ */
+async function createProject(page: Page, projectName: string) {
+  await page.getByRole('button', { name: 'Add project', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Name').fill(projectName);
+  await dialog.getByRole('button', { name: 'Add' }).click();
+  // Wait for dialog to close before the select option disappears
+  await expect(dialog).not.toBeVisible({ timeout: 5000 });
+  // Now only the sidebar span remains
+  await expect(page.locator('aside').getByText(projectName)).toBeVisible({ timeout: 5000 });
+}
+
 test.describe('Project Management', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsTestUser(page);
@@ -16,31 +34,14 @@ test.describe('Project Management', () => {
 
   test('can create a new project', async ({ page }) => {
     const projectName = `E2E Project ${Date.now()}`;
-
-    // Use exact: true — without it, substring match also hits "Add team project"
-    await page.getByRole('button', { name: 'Add project', exact: true }).click();
-
-    // Fill in project name inside the dialog
-    const dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Name').fill(projectName);
-
-    // Click the submit button scoped within the dialog
-    await dialog.getByRole('button', { name: 'Add' }).click();
-
-    // Project should appear in the sidebar
-    await expect(page.locator('aside').getByText(projectName)).toBeVisible();
+    await createProject(page, projectName);
   });
 
   test('can navigate to a project', async ({ page }) => {
     const projectName = `Nav Test ${Date.now()}`;
 
-    // Create a project so we have something to navigate to without relying on
-    // Inbox (which has workspaceId and only appears under Team Projects)
-    await page.getByRole('button', { name: 'Add project', exact: true }).click();
-    const createDialog = page.getByRole('dialog');
-    await createDialog.getByLabel('Name').fill(projectName);
-    await createDialog.getByRole('button', { name: 'Add' }).click();
-    await expect(page.locator('aside').getByText(projectName)).toBeVisible();
+    // Create a project (Inbox has workspaceId so lives in teamTree, not personalTree)
+    await createProject(page, projectName);
 
     // Click the project name in the sidebar to navigate
     await page.locator('aside').getByText(projectName).click();
@@ -53,18 +54,13 @@ test.describe('Project Management', () => {
     const projectName = `Task Project ${Date.now()}`;
     const taskName = `Project Task ${Date.now()}`;
 
-    // Create a project to add the task to
-    await page.getByRole('button', { name: 'Add project', exact: true }).click();
-    const createDialog = page.getByRole('dialog');
-    await createDialog.getByLabel('Name').fill(projectName);
-    await createDialog.getByRole('button', { name: 'Add' }).click();
-    await expect(page.locator('aside').getByText(projectName)).toBeVisible();
+    await createProject(page, projectName);
 
     // Navigate to the project
     await page.locator('aside').getByText(projectName).click();
     await expect(page).toHaveURL(/\/projects/);
 
-    // Add task via QuickAdd — set up response watch before pressing Enter
+    // Set up response watch before pressing Enter
     await page.getByRole('button', { name: /add task/i }).first().click();
     await page.getByPlaceholder(/add task/i).fill(taskName);
 
@@ -82,12 +78,7 @@ test.describe('Project Management', () => {
     const projectName = `Rename Me ${Date.now()}`;
     const newName = `Renamed ${Date.now()}`;
 
-    // Create project first
-    await page.getByRole('button', { name: 'Add project', exact: true }).click();
-    const createDialog = page.getByRole('dialog');
-    await createDialog.getByLabel('Name').fill(projectName);
-    await createDialog.getByRole('button', { name: 'Add' }).click();
-    await expect(page.locator('aside').getByText(projectName)).toBeVisible();
+    await createProject(page, projectName);
 
     // Hover to reveal the options button, then open the project menu
     const projectItem = page.locator('aside').getByText(projectName);
