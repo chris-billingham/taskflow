@@ -42,7 +42,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/login', {
     config: {
-      rateLimit: { max: 5, timeWindow: '15 minutes' },
+      rateLimit: { max: env.NODE_ENV === 'production' ? 5 : 1000, timeWindow: '15 minutes' },
     },
   }, async (request, reply) => {
     const result = loginSchema.safeParse(request.body);
@@ -81,7 +81,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/forgot-password', {
     config: {
-      rateLimit: { max: 3, timeWindow: '1 hour' },
+      rateLimit: { max: env.NODE_ENV === 'production' ? 3 : 1000, timeWindow: '1 hour' },
     },
   }, async (request, reply) => {
     const result = forgotPasswordSchema.safeParse(request.body);
@@ -95,7 +95,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/reset-password', {
     config: {
-      rateLimit: { max: 5, timeWindow: '1 hour' },
+      rateLimit: { max: env.NODE_ENV === 'production' ? 5 : 1000, timeWindow: '1 hour' },
     },
   }, async (request, reply) => {
     const result = resetPasswordSchema.safeParse(request.body);
@@ -122,7 +122,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/resend-verification', {
     config: {
-      rateLimit: { max: 3, timeWindow: '1 hour' },
+      rateLimit: { max: env.NODE_ENV === 'production' ? 3 : 1000, timeWindow: '1 hour' },
     },
   }, async (request, reply) => {
     const result = forgotPasswordSchema.safeParse(request.body);

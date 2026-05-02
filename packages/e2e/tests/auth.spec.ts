@@ -2,10 +2,9 @@ import { test, expect, type Page } from '@playwright/test';
 import { TEST_USER } from '../global-setup';
 
 async function clearAuthState(page: Page) {
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-  });
+  // Use clearCookies — safe to call before any navigation.
+  // page.evaluate(() => localStorage.clear()) throws SecurityError on about:blank.
+  await page.context().clearCookies();
 }
 
 test.describe('Authentication', () => {
@@ -17,19 +16,21 @@ test.describe('Authentication', () => {
     const uniqueEmail = `e2e-${Date.now()}@taskflow.test`;
 
     await page.goto('/register');
-    await page.getByLabel(/name/i).fill('New E2E User');
-    await page.getByLabel(/email/i).fill(uniqueEmail);
-    await page.getByLabel(/password/i).fill('SecurePass123!');
-    await page.getByRole('button', { name: /sign up|register/i }).click();
+    await page.getByLabel('Name').fill('New E2E User');
+    await page.getByLabel('Email').fill(uniqueEmail);
+    // Use exact match to avoid hitting both "Password" and "Confirm password"
+    await page.getByLabel('Password', { exact: true }).fill('SecurePass123!');
+    await page.getByLabel('Confirm password').fill('SecurePass123!');
+    await page.getByLabel(/terms/i).check();
+    await page.getByRole('button', { name: /create account|sign up|register/i }).click();
 
-    // Should redirect to app after successful registration
     await expect(page).toHaveURL(/\/(today|inbox|app)/);
   });
 
   test('user can log in with valid credentials', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill(TEST_USER.email);
-    await page.getByLabel(/password/i).fill(TEST_USER.password);
+    await page.getByLabel('Email').fill(TEST_USER.email);
+    await page.getByLabel('Password').fill(TEST_USER.password);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     await expect(page).toHaveURL(/\/(today|inbox|app)/);
@@ -37,8 +38,8 @@ test.describe('Authentication', () => {
 
   test('shows error for invalid credentials', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill(TEST_USER.email);
-    await page.getByLabel(/password/i).fill('wrong-password');
+    await page.getByLabel('Email').fill(TEST_USER.email);
+    await page.getByLabel('Password').fill('wrong-password');
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     await expect(page.getByText(/invalid|incorrect|wrong/i)).toBeVisible();
@@ -46,14 +47,12 @@ test.describe('Authentication', () => {
   });
 
   test('user can log out', async ({ page }) => {
-    // Login first
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill(TEST_USER.email);
-    await page.getByLabel(/password/i).fill(TEST_USER.password);
+    await page.getByLabel('Email').fill(TEST_USER.email);
+    await page.getByLabel('Password').fill(TEST_USER.password);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     await expect(page).toHaveURL(/\/(today|inbox|app)/);
 
-    // Logout
     await page.getByRole('button', { name: /logout|sign out/i }).click();
     await expect(page).toHaveURL(/\/login/);
   });
@@ -65,10 +64,12 @@ test.describe('Authentication', () => {
 
   test('registration shows error for duplicate email', async ({ page }) => {
     await page.goto('/register');
-    await page.getByLabel(/name/i).fill(TEST_USER.name);
-    await page.getByLabel(/email/i).fill(TEST_USER.email);
-    await page.getByLabel(/password/i).fill(TEST_USER.password);
-    await page.getByRole('button', { name: /sign up|register/i }).click();
+    await page.getByLabel('Name').fill(TEST_USER.name);
+    await page.getByLabel('Email').fill(TEST_USER.email);
+    await page.getByLabel('Password', { exact: true }).fill(TEST_USER.password);
+    await page.getByLabel('Confirm password').fill(TEST_USER.password);
+    await page.getByLabel(/terms/i).check();
+    await page.getByRole('button', { name: /create account|sign up|register/i }).click();
 
     await expect(page.getByText(/already exists|already registered/i)).toBeVisible();
   });

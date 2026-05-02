@@ -150,7 +150,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: e2e-test-jwt-secret-value-at-least-32-chars
           JWT_REFRESH_SECRET: e2e-test-refresh-secret-must-be-32-chars!!
-          NODE_ENV: production
+          NODE_ENV: test
           API_PORT: 3001
 
       - name: Wait for API to be ready

@@ -10,13 +10,18 @@ export const TEST_USER = {
 
 async function globalSetup() {
   const api = await request.newContext({ baseURL: API_URL });
-
-  // Try to register the test user (ignore conflict if already exists)
-  await api.post('/api/v1/auth/register', {
-    data: TEST_USER,
-  });
-
-  await api.dispose();
+  try {
+    const response = await api.post('/api/v1/auth/register', {
+      data: TEST_USER,
+    });
+    // 201 = created, 409 = already exists from an interrupted previous run — both are fine
+    if (!response.ok() && response.status() !== 409) {
+      const body = await response.text();
+      throw new Error(`Failed to seed test user: HTTP ${response.status()} — ${body}`);
+    }
+  } finally {
+    await api.dispose();
+  }
 }
 
 export default globalSetup;
