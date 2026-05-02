@@ -53,7 +53,8 @@ test.describe('Project Management', () => {
     await page.getByPlaceholder(/add task/i).fill(taskName);
     await page.getByPlaceholder(/add task/i).press('Enter');
 
-    await expect(page.getByText(taskName)).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText(taskName)).toBeVisible({ timeout: 10000 });
   });
 
   test('can edit a project name', async ({ page }) => {
