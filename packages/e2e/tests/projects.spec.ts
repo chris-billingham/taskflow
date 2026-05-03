@@ -56,15 +56,19 @@ test.describe('Project Management', () => {
 
     await createProject(page, projectName);
 
-    // Navigate to the project and wait for the initial tasks fetch to complete
-    // before interacting. In CI (production build, no StrictMode), the mount
-    // GET for this project fires immediately on load. If we create a task
-    // before that GET resolves, its response (empty — no tasks yet) arrives
-    // after the optimistic update and silently wipes the new task from the
-    // store. networkidle guarantees the GET is done first.
+    // Set up the listener BEFORE navigation so we don't miss the mount GET.
+    // In CI (production build, no StrictMode) the GET fires immediately on
+    // load. We must wait for it to settle before adding a task — otherwise
+    // its empty response arrives after the optimistic update and wipes the
+    // new task from the store. We cannot use networkidle because the app
+    // holds a persistent real-time sync connection.
+    const initialTasksFetch = page.waitForResponse(
+      (resp) => resp.url().includes('/tasks') && resp.request().method() === 'GET',
+      { timeout: 10000 },
+    );
     await page.locator('aside').getByText(projectName).click();
     await expect(page).toHaveURL(/\/projects/);
-    await page.waitForLoadState('networkidle');
+    await initialTasksFetch;
 
     await page.getByRole('button', { name: /add task/i }).first().click();
     await page.getByPlaceholder(/add task/i).fill(taskName);
