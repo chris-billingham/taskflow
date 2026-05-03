@@ -68,7 +68,9 @@ test.describe('Task Management', () => {
     const taskRow = page.getByRole('button', { name: new RegExp(taskName) });
     await taskRow.hover();
     await taskRow.getByRole('button', { name: 'Task options' }).click();
-    await page.getByRole('button', { name: /delete/i }).click();
+    // Use exact match: the open dropdown causes the task row's accessible name to
+    // include "Delete", so /delete/i matches both the row and the menu item.
+    await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
     await expect(page.getByText(taskName)).not.toBeVisible({ timeout: 5000 });
   });
