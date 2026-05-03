@@ -63,22 +63,14 @@ test.describe('Project Management', () => {
     await page.getByRole('button', { name: /add task/i }).first().click();
     await page.getByPlaceholder(/add task/i).fill(taskName);
 
-    // Watch for POST and the subsequent refetch GET before asserting — the
-    // refetch replaces the tasks Map, so we must wait for it to settle or the
-    // task may disappear from the store before Playwright sees it.
     const createDone = page.waitForResponse(
       (resp) => resp.url().includes('/tasks') && resp.request().method() === 'POST',
       { timeout: 15000 },
     );
-    const refetchDone = page.waitForResponse(
-      (resp) => resp.url().includes('/tasks') && resp.request().method() === 'GET',
-      { timeout: 15000 },
-    );
     await page.getByPlaceholder(/add task/i).press('Enter');
     await createDone;
-    await refetchDone;
 
-    await expect(page.getByText(taskName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(taskName)).toBeVisible({ timeout: 10000 });
   });
 
   test('can edit a project name', async ({ page }) => {

@@ -109,7 +109,6 @@ export default function Project() {
 
   const handleQuickAdd = async (text: string) => {
     await quickAddTask(text, project.id);
-    refetchTasks();
   };
 
   const handleComplete = async (taskId: string) => {
