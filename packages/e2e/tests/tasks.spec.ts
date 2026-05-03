@@ -62,9 +62,12 @@ test.describe('Task Management', () => {
     await page.goto('/today');
     await quickAddToday(page, taskName);
 
-    // Hover to reveal task options button, then open menu
-    await page.getByText(taskName).hover();
-    await page.getByRole('button', { name: 'Task options' }).click();
+    // Hover the task's own row button (which contains "Task options" as a child),
+    // then scope the click to that row to avoid strict-mode violations when
+    // multiple tasks are visible on the page.
+    const taskRow = page.getByRole('button', { name: new RegExp(taskName) });
+    await taskRow.hover();
+    await taskRow.getByRole('button', { name: 'Task options' }).click();
     await page.getByRole('button', { name: /delete/i }).click();
 
     await expect(page.getByText(taskName)).not.toBeVisible({ timeout: 5000 });
