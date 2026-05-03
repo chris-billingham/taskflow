@@ -70,14 +70,17 @@ test.describe('Project Management', () => {
     await expect(page).toHaveURL(/\/projects/);
     await initialTasksFetch;
 
-    await page.getByRole('button', { name: /add task/i }).first().click();
-    await page.getByPlaceholder(/add task/i).fill(taskName);
+    // Scope to main to avoid matching the floating "Quick add task (Q)" button,
+    // whose title also matches /add task/i and appears earlier in the DOM.
+    const main = page.locator('main');
+    await main.getByRole('button', { name: /add task/i }).first().click();
+    await main.getByPlaceholder(/add task/i).fill(taskName);
 
     const createDone = page.waitForResponse(
       (resp) => resp.url().includes('/tasks') && resp.request().method() === 'POST',
       { timeout: 15000 },
     );
-    await page.getByPlaceholder(/add task/i).press('Enter');
+    await main.getByPlaceholder(/add task/i).press('Enter');
     await createDone;
 
     await expect(page.getByText(taskName)).toBeVisible({ timeout: 10000 });
