@@ -10,8 +10,11 @@ async function loginAsTestUser(page: Page) {
 }
 
 async function quickAddToday(page: Page, taskName: string) {
-  await page.getByRole('button', { name: /add task/i }).first().click();
-  const input = page.getByPlaceholder(/add task/i);
+  // Scope to main to avoid matching the floating "Quick add task (Q)" button,
+  // whose title also matches /add task/i and appears earlier in the DOM.
+  const main = page.locator('main');
+  await main.getByRole('button', { name: /add task/i }).first().click();
+  const input = main.getByPlaceholder(/add task/i);
   await input.fill(`${taskName} today`);
 
   // Watch for the POST before pressing Enter so we don't miss it
@@ -70,8 +73,9 @@ test.describe('Task Management', () => {
   test('can use quick-add natural language parsing', async ({ page }) => {
     await page.goto('/today');
 
-    await page.getByRole('button', { name: /add task/i }).first().click();
-    const input = page.getByPlaceholder(/add task/i);
+    const main = page.locator('main');
+    await main.getByRole('button', { name: /add task/i }).first().click();
+    const input = main.getByPlaceholder(/add task/i);
     await input.fill('Team standup p2 today');
 
     // Priority chip: text-orange-500 (unique to QuickAdd preview chips)
