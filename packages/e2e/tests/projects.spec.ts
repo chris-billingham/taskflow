@@ -56,9 +56,15 @@ test.describe('Project Management', () => {
 
     await createProject(page, projectName);
 
-    // Navigate to the project
+    // Navigate to the project and wait for the initial tasks fetch to complete
+    // before interacting. In CI (production build, no StrictMode), the mount
+    // GET for this project fires immediately on load. If we create a task
+    // before that GET resolves, its response (empty — no tasks yet) arrives
+    // after the optimistic update and silently wipes the new task from the
+    // store. networkidle guarantees the GET is done first.
     await page.locator('aside').getByText(projectName).click();
     await expect(page).toHaveURL(/\/projects/);
+    await page.waitForLoadState('networkidle');
 
     await page.getByRole('button', { name: /add task/i }).first().click();
     await page.getByPlaceholder(/add task/i).fill(taskName);
