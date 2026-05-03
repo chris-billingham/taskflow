@@ -133,6 +133,10 @@ interface TaskState {
   rescheduleTask: (id: string, newDate: string) => Promise<Task>;
 }
 
+let fetchTasksSeq = 0;
+let fetchTodayViewSeq = 0;
+let fetchUpcomingViewSeq = 0;
+
 export const useTaskStore = create<TaskState>()((set, get) => ({
   tasks: new Map(),
   loading: false,
@@ -142,6 +146,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
   viewLoading: false,
 
   fetchTasks: async (query) => {
+    const seq = ++fetchTasksSeq;
     set({ loading: true, error: null });
     try {
       const params = new URLSearchParams();
@@ -151,6 +156,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         });
       }
       const { data } = await api.get(`/tasks?${params.toString()}`);
+      if (seq !== fetchTasksSeq) return;
       const tasks = new Map<string, Task>();
       for (const t of data.data) {
         tasks.set(t.id, t);
@@ -164,6 +170,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       }
       set({ tasks, loading: false });
     } catch (err: any) {
+      if (seq !== fetchTasksSeq) return;
       set({
         error: err.response?.data?.message || 'Failed to fetch tasks',
         loading: false,
@@ -409,9 +416,11 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
   },
 
   fetchTodayView: async () => {
+    const seq = ++fetchTodayViewSeq;
     set({ viewLoading: true, error: null });
     try {
       const { data } = await api.get('/views/today');
+      if (seq !== fetchTodayViewSeq) return;
       const viewData = data.data as TodayViewData;
       // Merge all tasks into the main map
       set((state) => {
@@ -434,6 +443,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         return { tasks, todayView: viewData, viewLoading: false };
       });
     } catch (err: any) {
+      if (seq !== fetchTodayViewSeq) return;
       set({
         error: err.response?.data?.message || 'Failed to fetch today view',
         viewLoading: false,
@@ -442,6 +452,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
   },
 
   fetchUpcomingView: async (days = 14, includeNoDate = true) => {
+    const seq = ++fetchUpcomingViewSeq;
     set({ viewLoading: true, error: null });
     try {
       const params = new URLSearchParams({
@@ -449,6 +460,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         includeNoDate: includeNoDate ? 'true' : 'false',
       });
       const { data } = await api.get(`/views/upcoming?${params.toString()}`);
+      if (seq !== fetchUpcomingViewSeq) return;
       const viewData = data.data as UpcomingViewData;
       // Merge all tasks into the main map
       set((state) => {
@@ -469,6 +481,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         return { tasks, upcomingView: viewData, viewLoading: false };
       });
     } catch (err: any) {
+      if (seq !== fetchUpcomingViewSeq) return;
       set({
         error: err.response?.data?.message || 'Failed to fetch upcoming view',
         viewLoading: false,

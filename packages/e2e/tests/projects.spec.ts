@@ -86,7 +86,7 @@ test.describe('Project Management', () => {
     await page.getByRole('button', { name: 'Project options' }).click();
 
     // Click "Edit project" in the dropdown
-    await page.getByRole('button', { name: 'Edit project' }).click();
+    await page.getByRole('button', { name: 'Edit project', exact: true }).click();
 
     // Edit name in the dialog
     const editDialog = page.getByRole('dialog');
