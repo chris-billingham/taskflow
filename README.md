@@ -87,14 +87,14 @@ pnpm --filter @taskflow/api db:migrate
 pnpm dev
 ```
 
-- **Web app**: http://localhost:5173
+- **Web app**: http://localhost:31779
 - **API**: http://localhost:3001
 - **API Docs**: http://localhost:3001/api/docs
 - **Health check**: http://localhost:3001/health
 
 ### 6. Register your account
 
-Open http://localhost:5173/register and create your first user.
+Open http://localhost:31779/register and create your first user.
 
 ## Production Deployment
 

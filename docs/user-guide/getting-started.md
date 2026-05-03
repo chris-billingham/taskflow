@@ -2,7 +2,7 @@
 
 ## Creating Your Account
 
-1. Open Taskflow in your browser (default: http://localhost:5173)
+1. Open Taskflow in your browser (default: http://localhost:31779)
 2. Click **Register** and enter your name, email, and a password (8+ characters)
 3. You'll be taken directly to your **Today** view
 

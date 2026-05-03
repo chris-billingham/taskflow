@@ -31,7 +31,7 @@ pnpm dev
 ```
 
 URLs:
-- Web: http://localhost:5173
+- Web: http://localhost:31779
 - API: http://localhost:3001
 - API docs: http://localhost:3001/api/docs
 - Prisma Studio: `pnpm --filter @taskflow/api db:studio` → http://localhost:5555
