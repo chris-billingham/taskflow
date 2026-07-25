@@ -147,7 +147,11 @@ model Workspace {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  owner   User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  // Restrict: a user cannot be deleted while they still own a workspace —
+  // cascading here destroyed every member's projects/tasks/comments.
+  // deleteUser() removes sole-member workspaces first and requires ownership
+  // transfer for shared ones.
+  owner   User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   members WorkspaceMember[]
   invites WorkspaceInvite[]
   projects Project[]
@@ -276,7 +280,9 @@ model Task {
   projectId      String
   sectionId      String?
   parentId       String?
-  creatorId      String
+  // Nullable: tasks outlive their creator (SetNull) — cascading here deleted
+  // team tasks from shared projects when their creator left.
+  creatorId      String?
   assigneeId     String?
   dueDate        DateTime?
   dueTime        String?   // HH:mm format
@@ -295,7 +301,7 @@ model Task {
   section    Section?    @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   parent     Task?       @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: Cascade)
   subtasks   Task[]      @relation("TaskSubtasks")
-  creator    User        @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  creator    User?       @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   assignee   User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   taskLabels TaskLabel[]
   comments   Comment[]   @relation("TaskComments")

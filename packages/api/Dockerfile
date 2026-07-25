@@ -23,7 +23,11 @@ RUN pnpm --filter @taskflow/shared build
 RUN pnpm --filter @taskflow/api exec prisma generate
 RUN pnpm --filter @taskflow/api build
 
-# Create self-contained deployment directory with prod deps only
+# Create self-contained deployment directory with prod deps only.
+# NOTE: `prisma` (the CLI) is deliberately a prod dependency so it survives
+# this pruning — install/upgrade run `npx prisma migrate deploy` inside this
+# image, and without a local install npx would download WHATEVER the latest
+# Prisma major is from npmjs.org at migration time (or die without egress).
 RUN pnpm deploy --filter @taskflow/api --prod /build/deploy
 
 # Overlay compiled output

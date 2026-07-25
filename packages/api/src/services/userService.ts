@@ -1,6 +1,6 @@
 import { prisma } from '../config/database.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
-import { NotFoundError, UnauthorizedError } from '../errors/index.js';
+import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/index.js';
 
 export async function getUserById(id: string) {
   const user = await prisma.user.findUnique({
@@ -107,7 +107,41 @@ export async function deleteUser(id: string) {
     throw new NotFoundError('User not found');
   }
 
-  await prisma.user.delete({ where: { id } });
+  // Workspaces this user owns, and whether anyone else is a member of them.
+  const ownedWorkspaces = await prisma.workspace.findMany({
+    where: { ownerId: id },
+    select: {
+      id: true,
+      name: true,
+      members: {
+        where: { userId: { not: id } },
+        select: { userId: true },
+        take: 1,
+      },
+    },
+  });
+
+  // A workspace with other members is the team's data, not the leaver's —
+  // deleting the account must not take it down. Ownership has to move first.
+  const sharedWorkspaces = ownedWorkspaces.filter((w) => w.members.length > 0);
+  if (sharedWorkspaces.length > 0) {
+    const names = sharedWorkspaces.map((w) => `"${w.name}"`).join(', ');
+    throw new ConflictError(
+      `You still own shared workspace(s) with other members: ${names}. ` +
+        'Transfer ownership (or remove all members) before deleting your account.',
+    );
+  }
+
+  // Sole-member workspaces (including the personal one) are the user's own
+  // data — remove them explicitly, then the account. Tasks the user created
+  // in OTHER people's projects survive with creatorId set to null (schema),
+  // and the DB-level Restrict on workspace ownership backstops this logic.
+  await prisma.$transaction(async (tx) => {
+    for (const workspace of ownedWorkspaces) {
+      await tx.workspace.delete({ where: { id: workspace.id } });
+    }
+    await tx.user.delete({ where: { id } });
+  });
 
   return { message: 'Account deleted successfully' };
 }

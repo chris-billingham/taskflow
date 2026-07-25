@@ -144,7 +144,7 @@ async function verifyProjectAccess(projectId: string, userId: string) {
 type TaskWithProject = {
   id: string;
   projectId: string;
-  creatorId: string;
+  creatorId: string | null;
   project: { ownerId: string | null; workspaceId: string | null };
 };
 
