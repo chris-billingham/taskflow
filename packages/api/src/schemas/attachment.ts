@@ -19,7 +19,10 @@ export const ALLOWED_MIME_TYPES = new Set([
   'image/png',
   'image/gif',
   'image/webp',
-  'image/svg+xml',
+  // NOTE: image/svg+xml is intentionally excluded — an SVG can contain inline
+  // <script> that executes when the file is opened top-level via its (same-origin)
+  // signed URL, i.e. stored XSS. Re-add only behind sanitization + a forced
+  // Content-Disposition: attachment.
   // Documents
   'application/pdf',
   'application/msword',

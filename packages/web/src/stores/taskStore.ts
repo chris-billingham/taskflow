@@ -536,7 +536,13 @@ export const selectSubtasks = (parentId: string) => (state: TaskState) =>
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
 export const selectOverdueTasks = (state: TaskState) => {
-  const now = new Date().toISOString().split('T')[0];
+  // Use the LOCAL date, not UTC — otherwise "overdue" is computed against the
+  // wrong day for users whose timezone differs from UTC (matching the pages,
+  // which use local `format(new Date(), 'yyyy-MM-dd')`).
+  const d = new Date();
+  const now = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
   return Array.from(state.tasks.values())
     .filter((t) => t.dueDate && t.dueDate.slice(0, 10) < now && !t.isCompleted)
     .sort((a, b) => (a.dueDate || '').slice(0, 10).localeCompare((b.dueDate || '').slice(0, 10)));

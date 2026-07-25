@@ -2,7 +2,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-RUN npm install -g pnpm@9
+# Pin the exact pnpm from package.json's packageManager field. Installing pnpm@9
+# globally against a v6 lockfile + --frozen-lockfile diverges from CI/dev (pnpm 8).
+RUN corepack enable && corepack prepare pnpm@8.15.1 --activate
 
 # Cache dependency layer
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./

@@ -1,6 +1,6 @@
 import { prisma } from '../config/database.js';
 import type { Prisma } from '@prisma/client';
-import { ForbiddenError, NotFoundError } from '../errors/index.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import { getRequestId } from '../utils/requestContext.js';
 import type {
   CreateTaskInput,
@@ -97,6 +97,20 @@ async function verifyTaskAccess(taskId: string, userId: string) {
     }
   }
   return task;
+}
+
+// Labels are per-user (Label.userId). Reject label ids that don't exist or
+// belong to another user — otherwise a caller could attach (and, via the task
+// response, read) another user's labels, or hit an opaque 500 on an FK error.
+async function assertLabelsOwned(labelIds: string[], userId: string) {
+  const unique = [...new Set(labelIds)];
+  if (unique.length === 0) return;
+  const count = await prisma.label.count({
+    where: { id: { in: unique }, userId },
+  });
+  if (count !== unique.length) {
+    throw new ValidationError('One or more labels do not exist or are not yours');
+  }
 }
 
 async function verifyProjectAccess(projectId: string, userId: string) {
@@ -259,6 +273,9 @@ export async function getTaskById(id: string, userId: string) {
 
 export async function createTask(data: CreateTaskInput, userId: string) {
   await verifyProjectAccess(data.projectId, userId);
+  if (data.labelIds?.length) {
+    await assertLabelsOwned(data.labelIds, userId);
+  }
 
   // Get max sortOrder
   const maxSort = await prisma.task.aggregate({
@@ -318,6 +335,10 @@ export async function updateTask(
 
   const { labelIds, ...updateData } = data;
 
+  if (labelIds !== undefined && labelIds.length > 0) {
+    await assertLabelsOwned(labelIds, userId);
+  }
+
   // Prepare date fields
   const prismaData: Prisma.TaskUpdateInput = {
     ...updateData,
@@ -329,20 +350,22 @@ export async function updateTask(
     }),
   };
 
-  // Handle label updates
-  if (labelIds !== undefined) {
-    await prisma.taskLabel.deleteMany({ where: { taskId: id } });
-    if (labelIds.length > 0) {
-      await prisma.taskLabel.createMany({
-        data: labelIds.map((labelId) => ({ taskId: id, labelId })),
-      });
+  // Replace labels and update the task in one transaction so a failure can't
+  // leave the task with its labels wiped and nothing put back.
+  const task = await prisma.$transaction(async (tx) => {
+    if (labelIds !== undefined) {
+      await tx.taskLabel.deleteMany({ where: { taskId: id } });
+      if (labelIds.length > 0) {
+        await tx.taskLabel.createMany({
+          data: labelIds.map((labelId) => ({ taskId: id, labelId })),
+        });
+      }
     }
-  }
-
-  const task = await prisma.task.update({
-    where: { id },
-    data: prismaData,
-    include: taskInclude,
+    return tx.task.update({
+      where: { id },
+      data: prismaData,
+      include: taskInclude,
+    });
   });
 
   runSideEffect('logActivity:UPDATED', () => logActivity({
@@ -380,17 +403,35 @@ export async function deleteTask(id: string, userId: string) {
 export async function completeTask(id: string, userId: string) {
   const task = await verifyTaskAccess(id, userId);
 
+  // Idempotency guard: a double-click or concurrent request must not re-run the
+  // completion logic (which, for recurring tasks, spawns the next occurrence).
+  if (task.isCompleted) {
+    return prisma.task.findUniqueOrThrow({ where: { id }, include: taskInclude });
+  }
+
   if (task.isRecurring && task.recurrenceRule) {
     const fromDate = task.dueDate || new Date();
     const nextDate = getNextOccurrence(task.recurrenceRule, fromDate);
 
-    const [completedTask, newTask] = await Promise.all([
-      prisma.task.update({
-        where: { id },
+    const { completedTask, newTask } = await prisma.$transaction(async (tx) => {
+      // Atomically claim the completion. If a concurrent request already flipped
+      // isCompleted, count === 0 and we skip creating a duplicate next occurrence.
+      const claim = await tx.task.updateMany({
+        where: { id, isCompleted: false },
         data: { isCompleted: true, completedAt: new Date() },
-        include: taskInclude,
-      }),
-      prisma.task.create({
+      });
+      if (claim.count === 0) {
+        const current = await tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude });
+        return { completedTask: current, newTask: null };
+      }
+
+      // Carry the labels over to the next occurrence.
+      const labels = await tx.taskLabel.findMany({
+        where: { taskId: id },
+        select: { labelId: true },
+      });
+
+      const created = await tx.task.create({
         data: {
           content: task.content,
           description: task.description,
@@ -407,32 +448,53 @@ export async function completeTask(id: string, userId: string) {
           isRecurring: true,
           recurrenceRule: task.recurrenceRule,
           sortOrder: task.sortOrder,
+          taskLabels: labels.length
+            ? { create: labels.map((l) => ({ labelId: l.labelId })) }
+            : undefined,
         },
         include: taskInclude,
-      }),
-    ]);
+      });
+      const completed = await tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude });
+      return { completedTask: completed, newTask: created };
+    });
 
+    if (!newTask) {
+      // Lost the race — task was already completed by a concurrent request.
+      return completedTask;
+    }
+
+    runSideEffect('logActivity:COMPLETED', () => logActivity({
+      action: 'COMPLETED',
+      entityType: 'TASK',
+      entityId: id,
+      userId,
+      taskId: id,
+      newData: { content: task.content },
+    }));
     runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(completedTask));
     runSideEffect('broadcastTaskCreated', () => broadcastTaskCreated(newTask));
 
     return newTask;
   }
 
-  const updated = await prisma.task.update({
-    where: { id },
+  // Non-recurring: atomically claim completion so a duplicate request is a no-op.
+  const claim = await prisma.task.updateMany({
+    where: { id, isCompleted: false },
     data: { isCompleted: true, completedAt: new Date() },
-    include: taskInclude,
   });
+  const updated = await prisma.task.findUniqueOrThrow({ where: { id }, include: taskInclude });
 
-  runSideEffect('logActivity:COMPLETED', () => logActivity({
-    action: 'COMPLETED',
-    entityType: 'TASK',
-    entityId: id,
-    userId,
-    taskId: id,
-    newData: { content: task.content },
-  }));
-  runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(updated));
+  if (claim.count > 0) {
+    runSideEffect('logActivity:COMPLETED', () => logActivity({
+      action: 'COMPLETED',
+      entityType: 'TASK',
+      entityId: id,
+      userId,
+      taskId: id,
+      newData: { content: task.content },
+    }));
+    runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(updated));
+  }
 
   return updated;
 }

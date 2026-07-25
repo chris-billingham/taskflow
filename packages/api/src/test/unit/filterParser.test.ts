@@ -202,10 +202,10 @@ describe('parseFilterQuery', () => {
     );
   });
 
-  it('returns {} for unknown project', async () => {
+  it('matches nothing for an unknown project (not everything)', async () => {
     mockPrisma.project.findFirst.mockResolvedValue(null);
     const result = await parseFilterQuery('#NonExistent', TEST_USER_ID);
-    expect(result).toEqual({});
+    expect(result).toEqual({ id: { in: [] } });
   });
 
   it('resolves !#ProjectName to not-projectId when project exists', async () => {
@@ -220,10 +220,21 @@ describe('parseFilterQuery', () => {
     expect(result).toEqual({ taskLabels: { some: { labelId: 'label-abc' } } });
   });
 
-  it('returns {} for unknown label', async () => {
+  it('matches nothing for an unknown label (not everything)', async () => {
     mockPrisma.label.findFirst.mockResolvedValue(null);
     const result = await parseFilterQuery('@unknown', TEST_USER_ID);
-    expect(result).toEqual({});
+    expect(result).toEqual({ id: { in: [] } });
+  });
+
+  it('does not widen an OR when one side is an unknown project', async () => {
+    // Regression for the OR-with-empty-clause bug: `#Nonexistent | p1` must
+    // resolve to just the p1 branch plus a match-nothing branch, never {}.
+    mockPrisma.project.findFirst.mockResolvedValue(null);
+    const result = await parseFilterQuery('#Nonexistent | p1', TEST_USER_ID);
+    const ors = result.OR as Array<Record<string, unknown>>;
+    expect(ors).toBeDefined();
+    expect(ors).toContainEqual({ id: { in: [] } });
+    expect(ors).toContainEqual({ priority: 1 });
   });
 
   it('parses "assigned to: me"', async () => {

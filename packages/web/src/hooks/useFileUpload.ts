@@ -18,8 +18,10 @@ export interface Attachment {
   };
 }
 
+// Keep in sync with ALLOWED_MIME_TYPES in the API (packages/api/src/schemas/attachment.ts).
+// image/svg+xml is intentionally excluded (stored-XSS risk when opened top-level).
 export const ALLOWED_TYPES = new Set([
-  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

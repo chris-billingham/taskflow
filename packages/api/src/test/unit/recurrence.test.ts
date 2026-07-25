@@ -114,6 +114,35 @@ describe('getNextOccurrence', () => {
     expect(next.getDate()).toBe(monday.getDate());
   });
 
+  it('clamps Jan 31 + 1 month to the last day of February (no overflow to March)', () => {
+    const jan31 = new Date(2024, 0, 31, 9, 0, 0); // local time; 2024 is a leap year
+    const next = getNextOccurrence('FREQ=MONTHLY;INTERVAL=1', jan31);
+    expect(next.getMonth()).toBe(1); // February, not March
+    expect(next.getDate()).toBe(29); // leap-year Feb has 29 days
+  });
+
+  it('clamps Jan 31 + 1 month to Feb 28 in a non-leap year', () => {
+    const jan31 = new Date(2025, 0, 31, 9, 0, 0);
+    const next = getNextOccurrence('FREQ=MONTHLY;INTERVAL=1', jan31);
+    expect(next.getMonth()).toBe(1);
+    expect(next.getDate()).toBe(28);
+  });
+
+  it('clamps May 31 + 1 month to June 30', () => {
+    const may31 = new Date(2024, 4, 31, 9, 0, 0);
+    const next = getNextOccurrence('FREQ=MONTHLY;INTERVAL=1', may31);
+    expect(next.getMonth()).toBe(5); // June
+    expect(next.getDate()).toBe(30);
+  });
+
+  it('clamps Feb 29 + 1 year to Feb 28 in the following (non-leap) year', () => {
+    const feb29 = new Date(2024, 1, 29, 9, 0, 0);
+    const next = getNextOccurrence('FREQ=YEARLY;INTERVAL=1', feb29);
+    expect(next.getFullYear()).toBe(2025);
+    expect(next.getMonth()).toBe(1); // still February
+    expect(next.getDate()).toBe(28);
+  });
+
   it('preserves the time component', () => {
     const next = getNextOccurrence('FREQ=DAILY;INTERVAL=1', monday);
     expect(next.getHours()).toBe(monday.getHours());

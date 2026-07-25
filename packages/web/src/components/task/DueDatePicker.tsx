@@ -73,7 +73,12 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
   const nextWeek = new Date(today);
   nextWeek.setDate(nextWeek.getDate() + (7 - nextWeek.getDay() + 1));
 
-  const toDateStr = (d: Date) => d.toISOString().split('T')[0];
+  // Serialize using LOCAL calendar components. Using toISOString() here converted
+  // local midnight to UTC, so users east of UTC saved the previous day.
+  const toDateStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate(),
+    ).padStart(2, '0')}`;
 
   const quickOptions = [
     { label: 'Today', icon: Calendar, date: toDateStr(today), color: 'text-green-600' },

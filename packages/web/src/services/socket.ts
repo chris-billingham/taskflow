@@ -1,9 +1,15 @@
 import { io, Socket } from 'socket.io-client';
 import { useSocketStore } from '@/stores/socketStore';
+import { getAccessToken } from '@/services/api';
 
+// Default to the same origin the app is served from — in production nginx/Traefik
+// proxy `/socket.io` to the API. An explicit VITE_WS_URL/VITE_API_URL still wins
+// for split-origin deployments. (Previously fell back to http://localhost:3001,
+// which broke realtime for every non-local user in the shipped build.)
 const WS_URL =
   import.meta.env.VITE_WS_URL ??
-  (import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001');
+  import.meta.env.VITE_API_URL?.replace('/api/v1', '') ??
+  (typeof window !== 'undefined' ? window.location.origin : '/');
 
 let socket: Socket | null = null;
 
@@ -14,7 +20,9 @@ export function initSocket(token: string): Socket {
   }
 
   socket = io(WS_URL, {
-    auth: { token },
+    // Function form is re-evaluated on every (re)connect, so a refreshed access
+    // token is used instead of the stale one captured at first connect.
+    auth: (cb) => cb({ token: getAccessToken() ?? token }),
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,

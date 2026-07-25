@@ -9,6 +9,9 @@ error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# Pin the production compose file (don't merge the dev override).
+COMPOSE="docker compose -f docker-compose.yml"
+
 if [ ! -f .env ]; then
   error ".env not found. Run install.sh first."
   exit 1
@@ -26,7 +29,7 @@ mkdir -p "$BACKUP_PATH"
 
 # ── Database backup ───────────────────────────────────────────────────────────
 info "Backing up PostgreSQL database..."
-docker compose exec -T postgres pg_dump \
+$COMPOSE exec -T postgres pg_dump \
   -U "${POSTGRES_USER:-taskflow}" \
   "${POSTGRES_DB:-taskflow}" \
   | gzip > "${BACKUP_PATH}/database.sql.gz"
@@ -36,13 +39,16 @@ info "Database backup complete (${DB_SIZE})"
 
 # ── File storage backup ───────────────────────────────────────────────────────
 info "Backing up uploaded files from MinIO..."
+# Clear any previous mirror inside the container first — otherwise objects deleted
+# since the last backup linger and get re-captured into every future backup.
+$COMPOSE exec -T minio rm -rf /tmp/minio-backup 2>/dev/null || true
 # Use MinIO client inside container to mirror bucket to local path
-docker compose exec -T minio \
+$COMPOSE exec -T minio \
   sh -c "mc alias set local http://localhost:9000 ${MINIO_ROOT_USER:-taskflow-admin} ${MINIO_ROOT_PASSWORD} && \
          mc mirror local/${MINIO_BUCKET:-taskflow} /tmp/minio-backup/ --quiet" || warn "MinIO backup failed — continuing"
 
-if docker compose exec -T minio test -d /tmp/minio-backup 2>/dev/null; then
-  docker cp "$(docker compose ps -q minio):/tmp/minio-backup" "${BACKUP_PATH}/files"
+if $COMPOSE exec -T minio test -d /tmp/minio-backup 2>/dev/null; then
+  docker cp "$($COMPOSE ps -q minio):/tmp/minio-backup" "${BACKUP_PATH}/files"
   FILES_SIZE=$(du -sh "${BACKUP_PATH}/files" 2>/dev/null | cut -f1 || echo "0")
   info "File backup complete (${FILES_SIZE})"
 fi

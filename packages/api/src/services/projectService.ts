@@ -113,6 +113,18 @@ export async function createProject(data: CreateProjectInput, userId: string) {
     await verifyProjectAccess(data.parentId, userId);
   }
 
+  // If a workspace is targeted, the caller must be a member of it — otherwise a
+  // user could inject projects/tasks into a workspace they don't belong to.
+  if (data.workspaceId) {
+    const wsMember = await prisma.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId: data.workspaceId, userId } },
+      select: { userId: true },
+    });
+    if (!wsMember) {
+      throw new ForbiddenError('You do not have access to this workspace');
+    }
+  }
+
   // Get max sortOrder for user's projects
   const maxSort = await prisma.project.aggregate({
     where: { ownerId: userId, parentId: data.parentId ?? null },

@@ -139,6 +139,12 @@ function tokenize(query: string): Token[] {
   return tokens;
 }
 
+// A clause that matches no rows. Used when a positive lookup (project/label/user
+// by name) resolves to nothing: `#Nonexistent` must match nothing, not everything.
+// Returning `{}` here made e.g. `#Nonexistent | p1` an OR-with-empty-clause, which
+// matches every accessible task.
+const MATCH_NONE: Prisma.TaskWhereInput = { id: { in: [] } };
+
 // Parse an atom into a Prisma where clause
 async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWhereInput> {
   const lower = atom.toLowerCase().trim();
@@ -244,7 +250,7 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
     if (currentProject) {
       return { projectId: currentProject.id };
     }
-    return {};
+    return MATCH_NONE;
   }
 
   if (atom.startsWith('#')) {
@@ -258,7 +264,7 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
     if (project) {
       return { projectId: project.id };
     }
-    return {};
+    return MATCH_NONE;
   }
 
   // Label filter: @labelname
@@ -275,7 +281,7 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
         taskLabels: { some: { labelId: label.id } },
       };
     }
-    return {};
+    return MATCH_NONE;
   }
 
   // Assigned to
@@ -291,7 +297,7 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
     if (user) {
       return { assigneeId: user.id };
     }
-    return {};
+    return MATCH_NONE;
   }
 
   // Assigned by
@@ -307,7 +313,7 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
     if (user) {
       return { creatorId: user.id, assigneeId: { not: null } };
     }
-    return {};
+    return MATCH_NONE;
   }
 
   // Search

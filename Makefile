@@ -4,26 +4,31 @@
 -include .env
 export
 
+# Pin the production compose file explicitly. Without -f, docker compose also
+# merges docker-compose.override.yml (a DEV override: dev servers, NODE_ENV=development,
+# self-signed TLS, exposed ports), silently turning `make start` into a dev stack.
+COMPOSE = docker compose -f docker-compose.yml
+
 install:
 	@bash scripts/install.sh
 
 start:
-	docker compose up -d
+	$(COMPOSE) up -d
 
 stop:
-	docker compose down
+	$(COMPOSE) down
 
 restart:
-	docker compose restart
+	$(COMPOSE) restart
 
 logs:
-	docker compose logs -f
+	$(COMPOSE) logs -f
 
 status:
-	docker compose ps
+	$(COMPOSE) ps
 
 build:
-	docker compose build --parallel
+	$(COMPOSE) build --parallel
 
 backup:
 	@bash scripts/backup.sh
@@ -35,20 +40,20 @@ upgrade:
 	@bash scripts/upgrade.sh
 
 migrate:
-	docker compose run --rm \
+	$(COMPOSE) run --rm \
 		-e DATABASE_URL="postgresql://$${POSTGRES_USER:-taskflow}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB:-taskflow}" \
 		api sh -c "npx prisma migrate deploy --schema prisma/schema.prisma"
 
 shell-api:
-	docker compose exec api sh
+	$(COMPOSE) exec api sh
 
 shell-db:
-	docker compose exec postgres psql -U $${POSTGRES_USER:-taskflow} -d $${POSTGRES_DB:-taskflow}
+	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-taskflow} -d $${POSTGRES_DB:-taskflow}
 
 shell-redis:
-	docker compose exec redis redis-cli -a $${REDIS_PASSWORD}
+	$(COMPOSE) exec redis redis-cli -a $${REDIS_PASSWORD}
 
 clean:
 	@echo "WARNING: This will delete all data volumes."
 	@read -p "Type 'yes' to confirm: " CONFIRM; \
-	[ "$$CONFIRM" = "yes" ] && docker compose down -v || echo "Aborted."
+	[ "$$CONFIRM" = "yes" ] && $(COMPOSE) down -v || echo "Aborted."

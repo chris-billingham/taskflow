@@ -14,6 +14,7 @@ import { initializeWorkers } from './worker.js';
 import { createWebSocketServer } from './websocket/server.js';
 import { ensureBucketExists } from './config/storage.js';
 import { prisma } from './config/database.js';
+import { Prisma } from '@prisma/client';
 import { openapiSpec } from './docs/openapi.js';
 
 const server = Fastify({
@@ -82,6 +83,33 @@ server.setErrorHandler((error, request, reply) => {
       error: 'VALIDATION_ERROR',
       message: err.message,
     });
+  }
+
+  // Map common Prisma errors to sensible HTTP codes instead of a blanket 500.
+  // These are reachable via normal races/bad input (e.g. a row deleted between
+  // an access check and an update, a duplicate, or a bad foreign key).
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === 'P2025') {
+      return reply.status(404).send({
+        success: false,
+        error: 'NOT_FOUND',
+        message: 'The requested resource was not found',
+      });
+    }
+    if (error.code === 'P2002') {
+      return reply.status(409).send({
+        success: false,
+        error: 'CONFLICT',
+        message: 'A record with those values already exists',
+      });
+    }
+    if (error.code === 'P2003') {
+      return reply.status(400).send({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'A referenced record does not exist',
+      });
+    }
   }
 
   request.log.error(error);

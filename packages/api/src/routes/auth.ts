@@ -29,7 +29,11 @@ export async function authRoutes(app: FastifyInstance) {
     global: false,
   });
 
-  app.post('/register', async (request, reply) => {
+  app.post('/register', {
+    config: {
+      rateLimit: { max: env.NODE_ENV === 'production' ? 5 : 1000, timeWindow: '1 hour' },
+    },
+  }, async (request, reply) => {
     const result = registerSchema.safeParse(request.body);
     if (!result.success) {
       throw new ValidationError(result.error.issues[0].message);

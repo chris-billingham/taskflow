@@ -9,6 +9,9 @@ error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# Pin the production compose file (don't merge the dev override).
+COMPOSE="docker compose -f docker-compose.yml"
+
 BACKUP_FILE="${1:-}"
 
 if [ -z "$BACKUP_FILE" ]; then
@@ -54,19 +57,25 @@ tar -xzf "$BACKUP_FILE" -C "$RESTORE_TMP"
 BACKUP_DIR_NAME=$(ls "$RESTORE_TMP")
 RESTORE_PATH="${RESTORE_TMP}/${BACKUP_DIR_NAME}"
 
+# Stop the app so it can't reconnect to Postgres between DROP and CREATE (which
+# would make DROP DATABASE fail) or write into a half-restored schema.
+info "Stopping application services during restore..."
+$COMPOSE stop api worker
+
 # ── Database restore ──────────────────────────────────────────────────────────
 if [ -f "${RESTORE_PATH}/database.sql.gz" ]; then
   info "Restoring database..."
 
-  # Drop and recreate the database
-  docker compose exec -T postgres psql -U "${POSTGRES_USER:-taskflow}" postgres <<-SQL
-    SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${POSTGRES_DB:-taskflow}';
+  # Drop and recreate the database. ON_ERROR_STOP=1 makes psql exit non-zero on
+  # any SQL error so `set -e` aborts instead of falsely reporting success.
+  $COMPOSE exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-taskflow}" postgres <<-SQL
+    SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${POSTGRES_DB:-taskflow}' AND pid <> pg_backend_pid();
     DROP DATABASE IF EXISTS "${POSTGRES_DB:-taskflow}";
     CREATE DATABASE "${POSTGRES_DB:-taskflow}";
 SQL
 
   gunzip -c "${RESTORE_PATH}/database.sql.gz" | \
-    docker compose exec -T postgres psql -U "${POSTGRES_USER:-taskflow}" "${POSTGRES_DB:-taskflow}"
+    $COMPOSE exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-taskflow}" "${POSTGRES_DB:-taskflow}"
 
   info "Database restored"
 else
@@ -77,10 +86,10 @@ fi
 if [ -d "${RESTORE_PATH}/files" ]; then
   info "Restoring uploaded files to MinIO..."
 
-  CONTAINER_ID=$(docker compose ps -q minio)
+  CONTAINER_ID=$($COMPOSE ps -q minio)
   docker cp "${RESTORE_PATH}/files" "${CONTAINER_ID}:/tmp/restore-files"
 
-  docker compose exec -T minio \
+  $COMPOSE exec -T minio \
     sh -c "mc alias set local http://localhost:9000 ${MINIO_ROOT_USER:-taskflow-admin} ${MINIO_ROOT_PASSWORD} && \
            mc mirror --overwrite /tmp/restore-files/ local/${MINIO_BUCKET:-taskflow}/ --quiet"
 
@@ -89,7 +98,7 @@ else
   warn "No file backup found in archive — skipping"
 fi
 
-info "Restore complete. Restarting API..."
-docker compose restart api worker
+info "Restore complete. Starting application services..."
+$COMPOSE up -d api worker
 
 info "Done."

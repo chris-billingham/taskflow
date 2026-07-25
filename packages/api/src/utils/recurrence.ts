@@ -93,13 +93,26 @@ export function getNextOccurrence(rrule: string, fromDate: Date): Date {
       }
       break;
 
-    case 'MONTHLY':
+    case 'MONTHLY': {
+      // Clamp to the last valid day so e.g. Jan 31 + 1 month → Feb 28/29 rather
+      // than JS's silent overflow to Mar 2/3 (which then drifts forever).
+      const day = next.getDate();
+      next.setDate(1);
       next.setMonth(next.getMonth() + interval);
+      const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      next.setDate(Math.min(day, daysInMonth));
       break;
+    }
 
-    case 'YEARLY':
+    case 'YEARLY': {
+      // Clamp Feb 29 → Feb 28 in non-leap target years (otherwise overflows to Mar 1).
+      const day = next.getDate();
+      next.setDate(1);
       next.setFullYear(next.getFullYear() + interval);
+      const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      next.setDate(Math.min(day, daysInMonth));
       break;
+    }
   }
 
   return next;

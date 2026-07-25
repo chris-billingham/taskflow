@@ -57,35 +57,41 @@ export async function register(data: RegisterInput) {
   const emailConfigured = !!process.env.SMTP_HOST;
   const emailVerifyToken = emailConfigured ? crypto.randomBytes(32).toString('hex') : null;
 
-  const user = await prisma.user.create({
-    data: {
-      email: data.email,
-      passwordHash,
-      name: data.name,
-      emailVerifyToken,
-      emailVerified: !emailConfigured,
-    },
-  });
-
-  // Create a personal workspace and inbox project for the new user
-  const workspace = await prisma.workspace.create({
-    data: {
-      name: 'Personal',
-      slug: `personal-${user.id}`,
-      ownerId: user.id,
-      members: {
-        create: { userId: user.id, role: 'OWNER' },
+  // Create the user, their personal workspace, and their inbox project atomically.
+  // If any step fails, none are persisted — otherwise a user could exist with no
+  // inbox, which permanently breaks quick-add ("No default project found").
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        name: data.name,
+        emailVerifyToken,
+        emailVerified: !emailConfigured,
       },
-    },
-  });
+    });
 
-  await prisma.project.create({
-    data: {
-      name: 'Inbox',
-      ownerId: user.id,
-      workspaceId: workspace.id,
-      isInbox: true,
-    },
+    const workspace = await tx.workspace.create({
+      data: {
+        name: 'Personal',
+        slug: `personal-${created.id}`,
+        ownerId: created.id,
+        members: {
+          create: { userId: created.id, role: 'OWNER' },
+        },
+      },
+    });
+
+    await tx.project.create({
+      data: {
+        name: 'Inbox',
+        ownerId: created.id,
+        workspaceId: workspace.id,
+        isInbox: true,
+      },
+    });
+
+    return created;
   });
 
   const tokens = await createTokenPair(user);

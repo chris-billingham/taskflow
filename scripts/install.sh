@@ -10,6 +10,11 @@ step()  { echo -e "\n${BLUE}==>${NC} $1"; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# Pin the production compose file. A bare `docker compose` also merges
+# docker-compose.override.yml (a dev override), which would deploy dev servers,
+# NODE_ENV=development, self-signed TLS and exposed debug ports into "production".
+COMPOSE="docker compose -f docker-compose.yml"
+
 # ── 1. Pre-flight checks ──────────────────────────────────────────────────────
 step "Checking prerequisites"
 
@@ -79,36 +84,36 @@ docker network create traefik 2>/dev/null && info "Created 'traefik' network" ||
 
 # ── 4. Build images ───────────────────────────────────────────────────────────
 step "Building Docker images"
-docker compose build --parallel
+$COMPOSE build --parallel
 
 # ── 5. Start infrastructure ───────────────────────────────────────────────────
 step "Starting infrastructure services"
-docker compose up -d postgres redis minio traefik
+$COMPOSE up -d postgres redis minio traefik
 
 info "Waiting for PostgreSQL to be ready..."
-until docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-taskflow}" &>/dev/null; do
+until $COMPOSE exec -T postgres pg_isready -U "${POSTGRES_USER:-taskflow}" &>/dev/null; do
   sleep 2
 done
 info "PostgreSQL is ready"
 
 # ── 6. Run database migrations ────────────────────────────────────────────────
 step "Running database migrations"
-docker compose run --rm \
+$COMPOSE run --rm \
   -e DATABASE_URL="postgresql://${POSTGRES_USER:-taskflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-taskflow}" \
   api \
   sh -c "npx prisma migrate deploy --schema prisma/schema.prisma"
 
 # ── 7. Start all services ────────────────────────────────────────────────────
 step "Starting all services"
-docker compose up -d
+$COMPOSE up -d
 
 info "Waiting for API to be healthy..."
 for i in $(seq 1 30); do
-  if docker compose exec -T api wget -qO- http://localhost:3001/health &>/dev/null 2>&1; then
+  if $COMPOSE exec -T api wget -qO- http://localhost:3001/health &>/dev/null 2>&1; then
     info "API is healthy"
     break
   fi
-  [ "$i" -eq 30 ] && { error "API failed to become healthy"; docker compose logs api; exit 1; }
+  [ "$i" -eq 30 ] && { error "API failed to become healthy"; $COMPOSE logs api; exit 1; }
   sleep 3
 done
 
