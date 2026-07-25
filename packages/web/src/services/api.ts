@@ -31,23 +31,53 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Response interceptor: handle 401 and refresh tokens
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value: unknown) => void;
-  reject: (reason?: unknown) => void;
-}> = [];
+// ── Shared token refresh ──────────────────────────────────────────────────────
+// One in-flight refresh at a time; concurrent callers (the 401 interceptor,
+// the websocket's auth-failure recovery) all await the same promise so the
+// single-use refresh cookie is never sent twice in parallel (the server treats
+// a second use of the same token as theft and revokes every session).
+let refreshPromise: Promise<string | null> | null = null;
 
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
+function hardLogout(): void {
+  setAccessToken(null);
+  // Clear persisted user state so the app redirects to login
+  localStorage.removeItem('auth-storage');
+  window.location.href = '/login';
+}
+
+/**
+ * Refresh the access token from the httpOnly cookie. Returns the new token,
+ * or null on failure. Only a definitive rejection (401/403 — the session is
+ * gone) forces a logout; transient network failures leave the session alone
+ * so a flaky connection doesn't log the user out.
+ */
+export async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      // Use a bare axios call to avoid interceptor loops.
+      const { data } = await axios.post(
+        `${API_BASE_URL}/auth/refresh`,
+        {},
+        { withCredentials: true },
+      );
+      const newAccessToken = data.data.accessToken as string;
+      setAccessToken(newAccessToken);
+      return newAccessToken;
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      if (status === 401 || status === 403) {
+        hardLogout();
+      }
+      return null;
+    } finally {
+      refreshPromise = null;
     }
-  });
-  failedQueue = [];
-};
+  })();
+
+  return refreshPromise;
+}
 
 api.interceptors.response.use(
   (response) => response,
@@ -62,43 +92,11 @@ api.interceptors.response.use(
       originalRequest.url?.includes('/auth/register');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest && !isAuthEndpoint) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        });
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        // The refresh token is in an httpOnly cookie — no body needed.
-        // Use a fresh axios instance to avoid interceptor loops.
-        const { data } = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
-          {},
-          { withCredentials: true },
-        );
-
-        const newAccessToken = data.data.accessToken;
-
-        setAccessToken(newAccessToken);
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        processQueue(null, newAccessToken);
-
+      const token = await refreshAccessToken();
+      if (token) {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
         return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        setAccessToken(null);
-        // Clear persisted user state so the app redirects to login
-        localStorage.removeItem('auth-storage');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 

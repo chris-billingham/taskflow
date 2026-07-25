@@ -44,7 +44,26 @@ vi.mock('../../config/redis.js', () => ({
   })),
 }));
 
-import { register, login, logout, refreshTokens, verifyEmail } from '../../services/authService.js';
+vi.mock('../../services/mailService.js', () => ({
+  isMailerReady: vi.fn(() => false),
+  sendVerificationEmail: vi.fn(() => Promise.resolve()),
+  sendPasswordResetEmail: vi.fn(() => Promise.resolve()),
+  sendWorkspaceInviteEmail: vi.fn(() => Promise.resolve()),
+}));
+
+import { createHash } from 'node:crypto';
+import {
+  register,
+  login,
+  logout,
+  refreshTokens,
+  verifyEmail,
+  resendVerificationEmail,
+} from '../../services/authService.js';
+import {
+  isMailerReady,
+  sendVerificationEmail,
+} from '../../services/mailService.js';
 import { prisma } from '../../config/database.js';
 import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../utils/jwt.js';
@@ -73,6 +92,10 @@ const mockVerifyPassword = vi.mocked(verifyPassword);
 const mockGenerateAccessToken = vi.mocked(generateAccessToken);
 const mockGenerateRefreshToken = vi.mocked(generateRefreshToken);
 const mockVerifyRefreshToken = vi.mocked(verifyRefreshToken);
+const mockIsMailerReady = vi.mocked(isMailerReady);
+const mockSendVerificationEmail = vi.mocked(sendVerificationEmail);
+
+const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
 const TEST_USER = {
   id: 'user-abc',
@@ -123,6 +146,33 @@ describe('register', () => {
     mockPrisma.user.findUnique.mockResolvedValue(TEST_USER);
     await expect(register({ name: 'User', email: 'test@example.com', password: 'pw' }))
       .rejects.toThrow(ConflictError);
+  });
+
+  it('auto-verifies the account when no mailer is available', async () => {
+    mockIsMailerReady.mockReturnValue(false);
+    await register({ name: 'User', email: 'u@e.com', password: 'pw123456' });
+
+    const created = mockPrisma.user.create.mock.calls[0][0].data;
+    expect(created.emailVerified).toBe(true);
+    expect(created.emailVerifyToken).toBeNull();
+    expect(mockSendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('requires verification and emails a token when the mailer is ready', async () => {
+    mockIsMailerReady.mockReturnValue(true);
+    await register({ name: 'User', email: 'u@e.com', password: 'pw123456' });
+
+    const created = mockPrisma.user.create.mock.calls[0][0].data;
+    expect(created.emailVerified).toBe(false);
+    expect(created.emailVerifyTokenExpiresAt).toBeInstanceOf(Date);
+
+    await vi.waitFor(() => expect(mockSendVerificationEmail).toHaveBeenCalledOnce());
+    const [to, , rawToken] = mockSendVerificationEmail.mock.calls[0];
+    // The service emails the created user row (mocked as TEST_USER here).
+    expect(to).toBe(TEST_USER.email);
+    // The DB stores only the hash of the token that was emailed.
+    expect(created.emailVerifyToken).toBe(sha256(rawToken));
+    expect(created.emailVerifyToken).not.toBe(rawToken);
   });
 });
 
@@ -249,21 +299,93 @@ describe('refreshTokens', () => {
 });
 
 describe('verifyEmail', () => {
-  it('marks email as verified and clears token', async () => {
-    mockPrisma.user.findFirst.mockResolvedValue({ ...TEST_USER, id: 'user-1' });
-    mockPrisma.user.update.mockResolvedValue({ ...TEST_USER, emailVerified: true });
+  const RAW_TOKEN = 'verify-token-123';
+  const unverifiedUser = {
+    ...TEST_USER,
+    id: 'user-1',
+    emailVerified: false,
+    emailVerifyToken: sha256(RAW_TOKEN),
+    emailVerifyTokenExpiresAt: new Date(Date.now() + 60_000),
+  };
 
-    const result = await verifyEmail('verify-token-123');
+  it('looks the token up by its hash, never the raw value', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(unverifiedUser);
+    mockPrisma.user.update.mockResolvedValue({ ...unverifiedUser, emailVerified: true });
+
+    await verifyEmail(RAW_TOKEN);
+    expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+      where: { emailVerifyToken: sha256(RAW_TOKEN) },
+    });
+  });
+
+  it('marks email as verified and clears token + expiry', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(unverifiedUser);
+    mockPrisma.user.update.mockResolvedValue({ ...unverifiedUser, emailVerified: true });
+
+    const result = await verifyEmail(RAW_TOKEN);
     expect(result.message).toBe('Email verified successfully');
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { emailVerified: true, emailVerifyToken: null },
+        data: {
+          emailVerified: true,
+          emailVerifyToken: null,
+          emailVerifyTokenExpiresAt: null,
+        },
       }),
     );
   });
 
-  it('throws NotFoundError for invalid token', async () => {
-    mockPrisma.user.findFirst.mockResolvedValue(null);
+  it('throws NotFoundError for an unknown token', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
     await expect(verifyEmail('bad-token')).rejects.toThrow(NotFoundError);
+  });
+
+  it('throws NotFoundError for an expired token', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      ...unverifiedUser,
+      emailVerifyTokenExpiresAt: new Date(Date.now() - 1000),
+    });
+    await expect(verifyEmail(RAW_TOKEN)).rejects.toThrow(NotFoundError);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('resendVerificationEmail', () => {
+  const unverified = { ...TEST_USER, emailVerified: false };
+  const NEUTRAL = 'If that email exists and is unverified, a new link has been sent';
+
+  beforeEach(() => {
+    mockPrisma.user.update.mockResolvedValue(unverified);
+  });
+
+  it('rotates the stored hash and emails the new raw token', async () => {
+    mockIsMailerReady.mockReturnValue(true);
+    mockPrisma.user.findUnique.mockResolvedValue(unverified);
+
+    const result = await resendVerificationEmail(TEST_USER.email);
+    expect(result.message).toBe(NEUTRAL);
+
+    await vi.waitFor(() => expect(mockSendVerificationEmail).toHaveBeenCalledOnce());
+    const raw = mockSendVerificationEmail.mock.calls[0][2];
+    const stored = mockPrisma.user.update.mock.calls[0][0].data;
+    expect(stored.emailVerifyToken).toBe(sha256(raw));
+    expect(stored.emailVerifyTokenExpiresAt).toBeInstanceOf(Date);
+  });
+
+  it('returns the neutral message for unknown or verified emails', async () => {
+    mockIsMailerReady.mockReturnValue(true);
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    const result = await resendVerificationEmail('nobody@example.com');
+    expect(result.message).toBe(NEUTRAL);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    expect(mockSendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not rotate the token when no mailer is available', async () => {
+    mockIsMailerReady.mockReturnValue(false);
+    mockPrisma.user.findUnique.mockResolvedValue(unverified);
+    const result = await resendVerificationEmail(TEST_USER.email);
+    expect(result.message).toBe(NEUTRAL);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 });

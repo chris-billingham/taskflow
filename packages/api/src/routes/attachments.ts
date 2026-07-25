@@ -9,6 +9,18 @@ import * as fileService from '../services/fileService.js';
 import { ValidationError } from '../errors/index.js';
 import { env } from '../config/env.js';
 
+/**
+ * Build a Content-Disposition header for an untrusted filename: an ASCII-safe
+ * fallback (quotes/control chars stripped so the header can't be broken out
+ * of) plus the RFC 5987 UTF-8 form for browsers that support it.
+ */
+export function contentDisposition(filename: string, inline: boolean): string {
+  const fallback =
+    filename.replace(/[^\x20-\x7e]+/g, '_').replace(/["\\]/g, '_') || 'download';
+  const encoded = encodeURIComponent(filename);
+  return `${inline ? 'inline' : 'attachment'}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
 export async function attachmentRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate);
 
@@ -82,13 +94,33 @@ export async function attachmentRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data });
   });
 
-  // GET /api/v1/attachments/:id/download - Get signed download URL
+  // GET /api/v1/attachments/:id/download - Stream the file content.
+  // Proxied through the API because the S3 endpoint is internal-only in the
+  // shipped deployment, and because streaming lets us force safe download
+  // semantics (attachment disposition + nosniff) on user-uploaded content.
+  // `?inline=1` renders in-browser, permitted only for the image allowlist
+  // (which excludes SVG) — everything else always downloads.
   app.get('/attachments/:id/download', async (request, reply) => {
     const params = attachmentParamsSchema.safeParse(request.params);
     if (!params.success) throw new ValidationError(params.error.issues[0].message);
 
-    const signedUrl = await fileService.getSignedDownloadUrl(params.data.id, request.user.id);
-    return reply.send({ success: true, data: { signedUrl } });
+    const { attachment, body, contentLength } = await fileService.getDownloadStream(
+      params.data.id,
+      request.user.id,
+    );
+
+    const wantsInline = (request.query as { inline?: string }).inline === '1';
+    const inline = wantsInline && attachment.mimeType.startsWith('image/');
+
+    reply
+      .header('Content-Type', attachment.mimeType)
+      .header('Content-Disposition', contentDisposition(attachment.filename, inline))
+      .header('X-Content-Type-Options', 'nosniff')
+      .header('Cache-Control', 'private, no-store');
+    if (contentLength !== undefined) {
+      reply.header('Content-Length', contentLength);
+    }
+    return reply.send(body);
   });
 
   // DELETE /api/v1/attachments/:id - Delete attachment

@@ -13,6 +13,7 @@ import { closeRedis, getRedis } from './config/redis.js';
 import { initializeWorkers } from './worker.js';
 import { createWebSocketServer } from './websocket/server.js';
 import { ensureBucketExists } from './config/storage.js';
+import { initMailer } from './services/mailService.js';
 import { prisma } from './config/database.js';
 import { Prisma } from '@prisma/client';
 import { openapiSpec } from './docs/openapi.js';
@@ -203,6 +204,10 @@ process.on('SIGTERM', shutdown);
 // Start server
 const start = async () => {
   try {
+    // Verify SMTP before accepting requests: whether registration requires
+    // email verification depends on the mailer being provably reachable.
+    await initMailer(server.log);
+
     await server.listen({ port: env.API_PORT, host: env.HOST });
     server.log.info(
       `Taskflow API server listening on http://${env.HOST}:${env.API_PORT}`,

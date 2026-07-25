@@ -17,6 +17,13 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      // The socket client defaults to same-origin, so dev needs the websocket
+      // path proxied to the API just like production nginx/Traefik do.
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });

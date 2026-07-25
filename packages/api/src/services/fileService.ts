@@ -1,10 +1,72 @@
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
+import { fileTypeFromBuffer } from 'file-type';
 import { prisma } from '../config/database.js';
-import { uploadObject, deleteObject, createPresignedUrl } from '../config/storage.js';
+import { uploadObject, deleteObject, getObjectStream } from '../config/storage.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import { ALLOWED_MIME_TYPES } from '../schemas/attachment.js';
 import { env } from '../config/env.js';
+
+// The client-declared MIME type is untrusted. For declared types whose real
+// format carries a magic-byte signature, the sniffed type must be compatible;
+// for text-like declared types (which have no signature) the content must NOT
+// sniff as some known binary format. This blocks e.g. an executable or HTML
+// smuggled under an allowed label.
+const SNIFF_COMPATIBLE: Record<string, string[]> = {
+  'image/jpeg': ['image/jpeg'],
+  'image/jpg': ['image/jpeg'],
+  'image/png': ['image/png'],
+  'image/gif': ['image/gif'],
+  'image/webp': ['image/webp'],
+  'application/pdf': ['application/pdf'],
+  // OOXML formats are zip containers; file-type usually identifies the precise
+  // type but can fall back to plain zip for some writers.
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/zip',
+  ],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/zip',
+  ],
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': [
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/zip',
+  ],
+  // Legacy Office formats are OLE compound files.
+  'application/msword': ['application/x-cfb'],
+  'application/vnd.ms-excel': ['application/x-cfb'],
+  'application/vnd.ms-powerpoint': ['application/x-cfb'],
+  'application/zip': ['application/zip'],
+  'application/x-zip-compressed': ['application/zip'],
+  'application/x-tar': ['application/x-tar'],
+  'application/gzip': ['application/gzip'],
+};
+
+async function assertContentMatchesDeclaredType(
+  buffer: Buffer,
+  declaredMime: string,
+): Promise<void> {
+  const sniffed = await fileTypeFromBuffer(buffer);
+  const compatible = SNIFF_COMPATIBLE[declaredMime];
+
+  if (compatible) {
+    if (!sniffed || !compatible.includes(sniffed.mime)) {
+      throw new ValidationError(
+        `File content does not match the declared type "${declaredMime}"`,
+      );
+    }
+    return;
+  }
+
+  // Text-like declared type (text/*, application/json): signatureless content
+  // is expected — a recognised binary signature means the label is a lie.
+  if (sniffed) {
+    throw new ValidationError(
+      `File content does not match the declared type "${declaredMime}"`,
+    );
+  }
+}
 
 const uploaderSelect = {
   id: true,
@@ -80,6 +142,8 @@ export async function uploadFile(
     throw new ValidationError(`File exceeds the ${env.MAX_FILE_SIZE_MB}MB size limit`);
   }
 
+  await assertContentMatchesDeclaredType(fileBuffer, mimeType);
+
   if (taskId) await verifyTaskAccess(taskId, userId);
   if (commentId) await verifyCommentAccess(commentId, userId);
 
@@ -88,7 +152,7 @@ export async function uploadFile(
 
   await uploadObject(key, fileBuffer, mimeType);
 
-  const attachment = await prisma.attachment.create({
+  return prisma.attachment.create({
     data: {
       filename: originalFilename,
       mimeType,
@@ -100,46 +164,35 @@ export async function uploadFile(
     },
     include: { uploadedBy: { select: uploaderSelect } },
   });
-
-  const signedUrl = await createPresignedUrl(key);
-  return { ...attachment, signedUrl };
 }
 
 export async function getTaskAttachments(taskId: string, userId: string) {
   await verifyTaskAccess(taskId, userId);
 
-  const attachments = await prisma.attachment.findMany({
+  return prisma.attachment.findMany({
     where: { taskId },
     include: { uploadedBy: { select: uploaderSelect } },
     orderBy: { createdAt: 'desc' },
   });
-
-  return Promise.all(
-    attachments.map(async (a) => ({
-      ...a,
-      signedUrl: await createPresignedUrl(a.url),
-    })),
-  );
 }
 
 export async function getCommentAttachments(commentId: string, userId: string) {
   await verifyCommentAccess(commentId, userId);
 
-  const attachments = await prisma.attachment.findMany({
+  return prisma.attachment.findMany({
     where: { commentId },
     include: { uploadedBy: { select: uploaderSelect } },
     orderBy: { createdAt: 'desc' },
   });
-
-  return Promise.all(
-    attachments.map(async (a) => ({
-      ...a,
-      signedUrl: await createPresignedUrl(a.url),
-    })),
-  );
 }
 
-export async function getSignedDownloadUrl(id: string, userId: string) {
+/**
+ * Access-checked download. Returns the attachment row plus the S3 body stream
+ * for the route to pipe to the client — browsers can't reach the S3 endpoint
+ * directly (internal hostname), and proxying lets us force download semantics
+ * on untrusted content.
+ */
+export async function getDownloadStream(id: string, userId: string) {
   const attachment = await prisma.attachment.findUnique({ where: { id } });
   if (!attachment) throw new NotFoundError('Attachment not found');
 
@@ -152,7 +205,10 @@ export async function getSignedDownloadUrl(id: string, userId: string) {
     throw new ForbiddenError('You do not have access to this attachment');
   }
 
-  return createPresignedUrl(attachment.url);
+  const { body, contentLength } = await getObjectStream(attachment.url);
+  if (!body) throw new NotFoundError('Attachment content not found');
+
+  return { attachment, body, contentLength };
 }
 
 export async function deleteFile(id: string, userId: string) {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { X, Download, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import type { Attachment } from '@/hooks/useFileUpload';
-import api from '@/services/api';
+import { useAttachmentImage } from '@/hooks/useAttachmentImage';
+import { downloadAttachment } from '@/services/attachments';
 
 interface ImagePreviewProps {
   attachments: Attachment[];
@@ -13,6 +14,7 @@ export function ImagePreview({ attachments, initialIndex, onClose }: ImagePrevie
   const [index, setIndex] = useState(initialIndex);
   const [downloading, setDownloading] = useState(false);
   const current = attachments[index];
+  const imageUrl = useAttachmentImage(current?.id ?? null);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -27,8 +29,9 @@ export function ImagePreview({ attachments, initialIndex, onClose }: ImagePrevie
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const { data } = await api.get(`/attachments/${current.id}/download`);
-      window.open(data.data.signedUrl, '_blank');
+      await downloadAttachment(current);
+    } catch {
+      // Swallowed for now — toast feedback lands with the Phase 7 error system.
     } finally {
       setDownloading(false);
     }
@@ -94,11 +97,15 @@ export function ImagePreview({ attachments, initialIndex, onClose }: ImagePrevie
 
       {/* Image */}
       <div onClick={(e) => e.stopPropagation()}>
-        <img
-          src={current.signedUrl}
-          alt={current.filename}
-          className="max-w-[90vw] max-h-[85vh] object-contain rounded shadow-xl"
-        />
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={current.filename}
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded shadow-xl"
+          />
+        ) : (
+          <Loader2 className="w-10 h-10 text-white/70 animate-spin" />
+        )}
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import { TaskDetail } from '@/components/task/TaskDetail';
 import { CalendarView } from '@/components/views/CalendarView';
 import { BoardView } from '@/components/views/BoardView';
 import { useProject, useProjectSections } from '@/hooks/useProjects';
+import { useProjectRoom } from '@/hooks/useProjectRoom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useTasks, useTaskActions } from '@/hooks/useTasks';
 import { useTaskStore } from '@/stores/taskStore';
@@ -18,6 +19,9 @@ export default function Project() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { project, loading } = useProject(id);
+  // Join the project's realtime room so remote task/section/comment changes
+  // stream in while this view is open.
+  useProjectRoom(id, project?.workspaceId);
   const updateProject = useProjectStore((s) => s.updateProject);
   const deleteProject = useProjectStore((s) => s.deleteProject);
   const archiveProject = useProjectStore((s) => s.archiveProject);

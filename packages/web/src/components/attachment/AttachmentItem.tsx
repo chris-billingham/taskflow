@@ -3,6 +3,8 @@ import { Download, Trash2, File, FileText, Image, Archive, Code, Loader2 } from 
 import { formatDistanceToNow } from 'date-fns';
 import type { Attachment } from '@/hooks/useFileUpload';
 import { isImage, formatFileSize } from '@/hooks/useFileUpload';
+import { useAttachmentImage } from '@/hooks/useAttachmentImage';
+import { downloadAttachment } from '@/services/attachments';
 import api from '@/services/api';
 
 interface AttachmentItemProps {
@@ -26,12 +28,16 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const isOwn = attachment.uploadedById === currentUserId;
+  const thumbnailUrl = useAttachmentImage(
+    isImage(attachment.mimeType) ? attachment.id : null,
+  );
 
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const { data } = await api.get(`/attachments/${attachment.id}/download`);
-      window.open(data.data.signedUrl, '_blank');
+      await downloadAttachment(attachment);
+    } catch {
+      // Swallowed for now — toast feedback lands with the Phase 7 error system.
     } finally {
       setDownloading(false);
     }
@@ -59,9 +65,9 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
         }`}
         onClick={() => isImage(attachment.mimeType) && onImageClick?.(attachment)}
       >
-        {isImage(attachment.mimeType) ? (
+        {isImage(attachment.mimeType) && thumbnailUrl ? (
           <img
-            src={attachment.signedUrl}
+            src={thumbnailUrl}
             alt={attachment.filename}
             className="w-full h-full object-cover"
             onError={(e) => {

@@ -12,6 +12,7 @@ import type {
   UpdateMemberInput,
 } from '../schemas/workspace.js';
 import { logActivity } from './activityService.js';
+import { isMailerReady, sendWorkspaceInviteEmail } from './mailService.js';
 
 function generateSlug(name: string): string {
   return (
@@ -263,6 +264,26 @@ export async function inviteMember(
       expiresAt,
     },
   });
+
+  if (isMailerReady()) {
+    const inviter = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+    // Fire-and-forget: the invite link also remains visible in the members UI,
+    // so a dropped email is recoverable.
+    void sendWorkspaceInviteEmail(
+      invite.email,
+      inviter?.name ?? 'A teammate',
+      workspace.name,
+      invite.token,
+    ).catch((err) => {
+      console.error(
+        '[mail] workspace invite email failed:',
+        err instanceof Error ? err.message : err,
+      );
+    });
+  }
 
   return {
     id: invite.id,

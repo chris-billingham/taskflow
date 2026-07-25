@@ -171,7 +171,10 @@ export async function parseQuickAdd(text: string, userId: string): Promise<Parse
     if (match) {
       const date = getDate();
       if (date) {
-        result.dueDate = date.toISOString().split('T')[0];
+        // Serialize using LOCAL calendar components. toISOString() converts to
+        // UTC first, so any evening east of UTC turned "today" into yesterday
+        // (the task was born overdue).
+        result.dueDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         remaining = remaining.replace(match[0], '').trim();
         break;
       }

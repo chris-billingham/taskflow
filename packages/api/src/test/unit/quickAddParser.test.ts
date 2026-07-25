@@ -114,6 +114,18 @@ describe('parseQuickAdd - date parsing', () => {
     expect(result.dueDate).toBe('2024-01-08'); // Next Monday from Thursday Jan 4
   });
 
+  it('uses the LOCAL calendar date, never UTC truncation', async () => {
+    // 23:30 UTC: any timezone east of UTC is already on the next local day.
+    // toISOString().split('T') here used to hand back the UTC (previous) day,
+    // so "today" produced a task that was born overdue.
+    vi.setSystemTime(new Date('2024-06-15T23:30:00.000Z'));
+    const now = new Date();
+    const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const result = await parseQuickAdd('Ship the release today', TEST_USER_ID);
+    expect(result.dueDate).toBe(expected);
+  });
+
   it('sets no dueDate when no date keyword present', async () => {
     const result = await parseQuickAdd('Just a task', TEST_USER_ID);
     expect(result.dueDate).toBeUndefined();

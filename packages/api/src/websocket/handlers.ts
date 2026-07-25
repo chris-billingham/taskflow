@@ -39,29 +39,82 @@ async function canAccessWorkspace(userId: string, workspaceId: string): Promise<
   return !!member;
 }
 
+// Every project/workspace room the user may currently receive broadcasts for:
+// owned projects, direct project memberships, and every project in a workspace
+// they belong to.
+async function accessibleRooms(userId: string): Promise<string[]> {
+  const memberships = await prisma.workspaceMember.findMany({
+    where: { userId },
+    select: { workspaceId: true },
+  });
+  const workspaceIds = memberships.map((m) => m.workspaceId);
+
+  const projects = await prisma.project.findMany({
+    where: {
+      OR: [
+        { ownerId: userId },
+        { members: { some: { userId } } },
+        ...(workspaceIds.length ? [{ workspaceId: { in: workspaceIds } }] : []),
+      ],
+    },
+    select: { id: true },
+  });
+
+  return [
+    ...workspaceIds.map((id) => `workspace:${id}`),
+    ...projects.map((p) => `project:${p.id}`),
+  ];
+}
+
 export function registerHandlers(socket: AuthSocket): void {
   const { user } = socket.data;
 
   socket.join(`user:${user.id}`);
 
+  // Auto-join everything the user can currently see, so realtime works across
+  // all views (Today, Upcoming, lists) without the app subscribing per project,
+  // and so reconnects recover their rooms with no client round trips. The
+  // explicit subscribe below covers projects shared after this socket connected.
+  void accessibleRooms(user.id)
+    .then((rooms) => {
+      if (socket.connected && rooms.length) socket.join(rooms);
+    })
+    .catch(() => {
+      /* client can still subscribe explicitly per project */
+    });
+
   socket.on(
     WS_EVENTS.SUBSCRIBE_PROJECT,
-    (data: { projectId: string; workspaceId?: string }) => {
+    (
+      data: { projectId: string; workspaceId?: string },
+      ack?: (res: { ok: boolean }) => void,
+    ) => {
       void (async () => {
-        if (!data?.projectId || typeof data.projectId !== 'string') return;
+        if (!data?.projectId || typeof data.projectId !== 'string') {
+          ack?.({ ok: false });
+          return;
+        }
+        let ok = false;
         if (await canAccessProject(user.id, data.projectId)) {
           socket.join(`project:${data.projectId}`);
+          ok = true;
         }
-        if (data.workspaceId && (await canAccessWorkspace(user.id, data.workspaceId))) {
+        if (
+          data.workspaceId &&
+          typeof data.workspaceId === 'string' &&
+          (await canAccessWorkspace(user.id, data.workspaceId))
+        ) {
           socket.join(`workspace:${data.workspaceId}`);
         }
-      })().catch(() => {
-        /* ignore subscription failures; client simply receives no updates */
-      });
+        // Ack tells the client whether the join was granted, so a denied
+        // subscription can be dropped instead of retried on every reconnect.
+        ack?.({ ok });
+      })().catch(() => ack?.({ ok: false }));
     },
   );
 
   socket.on(WS_EVENTS.UNSUBSCRIBE_PROJECT, (data: { projectId: string }) => {
+    if (!data?.projectId || typeof data.projectId !== 'string') return;
     socket.leave(`project:${data.projectId}`);
   });
 

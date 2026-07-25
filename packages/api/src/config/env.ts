@@ -17,12 +17,16 @@ const envSchema = z.object({
   S3_ACCESS_KEY: z.string().default('minioadmin'),
   S3_SECRET_KEY: z.string().default('minioadmin'),
   MAX_FILE_SIZE_MB: z.coerce.number().default(25),
-  // SMTP — optional; when absent email verification is skipped automatically
+  // SMTP — optional; when absent (or unreachable at boot) email features are
+  // disabled and new accounts are auto-verified so nobody gets locked out.
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('noreply@taskflow.local'),
+  // Public base URL of the web app, used for links in emails. Falls back to
+  // CORS_ORIGIN (which is the web origin in every shipped topology).
+  APP_URL: z.string().url().optional(),
 });
 
 function loadEnv() {

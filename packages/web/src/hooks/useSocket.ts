@@ -17,5 +17,10 @@ export function useSocket(): void {
     if (!token) return;
 
     initSocket(token);
+
+    // AppLayout (this hook's host) unmounts on logout before the effect can
+    // re-run with isAuthenticated=false, so without this cleanup the previous
+    // user's authenticated socket would survive into the next session.
+    return () => disconnectSocket();
   }, [isAuthenticated, isLoading]);
 }

@@ -49,3 +49,7 @@ Thumbs.db
 .cache/
 temp/
 tmp/
+
+# Playwright artifacts
+playwright-report/
+test-results/

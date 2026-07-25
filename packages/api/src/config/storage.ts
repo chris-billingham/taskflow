@@ -46,3 +46,18 @@ export async function createPresignedUrl(key: string, expiresIn = 3600) {
   const command = new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key });
   return getSignedUrl(s3, command, { expiresIn });
 }
+
+/**
+ * Fetch an object for streaming through the API. Presigned URLs are unusable
+ * client-side in the shipped topology (S3_ENDPOINT is the internal
+ * http://minio:9000, unreachable from browsers), so downloads are proxied.
+ */
+export async function getObjectStream(key: string) {
+  const response = await s3.send(
+    new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
+  );
+  return {
+    body: response.Body,
+    contentLength: response.ContentLength,
+  };
+}

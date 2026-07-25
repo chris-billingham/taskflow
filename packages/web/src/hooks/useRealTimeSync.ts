@@ -17,16 +17,35 @@ export function useRealTimeSync(): void {
     const socket = getSocket();
     if (!socket) return;
 
+    // The Today/Upcoming pages render from snapshot arrays (todayView /
+    // upcomingView), not the live task map, so a remote change needs a view
+    // refetch to become visible. Debounced so a burst of events (bulk edits,
+    // reconnect catch-up) costs one round trip. Refresh only views that are
+    // already loaded.
+    let viewRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleViewRefresh = () => {
+      if (viewRefreshTimer) return;
+      viewRefreshTimer = setTimeout(() => {
+        viewRefreshTimer = null;
+        const taskState = useTaskStore.getState();
+        if (taskState.todayView) void taskState.fetchTodayView();
+        if (taskState.upcomingView) void taskState.fetchUpcomingView();
+      }, 500);
+    };
+
     const onTaskCreated = ({ task }: { task: Task }) => {
       useTaskStore.getState().setTask(task);
+      scheduleViewRefresh();
     };
 
     const onTaskUpdated = ({ task }: { task: Task }) => {
       useTaskStore.getState().setTask(task);
+      scheduleViewRefresh();
     };
 
     const onTaskDeleted = ({ taskId }: { taskId: string }) => {
       useTaskStore.getState().removeTask(taskId);
+      scheduleViewRefresh();
     };
 
     const onProjectUpdated = ({ project }: { project: Project }) => {
@@ -150,6 +169,7 @@ export function useRealTimeSync(): void {
     socket.on('comment:deleted', onCommentDeleted);
 
     return () => {
+      if (viewRefreshTimer) clearTimeout(viewRefreshTimer);
       socket.off('task:created', onTaskCreated);
       socket.off('task:updated', onTaskUpdated);
       socket.off('task:deleted', onTaskDeleted);

@@ -14,6 +14,24 @@ import {
   ValidationError,
 } from '../errors/index.js';
 import type { RegisterInput } from '../schemas/auth.js';
+import {
+  isMailerReady,
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+} from './mailService.js';
+
+const sha256 = (value: string) =>
+  crypto.createHash('sha256').update(value).digest('hex');
+
+const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Email delivery must never fail the request that triggered it — the user can
+// always use "resend"/"forgot password" if a send is dropped.
+function sendInBackground(label: string, fn: () => Promise<void>) {
+  void fn().catch((err) => {
+    console.error(`[mail] ${label} failed:`, err instanceof Error ? err.message : err);
+  });
+}
 
 function tokenPayload(user: {
   id: string;
@@ -52,10 +70,12 @@ export async function register(data: RegisterInput) {
   }
 
   const passwordHash = await hashPassword(data.password);
-  // When SMTP is not configured, auto-verify so users can log in immediately.
-  // Once email delivery is implemented, remove this flag and let verifyEmail() set it.
-  const emailConfigured = !!process.env.SMTP_HOST;
-  const emailVerifyToken = emailConfigured ? crypto.randomBytes(32).toString('hex') : null;
+  // Verification is required only when the mailer PROVED itself at boot
+  // (transport verified) — gating on config alone would lock every new user
+  // out of their account whenever SMTP is set but broken, because the
+  // verification link could never arrive.
+  const emailConfigured = isMailerReady();
+  const rawVerifyToken = emailConfigured ? crypto.randomBytes(32).toString('hex') : null;
 
   // Create the user, their personal workspace, and their inbox project atomically.
   // If any step fails, none are persisted — otherwise a user could exist with no
@@ -66,7 +86,11 @@ export async function register(data: RegisterInput) {
         email: data.email,
         passwordHash,
         name: data.name,
-        emailVerifyToken,
+        // Only the hash is stored; the raw token exists solely in the email.
+        emailVerifyToken: rawVerifyToken ? sha256(rawVerifyToken) : null,
+        emailVerifyTokenExpiresAt: rawVerifyToken
+          ? new Date(Date.now() + VERIFY_TOKEN_TTL_MS)
+          : null,
         emailVerified: !emailConfigured,
       },
     });
@@ -93,6 +117,12 @@ export async function register(data: RegisterInput) {
 
     return created;
   });
+
+  if (rawVerifyToken) {
+    sendInBackground('verification email', () =>
+      sendVerificationEmail(user.email, user.name, rawVerifyToken),
+    );
+  }
 
   const tokens = await createTokenPair(user);
 
@@ -184,8 +214,11 @@ export async function forgotPassword(email: string) {
   const redis = getRedis();
   await redis.set(`password-reset:${resetTokenHash}`, user.id, 'EX', 3600);
 
-  // TODO: send email with reset link here (email delivery on roadmap)
-  if (process.env.NODE_ENV !== 'production') {
+  if (isMailerReady()) {
+    sendInBackground('password reset email', () =>
+      sendPasswordResetEmail(user.email, user.name, resetToken),
+    );
+  } else if (process.env.NODE_ENV !== 'production') {
     console.warn(`[DEV] Password reset token for ${email}: ${resetToken}`);
   }
   return { message: 'If that email exists, a reset link has been sent' };
@@ -222,39 +255,62 @@ export async function resetPassword(token: string, newPassword: string) {
 }
 
 export async function verifyEmail(token: string) {
-  const user = await prisma.user.findFirst({
-    where: { emailVerifyToken: token },
+  // Tokens are stored hashed; the unique index makes this lookup O(1).
+  const user = await prisma.user.findUnique({
+    where: { emailVerifyToken: sha256(token) },
   });
 
-  if (!user) {
-    throw new NotFoundError('Invalid verification token');
+  if (
+    !user ||
+    !user.emailVerifyTokenExpiresAt ||
+    user.emailVerifyTokenExpiresAt < new Date()
+  ) {
+    throw new NotFoundError('Invalid or expired verification token');
   }
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { emailVerified: true, emailVerifyToken: null },
+    data: {
+      emailVerified: true,
+      emailVerifyToken: null,
+      emailVerifyTokenExpiresAt: null,
+    },
   });
 
   return { message: 'Email verified successfully' };
 }
 
 export async function resendVerificationEmail(email: string) {
+  const neutral = {
+    message: 'If that email exists and is unverified, a new link has been sent',
+  };
+
   const user = await prisma.user.findUnique({ where: { email } });
   // Don't reveal whether the email exists
   if (!user || user.emailVerified) {
-    return { message: 'If that email exists and is unverified, a new link has been sent' };
+    return neutral;
+  }
+
+  // Without a working mailer there is nothing useful to rotate or send.
+  if (!isMailerReady()) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[DEV] resend requested for ${email} but no mailer is configured`);
+    }
+    return neutral;
   }
 
   const token = crypto.randomBytes(32).toString('hex');
   await prisma.user.update({
     where: { id: user.id },
-    data: { emailVerifyToken: token },
+    data: {
+      emailVerifyToken: sha256(token),
+      emailVerifyTokenExpiresAt: new Date(Date.now() + VERIFY_TOKEN_TTL_MS),
+    },
   });
 
-  // TODO: send verification email once SMTP is implemented
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn(`[DEV] Email verification token for ${email}: ${token}`);
-  }
+  sendInBackground('verification email (resend)', () =>
+    sendVerificationEmail(user.email, user.name, token),
+  );
 
-  return { message: 'If that email exists and is unverified, a new link has been sent' };
+  return neutral;
 }

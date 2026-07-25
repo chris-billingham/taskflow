@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 
@@ -23,6 +24,11 @@ export function generateRefreshToken(payload: TokenPayload): string {
   return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
     expiresIn: REFRESH_TOKEN_EXPIRY,
     algorithm: JWT_ALGORITHM,
+    // Refresh tokens are persisted under a UNIQUE index. Without a random jti,
+    // two logins for the same user in the same second mint byte-identical
+    // JWTs (same payload, same second-granularity iat) and the second insert
+    // fails — i.e. multi-device/multi-tab sign-in collides.
+    jwtid: crypto.randomUUID(),
   });
 }
 

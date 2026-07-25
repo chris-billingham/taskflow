@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -84,7 +85,7 @@ export function EditProjectModal({
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div role="dialog" aria-modal="true" aria-label="Edit project" className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
@@ -213,6 +214,7 @@ export function EditProjectModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

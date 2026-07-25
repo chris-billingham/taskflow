@@ -1,4 +1,5 @@
 import { useEffect, useCallback, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -36,7 +37,10 @@ export function Modal({ isOpen, onClose, children, title, size = 'md' }: ModalPr
     lg: 'max-w-lg',
   };
 
-  return (
+  // Portaled to <body>: ancestors like the fixed sidebar create their own
+  // stacking contexts, which would trap the overlay's z-index below the main
+  // pane's sticky headers (the dialog rendered with its buttons covered).
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="fixed inset-0 bg-black/50 transition-opacity"
@@ -58,6 +62,7 @@ export function Modal({ isOpen, onClose, children, title, size = 'md' }: ModalPr
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

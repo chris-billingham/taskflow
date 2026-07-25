@@ -10,7 +10,6 @@ export interface Attachment {
   commentId: string | null;
   uploadedById: string;
   createdAt: string;
-  signedUrl: string;
   uploadedBy: {
     id: string;
     name: string;

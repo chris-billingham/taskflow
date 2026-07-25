@@ -114,7 +114,13 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ success: true, ...data });
   });
 
-  app.get('/verify-email', async (request, reply) => {
+  app.get('/verify-email', {
+    config: {
+      // Previously the only auth route with no limit — tokens must not be
+      // brute-forceable and the lookup shouldn't be a free DoS lever.
+      rateLimit: { max: env.NODE_ENV === 'production' ? 10 : 1000, timeWindow: '15 minutes' },
+    },
+  }, async (request, reply) => {
     const { token } = request.query as { token?: string };
     if (!token) {
       throw new ValidationError('Token is required');
