@@ -26,6 +26,19 @@ const MAX_AUTH_RETRIES = 3;
 // Messages the server middleware rejects the handshake with (websocket/server.ts).
 const AUTH_ERRORS = new Set(['Authentication required', 'Invalid or expired token']);
 
+// Tell the app to re-read its views once this socket is actually receiving
+// broadcasts again. Coalesced, because a single reconnect produces several
+// triggers in quick succession — the server's rooms:ready plus one ack per
+// re-subscribed project — and they should cost one round trip, not one each.
+let resyncTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleResync(): void {
+  if (resyncTimer) return;
+  resyncTimer = setTimeout(() => {
+    resyncTimer = null;
+    useSocketStore.getState().bumpResync();
+  }, 150);
+}
+
 function emitSubscribe(projectId: string, workspaceId?: string): void {
   socket?.emit(
     'subscribe:project',
@@ -35,7 +48,11 @@ function emitSubscribe(projectId: string, workspaceId?: string): void {
         // Denied (no access / project gone) — stop re-subscribing on reconnect.
         // If it was transient, the next view mount re-registers it anyway.
         subscriptions.delete(projectId);
+        return;
       }
+      // The ack is sent after the server-side join, so this is the first moment
+      // this project's broadcasts are guaranteed to reach us.
+      scheduleResync();
     },
   );
 }
@@ -70,6 +87,11 @@ export function initSocket(token: string): Socket {
     }
   });
 
+  // The server has finished joining this socket to every room it can read.
+  // Until now the connection was live but received nothing, so whatever the
+  // views fetched over HTTP may already be out of date.
+  socket.on('rooms:ready', () => scheduleResync());
+
   socket.on('disconnect', () => setStatus('disconnected'));
 
   socket.on('connect_error', (err) => {
@@ -100,6 +122,10 @@ export function getSocket(): Socket | null {
 export function disconnectSocket(): void {
   subscriptions.clear();
   authRetries = 0;
+  if (resyncTimer) {
+    clearTimeout(resyncTimer);
+    resyncTimer = null;
+  }
   if (socket) {
     socket.disconnect();
     socket = null;

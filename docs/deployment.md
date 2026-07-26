@@ -37,25 +37,30 @@ The installer will:
 
 If you prefer to set up manually:
 
+> **Always pass `-f docker-compose.yml`.** A bare `docker compose` also merges
+> `docker-compose.override.yml`, which is a DEVELOPMENT override — it would
+> deploy dev servers with `NODE_ENV=development`, self-signed TLS and an exposed
+> Node inspector port. The `make` targets and the scripts already do this.
+
 ```bash
 # Copy and edit environment file
 cp .env.example .env
-# Edit .env with your values (especially DOMAIN, secrets, passwords)
+# Edit .env with your values (especially DOMAIN, ADMIN_EMAILS, secrets, passwords)
 
 # Create Docker network for Traefik
 docker network create traefik
 
 # Build images
-docker compose build
+docker compose -f docker-compose.yml build --parallel
 
 # Start infrastructure
-docker compose up -d postgres redis minio traefik
+docker compose -f docker-compose.yml up -d postgres redis minio traefik
 
 # Run migrations
 make migrate
 
 # Start everything
-docker compose up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 ## HTTPS / SSL
@@ -70,7 +75,7 @@ HTTPS is handled automatically by Traefik using Let's Encrypt. Certificates are 
 Certificates auto-renew before expiry. To check certificate status:
 
 ```bash
-docker compose logs traefik | grep -i cert
+docker compose -f docker-compose.yml logs traefik | grep -i cert
 ```
 
 ## Scaling the API
@@ -140,20 +145,28 @@ make restore file=./backups/taskflow_20240101_020000.tar.gz
 curl https://your-domain.example.com/health
 ```
 
-Returns JSON with database and Redis status:
+Returns the overall verdict — `200` with `"status":"ok"`, or `503` with
+`"status":"degraded"` when a backend dependency has failed:
+
 ```json
-{
-  "status": "ok",
-  "version": "1.0.0",
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "checks": {
-    "database": "ok",
-    "redis": "ok"
-  }
-}
+{ "status": "ok", "timestamp": "2024-01-01T00:00:00.000Z" }
 ```
 
-A `503` status with `"status": "degraded"` indicates a backend dependency failure.
+Which dependency failed, and the running version, are deliberately withheld from
+public callers. Ask from inside the container to get the breakdown:
+
+```bash
+docker compose -f docker-compose.yml exec api wget -qO- http://localhost:3001/health
+```
+
+```json
+{
+  "status": "degraded",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "version": "1.0.0",
+  "checks": { "database": "error", "redis": "ok" }
+}
+```
 
 ### Logs
 
@@ -162,9 +175,9 @@ A `503` status with `"status": "degraded"` indicates a backend dependency failur
 make logs
 
 # Single service
-docker compose logs -f api
-docker compose logs -f worker
-docker compose logs -f traefik
+docker compose -f docker-compose.yml logs -f api
+docker compose -f docker-compose.yml logs -f worker
+docker compose -f docker-compose.yml logs -f traefik
 ```
 
 ### Service status
@@ -172,7 +185,7 @@ docker compose logs -f traefik
 ```bash
 make status
 # or
-docker compose ps
+docker compose -f docker-compose.yml ps
 ```
 
 ## Upgrade
@@ -193,7 +206,7 @@ The upgrade script:
 
 Check environment variables:
 ```bash
-docker compose logs api | head -50
+docker compose -f docker-compose.yml logs api | head -50
 ```
 
 Common causes: missing or invalid `JWT_SECRET` / `JWT_REFRESH_SECRET` (must be at least 32 chars), wrong `DATABASE_URL`.
@@ -201,14 +214,14 @@ Common causes: missing or invalid `JWT_SECRET` / `JWT_REFRESH_SECRET` (must be a
 ### Cannot connect to database
 
 ```bash
-docker compose exec postgres pg_isready -U taskflow
-docker compose logs postgres
+docker compose -f docker-compose.yml exec postgres pg_isready -U taskflow
+docker compose -f docker-compose.yml logs postgres
 ```
 
 ### HTTPS certificate not issued
 
 ```bash
-docker compose logs traefik | grep -i acme
+docker compose -f docker-compose.yml logs traefik | grep -i acme
 ```
 
 - Ensure port 80 is open (needed for HTTP challenge)

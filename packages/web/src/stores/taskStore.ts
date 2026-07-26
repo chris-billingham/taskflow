@@ -102,11 +102,15 @@ interface TaskState {
   upcomingView: UpcomingViewData | null;
   // Cursor for the current task-list query; null = no more pages
   tasksNextCursor: string | null;
+  // How many pages of the current query are on screen. Tracked so a resync can
+  // restore the same depth instead of collapsing back to the first page.
+  tasksPagesLoaded: number;
   loadingMore: boolean;
   viewLoading: boolean;
 
   // Actions
   fetchTasks: (query?: TaskQuery) => Promise<void>;
+  resyncTasks: (query?: TaskQuery) => Promise<void>;
   fetchTaskById: (id: string) => Promise<Task>;
   createTask: (data: {
     content: string;
@@ -155,6 +159,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
   todayView: null,
   upcomingView: null,
   tasksNextCursor: null,
+  tasksPagesLoaded: 0,
   loadingMore: false,
   viewLoading: false,
 
@@ -181,13 +186,76 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
           }
         }
       }
-      set({ tasks, loading: false, tasksNextCursor: data.nextCursor ?? null });
+      set({
+        tasks,
+        loading: false,
+        tasksNextCursor: data.nextCursor ?? null,
+        tasksPagesLoaded: 1,
+      });
     } catch (err: any) {
       if (seq !== fetchTasksSeq) return;
       set({
         error: err.response?.data?.message || 'Failed to fetch tasks',
         loading: false,
       });
+    }
+  },
+
+  /**
+   * Re-read the current task list after a realtime gap, preserving both the
+   * scroll depth and the silence of the operation.
+   *
+   * Two things a plain fetchTasks() would get wrong here. It resets to page one,
+   * so a reader who had paged through a long project would be yanked back to the
+   * top every time the socket reconnected — which is every 15 minutes, when the
+   * server force-disconnects an expired token. And it flips `loading`, so the
+   * list would flash a skeleton over content that is almost always unchanged.
+   *
+   * On failure the existing state is deliberately left in place: a resync is a
+   * best-effort reconciliation, and stale data beats an empty list.
+   */
+  resyncTasks: async (query) => {
+    const pagesToRestore = Math.max(1, get().tasksPagesLoaded);
+    const seq = ++fetchTasksSeq;
+    try {
+      const tasks = new Map<string, Task>();
+      let cursor: string | undefined;
+      let nextCursor: string | null = null;
+      let pagesFetched = 0;
+
+      for (let page = 0; page < pagesToRestore; page++) {
+        const params = new URLSearchParams();
+        if (query) {
+          Object.entries(query).forEach(([key, value]) => {
+            if (value !== undefined) params.append(key, String(value));
+          });
+        }
+        if (cursor) params.append('cursor', cursor);
+
+        const { data } = await api.get(`/tasks?${params.toString()}`);
+        // A newer fetch (project switch, explicit refetch) started while this
+        // was in flight — its result is the current truth, so drop ours.
+        if (seq !== fetchTasksSeq) return;
+
+        for (const t of data.data) {
+          tasks.set(t.id, t);
+          if (t.subtasks && Array.isArray(t.subtasks)) {
+            for (const sub of t.subtasks) tasks.set(sub.id, sub);
+          }
+        }
+        pagesFetched++;
+        nextCursor = data.nextCursor ?? null;
+        if (!nextCursor) break;
+        cursor = nextCursor;
+      }
+
+      set({
+        tasks,
+        tasksNextCursor: nextCursor,
+        tasksPagesLoaded: pagesFetched,
+      });
+    } catch {
+      /* keep what's on screen; the next event or a reload recovers */
     }
   },
 
@@ -216,6 +284,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
           tasks,
           loadingMore: false,
           tasksNextCursor: data.nextCursor ?? null,
+          tasksPagesLoaded: state.tasksPagesLoaded + 1,
         };
       });
     } catch {

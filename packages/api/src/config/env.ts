@@ -7,6 +7,14 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   API_PORT: z.coerce.number().default(3001),
+  // Proxy hops between the client and the API. Used as Fastify's `trustProxy`
+  // so request.ip — and therefore every rate-limit bucket — comes from the
+  // outermost hop we actually trust rather than from a spoofable header. 1 is
+  // the shipped production topology (client → Traefik → API); add one for each
+  // additional proxy you put in front, e.g. a CDN. The value is immaterial in
+  // development: nothing there sets X-Forwarded-For (Vite's proxy doesn't), so
+  // request.ip falls back to the socket address.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(1),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.string().default('info'),
@@ -49,6 +57,15 @@ const envSchema = z.object({
         .map((e) => e.trim().toLowerCase())
         .filter((e) => e.length > 0),
     ),
+  // Run the BullMQ workers inside the API process.
+  //
+  // Production ships a dedicated `worker` container (docker-compose.yml) with
+  // its own resource limits, so the API defaults to NOT also running them —
+  // otherwise digests and sweeps compete with request serving for the API's
+  // CPU and memory budget, and which process happens to pick up a job becomes
+  // observable. Outside production it defaults ON, because `pnpm dev` starts
+  // no separate worker. Set to 'true' if you deploy the API without a worker.
+  RUN_WORKERS_IN_API: z.string().optional(),
   // Serve Swagger UI at /api/docs in production (always on in development)
   ENABLE_API_DOCS: z
     .string()
@@ -127,6 +144,14 @@ function loadEnv() {
 
 export const env = loadEnv();
 export type Env = z.infer<typeof envSchema>;
+
+/** Whether this API process should also run the background job workers. */
+export function shouldRunWorkersInApi(): boolean {
+  if (env.RUN_WORKERS_IN_API !== undefined) {
+    return env.RUN_WORKERS_IN_API === 'true';
+  }
+  return env.NODE_ENV !== 'production';
+}
 
 /**
  * Whether an address is designated an instance administrator by configuration.

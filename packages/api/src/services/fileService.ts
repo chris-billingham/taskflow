@@ -190,13 +190,28 @@ export async function getDownloadStream(id: string, userId: string) {
   return { attachment, body, contentLength };
 }
 
+/**
+ * Delete an attachment. The uploader always may; otherwise it takes ADMIN on the
+ * project the attachment hangs off.
+ *
+ * Uploader-only left project admins unable to clean up anything a colleague had
+ * attached — including a file uploaded to the wrong place, or by someone who has
+ * since left — with no route to it in the app at all.
+ */
 export async function deleteFile(id: string, userId: string) {
   const attachment = await prisma.attachment.findUnique({ where: { id } });
   if (!attachment) throw new NotFoundError('Attachment not found');
 
-  // Only uploader can delete
   if (attachment.uploadedById !== userId) {
-    throw new ForbiddenError('You can only delete your own attachments');
+    if (attachment.taskId) {
+      await requireTaskAccess(attachment.taskId, userId, 'ADMIN');
+    } else if (attachment.commentId) {
+      await requireCommentAccess(attachment.commentId, userId, 'ADMIN');
+    } else {
+      // Attached to nothing: there is no project whose admin could claim it, so
+      // the uploader is the only person with a right to it.
+      throw new ForbiddenError('You can only delete your own attachments');
+    }
   }
 
   await deleteObject(attachment.url);

@@ -1,10 +1,11 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import {
   useTaskStore,
   selectTasksByProject,
   selectTasksBySection,
   selectSubtasks,
 } from '@/stores/taskStore';
+import { useSocketStore } from '@/stores/socketStore';
 import type { TaskQuery } from '@/stores/taskStore';
 
 export function useTasks(query?: TaskQuery) {
@@ -22,10 +23,26 @@ export function useTasks(query?: TaskQuery) {
   const loadMoreTasks = useTaskStore((s) => s.loadMoreTasks);
   const hasMore = useTaskStore((s) => s.tasksNextCursor !== null);
   const loadingMore = useTaskStore((s) => s.loadingMore);
+  const resyncTasks = useTaskStore((s) => s.resyncTasks);
+  const resyncEpoch = useSocketStore((s) => s.resyncEpoch);
 
   useEffect(() => {
     fetchTasks(query);
   }, [fetchTasks, query?.projectId, query?.sectionId, query?.completed]);
+
+  // Read through a ref so the resync effect below depends on the epoch ALONE.
+  // Listing the query fields there instead would fire a second, redundant fetch
+  // alongside the mount effect above on every project switch.
+  const queryRef = useRef(query);
+  queryRef.current = query;
+
+  // Reconcile once the socket is receiving broadcasts again — events missed
+  // while it wasn't are never replayed. Epoch 0 is "no resync signal yet", so
+  // this never duplicates the initial fetch.
+  useEffect(() => {
+    if (resyncEpoch === 0) return;
+    void resyncTasks(queryRef.current);
+  }, [resyncEpoch, resyncTasks]);
 
   return {
     tasks,
@@ -108,10 +125,13 @@ export function useTodayView() {
   const error = useTaskStore((s) => s.error);
   const fetchTodayView = useTaskStore((s) => s.fetchTodayView);
   const rescheduleOverdue = useTaskStore((s) => s.rescheduleOverdue);
+  const resyncEpoch = useSocketStore((s) => s.resyncEpoch);
 
+  // The epoch is a dependency rather than a separate effect: this view has no
+  // pagination to preserve, so re-running the ordinary fetch is the resync.
   useEffect(() => {
     fetchTodayView();
-  }, [fetchTodayView]);
+  }, [fetchTodayView, resyncEpoch]);
 
   return {
     todayView,
@@ -127,10 +147,11 @@ export function useUpcomingView(days: number = 14, includeNoDate: boolean = true
   const loading = useTaskStore((s) => s.viewLoading);
   const error = useTaskStore((s) => s.error);
   const fetchUpcomingView = useTaskStore((s) => s.fetchUpcomingView);
+  const resyncEpoch = useSocketStore((s) => s.resyncEpoch);
 
   useEffect(() => {
     fetchUpcomingView(days, includeNoDate);
-  }, [fetchUpcomingView, days, includeNoDate]);
+  }, [fetchUpcomingView, days, includeNoDate, resyncEpoch]);
 
   return {
     upcomingView,

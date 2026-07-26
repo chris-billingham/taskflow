@@ -7,6 +7,7 @@ import {
   completeTask,
   moveTask,
   bulkUpdate,
+  duplicateTask,
 } from '../../services/taskService.js';
 import { createReminder } from '../../services/reminderService.js';
 
@@ -47,7 +48,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await prisma.project.deleteMany({ where: { id: { in: [projectAId, projectBId] } } });
-  await prisma.user.deleteMany({ where: { id: userId } });
+  // Every user this file creates is suffixed with RUN, so this also collects the
+  // extra accounts individual tests make rather than leaving them in the shared
+  // development database.
+  await prisma.user.deleteMany({ where: { email: { contains: RUN } } });
   await prisma.$disconnect();
 });
 
@@ -217,5 +221,96 @@ describe('reminder re-arming on due date change', () => {
     expect(rearmed.isSent).toBe(false);
     expect(rearmed.sentAt).toBeNull();
     expect(rearmed.attempts).toBe(0);
+  });
+});
+
+describe('duplicateTask', () => {
+  it('copies the labels and the whole subtask tree', async () => {
+    // Duplicating a checklist used to hand back an empty shell of its parent:
+    // labels and subtasks were both dropped.
+    const label = await prisma.label.create({
+      data: { name: `dup-label ${RUN}`, userId, color: '#ff0000' },
+    });
+
+    const parent = await createTask(
+      {
+        content: `dup parent ${RUN}`,
+        projectId: projectAId,
+        labelIds: [label.id],
+        priority: 2,
+      },
+      userId,
+    );
+    const child = await createTask(
+      { content: `dup child ${RUN}`, projectId: projectAId, parentId: parent.id },
+      userId,
+    );
+    const grandchild = await createTask(
+      { content: `dup grandchild ${RUN}`, projectId: projectAId, parentId: child.id },
+      userId,
+    );
+
+    const copy = await duplicateTask(parent.id, userId);
+
+    expect(copy.id).not.toBe(parent.id);
+    expect(copy.content).toBe(parent.content);
+    expect(copy.priority).toBe(2);
+    expect(copy.taskLabels.map((tl) => tl.labelId)).toEqual([label.id]);
+
+    // The response itself carries the copied children, not an empty array.
+    expect(copy.subtasks).toHaveLength(1);
+    expect(copy.subtasks[0].content).toBe(child.content);
+    expect(copy.subtasks[0].id).not.toBe(child.id);
+
+    // Depth is preserved, and every copy is re-parented onto its own copy
+    // rather than left pointing at the original tree.
+    const childCopy = await prisma.task.findUniqueOrThrow({
+      where: { id: copy.subtasks[0].id },
+      include: { subtasks: true },
+    });
+    expect(childCopy.parentId).toBe(copy.id);
+    expect(childCopy.subtasks).toHaveLength(1);
+    expect(childCopy.subtasks[0].content).toBe(grandchild.content);
+    expect(childCopy.subtasks[0].id).not.toBe(grandchild.id);
+
+    // The originals are untouched — a duplicate must not move anything.
+    const originalChild = await prisma.task.findUniqueOrThrow({
+      where: { id: child.id },
+    });
+    expect(originalChild.parentId).toBe(parent.id);
+  });
+
+  it('attributes the copy to whoever duplicated it', async () => {
+    const other = await prisma.user.create({
+      data: {
+        email: `dup-other-${RUN}@lifecycle.test`,
+        passwordHash: 'x',
+        name: 'dup-other',
+        emailVerified: true,
+      },
+    });
+    await prisma.projectMember.create({
+      data: { projectId: projectAId, userId: other.id, role: 'MEMBER' },
+    });
+
+    const original = await createTask(
+      { content: `dup attribution ${RUN}`, projectId: projectAId },
+      userId,
+    );
+    const copy = await duplicateTask(original.id, other.id);
+
+    expect(copy.creatorId).toBe(other.id);
+    expect(original.creatorId).toBe(userId);
+  });
+
+  it('leaves a childless task with no subtasks', async () => {
+    const original = await createTask(
+      { content: `dup lonely ${RUN}`, projectId: projectAId },
+      userId,
+    );
+    const copy = await duplicateTask(original.id, userId);
+
+    expect(copy.subtasks).toEqual([]);
+    expect(copy.taskLabels).toEqual([]);
   });
 });

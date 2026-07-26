@@ -1,10 +1,11 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import {
   useProjectStore,
   selectProjectsArray,
   selectFavoriteProjects,
   selectProjectTree,
 } from '@/stores/projectStore';
+import { useSocketStore } from '@/stores/socketStore';
 import api from '@/services/api';
 import type { ProjectSection } from '@/stores/projectStore';
 
@@ -15,10 +16,14 @@ export function useProjects() {
   const loading = useProjectStore((s) => s.loading);
   const error = useProjectStore((s) => s.error);
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
+  const resyncEpoch = useSocketStore((s) => s.resyncEpoch);
 
+  // Re-read on resync: project:created has no broadcast at all, so a project
+  // shared with this user while their socket was down would otherwise stay
+  // missing from the sidebar until a reload.
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+  }, [fetchProjects, resyncEpoch]);
 
   return { projects, favorites, tree, loading, error, refetch: fetchProjects };
 }
@@ -27,6 +32,7 @@ export function useProject(id: string | undefined) {
   const project = useProjectStore((s) => (id ? s.projects.get(id) : undefined));
   const setProject = useProjectStore((s) => s.setProject);
   const loading = useProjectStore((s) => s.loading);
+  const resyncEpoch = useSocketStore((s) => s.resyncEpoch);
 
   const fetchProject = useCallback(async () => {
     if (!id) return;
@@ -43,6 +49,18 @@ export function useProject(id: string | undefined) {
       fetchProject();
     }
   }, [id, project, fetchProject]);
+
+  // Separate from the effect above, which deliberately fetches only when the
+  // project is absent. A resync has to re-read one already in the store —
+  // sections live on this payload, so section events missed during the gap are
+  // recovered here too.
+  const fetchProjectRef = useRef(fetchProject);
+  fetchProjectRef.current = fetchProject;
+
+  useEffect(() => {
+    if (resyncEpoch === 0) return;
+    void fetchProjectRef.current();
+  }, [resyncEpoch]);
 
   return { project, loading, refetch: fetchProject };
 }

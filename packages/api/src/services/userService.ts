@@ -2,6 +2,7 @@ import { prisma } from '../config/database.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/index.js';
 import { disconnectUserSockets } from '../websocket/events.js';
+import { deleteObjects } from '../config/storage.js';
 import type { Prisma, SystemRole } from '@prisma/client';
 
 /**
@@ -199,6 +200,51 @@ export async function deleteUser(id: string) {
     );
   }
 
+  // Collect the object-storage keys BEFORE the delete, because the rows that
+  // hold them do not survive it and the orphan sweep can only find rows.
+  //
+  // Two different cascades destroy the evidence. Attachment.uploadedBy cascades,
+  // so everything this user uploaded — anywhere, including in other people's
+  // projects — is deleted outright rather than left orphaned. And deleting their
+  // workspaces cascades through projects and tasks, taking attachments OTHER
+  // people uploaded there with them. Either way the row is gone and the bytes
+  // are unreachable but still billed and still copied into every backup.
+  const doomedAttachments = await prisma.attachment.findMany({
+    where: {
+      OR: [
+        { uploadedById: id },
+        ...(ownedWorkspaces.length > 0
+          ? [
+              {
+                task: {
+                  project: { workspaceId: { in: ownedWorkspaces.map((w) => w.id) } },
+                },
+              },
+              {
+                comment: {
+                  OR: [
+                    {
+                      task: {
+                        project: {
+                          workspaceId: { in: ownedWorkspaces.map((w) => w.id) },
+                        },
+                      },
+                    },
+                    {
+                      project: {
+                        workspaceId: { in: ownedWorkspaces.map((w) => w.id) },
+                      },
+                    },
+                  ],
+                },
+              },
+            ]
+          : []),
+      ],
+    },
+    select: { url: true },
+  });
+
   // Sole-member workspaces (including the personal one) are the user's own
   // data — remove them explicitly, then the account. Tasks the user created
   // in OTHER people's projects survive with creatorId set to null (schema),
@@ -209,6 +255,19 @@ export async function deleteUser(id: string) {
     }
     await tx.user.delete({ where: { id } });
   });
+
+  // After the rows are gone: a failure here leaks bytes, whereas deleting the
+  // objects first would destroy live attachments if the transaction rolled back.
+  if (doomedAttachments.length > 0) {
+    try {
+      await deleteObjects(doomedAttachments.map((a) => a.url));
+    } catch (err) {
+      console.error(
+        `[userService] account ${id} deleted, but ${doomedAttachments.length} storage object(s) could not be removed:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
 
   return { message: 'Account deleted successfully' };
 }

@@ -76,6 +76,23 @@ if [ -z "${ACME_EMAIL:-}" ] || [ "$ACME_EMAIL" = "admin@example.com" ]; then
   sed -i.bak "s|ACME_EMAIL=.*|ACME_EMAIL=${ACME_EMAIL}|" .env && rm -f .env.bak
 fi
 
+# Ask now rather than let the placeholder ship. Without an admin AND without
+# SMTP configured, a forgotten password has no recovery path at all: reset mail
+# can't be sent and no account can reset it from the console. The address only
+# has to match the one you sign up with — the account is created as an admin.
+if [ -z "${ADMIN_EMAILS:-}" ] || [ "$ADMIN_EMAILS" = "admin@example.com" ]; then
+  echo ""
+  echo "Instance administrators manage accounts deployment-wide (create, suspend,"
+  echo "reset passwords). They get no extra access to anyone's tasks or projects."
+  echo "This is also the only password-recovery path until SMTP is configured."
+  read -rp "Enter admin email address(es), comma-separated: " ADMIN_EMAILS
+  if [ -n "$ADMIN_EMAILS" ]; then
+    sed -i.bak "s|ADMIN_EMAILS=.*|ADMIN_EMAILS=${ADMIN_EMAILS}|" .env && rm -f .env.bak
+  else
+    warn "No admin configured. Set ADMIN_EMAILS in .env and restart the API before signing up."
+  fi
+fi
+
 source .env
 
 # ── 3. Docker networking ──────────────────────────────────────────────────────

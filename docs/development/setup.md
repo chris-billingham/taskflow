@@ -17,11 +17,11 @@ cd taskflow
 pnpm install
 
 # 3. Configure environment
-cp .env.example .env
-# Edit .env — defaults work for local Docker services without changes
+cp packages/api/.env.example packages/api/.env
+# Defaults match docker-compose.dev.yml — no edits needed
 
 # 4. Start infrastructure (Postgres, Redis, MinIO)
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 
 # 5. Create database schema
 pnpm --filter @taskflow/api db:migrate
@@ -44,7 +44,10 @@ URLs:
 ```bash
 pnpm dev           # Start everything
 pnpm build         # Build all packages
-pnpm test          # Run all tests
+pnpm test:unit     # Unit tests (api + web)
+pnpm test:ci       # Unit + API integration tests, as CI runs them
+pnpm lint          # ESLint across the workspace
+pnpm typecheck     # tsc --noEmit across the workspace
 pnpm clean         # Remove dist/ and node_modules
 ```
 
@@ -93,8 +96,8 @@ pnpm add -Dw <package>
 To reset the database to a clean state:
 
 ```bash
-docker-compose -f docker-compose.dev.yml down -v
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.dev.yml up -d
 pnpm --filter @taskflow/api db:migrate
 ```
 
@@ -131,7 +134,19 @@ the realtime socket keeps a connection open. Wait for a rendered element instead
 
 ## Environment Variables
 
-The `.env` file at the repo root is shared by all packages. The API reads it via `tsx --env-file=.env`.
+Development configuration lives in **`packages/api/.env`** (template:
+`packages/api/.env.example`). The API's dev script passes `--env-file=.env`,
+which Node resolves against the package directory, and the Prisma CLI looks for
+`.env` in the directory it runs in — so the repo-root `.env` is not what either
+of them reads.
+
+The root `.env` / `.env.example` is the **production** template: `docker-compose`
+interpolates it and passes a fixed list of variables into the containers. Don't
+copy it to `packages/api/.env` — it sets `NODE_ENV=production`, which enables
+secure-only cookies and breaks sign-in over `http://localhost`.
+
+The Vite dev server needs no `.env`; it proxies `/api` and `/socket.io` to
+`localhost:3001`.
 
 See [configuration.md](../admin-guide/configuration.md) for all variables.
 

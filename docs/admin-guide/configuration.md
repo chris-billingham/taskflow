@@ -46,17 +46,33 @@ SMTP_PASS=password
 SMTP_FROM=noreply@your-domain.example.com
 ```
 
-If SMTP is not configured, email features (password reset, invitation emails) will be disabled.
+If SMTP is not configured, email features are disabled: new accounts are
+auto-verified (so registration keeps working), but there is **no self-service
+password reset** — recovery is an admin resetting it from the console. Set
+`ADMIN_EMAILS` above before your first sign-up either way.
 
 ### File Storage
 
-Default uses the bundled MinIO container:
+Default uses the bundled MinIO container. `docker-compose.yml` points the API's
+S3 credentials at `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`, so in the bundled
+setup those two are all you set:
+
+```env
+MINIO_ROOT_USER=taskflow-admin
+MINIO_ROOT_PASSWORD=<strong password>
+MINIO_BUCKET=taskflow
+```
+
+Connecting from outside Docker (local development, an external bucket) the API
+reads them directly. **In production these have no default and the API refuses
+to start without them** — the old `minioadmin` fallback shipped well-known
+credentials to anyone who forgot to set them:
 
 ```env
 S3_ENDPOINT=http://minio:9000
 S3_BUCKET=taskflow
-S3_ACCESS_KEY=minioadmin
-S3_SECRET_KEY=minioadmin
+S3_ACCESS_KEY=taskflow-admin
+S3_SECRET_KEY=<strong password>
 S3_REGION=us-east-1
 ```
 

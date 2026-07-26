@@ -2,27 +2,36 @@
 
 ## Health Check
 
-The API exposes a health endpoint that checks all critical dependencies:
+The API exposes a health endpoint that checks all critical dependencies. It
+returns `200` when healthy and `503` when degraded.
+
+Publicly it reports only the verdict — an unauthenticated caller has no business
+knowing your version or which dependency is down:
 
 ```bash
 curl https://your-domain.example.com/health
 ```
 
-Response:
+```json
+{ "status": "ok", "timestamp": "2025-05-01T12:00:00.000Z" }
+```
+
+Asked from the loopback interface — inside the container — it also reports the
+version and the per-dependency breakdown. This is the form to reach for when
+diagnosing a `503`:
+
+```bash
+docker compose -f docker-compose.yml exec api wget -qO- http://localhost:3001/health
+```
 
 ```json
 {
-  "status": "ok",
-  "version": "1.0.0",
+  "status": "degraded",
   "timestamp": "2025-05-01T12:00:00.000Z",
-  "checks": {
-    "database": "ok",
-    "redis": "ok"
-  }
+  "version": "1.0.0",
+  "checks": { "database": "error", "redis": "ok" }
 }
 ```
-
-Returns `200` when healthy, `503` when degraded.
 
 ## Log Access
 
@@ -66,20 +75,48 @@ ORDER BY pg_total_relation_size(relid) DESC LIMIT 10;
 
 ## Redis Monitoring
 
+Redis runs with `requirepass`, so `redis-cli` needs the password (`make
+shell-redis` passes it for you):
+
 ```bash
-docker compose -f docker-compose.yml exec redis redis-cli info stats
-docker compose -f docker-compose.yml exec redis redis-cli info memory
+docker compose -f docker-compose.yml exec redis redis-cli -a "$REDIS_PASSWORD" info stats
+docker compose -f docker-compose.yml exec redis redis-cli -a "$REDIS_PASSWORD" info memory
+
+# Queue depth — reminders, digests and the nightly cleanup all live here
+docker compose -f docker-compose.yml exec redis redis-cli -a "$REDIS_PASSWORD" keys 'bull:*:wait'
 ```
+
+Watch `used_memory` against the 256 MB `maxmemory`. The policy is `noeviction`
+by design (these are queues, not a cache), so exhausting it makes writes fail
+rather than silently dropping jobs — but it does mean memory pressure surfaces
+as errors in the API and worker logs.
 
 ## Uptime Monitoring
 
-Use an external uptime monitor (e.g. UptimeRobot, Better Uptime) pointed at:
+An external monitor is not optional. Docker's own healthchecks only **report**
+status — `restart: unless-stopped` reacts to a process exiting, not to a
+container going unhealthy, so a container that is up but failing its probe stays
+that way until someone intervenes. Nothing in the stack watches the stack.
+
+Point an external monitor (e.g. UptimeRobot, Better Uptime) at:
 
 ```
 https://your-domain.example.com/health
 ```
 
 Set an alert threshold of 30 seconds and an HTTP keyword check for `"status":"ok"`.
+
+The `worker` service exposes no HTTP endpoint, so it can't be probed from
+outside. Check it locally instead — if this reports anything but `healthy`,
+reminders, digests and the nightly cleanup are not running:
+
+```bash
+docker compose -f docker-compose.yml ps worker
+```
+
+If you want unhealthy containers restarted automatically, add a supervisor such
+as [willfarrell/autoheal](https://github.com/willfarrell/docker-autoheal) to the
+compose file; the shipped stack deliberately doesn't assume one.
 
 ## Log Aggregation
 

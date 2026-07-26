@@ -11,8 +11,12 @@ All sensitive values go in `.env` and are never committed to source control. The
 openssl rand -base64 32
 # Update JWT_SECRET and JWT_REFRESH_SECRET in .env
 # Restart API (all existing sessions will be invalidated)
-docker-compose restart api
+docker compose -f docker-compose.yml restart api
 ```
+
+Rotating `JWT_REFRESH_SECRET` signs every stored refresh token out at once, so
+all users on all devices must log in again. Restart `worker` alongside `api`
+whenever you rotate a value both of them read.
 
 ## Network Security
 
@@ -39,7 +43,23 @@ Traefik middleware. See [installation.md](installation.md).
 - Passwords are hashed with bcrypt (cost factor 12)
 - Access tokens expire after 15 minutes; websocket sessions are force-disconnected when their token expires
 - Refresh tokens expire after 30 days, are stored in httpOnly `SameSite=Strict` cookies, are rotated on every use (reuse detection revokes all sessions), and are stored server-side only as sha256 hashes
-- Rate limits: global 300 requests/minute per IP, plus stricter budgets on auth routes (login 5/15min, register 5/h, password reset 3/h, verify-email 10/15min) and uploads (60/10min). Limits are Redis-backed and key on the real client IP behind the proxy
+- Rate limits: global 300 requests/minute per IP, plus stricter budgets on auth routes (login 5/15min, register 5/h, password reset 3/h, verify-email 10/15min) and uploads (60/10min). Limits are Redis-backed, so they survive restarts and are shared across processes
+
+### `TRUST_PROXY_HOPS` and rate limiting
+
+Every limit above is counted against `request.ip`, which is derived from
+`X-Forwarded-For` by trusting exactly `TRUST_PROXY_HOPS` addresses nearest the
+server. Getting this wrong disables the limits in one direction or the other:
+
+- **Too high** (or the old `trustProxy: true`, which trusts the whole chain):
+  the client's own `X-Forwarded-For` is believed, so rotating that header hands
+  an attacker a fresh bucket per request — the login limit stops existing.
+- **Too low**: every request keys on your proxy's address, making all traffic
+  share one bucket, so a handful of failed logins by anyone locks out login for
+  everyone.
+
+`1` is correct for the shipped stack (client → Traefik → API). Raise it by one
+for each additional proxy you place in front, such as a CDN.
 
 ## CORS
 

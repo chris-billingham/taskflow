@@ -36,6 +36,7 @@ function createFakeSocket() {
     rooms: new Set<string>(),
     join: vi.fn(),
     leave: vi.fn(),
+    emit: vi.fn(),
     to: vi.fn(() => ({ emit: vi.fn() })),
     on: vi.fn((event: string, fn: (...args: unknown[]) => void) => {
       handlers.set(event, fn);
@@ -97,6 +98,45 @@ describe('connection auto-join', () => {
 
     const joins = socket.join.mock.calls.map((c) => c[0]);
     expect(joins).toEqual([`user:${USER_ID}`]);
+  });
+});
+
+describe('rooms:ready', () => {
+  // Between connecting and this event the socket is live but in no rooms, so
+  // broadcasts reach nobody and are never replayed. The client uses this to know
+  // when re-reading its views will actually close that gap.
+  it('announces the join once the rooms are in place', async () => {
+    mockPrisma.workspaceMember.findMany.mockResolvedValue([{ workspaceId: 'w1' }]);
+    mockPrisma.project.findMany.mockResolvedValue([{ id: 'p1' }]);
+
+    const socket = register();
+    // Not before the join has actually happened.
+    expect(socket.emit).not.toHaveBeenCalled();
+
+    await flush();
+
+    expect(socket.emit).toHaveBeenCalledWith('rooms:ready');
+    expect(socket.join).toHaveBeenCalledWith(['workspace:w1', 'project:p1']);
+  });
+
+  it('announces even when the room lookup fails', async () => {
+    // A client that never hears this would never reconcile at all, so the
+    // failure path has to emit too.
+    mockPrisma.project.findMany.mockRejectedValue(new Error('db down'));
+
+    const socket = register();
+    await flush();
+
+    expect(socket.emit).toHaveBeenCalledWith('rooms:ready');
+  });
+
+  it('stays silent for a socket that dropped before the join landed', async () => {
+    const socket = createFakeSocket();
+    socket.connected = false;
+    registerHandlers(socket as unknown as Parameters<typeof registerHandlers>[0]);
+    await flush();
+
+    expect(socket.emit).not.toHaveBeenCalled();
   });
 });
 

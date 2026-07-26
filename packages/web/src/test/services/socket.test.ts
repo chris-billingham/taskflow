@@ -197,3 +197,112 @@ describe('socket service auth recovery', () => {
     expect(mockRefreshAccessToken).toHaveBeenCalledTimes(4);
   });
 });
+
+describe('resync signalling', () => {
+  // A reconnected socket re-joins its rooms but nothing replays what it missed
+  // while it was away, so the app has to re-read its views. These tests pin down
+  // WHEN it is told to, and that it is told once rather than once per room.
+  async function loadWithStore() {
+    const socket = await loadSocketModule();
+    const { useSocketStore } = await import('@/stores/socketStore');
+    useSocketStore.setState({ resyncEpoch: 0 });
+    return { socket, useSocketStore };
+  }
+
+  it('signals a resync when the server reports the rooms are live', async () => {
+    const { socket, useSocketStore } = await loadWithStore();
+    socket.initSocket('token-1');
+
+    fakeSocket.connected = true;
+    fakeSocket.fire('connect');
+    // `connect` alone is too early — the server joins rooms asynchronously.
+    expect(useSocketStore.getState().resyncEpoch).toBe(0);
+
+    fakeSocket.fire('rooms:ready');
+
+    await vi.waitFor(() =>
+      expect(useSocketStore.getState().resyncEpoch).toBe(1),
+    );
+  });
+
+  it('signals a resync when a project subscription is acknowledged', async () => {
+    const { socket, useSocketStore } = await loadWithStore();
+    socket.initSocket('token-1');
+    fakeSocket.connected = true;
+    fakeSocket.fire('connect');
+
+    socket.subscribeToProject('p1');
+    const calls = subscribeEmits(fakeSocket);
+    ackOfCall(calls[calls.length - 1])({ ok: true });
+
+    await vi.waitFor(() =>
+      expect(useSocketStore.getState().resyncEpoch).toBe(1),
+    );
+  });
+
+  it('does not signal a resync for a denied subscription', async () => {
+    const { socket, useSocketStore } = await loadWithStore();
+    socket.initSocket('token-1');
+    fakeSocket.connected = true;
+    fakeSocket.fire('connect');
+
+    socket.subscribeToProject('p1');
+    const calls = subscribeEmits(fakeSocket);
+    ackOfCall(calls[calls.length - 1])({ ok: false });
+
+    await new Promise((r) => setTimeout(r, 250));
+    expect(useSocketStore.getState().resyncEpoch).toBe(0);
+  });
+
+  it('coalesces the burst a reconnect produces into one signal', async () => {
+    // One reconnect fires rooms:ready plus an ack per re-subscribed project.
+    // Each must not cost its own round trip of refetches.
+    const { socket, useSocketStore } = await loadWithStore();
+    socket.initSocket('token-1');
+    socket.subscribeToProject('p1');
+    socket.subscribeToProject('p2');
+    socket.subscribeToProject('p3');
+
+    fakeSocket.connected = true;
+    fakeSocket.fire('connect');
+    fakeSocket.fire('rooms:ready');
+    for (const call of subscribeEmits(fakeSocket)) ackOfCall(call)({ ok: true });
+
+    await vi.waitFor(() =>
+      expect(useSocketStore.getState().resyncEpoch).toBe(1),
+    );
+    await new Promise((r) => setTimeout(r, 250));
+    expect(useSocketStore.getState().resyncEpoch).toBe(1);
+  });
+
+  it('signals again on a later reconnect', async () => {
+    const { socket, useSocketStore } = await loadWithStore();
+    socket.initSocket('token-1');
+    fakeSocket.connected = true;
+
+    fakeSocket.fire('connect');
+    fakeSocket.fire('rooms:ready');
+    await vi.waitFor(() => expect(useSocketStore.getState().resyncEpoch).toBe(1));
+
+    // The 15-minute token-expiry disconnect, then socket.io reconnecting.
+    fakeSocket.fire('disconnect');
+    fakeSocket.fire('connect');
+    fakeSocket.fire('rooms:ready');
+    await vi.waitFor(() => expect(useSocketStore.getState().resyncEpoch).toBe(2));
+  });
+
+  it('drops a pending signal when the session ends', async () => {
+    // Logging out mid-window must not make the next user's views refetch under
+    // the previous session's signal.
+    const { socket, useSocketStore } = await loadWithStore();
+    socket.initSocket('token-1');
+    fakeSocket.connected = true;
+    fakeSocket.fire('connect');
+    fakeSocket.fire('rooms:ready');
+
+    socket.disconnectSocket();
+
+    await new Promise((r) => setTimeout(r, 250));
+    expect(useSocketStore.getState().resyncEpoch).toBe(0);
+  });
+});

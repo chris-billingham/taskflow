@@ -14,6 +14,9 @@ vi.mock('../../config/database.js', () => {
     },
     workspace: { create: vi.fn(), findMany: vi.fn(), delete: vi.fn() },
     project: { create: vi.fn() },
+    // adminService.deleteUser delegates to userService.deleteUser, which now
+    // collects attachment keys so the cascades don't strand the objects.
+    attachment: { findMany: vi.fn() },
     refreshToken: { deleteMany: vi.fn() },
     $transaction: vi.fn(),
   };
@@ -22,6 +25,10 @@ vi.mock('../../config/database.js', () => {
   );
   return { prisma: mockPrismaClient };
 });
+
+vi.mock('../../config/storage.js', () => ({
+  deleteObjects: vi.fn(),
+}));
 
 vi.mock('../../utils/password.js', () => ({
   hashPassword: vi.fn(async (pw: string) => `hashed:${pw}`),
@@ -51,6 +58,7 @@ const mockPrisma = prisma as unknown as {
   user: Record<string, ReturnType<typeof vi.fn>>;
   workspace: Record<string, ReturnType<typeof vi.fn>>;
   project: Record<string, ReturnType<typeof vi.fn>>;
+  attachment: Record<string, ReturnType<typeof vi.fn>>;
   refreshToken: Record<string, ReturnType<typeof vi.fn>>;
   $transaction: ReturnType<typeof vi.fn>;
 };
@@ -84,6 +92,7 @@ beforeEach(() => {
   mockPrisma.workspace.create.mockResolvedValue({ id: 'ws-new' });
   mockPrisma.workspace.findMany.mockResolvedValue([]);
   mockPrisma.project.create.mockResolvedValue({ id: 'proj-new' });
+  mockPrisma.attachment.findMany.mockResolvedValue([]);
   mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 0 });
 });
 

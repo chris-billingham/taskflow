@@ -20,6 +20,10 @@ export const WS_EVENTS = {
   SUBSCRIBE_PROJECT: 'subscribe:project',
   UNSUBSCRIBE_PROJECT: 'unsubscribe:project',
   PRESENCE_UPDATE: 'presence:update',
+  // Server → client: this socket has joined every room it can currently read,
+  // so the client may now reconcile anything broadcast before the join landed.
+  // The join is asynchronous, so `connect` alone is too early to be that signal.
+  ROOMS_READY: 'rooms:ready',
 } as const;
 
 let io: Server | null = null;

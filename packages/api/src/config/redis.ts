@@ -3,14 +3,27 @@ import { env } from './env.js';
 
 let redis: Redis | null = null;
 
+/**
+ * Reconnect for as long as the process lives, with capped backoff.
+ *
+ * Returning null from retryStrategy tells ioredis to STOP RECONNECTING and
+ * close the connection permanently. Giving up after three ~200ms attempts
+ * meant a Redis restart of more than about a second (a container restart, an
+ * upgrade, an OOM kill) permanently broke the process it was serving: the API
+ * served 503s from /health and lost rate limiting and password-reset tokens,
+ * and the worker silently stopped running reminders and digests — in both
+ * cases until a human restarted the container, since a failing Docker
+ * healthcheck does not restart anything on its own.
+ */
+function retryStrategy(times: number): number {
+  return Math.min(times * 200, 5000);
+}
+
 export function getRedis(): Redis {
   if (!redis) {
     redis = new Redis(env.REDIS_URL, {
       maxRetriesPerRequest: 3,
-      retryStrategy(times: number) {
-        if (times > 3) return null;
-        return Math.min(times * 200, 2000);
-      },
+      retryStrategy,
     });
 
     redis.on('error', (err: Error) => {
@@ -28,10 +41,7 @@ export function getRedis(): Redis {
 export function createBullMQConnection(): Redis {
   const conn = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
-    retryStrategy(times: number) {
-      if (times > 3) return null;
-      return Math.min(times * 200, 2000);
-    },
+    retryStrategy,
   });
 
   conn.on('error', (err: Error) => {

@@ -3,10 +3,10 @@
 ## Container Status
 
 ```bash
-docker-compose ps
-docker-compose logs -f api
-docker-compose logs -f postgres
-docker-compose logs -f redis
+docker compose -f docker-compose.yml ps
+docker compose -f docker-compose.yml logs -f api
+docker compose -f docker-compose.yml logs -f postgres
+docker compose -f docker-compose.yml logs -f redis
 ```
 
 ---
@@ -15,7 +15,12 @@ docker-compose logs -f redis
 
 ### API returns 503 on `/health`
 
-The health check reports which service is down:
+Publicly the endpoint reports only `"status":"degraded"`. Ask from inside the
+container to find out which dependency is at fault:
+
+```bash
+docker compose -f docker-compose.yml exec api wget -qO- http://localhost:3001/health
+```
 
 ```json
 { "status": "degraded", "checks": { "database": "error", "redis": "ok" } }
@@ -24,13 +29,14 @@ The health check reports which service is down:
 **Database error**: Check if PostgreSQL is running and the `DATABASE_URL` is correct.
 
 ```bash
-docker-compose exec postgres psql -U taskflow -c "SELECT 1;"
+docker compose -f docker-compose.yml exec postgres psql -U taskflow -c "SELECT 1;"
 ```
 
-**Redis error**: Check if Redis is running.
+**Redis error**: Check if Redis is running. It runs with `requirepass`, so
+`redis-cli` needs the password:
 
 ```bash
-docker-compose exec redis redis-cli ping
+docker compose -f docker-compose.yml exec redis redis-cli -a "$REDIS_PASSWORD" ping
 # Expected: PONG
 ```
 
@@ -39,8 +45,8 @@ docker-compose exec redis redis-cli ping
 ### "Cannot connect to database"
 
 1. Confirm `DATABASE_URL` in `.env` matches the Postgres container credentials
-2. Ensure the `postgres` container is healthy: `docker-compose ps`
-3. Run migrations if this is a fresh install: `docker-compose exec api npx prisma migrate deploy`
+2. Ensure the `postgres` container is healthy: `docker compose -f docker-compose.yml ps`
+3. Run migrations if this is a fresh install: `docker compose -f docker-compose.yml exec api npx prisma migrate deploy`
 
 ---
 
@@ -58,7 +64,7 @@ openssl rand -base64 32
 
 1. Check that the S3/MinIO variables are set in `.env`:
    - `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`
-2. Verify the MinIO container is running: `docker-compose ps minio`
+2. Verify the MinIO container is running: `docker compose -f docker-compose.yml ps minio`
 3. Check the API log for "Storage unavailable" warnings
 
 ---
@@ -70,7 +76,7 @@ openssl rand -base64 32
 3. Test SMTP connectivity:
 
 ```bash
-docker-compose exec api node -e "
+docker compose -f docker-compose.yml exec api node -e "
 const nm = require('nodemailer');
 nm.createTransport({ host: process.env.SMTP_HOST, port: 587, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }})
   .verify(console.log);

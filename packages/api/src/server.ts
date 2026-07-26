@@ -7,7 +7,7 @@ import websocket from '@fastify/websocket';
 import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import { env } from './config/env.js';
+import { env, shouldRunWorkersInApi } from './config/env.js';
 import { registerRoutes } from './routes/index.js';
 import { runWithRequestContext } from './utils/requestContext.js';
 import { closeRedis, getRedis } from './config/redis.js';
@@ -23,11 +23,20 @@ import { Prisma } from '@prisma/client';
 import { openapiSpec } from './docs/openapi.js';
 
 const server = Fastify({
-  // Exactly one proxy hop (Traefik / nginx / Vite) sits in front of the API.
-  // Without this, request.ip is the proxy container's address, which made
-  // every rate limit ONE SHARED GLOBAL BUCKET: five failed logins by anyone
-  // locked out login for the whole deployment.
-  trustProxy: true,
+  // Number of proxy hops in front of the API, NOT `true`.
+  //
+  // `trustProxy: true` trusts the entire X-Forwarded-For chain, so request.ip
+  // becomes the LEFTMOST entry — which any client can set to whatever it likes.
+  // Every rate limit then keys on an attacker-chosen value: rotating the header
+  // gave unlimited attempts at the 5-per-15-minutes login limit.
+  //
+  // A hop count instead trusts only the N addresses nearest the server, so
+  // request.ip is the address the outermost TRUSTED proxy actually observed.
+  // One hop (Traefik, or nginx/Vite in the other topologies) is the shipped
+  // deployment; raise TRUST_PROXY_HOPS if you add another proxy in front, e.g.
+  // a CDN — leaving it too low keys limits on the CDN's IP (one shared bucket),
+  // setting it too high lets clients spoof again.
+  trustProxy: env.TRUST_PROXY_HOPS,
   bodyLimit: 1_048_576, // 1MB JSON body limit
   logger: {
     level: env.LOG_LEVEL,
@@ -182,24 +191,47 @@ async function healthCheck() {
   return { healthy, checks };
 }
 
-server.get('/health', async (_request, reply) => {
+/**
+ * Health is reachable without authentication — Traefik routes /health publicly
+ * so an external uptime monitor can reach it, and the container healthcheck
+ * needs it before anyone could hold a token. So the response is tailored to who
+ * is asking.
+ *
+ * Everyone gets the verdict: `status` and the 200/503, which is all a monitor
+ * needs (the documented keyword check is on `"status":"ok"`). Only callers on the
+ * loopback interface — the container's own healthcheck, and an operator inside
+ * the container via `docker compose exec` — additionally get the per-dependency
+ * breakdown and the version. Those are an unauthenticated inventory of what this
+ * deployment runs and which part of it is currently broken: the exact release to
+ * look up advisories for, and confirmation of when to try.
+ *
+ * request.ip is proxy-aware (see TRUST_PROXY_HOPS), so a request forwarded by
+ * Traefik carries the real client address and never passes as loopback.
+ */
+function isLoopback(ip: string): boolean {
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+}
+
+async function healthResponse(request: { ip: string }) {
   const { healthy, checks } = await healthCheck();
-  return reply.status(healthy ? 200 : 503).send({
-    status: healthy ? 'ok' : 'degraded',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    checks,
-  });
+  return {
+    statusCode: healthy ? 200 : 503,
+    body: {
+      status: healthy ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+      ...(isLoopback(request.ip) ? { version: '1.0.0', checks } : {}),
+    },
+  };
+}
+
+server.get('/health', async (request, reply) => {
+  const { statusCode, body } = await healthResponse(request);
+  return reply.status(statusCode).send(body);
 });
 
-server.get('/api/health', async (_request, reply) => {
-  const { healthy, checks } = await healthCheck();
-  return reply.status(healthy ? 200 : 503).send({
-    status: healthy ? 'ok' : 'degraded',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    checks,
-  });
+server.get('/api/health', async (request, reply) => {
+  const { statusCode, body } = await healthResponse(request);
+  return reply.status(statusCode).send(body);
 });
 
 // API info route
@@ -300,13 +332,20 @@ const start = async () => {
       server.log.warn({ err: storageErr }, 'Storage unavailable — file uploads will not work');
     }
 
-    // Initialize background workers (non-blocking)
-    try {
-      const workers = await initializeWorkers();
-      workersShutdown = workers.shutdown;
-      server.log.info('Background workers initialized');
-    } catch (workerErr) {
-      server.log.warn({ err: workerErr }, 'Failed to initialize workers (Redis may be unavailable)');
+    // Initialize background workers (non-blocking). Skipped when a dedicated
+    // worker container owns them — see shouldRunWorkersInApi().
+    if (shouldRunWorkersInApi()) {
+      try {
+        const workers = await initializeWorkers();
+        workersShutdown = workers.shutdown;
+        server.log.info('Background workers initialized (in-process)');
+      } catch (workerErr) {
+        server.log.warn({ err: workerErr }, 'Failed to initialize workers (Redis may be unavailable)');
+      }
+    } else {
+      server.log.info(
+        'Background workers not started in the API process — the worker service owns them. Set RUN_WORKERS_IN_API=true if you deploy without one.',
+      );
     }
   } catch (err) {
     server.log.error(err);

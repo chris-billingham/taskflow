@@ -18,6 +18,7 @@ vi.mock('../../config/database.js', () => ({
 vi.mock('../../config/storage.js', () => ({
   uploadObject: vi.fn(),
   deleteObject: vi.fn(),
+  deleteObjects: vi.fn(),
   getObjectStream: vi.fn(),
 }));
 
@@ -26,7 +27,7 @@ vi.mock('../../config/env.js', () => ({
 }));
 
 import { prisma } from '../../config/database.js';
-import { uploadObject, getObjectStream } from '../../config/storage.js';
+import { uploadObject, deleteObject, getObjectStream } from '../../config/storage.js';
 import * as fileService from '../../services/fileService.js';
 import { contentDisposition } from '../../routes/attachments.js';
 
@@ -35,6 +36,7 @@ const mockPrisma = prisma as unknown as Record<
   Record<string, ReturnType<typeof vi.fn>>
 >;
 const mockUploadObject = uploadObject as unknown as ReturnType<typeof vi.fn>;
+const mockDeleteObject = deleteObject as unknown as ReturnType<typeof vi.fn>;
 const mockGetObjectStream = getObjectStream as unknown as ReturnType<typeof vi.fn>;
 
 const USER_ID = 'user-1';
@@ -160,6 +162,75 @@ describe('getDownloadStream access control', () => {
     expect(result.body).toBe('stream');
     expect(result.contentLength).toBe(42);
     expect(result.attachment.filename).toBe('y.png');
+  });
+});
+
+describe('deleteFile permissions', () => {
+  const taskAttachment = {
+    id: 'att-1',
+    taskId: 'task-1',
+    commentId: null,
+    uploadedById: 'colleague',
+    url: 'attachments/colleague/y.png',
+  };
+
+  it('lets the uploader delete their own file without a project role', async () => {
+    mockPrisma.attachment.findUnique.mockResolvedValue({
+      ...taskAttachment,
+      uploadedById: USER_ID,
+    });
+
+    await expect(fileService.deleteFile('att-1', USER_ID)).resolves.toBeTruthy();
+    expect(mockDeleteObject).toHaveBeenCalledWith('attachments/colleague/y.png');
+    // The uploader short-circuits: no project lookup is needed at all.
+    expect(mockPrisma.task.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("lets a project admin delete a colleague's attachment", async () => {
+    // The whole point of the change: previously nobody but the uploader could
+    // remove a file, so an admin had no route to clean up after a departed
+    // colleague or a misfiled upload.
+    mockPrisma.attachment.findUnique.mockResolvedValue(taskAttachment);
+    mockPrisma.task.findUnique.mockResolvedValue({
+      id: 'task-1',
+      projectId: 'p1',
+      assigneeId: null,
+      project: { id: 'p1', ownerId: USER_ID, workspaceId: null },
+    });
+
+    await expect(fileService.deleteFile('att-1', USER_ID)).resolves.toBeTruthy();
+    expect(mockDeleteObject).toHaveBeenCalledWith('attachments/colleague/y.png');
+  });
+
+  it("refuses a mere editor deleting a colleague's attachment", async () => {
+    mockPrisma.attachment.findUnique.mockResolvedValue(taskAttachment);
+    mockPrisma.task.findUnique.mockResolvedValue({
+      id: 'task-1',
+      projectId: 'p1',
+      assigneeId: null,
+      project: { id: 'p1', ownerId: 'colleague', workspaceId: 'w1' },
+    });
+    mockPrisma.projectMember.findUnique.mockResolvedValue({ role: 'MEMBER' });
+    mockPrisma.workspaceMember.findUnique.mockResolvedValue({ role: 'MEMBER' });
+
+    await expect(fileService.deleteFile('att-1', USER_ID)).rejects.toThrow(
+      /permission/i,
+    );
+    expect(mockDeleteObject).not.toHaveBeenCalled();
+    expect(mockPrisma.attachment.delete).not.toHaveBeenCalled();
+  });
+
+  it('keeps an unattached file uploader-only — no project can vouch for it', async () => {
+    mockPrisma.attachment.findUnique.mockResolvedValue({
+      ...taskAttachment,
+      taskId: null,
+      commentId: null,
+    });
+
+    await expect(fileService.deleteFile('att-1', USER_ID)).rejects.toThrow(
+      /only delete your own/i,
+    );
+    expect(mockDeleteObject).not.toHaveBeenCalled();
   });
 });
 

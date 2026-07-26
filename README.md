@@ -67,21 +67,18 @@ pnpm install
 ### 2. Configure environment
 
 ```bash
-cp .env.example .env
+cp packages/api/.env.example packages/api/.env
 ```
 
-Edit `.env` — the minimum required variables:
-
-```env
-DATABASE_URL=postgresql://taskflow:taskflow@localhost:5432/taskflow
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=change-me-to-a-long-random-string
-```
+The defaults match `docker-compose.dev.yml`, so no edits are needed to get
+running. This is the file the API dev server and the Prisma CLI read; the
+repo-root `.env.example` is the separate **production** template used by
+`docker-compose.yml`.
 
 ### 3. Start infrastructure
 
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 ### 4. Run migrations
@@ -138,7 +135,11 @@ bash scripts/install.sh
 ```bash
 pnpm dev          # Start all packages in development mode
 pnpm build        # Build all packages
-pnpm test         # Run all tests
+pnpm test:unit    # Unit tests (api + web)
+pnpm test:ci      # Unit + API integration tests, as CI runs them
+pnpm test:e2e     # Playwright suite (needs both dev servers running)
+pnpm lint         # ESLint across the workspace
+pnpm typecheck    # tsc --noEmit across the workspace
 pnpm clean        # Remove build artifacts
 ```
 

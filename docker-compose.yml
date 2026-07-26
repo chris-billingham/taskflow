@@ -123,10 +123,27 @@ services:
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-taskflow-admin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       S3_REGION: us-east-1
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-25}
+      # Instance administrators. Without this the ADMIN_EMAILS in .env never
+      # reached the container, so no account could ever hold the ADMIN role and
+      # the admin console was unreachable on every production install.
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      # Public base URL used for links in email. Defaults to the app origin.
+      APP_URL: ${APP_URL:-https://${DOMAIN}}
+      # SMTP. Also previously absent here, so configuring it in .env silently
+      # did nothing: no verification, invite, reset or digest mail was ever
+      # sent, and — with no admin either — a forgotten password was unrecoverable.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
-      LOG_LEVEL: info
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
         condition: service_healthy
@@ -186,10 +203,21 @@ services:
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-taskflow-admin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       S3_REGION: us-east-1
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-25}
+      # The worker sends the reminder, digest, due-soon and overdue emails, so
+      # it needs the SMTP settings and the app origin for links in them just as
+      # much as the API does.
+      APP_URL: ${APP_URL:-https://${DOMAIN}}
+      CORS_ORIGIN: https://${DOMAIN}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
-      LOG_LEVEL: info
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
         condition: service_healthy

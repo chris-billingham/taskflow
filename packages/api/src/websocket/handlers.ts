@@ -47,6 +47,15 @@ export function registerHandlers(socket: AuthSocket): void {
     })
     .catch(() => {
       /* client can still subscribe explicitly per project */
+    })
+    .finally(() => {
+      // Announce the join either way. Until this fires the client is connected
+      // but deaf, and it has no other way to know: broadcasts in that window
+      // reach nobody and are never replayed, so the client needs a moment at
+      // which re-reading its views is guaranteed to close the gap. Emitted on
+      // the failure path too — a client that never hears this would never
+      // reconcile at all.
+      if (socket.connected) socket.emit(WS_EVENTS.ROOMS_READY);
     });
 
   socket.on(

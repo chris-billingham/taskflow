@@ -724,29 +724,110 @@ export async function moveTask(
   return task;
 }
 
+/**
+ * Copy a task, its labels, and its whole subtask tree.
+ *
+ * The labels and subtasks used to be dropped: duplicating a checklist gave you
+ * an empty shell of its parent, which is the opposite of why anyone duplicates
+ * a task. Nothing was broadcast either, so the copy stayed invisible to every
+ * other client until a reload.
+ */
 export async function duplicateTask(id: string, userId: string) {
   const original = await requireTaskAccess(id, userId, 'EDIT');
 
-  const task = await prisma.task.create({
-    data: {
-      content: original.content,
-      description: original.description,
-      projectId: original.projectId,
-      sectionId: original.sectionId,
-      parentId: original.parentId,
-      creatorId: userId,
-      assigneeId: original.assigneeId,
-      dueDate: original.dueDate,
-      dueTime: original.dueTime,
-      deadline: original.deadline,
-      duration: original.duration,
-      priority: original.priority,
-      isRecurring: original.isRecurring,
-      recurrenceRule: original.recurrenceRule,
-      sortOrder: original.sortOrder + 1,
-    },
-    include: taskInclude,
+  const task = await prisma.$transaction(async (tx) => {
+    const labels = await tx.taskLabel.findMany({
+      where: { taskId: id },
+      select: { labelId: true },
+    });
+
+    const copy = await tx.task.create({
+      data: {
+        content: original.content,
+        description: original.description,
+        projectId: original.projectId,
+        sectionId: original.sectionId,
+        parentId: original.parentId,
+        creatorId: userId,
+        assigneeId: original.assigneeId,
+        dueDate: original.dueDate,
+        dueTime: original.dueTime,
+        deadline: original.deadline,
+        duration: original.duration,
+        priority: original.priority,
+        isRecurring: original.isRecurring,
+        recurrenceRule: original.recurrenceRule,
+        sortOrder: original.sortOrder + 1,
+        // Label rows are per-user, but a duplicate is a copy of the same task in
+        // the same project — carrying them over is the expected behaviour, and
+        // the originals were already validated as owned when they were attached.
+        taskLabels: labels.length
+          ? { create: labels.map((l) => ({ labelId: l.labelId })) }
+          : undefined,
+      },
+      include: taskInclude,
+    });
+
+    // Recreate descendants breadth-first, remapping each level's parent to the
+    // copy that was just made. Depth is bounded by the cycle guard in
+    // assertTaskReferences, so this terminates on any tree the API can produce.
+    let frontier = [{ originalId: id, copyId: copy.id }];
+    while (frontier.length > 0) {
+      const children = await tx.task.findMany({
+        where: { parentId: { in: frontier.map((f) => f.originalId) } },
+        include: { taskLabels: { select: { labelId: true } } },
+        orderBy: { sortOrder: 'asc' },
+      });
+      if (children.length === 0) break;
+
+      const copyIdByOriginal = new Map(frontier.map((f) => [f.originalId, f.copyId]));
+      const nextFrontier: Array<{ originalId: string; copyId: string }> = [];
+
+      for (const child of children) {
+        const newParentId = copyIdByOriginal.get(child.parentId!);
+        if (!newParentId) continue;
+        const childCopy = await tx.task.create({
+          data: {
+            content: child.content,
+            description: child.description,
+            projectId: child.projectId,
+            sectionId: child.sectionId,
+            parentId: newParentId,
+            creatorId: userId,
+            assigneeId: child.assigneeId,
+            dueDate: child.dueDate,
+            dueTime: child.dueTime,
+            deadline: child.deadline,
+            duration: child.duration,
+            priority: child.priority,
+            isRecurring: child.isRecurring,
+            recurrenceRule: child.recurrenceRule,
+            sortOrder: child.sortOrder,
+            taskLabels: child.taskLabels.length
+              ? { create: child.taskLabels.map((l) => ({ labelId: l.labelId })) }
+              : undefined,
+          },
+          select: { id: true },
+        });
+        nextFrontier.push({ originalId: child.id, copyId: childCopy.id });
+      }
+
+      frontier = nextFrontier;
+    }
+
+    // Re-read so the response carries the copied subtasks, not an empty array.
+    return tx.task.findUniqueOrThrow({ where: { id: copy.id }, include: taskInclude });
   });
+
+  runSideEffect('logActivity:CREATED', () => logActivity({
+    action: 'CREATED',
+    entityType: 'TASK',
+    entityId: task.id,
+    userId,
+    taskId: task.id,
+    newData: { content: task.content, projectId: task.projectId, duplicatedFrom: id },
+  }));
+  runSideEffect('broadcastTaskCreated', () => broadcastTaskCreated(task));
 
   return task;
 }
