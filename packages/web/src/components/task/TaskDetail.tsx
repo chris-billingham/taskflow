@@ -349,7 +349,7 @@ export function TaskDetail({
 
           {/* Comments */}
           <div className="mb-6">
-            <CommentList taskId={task.id} />
+            <CommentList taskId={task.id} projectId={task.projectId} />
           </div>
 
           {/* Activity */}

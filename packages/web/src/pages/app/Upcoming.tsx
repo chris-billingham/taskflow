@@ -16,6 +16,7 @@ import { CalendarView } from '@/components/views/CalendarView';
 import { OverdueSection } from '@/components/views/OverdueSection';
 import { DateSection } from '@/components/views/DateSection';
 import { CalendarStrip } from '@/components/views/CalendarStrip';
+import { TruncationNotice } from '@/components/views/TruncationNotice';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { TaskDetail } from '@/components/task/TaskDetail';
 import { TaskItem } from '@/components/task/TaskItem';
@@ -365,6 +366,13 @@ export default function Upcoming() {
                 </div>
               )}
             </div>
+          )}
+
+          {upcomingView && (
+            <TruncationNotice
+              returned={upcomingView.counts.returned}
+              total={upcomingView.counts.total}
+            />
           )}
 
           <div className="mt-4">

@@ -7,9 +7,11 @@ import api from '@/services/api';
 
 interface CommentListProps {
   taskId: string;
+  /** Scopes @mention autocomplete to this project's members. */
+  projectId?: string;
 }
 
-export function CommentList({ taskId }: CommentListProps) {
+export function CommentList({ taskId, projectId }: CommentListProps) {
   const { comments, loading, error } = useComments(taskId);
   const createComment = useCreateComment();
   const updateComment = useUpdateComment();
@@ -33,6 +35,7 @@ export function CommentList({ taskId }: CommentListProps) {
       {/* New comment editor */}
       <div className="mb-4">
         <CommentEditor
+          projectId={projectId}
           onSubmit={async (content, files) => {
             const comment = await createComment(taskId, content);
             if (files.length > 0) {
@@ -78,6 +81,7 @@ export function CommentList({ taskId }: CommentListProps) {
         <div className="space-y-4">
           {comments.map((comment) => (
             <CommentItem
+            projectId={projectId}
               key={comment.id}
               comment={comment}
               currentUserId={user.id}

@@ -72,8 +72,12 @@ export interface TodayViewData {
     afternoon: number;
     evening: number;
     noTime: number;
+    /** Everything matching the view, which may exceed what was returned. */
     total: number;
+    returned: number;
   };
+  /** True when the server capped the list and `total` exceeds `returned`. */
+  truncated?: boolean;
 }
 
 export interface UpcomingViewData {
@@ -83,7 +87,9 @@ export interface UpcomingViewData {
   counts: {
     overdue: number;
     total: number;
+    returned: number;
   };
+  truncated?: boolean;
 }
 
 interface TaskState {

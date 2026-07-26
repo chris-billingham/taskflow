@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Bell, Plus, X, Clock } from 'lucide-react';
 import api from '@/services/api';
 import { formatUserDateTime } from '@/utils/dateFormat';
+import { getVapidPublicKey } from '@/services/notifications';
+import { toastError } from '@/stores/toastStore';
 
 interface Reminder {
   id: string;
@@ -39,11 +42,41 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const [customDateTime, setCustomDateTime] = useState('');
+  // null = not yet determined, so the notice doesn't flash on open.
+  const [pushWorks, setPushWorks] = useState<boolean | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchReminders();
   }, [taskId]);
+
+  // Every reminder created here is delivered by browser push: this picker sends
+  // no `method`, so the schema default (PUSH) always applies and the EMAIL path
+  // is unreachable from the UI. Push needs VAPID keys on the server AND
+  // permission in this browser — without both, a reminder still fires but only
+  // ever appears in the notification centre. Say so rather than letting someone
+  // set a reminder they expect to be alerted by.
+  //
+  // Permission is read synchronously rather than via isPushSubscribed():
+  // navigator.serviceWorker.ready never RESOLVES when no worker is registered
+  // (it doesn't reject), so awaiting it left this state permanently null and
+  // the notice never rendered.
+  useEffect(() => {
+    let active = true;
+    void getVapidPublicKey()
+      .then((key) => {
+        if (!active) return;
+        const granted =
+          typeof Notification !== 'undefined' && Notification.permission === 'granted';
+        setPushWorks(!!key && granted);
+      })
+      .catch(() => {
+        if (active) setPushWorks(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -65,6 +98,11 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
     }
   };
 
+  /** The API's message when it has one — it explains what to do. */
+  const reasonFrom = (err: unknown, fallback: string) =>
+    (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+    fallback;
+
   const addPreset = async (minutesBefore: number) => {
     try {
       await api.post(`/tasks/${taskId}/reminders`, {
@@ -74,7 +112,10 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
       await fetchReminders();
       setIsOpen(false);
     } catch (err) {
-      console.error('Failed to add reminder:', err);
+      // A relative reminder needs a due date to be relative to, and the API
+      // now rejects one without it rather than storing a reminder that can
+      // never fire. Console-only meant the button looked dead.
+      toastError(reasonFrom(err, 'Could not add that reminder'));
     }
   };
 
@@ -90,7 +131,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
       setIsOpen(false);
       setCustomDateTime('');
     } catch (err) {
-      console.error('Failed to add custom reminder:', err);
+      toastError(reasonFrom(err, 'Could not add that reminder'));
     }
   };
 
@@ -99,7 +140,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
       await api.delete(`/reminders/${id}`);
       setReminders((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
-      console.error('Failed to remove reminder:', err);
+      toastError(reasonFrom(err, 'Could not remove that reminder'));
     }
   };
 
@@ -188,6 +229,22 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
               <Bell className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               Custom time...
             </button>
+          )}
+
+          {pushWorks === false && (
+            <>
+              <hr className="my-1 border-gray-100 dark:border-gray-700" />
+              <p className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400">
+                Reminders will appear in your notifications, but browser alerts
+                are off.{' '}
+                <Link
+                  to="/settings/notifications"
+                  className="text-[#db4c3f] hover:underline"
+                >
+                  Enable push
+                </Link>
+              </p>
+            </>
           )}
         </div>
       )}

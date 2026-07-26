@@ -215,3 +215,102 @@ describe('COUNT and UNTIL termination', () => {
     ).toBeNull();
   });
 });
+
+/**
+ * Occurrence arithmetic on the date shape production actually passes.
+ *
+ * completeTask() calls getNextOccurrence with `task.dueDate`, which is a
+ * CALENDAR date stored as UTC midnight (see utils/dates.ts). The cases above
+ * use midday-UTC instants, which stay on the same local date in every zone the
+ * CI and containers run in — so they pass whatever the host timezone is, and
+ * cannot see local-time date math. These pin exact UTC instants from a
+ * UTC-midnight base, which is where the host's offset actually bites.
+ *
+ * Run under `TZ=America/New_York` as well as UTC: a regression here is
+ * invisible in UTC.
+ */
+describe('getNextOccurrence — UTC-midnight due dates', () => {
+  const at = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+  const nextIso = (rule: string, from: string) => nextOf(rule, at(from)).toISOString();
+
+  it('advances a daily rule by exactly one calendar day', () => {
+    // 2026-07-26 is a Sunday.
+    expect(nextIso('FREQ=DAILY;INTERVAL=1', '2026-07-26')).toBe('2026-07-27T00:00:00.000Z');
+  });
+
+  it('advances a daily rule across a DST spring-forward without drifting', () => {
+    // US DST begins 2026-03-08. A host in that zone loses an hour mid-step.
+    expect(nextIso('FREQ=DAILY;INTERVAL=1', '2026-03-08')).toBe('2026-03-09T00:00:00.000Z');
+  });
+
+  it('advances a daily rule across a DST fall-back without drifting', () => {
+    // US DST ends 2026-11-01.
+    expect(nextIso('FREQ=DAILY;INTERVAL=1', '2026-11-01')).toBe('2026-11-02T00:00:00.000Z');
+  });
+
+  it('resolves BYDAY against the date\'s own weekday, not the host\'s', () => {
+    // Sunday 2026-07-26 -> the following Monday is the 27th. Read in a
+    // behind-UTC zone the base looks like Saturday, which lands on the 28th.
+    expect(nextIso('FREQ=WEEKLY;INTERVAL=1;BYDAY=MO', '2026-07-26')).toBe(
+      '2026-07-27T00:00:00.000Z',
+    );
+  });
+
+  it('wraps a same-weekday BYDAY rule by a full week', () => {
+    // Monday 2026-07-27 with BYDAY=MO -> next Monday, the 3rd.
+    expect(nextIso('FREQ=WEEKLY;INTERVAL=1;BYDAY=MO', '2026-07-27')).toBe(
+      '2026-08-03T00:00:00.000Z',
+    );
+  });
+
+  it('never lands a weekday-only rule on a weekend', () => {
+    // Friday 2026-07-31 with the weekday set -> Monday the 3rd. Off-by-one
+    // weekday resolution puts this on Saturday the 1st, which the rule excludes.
+    const next = nextOf('FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR', at('2026-07-31'));
+    expect(next.toISOString()).toBe('2026-08-03T00:00:00.000Z');
+    expect(next.getUTCDay()).not.toBe(0);
+    expect(next.getUTCDay()).not.toBe(6);
+  });
+
+  it('honours INTERVAL on a fortnightly BYDAY rule', () => {
+    // Monday 2026-07-27, every 2 weeks on Monday -> 2026-08-10.
+    expect(nextIso('FREQ=WEEKLY;INTERVAL=2;BYDAY=MO', '2026-07-27')).toBe(
+      '2026-08-10T00:00:00.000Z',
+    );
+  });
+
+  it('adds whole weeks for a weekly rule with no BYDAY', () => {
+    expect(nextIso('FREQ=WEEKLY;INTERVAL=1', '2026-07-26')).toBe('2026-08-02T00:00:00.000Z');
+  });
+
+  it('clamps a month-end monthly rule to the shorter month', () => {
+    // Jan 31 + 1 month -> Feb 28 (2026 is not a leap year).
+    expect(nextIso('FREQ=MONTHLY;INTERVAL=1', '2026-01-31')).toBe(
+      '2026-02-28T00:00:00.000Z',
+    );
+  });
+
+  it('advances a mid-month monthly rule to the same day', () => {
+    expect(nextIso('FREQ=MONTHLY;INTERVAL=1', '2026-07-15')).toBe(
+      '2026-08-15T00:00:00.000Z',
+    );
+  });
+
+  it('advances a monthly rule across a DST boundary', () => {
+    expect(nextIso('FREQ=MONTHLY;INTERVAL=1', '2026-03-15')).toBe(
+      '2026-04-15T00:00:00.000Z',
+    );
+  });
+
+  it('clamps a Feb-29 yearly rule into a non-leap year', () => {
+    expect(nextIso('FREQ=YEARLY;INTERVAL=1', '2028-02-29')).toBe(
+      '2029-02-28T00:00:00.000Z',
+    );
+  });
+
+  it('advances a yearly rule to the same calendar date', () => {
+    expect(nextIso('FREQ=YEARLY;INTERVAL=1', '2026-07-26')).toBe(
+      '2027-07-26T00:00:00.000Z',
+    );
+  });
+});

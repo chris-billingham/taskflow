@@ -4,6 +4,7 @@ import { CalendarDays } from 'lucide-react';
 import { ViewHeader } from '@/components/views/ViewHeader';
 import { OverdueSection } from '@/components/views/OverdueSection';
 import { DateSection } from '@/components/views/DateSection';
+import { TruncationNotice } from '@/components/views/TruncationNotice';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { TaskDetail } from '@/components/task/TaskDetail';
 import { TaskItem } from '@/components/task/TaskItem';
@@ -265,6 +266,13 @@ export default function Today() {
             Enjoy your day or add a new task below.
           </p>
         </div>
+      )}
+
+      {todayView && (
+        <TruncationNotice
+          returned={todayView.counts.returned}
+          total={todayView.counts.total}
+        />
       )}
 
       {(isEmpty || hasTimedTasks) && (

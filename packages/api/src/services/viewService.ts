@@ -6,6 +6,11 @@ import { taskInclude } from './taskService.js';
 import { taskAccessWhere } from './access.js';
 import { getUserTimezone, userDayBoundariesUTC } from '../utils/dates.js';
 
+// Safety cap: these views serialise nested subtasks per task; unbounded they
+// OOMed the container on mature accounts. The badge count is queried separately
+// so the cap never becomes a wrong number (see VIEW_TASK_CAP usages).
+const VIEW_TASK_CAP = 500;
+
 export async function getTodayTasks(userId: string) {
   // Boundaries are the USER's calendar day (their IANA timezone), encoded as
   // the UTC-midnight instants stored due dates use — server TZ is irrelevant.
@@ -13,19 +18,25 @@ export async function getTodayTasks(userId: string) {
     await getUserTimezone(userId),
   );
 
-  const tasks = await prisma.task.findMany({
-    where: {
-      ...taskAccessWhere(userId),
-      isCompleted: false,
-      parentId: null,
-      dueDate: { lt: tomorrowStart },
-    },
-    include: taskInclude,
-    orderBy: { sortOrder: 'asc' },
-    // Safety cap: this view serialises nested subtasks per task; unbounded it
-    // OOMed the container on mature accounts.
-    take: 500,
-  });
+  const where = {
+    ...taskAccessWhere(userId),
+    isCompleted: false,
+    parentId: null,
+    dueDate: { lt: tomorrowStart },
+  };
+
+  // Counted against the same predicate rather than derived from the capped
+  // array: `total` used to be `tasks.length`, so once an account crossed the
+  // cap the Today badge silently under-reported and the surplus was invisible.
+  const [tasks, matchingTotal] = await Promise.all([
+    prisma.task.findMany({
+      where,
+      include: taskInclude,
+      orderBy: { sortOrder: 'asc' },
+      take: VIEW_TASK_CAP,
+    }),
+    prisma.task.count({ where }),
+  ]);
 
   const overdue: typeof tasks = [];
   const morning: typeof tasks = [];
@@ -58,13 +69,17 @@ export async function getTodayTasks(userId: string) {
     evening,
     noTime,
     counts: {
+      // Bucket counts describe what was returned; total describes what matched.
       overdue: overdue.length,
       morning: morning.length,
       afternoon: afternoon.length,
       evening: evening.length,
       noTime: noTime.length,
-      total: tasks.length,
+      total: matchingTotal,
+      returned: tasks.length,
     },
+    // Lets the client say so rather than quietly showing a partial list.
+    truncated: matchingTotal > tasks.length,
   };
 }
 
@@ -78,17 +93,22 @@ export async function getUpcomingTasks(
   endDate.setUTCDate(endDate.getUTCDate() + days);
 
   // Overdue + upcoming range
-  const tasks = await prisma.task.findMany({
-    where: {
-      ...taskAccessWhere(userId),
-      isCompleted: false,
-      parentId: null,
-      dueDate: { lt: endDate },
-    },
-    include: taskInclude,
-    orderBy: [{ dueDate: 'asc' }, { sortOrder: 'asc' }],
-    take: 500,
-  });
+  const datedWhere = {
+    ...taskAccessWhere(userId),
+    isCompleted: false,
+    parentId: null,
+    dueDate: { lt: endDate },
+  };
+
+  const [tasks, datedTotal] = await Promise.all([
+    prisma.task.findMany({
+      where: datedWhere,
+      include: taskInclude,
+      orderBy: [{ dueDate: 'asc' }, { sortOrder: 'asc' }],
+      take: VIEW_TASK_CAP,
+    }),
+    prisma.task.count({ where: datedWhere }),
+  ]);
 
   const overdue: typeof tasks = [];
   const byDate: Record<string, typeof tasks> = {};
@@ -105,19 +125,27 @@ export async function getUpcomingTasks(
   }
 
   let noDateTasks: typeof tasks = [];
+  let noDateTotal = 0;
   if (includeNoDate) {
-    noDateTasks = await prisma.task.findMany({
-      where: {
-        ...taskAccessWhere(userId),
-        isCompleted: false,
-        parentId: null,
-        dueDate: null,
-      },
-      include: taskInclude,
-      orderBy: { sortOrder: 'asc' },
-      take: 500,
-    });
+    const noDateWhere = {
+      ...taskAccessWhere(userId),
+      isCompleted: false,
+      parentId: null,
+      dueDate: null,
+    };
+
+    [noDateTasks, noDateTotal] = await Promise.all([
+      prisma.task.findMany({
+        where: noDateWhere,
+        include: taskInclude,
+        orderBy: { sortOrder: 'asc' },
+        take: VIEW_TASK_CAP,
+      }),
+      prisma.task.count({ where: noDateWhere }),
+    ]);
   }
+
+  const returned = tasks.length + noDateTasks.length;
 
   return {
     overdue,
@@ -125,8 +153,10 @@ export async function getUpcomingTasks(
     noDate: noDateTasks,
     counts: {
       overdue: overdue.length,
-      total: tasks.length + noDateTasks.length,
+      total: datedTotal + noDateTotal,
+      returned,
     },
+    truncated: datedTotal + noDateTotal > returned,
   };
 }
 

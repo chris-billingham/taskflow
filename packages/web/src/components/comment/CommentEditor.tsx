@@ -1,6 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip, X } from 'lucide-react';
 import { useUploadLimits, formatFileSize } from '@/hooks/useFileUpload';
+import api from '@/services/api';
+import {
+  filterMembers,
+  findMentionQuery,
+  preferredHandle,
+  type MentionMember,
+  type MentionQuery,
+} from '@/utils/mentions';
 
 interface CommentEditorProps {
   onSubmit: (content: string, files: File[]) => Promise<void>;
@@ -10,6 +18,8 @@ interface CommentEditorProps {
   submitLabel?: string;
   autoFocus?: boolean;
   showAttachments?: boolean;
+  /** Enables @mention autocomplete against this project's members. */
+  projectId?: string;
 }
 
 export function CommentEditor({
@@ -20,6 +30,7 @@ export function CommentEditor({
   submitLabel = 'Comment',
   autoFocus = false,
   showAttachments = false,
+  projectId,
 }: CommentEditorProps) {
   const [content, setContent] = useState(initialContent);
   const [submitting, setSubmitting] = useState(false);
@@ -28,6 +39,59 @@ export function CommentEditor({
   const { maxFileSizeMb, allowedMimeTypes } = useUploadLimits();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Mentions are resolved server-side against project/workspace members, and an
+  // ambiguous handle notifies nobody. Without a picker a user had to guess a
+  // handle that happened to match — the feature worked but was unfindable.
+  const [members, setMembers] = useState<MentionMember[]>([]);
+  const [mention, setMention] = useState<MentionQuery | null>(null);
+  const [highlighted, setHighlighted] = useState(0);
+
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    api
+      .get(`/projects/${projectId}/members`)
+      .then(({ data }) => {
+        if (active) setMembers(data.data ?? []);
+      })
+      .catch(() => {
+        // Without the list the picker just never opens; typing a handle by
+        // hand still works exactly as before.
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
+
+  const matches = mention ? filterMembers(members, mention.term).slice(0, 6) : [];
+
+  const syncMention = (value: string, caret: number) => {
+    const next = members.length > 0 ? findMentionQuery(value, caret) : null;
+    setMention(next);
+    setHighlighted(0);
+  };
+
+  const insertMention = (member: MentionMember) => {
+    if (!mention) return;
+    const handle = preferredHandle(member, members);
+    const before = content.slice(0, mention.start);
+    const after = content.slice(mention.start + 1 + mention.term.length);
+    const inserted = `@${handle} `;
+
+    setContent(`${before}${inserted}${after}`);
+    setMention(null);
+
+    // Put the caret after the inserted handle rather than at the end, so a
+    // mention mid-sentence doesn't jump the user to the bottom.
+    const caret = before.length + inserted.length;
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(caret, caret);
+    });
+  };
 
   const handleSubmit = async () => {
     const trimmed = content.trim();
@@ -44,6 +108,32 @@ export function CommentEditor({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // While the picker is open it owns the arrows, Enter/Tab and Escape —
+    // otherwise Enter would submit the comment mid-mention and Escape would
+    // discard the whole draft.
+    if (mention && matches.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHighlighted((i) => (i + 1) % matches.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlighted((i) => (i - 1 + matches.length) % matches.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertMention(matches[highlighted]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMention(null);
+        return;
+      }
+    }
+
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       handleSubmit();
@@ -75,17 +165,65 @@ export function CommentEditor({
 
   return (
     <div className="space-y-2">
-      <textarea
-        ref={textareaRef}
-        className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-3 outline-none focus:border-primary-500 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500"
-        rows={3}
-        placeholder={placeholder}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        onKeyDown={handleKeyDown}
-        autoFocus={autoFocus}
-        disabled={submitting}
-      />
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-3 outline-none focus:border-primary-500 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500"
+          rows={3}
+          placeholder={placeholder}
+          value={content}
+          onChange={(e) => {
+            setContent(e.target.value);
+            syncMention(e.target.value, e.target.selectionStart ?? e.target.value.length);
+          }}
+          onClick={(e) => {
+            const el = e.currentTarget;
+            syncMention(el.value, el.selectionStart ?? el.value.length);
+          }}
+          onBlur={() => setMention(null)}
+          onKeyDown={handleKeyDown}
+          autoFocus={autoFocus}
+          disabled={submitting}
+        />
+
+        {/* The picker opens UPWARD: the comment editor sits at the bottom of
+            the task detail panel, so a dropdown below the textarea is clipped
+            off the viewport. Same choice as the sidebar's account menu. */}
+        {mention && matches.length > 0 && (
+          <ul
+            role="listbox"
+            aria-label="Mention a member"
+            className="absolute bottom-full left-2 z-50 mb-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          >
+            {matches.map((member, i) => (
+              <li key={member.id} role="option" aria-selected={i === highlighted}>
+                <button
+                  type="button"
+                  // The picker closes on blur, so commit on mousedown —
+                  // by the time click fires the query is already gone.
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    insertMention(member);
+                  }}
+                  onMouseEnter={() => setHighlighted(i)}
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
+                    i === highlighted
+                      ? 'bg-gray-100 dark:bg-gray-700'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <span className="truncate text-gray-700 dark:text-gray-300">
+                    {member.name}
+                  </span>
+                  <span className="ml-auto truncate text-xs text-gray-400 dark:text-gray-500">
+                    @{preferredHandle(member, members)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* Pending files */}
       {pendingFiles.length > 0 && (

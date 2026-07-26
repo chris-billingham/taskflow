@@ -92,9 +92,16 @@ export function getNextOccurrence(rrule: string, fromDate: Date): Date | null {
 
   const next = new Date(fromDate);
 
+  // All arithmetic below is UTC. fromDate is a calendar date encoded as UTC
+  // midnight (utils/dates.ts), so local getters/setters read it as the PREVIOUS
+  // day in any behind-UTC zone: BYDAY resolved against the wrong weekday
+  // (a weekday-only rule could land on a Saturday), INTERVAL collapsed, the
+  // month-end clamp below was defeated, and DST steps of 23/25h knocked the
+  // result off midnight entirely. Latent while hosts run UTC — the containers
+  // set no TZ — and wrong everywhere else.
   switch (freq) {
     case 'DAILY':
-      next.setDate(next.getDate() + interval);
+      next.setUTCDate(next.getUTCDate() + interval);
       break;
 
     case 'WEEKLY':
@@ -105,7 +112,7 @@ export function getNextOccurrence(rrule: string, fromDate: Date): Date | null {
         const targetDays = byDay.map((d) => dayCodeToNum[d]).filter((d) => d !== undefined);
 
         if (targetDays.length > 0) {
-          const currentDay = next.getDay();
+          const currentDay = next.getUTCDay();
           // Find next matching day
           let daysToAdd = Infinity;
           for (const target of targetDays) {
@@ -118,37 +125,41 @@ export function getNextOccurrence(rrule: string, fromDate: Date): Date | null {
           // the step crosses into a new week. (Previously INTERVAL was
           // ignored here — every-other-Monday fired every Monday.)
           const crossesWeekBoundary = currentDay + daysToAdd >= 7;
-          next.setDate(
-            next.getDate() +
+          next.setUTCDate(
+            next.getUTCDate() +
               daysToAdd +
               (crossesWeekBoundary ? (interval - 1) * 7 : 0),
           );
         } else {
-          next.setDate(next.getDate() + 7 * interval);
+          next.setUTCDate(next.getUTCDate() + 7 * interval);
         }
       } else {
-        next.setDate(next.getDate() + 7 * interval);
+        next.setUTCDate(next.getUTCDate() + 7 * interval);
       }
       break;
 
     case 'MONTHLY': {
       // Clamp to the last valid day so e.g. Jan 31 + 1 month → Feb 28/29 rather
       // than JS's silent overflow to Mar 2/3 (which then drifts forever).
-      const day = next.getDate();
-      next.setDate(1);
-      next.setMonth(next.getMonth() + interval);
-      const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-      next.setDate(Math.min(day, daysInMonth));
+      const day = next.getUTCDate();
+      next.setUTCDate(1);
+      next.setUTCMonth(next.getUTCMonth() + interval);
+      const daysInMonth = new Date(
+        Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0),
+      ).getUTCDate();
+      next.setUTCDate(Math.min(day, daysInMonth));
       break;
     }
 
     case 'YEARLY': {
       // Clamp Feb 29 → Feb 28 in non-leap target years (otherwise overflows to Mar 1).
-      const day = next.getDate();
-      next.setDate(1);
-      next.setFullYear(next.getFullYear() + interval);
-      const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-      next.setDate(Math.min(day, daysInMonth));
+      const day = next.getUTCDate();
+      next.setUTCDate(1);
+      next.setUTCFullYear(next.getUTCFullYear() + interval);
+      const daysInMonth = new Date(
+        Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0),
+      ).getUTCDate();
+      next.setUTCDate(Math.min(day, daysInMonth));
       break;
     }
   }
