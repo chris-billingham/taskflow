@@ -4,6 +4,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // The DB-backed suite has its own config (vitest.db.config.ts) with a
+    // real database and sequential execution — keep it out of the default
+    // run, where it would execute unmigrated and unsequenced.
+    exclude: ['**/node_modules/**', '**/dist/**', 'src/test/db/**'],
     setupFiles: ['./src/test/setup.ts'],
     env: {
       DATABASE_URL: 'postgresql://test:test@localhost:5432/taskflow_test',
