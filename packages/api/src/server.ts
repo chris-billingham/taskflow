@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
+import rateLimit from '@fastify/rate-limit';
 import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
 import multipart from '@fastify/multipart';
@@ -12,6 +13,7 @@ import { runWithRequestContext } from './utils/requestContext.js';
 import { closeRedis, getRedis } from './config/redis.js';
 import { initializeWorkers } from './worker.js';
 import { createWebSocketServer } from './websocket/server.js';
+import { stopPresenceCleanup } from './websocket/presence.js';
 import { ensureBucketExists } from './config/storage.js';
 import { initMailer } from './services/mailService.js';
 import { prisma } from './config/database.js';
@@ -19,6 +21,11 @@ import { Prisma } from '@prisma/client';
 import { openapiSpec } from './docs/openapi.js';
 
 const server = Fastify({
+  // Exactly one proxy hop (Traefik / nginx / Vite) sits in front of the API.
+  // Without this, request.ip is the proxy container's address, which made
+  // every rate limit ONE SHARED GLOBAL BUCKET: five failed logins by anyone
+  // locked out login for the whole deployment.
+  trustProxy: true,
   bodyLimit: 1_048_576, // 1MB JSON body limit
   logger: {
     level: env.LOG_LEVEL,
@@ -48,21 +55,37 @@ await server.register(helmet, {
 });
 
 await server.register(cookie);
+
+// Global rate limiting, backed by Redis so limits survive restarts and are
+// shared across replicas. Generous default for normal app traffic; expensive
+// or sensitive routes carry stricter per-route budgets via config.rateLimit.
+await server.register(rateLimit, {
+  global: true,
+  max: env.NODE_ENV === 'production' ? 300 : 5000,
+  timeWindow: '1 minute',
+  redis: getRedis(),
+  nameSpace: 'rl:',
+});
+
 await server.register(websocket);
 await server.register(multipart, {
   limits: { fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024 },
 });
 
-await server.register(swagger, {
-  mode: 'static',
-  specification: { document: openapiSpec as never },
-});
+// API docs are an endpoint inventory — served only when explicitly enabled
+// (or in development), not to every anonymous visitor of a production host.
+if (env.NODE_ENV === 'development' || env.ENABLE_API_DOCS) {
+  await server.register(swagger, {
+    mode: 'static',
+    specification: { document: openapiSpec as never },
+  });
 
-await server.register(swaggerUi, {
-  routePrefix: '/api/docs',
-  uiConfig: { docExpansion: 'list', deepLinking: true },
-  staticCSP: true,
-});
+  await server.register(swaggerUi, {
+    routePrefix: '/api/docs',
+    uiConfig: { docExpansion: 'list', deepLinking: true },
+    staticCSP: true,
+  });
+}
 
 // Global error handler - must be set before routes
 server.setErrorHandler((error, request, reply) => {
@@ -188,18 +211,49 @@ server.get('/', async () => {
 
 // Workers state
 let workersShutdown: (() => Promise<void>) | null = null;
+let io: ReturnType<typeof createWebSocketServer> | null = null;
 
-// Graceful shutdown
+// Graceful shutdown — with a hard deadline so a hung dependency can't stall
+// past Docker's stop grace period into a SIGKILL mid-write.
+let shuttingDown = false;
 async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
   server.log.info('Shutting down...');
-  if (workersShutdown) await workersShutdown();
-  await server.close();
-  await closeRedis();
-  process.exit(0);
+
+  const forceExit = setTimeout(() => {
+    server.log.error('Graceful shutdown timed out — forcing exit');
+    process.exit(1);
+  }, 10_000);
+  forceExit.unref();
+
+  try {
+    stopPresenceCleanup();
+    if (io) await new Promise<void>((resolve) => io!.close(() => resolve()));
+    if (workersShutdown) await workersShutdown();
+    await server.close();
+    await prisma.$disconnect();
+    await closeRedis();
+    process.exit(0);
+  } catch (err) {
+    server.log.error({ err }, 'Error during shutdown');
+    process.exit(1);
+  }
 }
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+
+// A rejected promise nobody awaited must be visible, not silent; a truly
+// uncaught exception leaves undefined state — log and restart (Docker's
+// restart policy brings the process back).
+process.on('unhandledRejection', (reason) => {
+  server.log.error({ err: reason }, 'Unhandled promise rejection');
+});
+process.on('uncaughtException', (err) => {
+  server.log.fatal({ err }, 'Uncaught exception — exiting');
+  process.exit(1);
+});
 
 // Start server
 const start = async () => {
@@ -213,7 +267,7 @@ const start = async () => {
       `Taskflow API server listening on http://${env.HOST}:${env.API_PORT}`,
     );
 
-    createWebSocketServer(server.server);
+    io = createWebSocketServer(server.server);
     server.log.info('WebSocket server initialized');
 
     // Initialize S3/MinIO storage bucket

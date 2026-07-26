@@ -271,6 +271,10 @@ export async function getProjectMembers(projectId: string, userId: string) {
         },
       },
     });
+    // GUESTs get names and avatars, not the whole team's email addresses.
+    if (wsMember.role === 'GUEST') {
+      return wsMembers.map((m) => ({ ...m.user, email: null }));
+    }
     return wsMembers.map((m) => m.user);
   }
 

@@ -27,6 +27,11 @@ const envSchema = z.object({
   // Public base URL of the web app, used for links in emails. Falls back to
   // CORS_ORIGIN (which is the web origin in every shipped topology).
   APP_URL: z.string().url().optional(),
+  // Serve Swagger UI at /api/docs in production (always on in development)
+  ENABLE_API_DOCS: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
 });
 
 function loadEnv() {

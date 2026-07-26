@@ -187,6 +187,36 @@ describe('membership revocation lifecycle', () => {
   });
 });
 
+describe('workspace policy', () => {
+  it('GUESTs cannot read member email addresses', async () => {
+    const { getWorkspaceMembers } = await import('../../services/workspaceService.js');
+    const asGuest = await getWorkspaceMembers(workspaceId, U.guest);
+    expect(asGuest.length).toBeGreaterThan(0);
+    for (const m of asGuest) expect(m.user.email).toBeNull();
+
+    const asMember = await getWorkspaceMembers(workspaceId, U.member);
+    expect(asMember.some((m) => typeof m.user.email === 'string')).toBe(true);
+  });
+
+  it('only the OWNER can demote or remove an ADMIN', async () => {
+    const { updateMemberRole, removeMember: rm } = await import(
+      '../../services/workspaceService.js'
+    );
+    // Promote a second admin as owner first.
+    await updateMemberRole(workspaceId, U.member, { role: 'ADMIN' }, U.owner);
+
+    await expect(
+      updateMemberRole(workspaceId, U.member, { role: 'MEMBER' }, U.admin),
+    ).rejects.toThrow(ForbiddenError);
+    await expect(rm(workspaceId, U.member, U.admin)).rejects.toThrow(ForbiddenError);
+
+    // The owner can.
+    await expect(
+      updateMemberRole(workspaceId, U.member, { role: 'MEMBER' }, U.owner),
+    ).resolves.toBeTruthy();
+  });
+});
+
 describe('view scoping', () => {
   it('Today includes workspace tasks for members (they used to vanish)', async () => {
     const due = await createTask(

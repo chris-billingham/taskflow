@@ -1,0 +1,17 @@
+# Build context hygiene: secrets must never enter image layers, and host
+# artifacts must never overlay the image's clean install.
+.git
+.env
+**/.env
+node_modules
+**/node_modules
+**/dist
+.turbo
+**/.turbo
+backups
+playwright-report
+**/playwright-report
+**/test-results
+docs
+*.md
+!packages/*/README.md

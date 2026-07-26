@@ -23,6 +23,7 @@ RUN pnpm --filter @taskflow/web build
 FROM nginx:alpine AS production
 
 COPY packages/web/nginx.conf /etc/nginx/nginx.conf
+COPY packages/web/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=builder /app/packages/web/dist /usr/share/nginx/html
 
 EXPOSE 80

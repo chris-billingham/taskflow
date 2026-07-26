@@ -53,7 +53,10 @@ async function createTokenPair(user: {
 
   await prisma.refreshToken.create({
     data: {
-      token: refreshToken,
+      // Only the hash is stored: a leaked backup or DB read must not yield
+      // directly replayable 30-day credentials (reset tokens were already
+      // hashed; refresh tokens now match).
+      token: sha256(refreshToken),
       userId: user.id,
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
     },
@@ -162,7 +165,7 @@ export async function login(email: string, password: string) {
 }
 
 export async function logout(refreshToken: string) {
-  await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+  await prisma.refreshToken.deleteMany({ where: { token: sha256(refreshToken) } });
 }
 
 export async function refreshTokens(refreshToken: string) {
@@ -175,7 +178,7 @@ export async function refreshTokens(refreshToken: string) {
   // window where two concurrent requests could both succeed with the same token.
   const result = await prisma.$transaction(async (tx) => {
     const stored = await tx.refreshToken.findUnique({
-      where: { token: refreshToken },
+      where: { token: sha256(refreshToken) },
     });
     if (!stored || stored.expiresAt < new Date()) {
       // Token missing or expired — possible reuse attack; revoke all user

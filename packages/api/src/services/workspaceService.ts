@@ -197,13 +197,21 @@ export async function deleteWorkspace(id: string, userId: string) {
 }
 
 export async function getWorkspaceMembers(id: string, userId: string) {
-  await verifyWorkspaceMembership(id, userId);
+  const requester = await verifyWorkspaceMembership(id, userId);
 
   const members = await prisma.workspaceMember.findMany({
     where: { workspaceId: id },
     include: memberInclude,
     orderBy: { joinedAt: 'asc' },
   });
+
+  // GUESTs get names and avatars, not the whole team's email addresses.
+  if (requester.role === 'GUEST') {
+    return members.map((m) => ({
+      ...m,
+      user: { ...m.user, email: null },
+    }));
+  }
 
   return members;
 }
@@ -367,8 +375,10 @@ export async function updateMemberRole(
     throw new ForbiddenError('Cannot change the owner\'s role');
   }
 
-  // Only owner can promote to admin
-  if (data.role === 'ADMIN') {
+  // Admin-tier changes are owner-only in BOTH directions: promotion was
+  // already gated, but any admin could demote a peer admin — two admins
+  // could strip each other in a race for control.
+  if (data.role === 'ADMIN' || targetMember.role === 'ADMIN') {
     await verifyWorkspaceOwner(workspaceId, userId);
   }
 
@@ -447,6 +457,9 @@ export async function removeMember(
   }
   if (targetMember.role === 'OWNER') {
     throw new ForbiddenError('Cannot remove the workspace owner');
+  }
+  if (targetMember.role === 'ADMIN') {
+    await verifyWorkspaceOwner(workspaceId, userId);
   }
 
   await revokeMembership(workspaceId, memberId);

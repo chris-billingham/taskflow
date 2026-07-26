@@ -28,8 +28,10 @@ services:
       - ./packages/api/src:/app/packages/api/src
       - ./packages/shared/src:/app/packages/shared/src
     ports:
-      - "3001:3001"
-      - "9229:9229"
+      - "127.0.0.1:3001:3001"
+      # Node inspector: anyone who can reach this port can execute arbitrary
+      # code in the API process. Never expose beyond loopback.
+      - "127.0.0.1:9229:9229"
 
   worker:
     build:
@@ -54,4 +56,4 @@ services:
     volumes:
       - ./packages/web/src:/app/packages/web/src
     ports:
-      - "31779:31779"
+      - "127.0.0.1:31779:31779"

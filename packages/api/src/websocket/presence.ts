@@ -50,8 +50,9 @@ function broadcastPresence(workspaceId: string): void {
     });
 }
 
-// Clean up stale entries every 30 seconds
-setInterval(() => {
+// Clean up stale entries every 30 seconds. unref'd so it can never hold the
+// event loop open, and clearable so shutdown stops the broadcasts.
+const cleanupInterval = setInterval(() => {
   const staleThreshold = Date.now() - 60_000;
   for (const [workspaceId, entries] of presenceByWorkspace) {
     let changed = false;
@@ -65,3 +66,8 @@ setInterval(() => {
     if (changed) broadcastPresence(workspaceId);
   }
 }, 30_000);
+cleanupInterval.unref();
+
+export function stopPresenceCleanup(): void {
+  clearInterval(cleanupInterval);
+}

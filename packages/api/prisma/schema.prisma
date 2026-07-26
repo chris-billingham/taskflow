@@ -122,6 +122,7 @@ model User {
 
 model RefreshToken {
   id         String   @id @default(cuid())
+  // sha256 hex of the raw token — never the replayable value itself
   token      String   @unique
   userId     String
   deviceInfo String?
@@ -131,7 +132,6 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([token])
   @@map("refresh_tokens")
 }
 

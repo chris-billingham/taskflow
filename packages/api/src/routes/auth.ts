@@ -1,5 +1,4 @@
 import type { FastifyInstance } from 'fastify';
-import rateLimit from '@fastify/rate-limit';
 import {
   registerSchema,
   loginSchema,
@@ -25,10 +24,6 @@ const refreshCookieOptions = {
 };
 
 export async function authRoutes(app: FastifyInstance) {
-  await app.register(rateLimit, {
-    global: false,
-  });
-
   app.post('/register', {
     config: {
       rateLimit: { max: env.NODE_ENV === 'production' ? 5 : 1000, timeWindow: '1 hour' },

@@ -24,8 +24,16 @@ export function contentDisposition(filename: string, inline: boolean): string {
 export async function attachmentRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate);
 
+  // Uploads are the most expensive thing a single request can do (25MB to
+  // object storage) — give them their own budget.
+  const uploadLimit = {
+    config: {
+      rateLimit: { max: env.NODE_ENV === 'production' ? 60 : 1000, timeWindow: '10 minutes' },
+    },
+  };
+
   // POST /api/v1/tasks/:taskId/attachments - Upload and attach to task
-  app.post('/tasks/:taskId/attachments', async (request, reply) => {
+  app.post('/tasks/:taskId/attachments', uploadLimit, async (request, reply) => {
     const params = taskAttachmentParamsSchema.safeParse(request.params);
     if (!params.success) throw new ValidationError(params.error.issues[0].message);
 
@@ -58,7 +66,7 @@ export async function attachmentRoutes(app: FastifyInstance) {
   });
 
   // POST /api/v1/comments/:commentId/attachments - Upload and attach to comment
-  app.post('/comments/:commentId/attachments', async (request, reply) => {
+  app.post('/comments/:commentId/attachments', uploadLimit, async (request, reply) => {
     const params = commentAttachmentParamsSchema.safeParse(request.params);
     if (!params.success) throw new ValidationError(params.error.issues[0].message);
 

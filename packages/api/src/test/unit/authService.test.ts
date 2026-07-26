@@ -226,11 +226,11 @@ describe('login', () => {
 });
 
 describe('logout', () => {
-  it('deletes the refresh token from the database', async () => {
+  it('deletes the refresh token row by its HASH (tokens are hashed at rest)', async () => {
     mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 1 });
     await logout('some-refresh-token');
     expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith({
-      where: { token: 'some-refresh-token' },
+      where: { token: sha256('some-refresh-token') },
     });
   });
 });
@@ -261,6 +261,16 @@ describe('refreshTokens', () => {
     const result = await refreshTokens('valid-refresh-token');
     expect(result.accessToken).toBe('new-access-token');
     expect(result.refreshToken).toBe('new-refresh-token');
+  });
+
+  it('looks the stored token up by hash and stores only the new hash', async () => {
+    await refreshTokens('valid-refresh-token');
+    expect(mockPrisma.refreshToken.findUnique).toHaveBeenCalledWith({
+      where: { token: sha256('valid-refresh-token') },
+    });
+    const created = mockPrisma.refreshToken.create.mock.calls[0][0].data;
+    expect(created.token).toBe(sha256('new-refresh-token'));
+    expect(created.token).not.toBe('new-refresh-token');
   });
 
   it('deletes old token before issuing new one (rotation)', async () => {
