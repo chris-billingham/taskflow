@@ -150,9 +150,19 @@ export function TaskItem({
 
         {/* Content area */}
         <div
-          className="flex-1 min-w-0 py-2.5 cursor-pointer"
+          className="flex-1 min-w-0 py-2.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#db4c3f]/40 rounded"
+          role="button"
+          tabIndex={0}
+          aria-label={`Open task: ${task.content}`}
           onClick={() => {
             if (!isEditing) onClick(task);
+          }}
+          onKeyDown={(e) => {
+            if (isEditing) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onClick(task);
+            }
           }}
         >
           {isEditing ? (

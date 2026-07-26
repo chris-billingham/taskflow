@@ -28,8 +28,25 @@ import { getSubtasks } from '@/utils/subtaskIndex';
 const UPCOMING_DAYS = 14;
 
 export default function Upcoming() {
-  const { upcomingView, loading, refetch } = useUpcomingView(UPCOMING_DAYS, true);
+  const { upcomingView: upcomingViewRaw, loading, error, refetch } = useUpcomingView(UPCOMING_DAYS, true);
   const taskMap = useTaskStore((s) => s.tasks);
+
+  // Render through the live store map (see Today.tsx for rationale).
+  const upcomingView = useMemo(() => {
+    if (!upcomingViewRaw) return null;
+    const live = (list: Task[]) =>
+      list.map((t) => taskMap.get(t.id) ?? t).filter((t) => !t.isCompleted);
+    const byDate: Record<string, Task[]> = {};
+    for (const [date, tasks] of Object.entries(upcomingViewRaw.byDate)) {
+      byDate[date] = live(tasks);
+    }
+    return {
+      ...upcomingViewRaw,
+      overdue: live(upcomingViewRaw.overdue),
+      byDate,
+      noDate: live(upcomingViewRaw.noDate),
+    };
+  }, [upcomingViewRaw, taskMap]);
   const rescheduleOverdue = useTaskStore((s) => s.rescheduleOverdue);
   const {
     createTask,
@@ -193,6 +210,7 @@ export default function Upcoming() {
 
   const totalCount = upcomingView?.counts.total ?? 0;
   const isEmpty =
+    !error &&
     totalCount === 0 &&
     (upcomingView?.counts.overdue ?? 0) === 0;
 
@@ -254,6 +272,21 @@ export default function Upcoming() {
               onDuplicate={handleDuplicate}
               onRescheduleAll={handleRescheduleAll}
             />
+          )}
+
+          {error && !loading && (
+            <div className="text-center py-16">
+              <h3 className="text-lg font-medium text-gray-700 mb-1">
+                Couldn't load Upcoming
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">{error}</p>
+              <button
+                className="px-4 py-1.5 text-sm text-white bg-[#db4c3f] rounded-lg hover:bg-[#c53727]"
+                onClick={() => refetch()}
+              >
+                Try again
+              </button>
+            </div>
           )}
 
           {isEmpty && (

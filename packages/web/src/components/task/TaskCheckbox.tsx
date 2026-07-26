@@ -40,6 +40,9 @@ export function TaskCheckbox({ checked, priority, disabled, onChange }: TaskChec
       onClick={handleClick}
       disabled={disabled}
       type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={checked ? 'Mark task incomplete' : 'Complete task'}
     >
       {checked && (
         <Check

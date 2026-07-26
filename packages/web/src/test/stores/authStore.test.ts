@@ -10,9 +10,19 @@ vi.mock('@/services/api', () => ({
   },
   setAccessToken: vi.fn(),
   getAccessToken: vi.fn(() => null),
+  refreshAccessToken: vi.fn(),
+}));
+
+vi.mock('@/services/socket', () => ({
+  disconnectSocket: vi.fn(),
+  initSocket: vi.fn(),
+  getSocket: vi.fn(() => null),
 }));
 
 import { useAuthStore } from '@/stores/authStore';
+import { refreshAccessToken } from '@/services/api';
+
+const mockRefreshAccessToken = vi.mocked(refreshAccessToken);
 import api, { setAccessToken } from '@/services/api';
 
 const mockApi = api as unknown as {
@@ -178,10 +188,8 @@ describe('authStore - updateUser', () => {
 
 describe('authStore - initialize', () => {
   it('sets isAuthenticated when cookie-based refresh succeeds', async () => {
-    // No localStorage setup needed — refresh relies on the httpOnly cookie
-    mockApi.post.mockResolvedValueOnce({
-      data: { data: { accessToken: 'new-access' } },
-    });
+    // initialize() refreshes through the shared cross-tab-locked helper
+    mockRefreshAccessToken.mockResolvedValueOnce('new-access');
     mockApi.get.mockResolvedValueOnce({
       data: { data: MOCK_USER },
     });
@@ -197,7 +205,7 @@ describe('authStore - initialize', () => {
   });
 
   it('clears auth state when refresh fails (no valid cookie)', async () => {
-    mockApi.post.mockRejectedValueOnce(new Error('No cookie / token expired'));
+    mockRefreshAccessToken.mockResolvedValueOnce(null);
 
     const store = getStore();
     await act(async () => {

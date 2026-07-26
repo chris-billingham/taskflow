@@ -62,10 +62,19 @@ export function BoardCard({
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-white rounded-lg border border-gray-200 border-l-2 ${borderColor} p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+      className={`bg-white rounded-lg border border-gray-200 border-l-2 ${borderColor} p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#db4c3f]/40 ${
         task.isCompleted ? 'opacity-60' : ''
       }`}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open task: ${task.content}`}
       onClick={() => onClick(task)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          onClick(task);
+        }
+      }}
     >
       <div className="flex items-start gap-2">
         <div

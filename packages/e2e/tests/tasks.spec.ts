@@ -62,10 +62,11 @@ test.describe('Task Management', () => {
     await page.goto('/today');
     await quickAddToday(page, taskName);
 
-    // Hover the task's own row button (which contains "Task options" as a child),
-    // then scope the click to that row to avoid strict-mode violations when
-    // multiple tasks are visible on the page.
-    const taskRow = page.getByRole('button', { name: new RegExp(taskName) });
+    // The row content is now itself role=button ("Open task: …"), so pick the
+    // OUTER sortable row: the one that CONTAINS the Task options button.
+    const taskRow = page
+      .getByRole('button', { name: new RegExp(taskName) })
+      .filter({ has: page.getByRole('button', { name: 'Task options' }) });
     await taskRow.hover();
     await taskRow.getByRole('button', { name: 'Task options' }).click();
     // Use exact match: the open dropdown causes the task row's accessible name to

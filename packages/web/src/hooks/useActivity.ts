@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/services/api';
 
 export interface ActivityUser {
@@ -25,17 +25,24 @@ export function useTaskActivity(taskId: string, limit?: number, refreshKey?: str
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Sequence guard: switching tasks quickly must not render the previous
+  // task's activity when its slower response lands last.
+  const seqRef = useRef(0);
+
   const fetchActivity = useCallback(async () => {
+    const seq = ++seqRef.current;
     setLoading(true);
     setError(null);
     try {
       const params = limit ? `?limit=${limit}` : '';
       const { data } = await api.get(`/tasks/${taskId}/activity${params}`);
+      if (seq !== seqRef.current) return;
       setActivities(data.data);
     } catch (err: any) {
+      if (seq !== seqRef.current) return;
       setError(err.response?.data?.message || 'Failed to fetch activity');
     } finally {
-      setLoading(false);
+      if (seq === seqRef.current) setLoading(false);
     }
   }, [taskId, limit]);
 

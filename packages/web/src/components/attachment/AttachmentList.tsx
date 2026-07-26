@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Paperclip, Loader2, AlertCircle } from 'lucide-react';
 import type { Attachment } from '@/hooks/useFileUpload';
 import { isImage, useFileUpload } from '@/hooks/useFileUpload';
@@ -20,16 +20,23 @@ export function AttachmentList({ taskId }: AttachmentListProps) {
   const { uploading, progress, error: uploadError, upload } = useFileUpload();
   const user = useAuthStore((s) => s.user);
 
+  // Sequence guard: switching tasks quickly must not render the previous
+  // task's attachments when its slower response lands last.
+  const seqRef = useRef(0);
+
   const fetchAttachments = useCallback(async () => {
+    const seq = ++seqRef.current;
     setLoading(true);
     setFetchError(null);
     try {
       const { data } = await api.get(`/tasks/${taskId}/attachments`);
+      if (seq !== seqRef.current) return;
       setAttachments(data.data);
     } catch (err: any) {
+      if (seq !== seqRef.current) return;
       setFetchError(err.response?.data?.message || 'Failed to load attachments');
     } finally {
-      setLoading(false);
+      if (seq === seqRef.current) setLoading(false);
     }
   }, [taskId]);
 

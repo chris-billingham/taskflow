@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AppLayout } from '@/layouts/AppLayout';
 import { SettingsLayout } from '@/layouts/SettingsLayout';
 import { Spinner } from '@/components/ui/Spinner';
+import { ToastContainer } from '@/components/ui/ToastContainer';
 // Core daily-use pages stay in the main bundle for instant navigation.
 import Today from '@/pages/app/Today';
 import Upcoming from '@/pages/app/Upcoming';
@@ -101,6 +102,7 @@ function App() {
         <Route path="*" element={<Navigate to="/today" replace />} />
       </Routes>
       </Suspense>
+      <ToastContainer />
     </BrowserRouter>
   );
 }

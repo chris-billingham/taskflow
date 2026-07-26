@@ -418,6 +418,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         )}
       </div>
 
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile drawer */}
+      {isOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+          <div className="relative w-64 flex-shrink-0">{sidebarContent}</div>
+        </div>
+      )}
+
+      {/* Modals — rendered ONCE here: they used to live inside sidebarContent,
+          which is rendered twice (desktop aside + mobile drawer), mounting
+          every modal twice whenever the drawer was open. */}
       {/* Modals */}
       <CreateProjectModal
         isOpen={showCreateModal}
@@ -446,23 +467,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             await archiveProject(id);
           }}
         />
-      )}
-    </div>
-  );
-
-  return (
-    <>
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-        {sidebarContent}
-      </aside>
-
-      {/* Mobile drawer */}
-      {isOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-          <div className="relative w-64 flex-shrink-0">{sidebarContent}</div>
-        </div>
       )}
     </>
   );

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '@/services/api';
+import { reportMutationError } from '@/utils/reportError';
 
 export interface ProjectSection {
   id: string;
@@ -120,6 +121,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
       });
       return project;
     } catch (err) {
+      reportMutationError(err, 'That change could not be saved');
       // Revert optimistic update
       if (prev) {
         set((state) => {
@@ -144,6 +146,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
     try {
       await api.delete(`/projects/${id}`);
     } catch (err) {
+      reportMutationError(err, 'That change could not be saved');
       // Revert
       if (prev) {
         set((state) => {
@@ -169,6 +172,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
     try {
       await api.post(`/projects/${id}/archive`);
     } catch (err) {
+      reportMutationError(err, 'That change could not be saved');
       if (prev) {
         set((state) => {
           const projects = new Map(state.projects);
@@ -193,6 +197,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
     try {
       await api.post(`/projects/${id}/unarchive`);
     } catch (err) {
+      reportMutationError(err, 'That change could not be saved');
       if (prev) {
         set((state) => {
           const projects = new Map(state.projects);

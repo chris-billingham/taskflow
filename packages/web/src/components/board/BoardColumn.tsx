@@ -93,7 +93,7 @@ export function BoardColumn({
     <div
       ref={setSortableRef}
       style={sortableStyle}
-      className="bg-gray-50 rounded-lg min-w-[280px] w-[280px] flex flex-col max-h-[calc(100vh-200px)] flex-shrink-0"
+      className="group bg-gray-50 rounded-lg min-w-[280px] w-[280px] flex flex-col max-h-[calc(100vh-200px)] flex-shrink-0"
     >
       {/* Column header */}
       <div className="px-3 py-2 flex items-center gap-2 border-b border-gray-200">
@@ -150,9 +150,14 @@ export function BoardColumn({
 
         {!isVirtual && onDeleteSection && (
           <button
-            className="p-1 rounded hover:bg-gray-200 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-            onClick={() => onDeleteSection(columnId)}
+            className="p-1 rounded hover:bg-gray-200 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity flex-shrink-0"
+            onClick={() => {
+              if (window.confirm(`Delete section "${title}"? Its tasks move out of the board columns.`)) {
+                onDeleteSection(columnId);
+              }
+            }}
             title="Delete section"
+            aria-label="Delete section"
           >
             <Trash2 className="w-3.5 h-3.5 text-gray-400" />
           </button>

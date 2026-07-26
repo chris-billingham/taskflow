@@ -5,6 +5,9 @@ import { useNotificationStore } from '@/stores/notificationStore';
 import { NotificationItem } from './NotificationItem';
 import type { Notification } from '@/stores/notificationStore';
 
+// See polling effect: shared across the two header instances.
+let pollOwnerCount = 0;
+
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -19,11 +22,25 @@ export function NotificationCenter() {
     markAllAsRead,
   } = useNotificationStore();
 
-  // Fetch notifications on mount and poll every 30 seconds
+  // Fetch notifications on mount and poll every 30 seconds. Two instances are
+  // always mounted (mobile + desktop headers, CSS-hidden) — the module-level
+  // guard makes sure only ONE runs the polling loop instead of doubling it.
   useEffect(() => {
-    fetchNotifications();
+    if (pollOwnerCount === 0) {
+      fetchNotifications();
+    }
+    pollOwnerCount += 1;
+    if (pollOwnerCount > 1) {
+      return () => {
+        pollOwnerCount -= 1;
+      };
+    }
+
     const interval = setInterval(() => fetchNotifications(), 30_000);
-    return () => clearInterval(interval);
+    return () => {
+      pollOwnerCount -= 1;
+      clearInterval(interval);
+    };
   }, [fetchNotifications]);
 
   // Close dropdown on outside click

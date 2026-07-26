@@ -81,9 +81,8 @@ describe('TaskItem', () => {
     const onComplete = vi.fn();
     render(<TaskItem task={buildTask()} {...defaultProps} onComplete={onComplete} />);
 
-    // TaskCheckbox renders as the first button (no accessible name since it's icon-only)
-    const buttons = screen.getAllByRole('button');
-    fireEvent.click(buttons[0]);
+    // TaskCheckbox now exposes real checkbox semantics
+    fireEvent.click(screen.getByRole('checkbox', { name: /complete task/i }));
 
     expect(onComplete).toHaveBeenCalledWith('task-1');
   });
@@ -93,9 +92,7 @@ describe('TaskItem', () => {
     const task = buildTask({ isCompleted: true });
     render(<TaskItem task={task} {...defaultProps} onUncomplete={onUncomplete} />);
 
-    const buttons = screen.getAllByRole('button');
-    // First button is the checkbox (TaskCheckbox)
-    fireEvent.click(buttons[0]);
+    fireEvent.click(screen.getByRole('checkbox', { name: /mark task incomplete/i }));
 
     expect(onUncomplete).toHaveBeenCalledWith('task-1');
   });

@@ -14,8 +14,25 @@ import type { Task } from '@/stores/taskStore';
 import { getSubtasks } from '@/utils/subtaskIndex';
 
 export default function Today() {
-  const { todayView, loading, refetch, rescheduleOverdue } = useTodayView();
+  const { todayView: todayViewRaw, loading, error, refetch, rescheduleOverdue } = useTodayView();
   const taskMap = useTaskStore((s) => s.tasks);
+
+  // Render every task THROUGH the live store map: optimistic updates and
+  // websocket events show instantly instead of waiting for a refetch round
+  // trip, and optimistically-completed tasks leave the view immediately.
+  const todayView = useMemo(() => {
+    if (!todayViewRaw) return null;
+    const live = (list: Task[]) =>
+      list.map((t) => taskMap.get(t.id) ?? t).filter((t) => !t.isCompleted);
+    return {
+      ...todayViewRaw,
+      overdue: live(todayViewRaw.overdue),
+      morning: live(todayViewRaw.morning),
+      afternoon: live(todayViewRaw.afternoon),
+      evening: live(todayViewRaw.evening),
+      noTime: live(todayViewRaw.noTime),
+    };
+  }, [todayViewRaw, taskMap]);
   const {
     createTask,
     updateTask,
@@ -123,6 +140,7 @@ export default function Today() {
     todayView?.counts.total ?? 0;
 
   const isEmpty =
+    !error &&
     totalCount === 0 &&
     (todayView?.counts.overdue ?? 0) === 0;
 
@@ -219,6 +237,21 @@ export default function Today() {
           onReorder={handleReorder}
           onAddTask={handleQuickAdd}
         />
+      )}
+
+      {error && !loading && (
+        <div className="text-center py-16">
+          <h3 className="text-lg font-medium text-gray-700 mb-1">
+            Couldn't load Today
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">{error}</p>
+          <button
+            className="px-4 py-1.5 text-sm text-white bg-[#db4c3f] rounded-lg hover:bg-[#c53727]"
+            onClick={() => refetch()}
+          >
+            Try again
+          </button>
+        </div>
       )}
 
       {isEmpty && (

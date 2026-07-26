@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useRef } from 'react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { X, LayoutTemplate } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -35,6 +37,10 @@ export function CreateProjectModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showGallery, setShowGallery] = useState(false);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Hooks must run on every render — this sits BEFORE the early return.
+  useFocusTrap(panelRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -85,7 +91,7 @@ export function CreateProjectModal({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-label="Add project" className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Add project" className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Add project</h2>
           <button

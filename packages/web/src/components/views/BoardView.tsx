@@ -87,18 +87,40 @@ export function BoardView({
     }),
   );
 
+  // Visual-only column override while a card is mid-drag. The move API call
+  // happens ONCE on drop — the old code fired an unawaited POST per column
+  // crossing during dragOver, and whichever response landed last won (cards
+  // snapped back to columns the pointer had merely passed through).
+  const [dragOverride, setDragOverride] = useState<{
+    taskId: string;
+    column: string;
+  } | null>(null);
+
+  const effectiveTasks = useMemo(() => {
+    if (!dragOverride) return tasks;
+    return tasks.map((t) =>
+      t.id === dragOverride.taskId
+        ? {
+            ...t,
+            sectionId:
+              dragOverride.column === UNSECTIONED_ID ? null : dragOverride.column,
+          }
+        : t,
+    );
+  }, [tasks, dragOverride]);
+
   // Group tasks by section
   const unsectionedTasks = useMemo(
     () =>
-      tasks
+      effectiveTasks
         .filter((t) => !t.sectionId && !t.parentId)
         .sort((a, b) => a.sortOrder - b.sortOrder),
-    [tasks],
+    [effectiveTasks],
   );
 
   const tasksBySection = useMemo(() => {
     const map = new Map<string, Task[]>();
-    for (const t of tasks) {
+    for (const t of effectiveTasks) {
       if (t.sectionId && !t.parentId) {
         const list = map.get(t.sectionId) || [];
         list.push(t);
@@ -113,7 +135,7 @@ export function BoardView({
       );
     }
     return map;
-  }, [tasks]);
+  }, [effectiveTasks]);
 
   // Column order: unsectioned first, then sections in sort order
   const columnIds = useMemo(
@@ -180,11 +202,10 @@ export function BoardView({
 
       if (!sourceColumn || !targetColumn || sourceColumn === targetColumn) return;
 
-      // Move task to new section via API
-      const newSectionId = targetColumn === UNSECTIONED_ID ? null : targetColumn;
-      onMoveTask(activeTaskId, { sectionId: newSectionId });
+      // Visual feedback only — the single API call happens on drop.
+      setDragOverride({ taskId: activeTaskId, column: targetColumn });
     },
-    [findColumnForTask, onMoveTask],
+    [findColumnForTask],
   );
 
   const handleDragEnd = useCallback(
@@ -192,6 +213,7 @@ export function BoardView({
       const { active, over } = event;
       setActiveId(null);
       setActiveType(null);
+      setDragOverride(null);
 
       if (!over) return;
 
@@ -226,6 +248,16 @@ export function BoardView({
 
       if (!targetColumn) return;
 
+      // Commit a cross-column move exactly once, against the task's REAL
+      // column from props (the local override is visual only).
+      const originalTask = tasks.find((t) => t.id === activeTaskId);
+      const originalColumn = originalTask?.sectionId ?? UNSECTIONED_ID;
+      if (originalTask && targetColumn !== originalColumn) {
+        await onMoveTask(activeTaskId, {
+          sectionId: targetColumn === UNSECTIONED_ID ? null : targetColumn,
+        });
+      }
+
       const columnTasks = getColumnTasks(targetColumn);
       const taskIds = columnTasks.map((t) => t.id);
 
@@ -239,7 +271,7 @@ export function BoardView({
         }
       }
     },
-    [columnIds, findColumnForTask, getColumnTasks, onReorderSections, onReorderTasks],
+    [columnIds, findColumnForTask, getColumnTasks, onReorderSections, onReorderTasks, onMoveTask, tasks],
   );
 
   const handleCreateTaskInColumn = useCallback(
@@ -273,6 +305,7 @@ export function BoardView({
   return (
     <div>
       <DndContext
+        onDragCancel={() => setDragOverride(null)}
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}

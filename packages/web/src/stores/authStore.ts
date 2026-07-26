@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import api, { setAccessToken } from '@/services/api';
+import api, { setAccessToken, refreshAccessToken } from '@/services/api';
+import { disconnectSocket } from '@/services/socket';
 
 interface User {
   id: string;
@@ -92,7 +93,21 @@ export const useAuthStore = create<AuthState>()(
           // Ignore logout errors
         } finally {
           setAccessToken(null);
+          disconnectSocket();
           set({ user: null, isAuthenticated: false });
+          // A full reload is the only reliable session boundary: every store
+          // (tasks, projects, notifications, workspace…) holds the previous
+          // user's data in memory, and several persist to localStorage. On a
+          // shared machine the next sign-in briefly saw all of it.
+          for (const key of [
+            'auth-storage',
+            'workspace-storage',
+            'taskflow-ui',
+            'taskflow:recent-searches',
+          ]) {
+            localStorage.removeItem(key);
+          }
+          window.location.href = '/login';
         }
       },
 
@@ -117,12 +132,13 @@ export const useAuthStore = create<AuthState>()(
 
         initPromise = (async () => {
           try {
-            // Attempt to refresh using the httpOnly cookie; if no cookie
-            // exists the server returns 401 and we fall through to unauthenticated.
-            const { data } = await api.post('/auth/refresh', {});
-            const { accessToken } = data.data;
-
-            setAccessToken(accessToken);
+            // Refresh through the shared (cross-tab-locked) path: two tabs
+            // restoring simultaneously used to send the same single-use
+            // cookie twice and trip reuse detection.
+            const accessToken = await refreshAccessToken();
+            if (!accessToken) {
+              throw new Error('no session');
+            }
 
             const userResponse = await api.get('/users/me');
 

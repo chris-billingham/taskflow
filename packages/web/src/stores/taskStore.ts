@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '@/services/api';
+import { reportMutationError } from '@/utils/reportError';
 
 export interface TaskLabel {
   taskId: string;
@@ -264,6 +265,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       });
       return task;
     } catch (err) {
+      reportMutationError(err, 'That change could not be saved');
       // Revert
       if (prev) {
         set((state) => {
@@ -288,6 +290,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
     try {
       await api.delete(`/tasks/${id}`);
     } catch (err) {
+      reportMutationError(err, 'That change could not be saved');
       if (prev) {
         set((state) => {
           const tasks = new Map(state.tasks);
@@ -326,6 +329,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       });
       return task;
     } catch (err) {
+      reportMutationError(err, 'That change could not be saved');
       if (prev) {
         set((state) => {
           const tasks = new Map(state.tasks);
@@ -357,6 +361,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       });
       return task;
     } catch (err) {
+      reportMutationError(err, 'That change could not be saved');
       if (prev) {
         set((state) => {
           const tasks = new Map(state.tasks);
@@ -388,6 +393,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       });
       return task;
     } catch (err) {
+      reportMutationError(err, 'That change could not be saved');
       if (prev) {
         set((state) => {
           const tasks = new Map(state.tasks);

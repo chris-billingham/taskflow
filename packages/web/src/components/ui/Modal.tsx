@@ -1,4 +1,5 @@
-import { useEffect, useCallback, type ReactNode } from 'react';
+import { useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -11,6 +12,8 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, children, title, size = 'md' }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, isOpen);
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -47,6 +50,11 @@ export function Modal({ isOpen, onClose, children, title, size = 'md' }: ModalPr
         onClick={onClose}
       />
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
         className={`relative bg-white rounded-xl shadow-xl mx-4 w-full ${sizes[size]} animate-in fade-in zoom-in-95 duration-200`}
       >
         {title && (
