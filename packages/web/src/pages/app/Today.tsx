@@ -12,6 +12,7 @@ import { useTodayView, useTaskActions } from '@/hooks/useTasks';
 import { useTaskStore } from '@/stores/taskStore';
 import type { Task } from '@/stores/taskStore';
 import { getSubtasks } from '@/utils/subtaskIndex';
+import { formatUserDateWithWeekday } from '@/utils/dateFormat';
 
 export default function Today() {
   const { todayView: todayViewRaw, loading, error, refetch, rescheduleOverdue } = useTodayView();
@@ -47,7 +48,7 @@ export default function Today() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const formattedDate = format(new Date(), 'EEEE, MMMM d');
+  const formattedDate = formatUserDateWithWeekday(new Date());
 
   const hasTimedTasks = useMemo(() => {
     if (!todayView) return false;

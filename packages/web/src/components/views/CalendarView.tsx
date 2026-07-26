@@ -17,6 +17,7 @@ import { Modal } from '@/components/ui/Modal';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import type { Task } from '@/stores/taskStore';
 import { getSubtasks } from '@/utils/subtaskIndex';
+import { formatUserDateWithWeekday } from '@/utils/dateFormat';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -136,11 +137,7 @@ export function CalendarView({
   const quickAddTitle = quickAddState.isOpen
     ? (() => {
         const d = new Date(quickAddState.dateStr + 'T12:00:00');
-        const dateLabel = d.toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-        });
+        const dateLabel = formatUserDateWithWeekday(d, 'EEE');
         return quickAddState.time !== '09:00'
           ? `Add task - ${dateLabel} at ${quickAddState.time}`
           : `Add task - ${dateLabel}`;

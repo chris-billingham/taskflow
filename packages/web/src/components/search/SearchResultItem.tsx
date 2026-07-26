@@ -1,5 +1,6 @@
 import { CheckSquare, FolderOpen, MessageSquare, Calendar } from 'lucide-react';
 import type { TaskResult, ProjectResult, CommentResult } from '@/hooks/useSearch';
+import { formatUserDate } from '@/utils/dateFormat';
 
 function highlightMatch(text: string, query: string): JSX.Element {
   if (!query.trim()) return <>{text}</>;
@@ -60,7 +61,7 @@ export function TaskResultItem({ result, query, isSelected, onClick }: TaskItemP
               <span className="text-gray-300">·</span>
               <span className="text-xs text-gray-500 flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                {new Date(result.dueDate).toLocaleDateString()}
+                {formatUserDate(new Date(result.dueDate))}
               </span>
             </>
           )}

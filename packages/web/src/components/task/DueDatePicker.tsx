@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { formatUserShortDate, formatUserTime } from '@/utils/dateFormat';
+import { formatUserDate, formatUserTime } from '@/utils/dateFormat';
 import { Calendar, Sun, ArrowRight, X, Clock } from 'lucide-react';
 
 interface DueDatePickerProps {
@@ -30,7 +30,7 @@ function formatDateDisplay(dateStr: string | null): string {
   if (date.getTime() === today.getTime()) return 'Today';
   if (date.getTime() === tomorrow.getTime()) return 'Tomorrow';
 
-  return formatUserShortDate(date);
+  return formatUserDate(date);
 }
 
 function getDateColor(dateStr: string | null): string {

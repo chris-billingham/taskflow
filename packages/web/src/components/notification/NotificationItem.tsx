@@ -9,6 +9,7 @@ import {
   Bell,
 } from 'lucide-react';
 import type { Notification } from '@/stores/notificationStore';
+import { formatUserDate } from '@/utils/dateFormat';
 
 interface NotificationItemProps {
   notification: Notification;
@@ -36,7 +37,8 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  // Older than a week: an absolute date, in the user's chosen format.
+  return formatUserDate(new Date(dateStr));
 }
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {

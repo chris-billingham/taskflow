@@ -8,35 +8,40 @@ import { useAuthStore } from '@/stores/authStore';
 
 const DEFAULT_DATE_FORMAT = 'MMM d, yyyy';
 
+// The formats offered in Settings → Preferences. `User.dateFormat` is a free
+// text column (the API only bounds its length), so an unrecognised value falls
+// back to the default instead of reaching date-fns, which throws on unknown
+// tokens and would take down every view that renders a date.
+const SUPPORTED_DATE_FORMATS = new Set([
+  'MMM d, yyyy',
+  'MM/dd/yyyy',
+  'dd/MM/yyyy',
+  'yyyy-MM-dd',
+]);
+
 function prefs() {
   const user = useAuthStore.getState().user;
+  const stored = user?.dateFormat;
   return {
-    dateFormat: user?.dateFormat || DEFAULT_DATE_FORMAT,
-    timeFormat: user?.timeFormat || '12h',
+    dateFormat:
+      stored && SUPPORTED_DATE_FORMATS.has(stored) ? stored : DEFAULT_DATE_FORMAT,
+    timeFormat: user?.timeFormat === '24h' ? '24h' : '12h',
     weekStart: (user?.weekStart ?? 0) as 0 | 1 | 6,
   };
 }
 
-/** Full date (with year) in the user's chosen format. */
+/**
+ * A date in exactly the format chosen in Settings → Preferences, year included.
+ *
+ * There is deliberately no "compact" variant. The previous one hand-mapped each
+ * preference to a shorter string, dropped the year from all four, and rendered
+ * `dd/MM/yyyy` as "5 Jan" — so choosing a numeric day-first format produced a
+ * month-name format instead, and `MM/dd/yyyy` produced a bare "01/05" that was
+ * indistinguishable from day-first. One function, one behaviour: what the user
+ * picked is what they see.
+ */
 export function formatUserDate(date: Date): string {
   return format(date, prefs().dateFormat);
-}
-
-/**
- * Compact date (no year) for badges and group headers, keeping the day/month
- * ordering of the user's chosen format.
- */
-export function formatUserShortDate(date: Date): string {
-  switch (prefs().dateFormat) {
-    case 'dd/MM/yyyy':
-      return format(date, 'd MMM');
-    case 'MM/dd/yyyy':
-      return format(date, 'MM/dd');
-    case 'yyyy-MM-dd':
-      return format(date, 'MM-dd');
-    default:
-      return format(date, 'MMM d');
-  }
 }
 
 /** Render an "HH:mm" time string per the user's 12h/24h preference. */
@@ -48,6 +53,19 @@ export function formatUserTime(hhmm: string | null | undefined): string {
   const suffix = h >= 12 ? 'PM' : 'AM';
   const hour12 = h % 12 === 0 ? 12 : h % 12;
   return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+/** A date and a clock time together, both in the user's chosen formats. */
+export function formatUserDateTime(date: Date): string {
+  return `${formatUserDate(date)} at ${formatUserTime(format(date, 'HH:mm'))}`;
+}
+
+/** Weekday name prefixed to a full date, e.g. "Monday, 05/01/2026". */
+export function formatUserDateWithWeekday(
+  date: Date,
+  style: 'EEE' | 'EEEE' = 'EEEE',
+): string {
+  return `${format(date, style)}, ${formatUserDate(date)}`;
 }
 
 /** Hour-axis label (calendar views) per the 12h/24h preference. */

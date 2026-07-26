@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Plus, X, Clock } from 'lucide-react';
 import api from '@/services/api';
+import { formatUserDateTime } from '@/utils/dateFormat';
 
 interface Reminder {
   id: string;
@@ -28,12 +29,7 @@ function formatReminder(reminder: Reminder): string {
     return `${reminder.minutesBefore / 1440}d before`;
   }
   if (reminder.triggerAt) {
-    return new Date(reminder.triggerAt).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
+    return formatUserDateTime(new Date(reminder.triggerAt));
   }
   return 'Reminder';
 }

@@ -109,9 +109,13 @@ test.describe('Admin console', () => {
     await openConsole(page);
 
     await page.getByRole('button', { name: 'Add user' }).click();
-    await page.getByLabel('Name').fill('Created By Admin');
-    await page.getByLabel('Email').fill(email);
-    await page.getByRole('button', { name: 'Create user' }).click();
+    // Scoped to the dialog: a row action button is labelled "Actions for
+    // <name>", which collides with a bare getByLabel('Name') whenever a user
+    // in the list happens to have "Name" in theirs.
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Name').fill('Created By Admin');
+    await dialog.getByLabel('Email').fill(email);
+    await dialog.getByRole('button', { name: 'Create user' }).click();
 
     // The generated password is shown exactly once.
     const reveal = page.getByTestId('temporary-password');

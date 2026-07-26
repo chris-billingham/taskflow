@@ -10,14 +10,11 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import type { AdminUser } from '@/services/admin';
+import { formatUserDate } from '@/utils/dateFormat';
 
 function formatDate(value: string | null): string {
   if (!value) return 'Never';
-  return new Date(value).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatUserDate(new Date(value));
 }
 
 export interface AdminUserRowProps {
