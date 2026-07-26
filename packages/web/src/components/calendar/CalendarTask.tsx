@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { TaskCheckbox } from '@/components/task/TaskCheckbox';
+import { formatUserTimeCompact } from '@/utils/dateFormat';
 import type { Task } from '@/stores/taskStore';
 
 interface CalendarTaskProps {
@@ -36,13 +37,6 @@ function formatEndTime(startTime: string, durationMinutes: number): string {
   const endH = Math.floor(totalMins / 60) % 24;
   const endM = totalMins % 60;
   return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-}
-
-function formatTime12(time: string): string {
-  const [h, m] = time.split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
-  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return m === 0 ? `${hour12}${period}` : `${hour12}:${String(m).padStart(2, '0')}${period}`;
 }
 
 export function CalendarTask({
@@ -151,7 +145,7 @@ export function CalendarTask({
         <span className="truncate text-gray-900">{task.content}</span>
         {task.dueTime && (
           <span className="text-gray-400 flex-shrink-0 ml-auto">
-            {formatTime12(task.dueTime)}
+            {formatUserTimeCompact(task.dueTime)}
           </span>
         )}
       </div>
@@ -164,8 +158,8 @@ export function CalendarTask({
     : (task.duration || 30);
   const timeLabel = task.dueTime
     ? displayDuration
-      ? `${formatTime12(task.dueTime)} - ${formatTime12(formatEndTime(task.dueTime, displayDuration))}`
-      : formatTime12(task.dueTime)
+      ? `${formatUserTimeCompact(task.dueTime)} - ${formatUserTimeCompact(formatEndTime(task.dueTime, displayDuration))}`
+      : formatUserTimeCompact(task.dueTime)
     : '';
 
   return (

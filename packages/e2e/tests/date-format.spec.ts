@@ -24,6 +24,14 @@ const OPTION_LABEL = {
 } as const;
 
 let projectId = '';
+let calendarProjectId = '';
+
+/** Today in local time as YYYY-MM-DD, so the task lands in the current week. */
+function todayYMD(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 test.beforeAll(async () => {
   const api = await request.newContext({ baseURL: API_URL });
@@ -48,6 +56,24 @@ test.beforeAll(async () => {
     await api.post('/api/v1/tasks', {
       headers: authed,
       data: { content: 'Dated task', projectId, dueDate: DUE_DATE },
+    });
+
+    // A calendar-mode project with a timed task in the current week, for the
+    // chip rendering that used to ignore the 12h/24h preference entirely.
+    const calendarProject = await api.post('/api/v1/projects', {
+      headers: authed,
+      data: { name: `Calendar Format ${Date.now()}`, viewStyle: 'CALENDAR' },
+    });
+    calendarProjectId = (await calendarProject.json()).data.id;
+
+    await api.post('/api/v1/tasks', {
+      headers: authed,
+      data: {
+        content: 'Timed task',
+        projectId: calendarProjectId,
+        dueDate: todayYMD(),
+        dueTime: '14:30',
+      },
     });
   } finally {
     await api.dispose();
@@ -75,6 +101,17 @@ async function chooseDateFormat(page: Page, format: keyof typeof OPTION_LABEL) {
   await expect(page.getByText('Date format')).toBeVisible();
   // Exact: "01/05/2025" and "05/01/2025" are both on screen.
   await page.getByRole('button', { name: OPTION_LABEL[format], exact: true }).click();
+  await page.getByRole('button', { name: /Save preferences/ }).click();
+  await expect(page.getByRole('button', { name: 'Saved!' })).toBeVisible({
+    timeout: 10000,
+  });
+}
+
+/** Picks a time format in Settings → Preferences and saves it. */
+async function chooseTimeFormat(page: Page, optionLabel: string) {
+  await page.goto('/settings/preferences');
+  await expect(page.getByText('Time format')).toBeVisible();
+  await page.getByRole('button', { name: optionLabel, exact: true }).click();
   await page.getByRole('button', { name: /Save preferences/ }).click();
   await expect(page.getByRole('button', { name: 'Saved!' })).toBeVisible({
     timeout: 10000,
@@ -119,5 +156,27 @@ test.describe('Date format preference', () => {
     await chooseDateFormat(page, 'MMM d, yyyy');
     await page.goto(`/projects/${projectId}`);
     await expect(dueDateBadge(page)).toContainText('Mar 9, 2027');
+  });
+
+  test('calendar task chips follow the 12h/24h preference', async ({ page }) => {
+    await resetSession(page);
+    await signIn(page);
+
+    const chip = page
+      .locator('div')
+      .filter({ hasText: /^Timed task/ })
+      .last();
+
+    // Regression: the chip hardcoded the 12-hour form, so this setting moved
+    // the hour axis but left every task reading "2:30PM".
+    await chooseTimeFormat(page, '24-hour (14:30)');
+    await page.goto(`/projects/${calendarProjectId}`);
+    await expect(chip).toContainText('14:30');
+    await expect(page.getByText('2:30PM')).toHaveCount(0);
+
+    await chooseTimeFormat(page, '12-hour (2:30 PM)');
+    await page.goto(`/projects/${calendarProjectId}`);
+    await expect(chip).toContainText('2:30PM');
+    await expect(page.getByText('14:30')).toHaveCount(0);
   });
 });

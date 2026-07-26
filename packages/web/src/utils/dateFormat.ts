@@ -55,6 +55,29 @@ export function formatUserTime(hhmm: string | null | undefined): string {
   return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
+/**
+ * Space-constrained time for calendar chips: "14:30" in 24-hour mode, and
+ * "2:30PM" — or just "2PM" on the hour — in 12-hour mode. The unpadded hour and
+ * missing space are deliberate; these render inside narrow, often 20px-tall
+ * blocks. The calendar used to hardcode the 12-hour form, so choosing 24-hour
+ * changed the hour axis but left every task chip in 12-hour.
+ */
+export function formatUserTimeCompact(hhmm: string | null | undefined): string {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+
+  if (prefs().timeFormat === '24h') {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return m === 0
+    ? `${hour12}${suffix}`
+    : `${hour12}:${String(m).padStart(2, '0')}${suffix}`;
+}
+
 /** A date and a clock time together, both in the user's chosen formats. */
 export function formatUserDateTime(date: Date): string {
   return `${formatUserDate(date)} at ${formatUserTime(format(date, 'HH:mm'))}`;

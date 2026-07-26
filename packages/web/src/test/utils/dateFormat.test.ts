@@ -5,6 +5,7 @@ import {
   formatUserDateTime,
   formatUserDateWithWeekday,
   formatUserTime,
+  formatUserTimeCompact,
   formatUserHour,
   userWeekStartsOn,
 } from '@/utils/dateFormat';
@@ -124,6 +125,37 @@ describe('formatUserTime', () => {
   it('passes through an unparseable value rather than rendering NaN', () => {
     signInWith({ timeFormat: '12h' });
     expect(formatUserTime('not-a-time')).toBe('not-a-time');
+  });
+});
+
+describe('formatUserTimeCompact', () => {
+  it('honours the 24-hour preference', () => {
+    // Regression: calendar task chips hardcoded the 12-hour form, so picking
+    // 24-hour changed the hour axis but left every chip reading "2:30PM".
+    signInWith({ timeFormat: '24h' });
+    expect(formatUserTimeCompact('14:30')).toBe('14:30');
+    expect(formatUserTimeCompact('14:00')).toBe('14:00');
+    expect(formatUserTimeCompact('09:05')).toBe('09:05');
+    expect(formatUserTimeCompact('00:00')).toBe('00:00');
+  });
+
+  it('drops the minutes on the hour in 12-hour mode to save width', () => {
+    signInWith({ timeFormat: '12h' });
+    expect(formatUserTimeCompact('14:00')).toBe('2PM');
+    expect(formatUserTimeCompact('14:30')).toBe('2:30PM');
+    expect(formatUserTimeCompact('00:00')).toBe('12AM');
+    expect(formatUserTimeCompact('12:00')).toBe('12PM');
+    expect(formatUserTimeCompact('00:15')).toBe('12:15AM');
+  });
+
+  it('returns an empty string for a missing time', () => {
+    expect(formatUserTimeCompact(null)).toBe('');
+    expect(formatUserTimeCompact(undefined)).toBe('');
+  });
+
+  it('passes an unparseable value through rather than rendering NaN', () => {
+    signInWith({ timeFormat: '12h' });
+    expect(formatUserTimeCompact('garbage')).toBe('garbage');
   });
 });
 
