@@ -68,7 +68,15 @@ source .env
 
 if [ -z "${DOMAIN:-}" ] || [ "$DOMAIN" = "taskflow.example.com" ]; then
   read -rp "Enter your domain (e.g. taskflow.example.com): " DOMAIN
-  sed -i.bak "s|DOMAIN=.*|DOMAIN=${DOMAIN}|" .env && rm -f .env.bak
+  sed -i.bak "s|^DOMAIN=.*|DOMAIN=${DOMAIN}|" .env && rm -f .env.bak
+
+  # These two default to https://$DOMAIN in docker-compose.yml, but an explicit
+  # value in .env overrides that — and a stale example domain in APP_URL would
+  # send every password-reset and invite link to example.com.
+  sed -i.bak \
+    -e "s|^CORS_ORIGIN=.*|CORS_ORIGIN=https://${DOMAIN}|" \
+    -e "s|^APP_URL=.*|APP_URL=https://${DOMAIN}|" \
+    .env && rm -f .env.bak
 fi
 
 if [ -z "${ACME_EMAIL:-}" ] || [ "$ACME_EMAIL" = "admin@example.com" ]; then
