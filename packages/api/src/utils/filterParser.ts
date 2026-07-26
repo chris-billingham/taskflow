@@ -24,17 +24,23 @@ interface Token {
   value: string;
 }
 
+// Day arithmetic here is UTC-only, matching the storage convention in
+// utils/dates.ts: due dates are calendar dates encoded as UTC midnight. The
+// local-time versions of these helpers made "tomorrow" and "due:<date>" shift
+// by the HOST's offset, so the same saved filter selected a different day
+// depending on the server's TZ (ctx.todayStart/todayEnd were already correct,
+// which is why only these two branches drifted).
 function getDateRange(date: Date): { start: Date; end: Date } {
   const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(date);
-  end.setHours(23, 59, 59, 999);
+  end.setUTCHours(23, 59, 59, 999);
   return { start, end };
 }
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
-  result.setDate(result.getDate() + days);
+  result.setUTCDate(result.getUTCDate() + days);
   return result;
 }
 

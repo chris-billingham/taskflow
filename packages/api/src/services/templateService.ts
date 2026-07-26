@@ -1,4 +1,5 @@
 import { prisma } from '../config/database.js';
+import { DEFAULT_TEMPLATES } from '../config/defaultTemplates.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 import type {
   CreateTemplateInput,
@@ -349,4 +350,48 @@ export async function deleteTemplate(id: string, userId: string) {
 
   await prisma.template.delete({ where: { id } });
   return { message: 'Template deleted successfully' };
+}
+
+/**
+ * Install the built-in public templates if they are missing.
+ *
+ * Runs at API boot because production deployments only ever run
+ * `prisma migrate deploy` — `pnpm db:seed` is documented in the development
+ * setup guide and nowhere in the install or upgrade path. The result was that
+ * the Template Gallery's default tab was empty on every real instance.
+ *
+ * Idempotent and keyed on (name, userId: null, isPublic) so restarts and
+ * upgrades don't duplicate rows, and an operator who deletes a built-in
+ * template gets it back on next boot (documented trade-off: these are managed
+ * content, not user data).
+ */
+export async function ensureDefaultTemplates(
+  logger: { info: (msg: string) => void } = { info: console.info },
+): Promise<{ created: number }> {
+  let created = 0;
+
+  for (const template of DEFAULT_TEMPLATES) {
+    const existing = await prisma.template.findFirst({
+      where: { name: template.name, userId: null, isPublic: true },
+      select: { id: true },
+    });
+    if (existing) continue;
+
+    await prisma.template.create({
+      data: {
+        name: template.name,
+        description: template.description,
+        data: template.data as object,
+        userId: null,
+        workspaceId: null,
+        isPublic: true,
+      },
+    });
+    created++;
+  }
+
+  if (created > 0) {
+    logger.info(`Installed ${created} built-in template(s)`);
+  }
+  return { created };
 }

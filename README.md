@@ -1,6 +1,6 @@
 # Taskflow
 
-A self-hosted, open-source task management application — full-featured and Todoist-compatible, running entirely on your own infrastructure.
+A self-hosted, open-source task management application — a Todoist-style workflow running entirely on your own infrastructure.
 
 ## Features
 
@@ -8,17 +8,26 @@ A self-hosted, open-source task management application — full-featured and Tod
 - **Projects** — organize tasks into color-coded projects with sections
 - **Labels & Filters** — tag tasks and save complex filters for later
 - **Board / Calendar views** — switch between list, Kanban board, and calendar
-- **Real-time collaboration** — live presence indicators, collaborative editing via WebSockets
+- **Real-time updates** — task, project and comment changes broadcast live over WebSockets
 - **Comments & Activity** — per-task discussion and audit log
 - **File Attachments** — drag-and-drop uploads stored in S3 or MinIO
-- **Reminders** — time-based notifications delivered via email or browser push
+- **Reminders** — time-based notifications delivered via browser push (email delivery is stored but not yet selectable in the UI)
 - **Templates** — create and apply task templates for repeatable workflows
 - **Global Search** — full-text search across tasks, projects, and comments
 - **Quick Add** — natural language input ("Buy milk tomorrow p1 #work")
-- **Recurring Tasks** — daily, weekly, monthly, and custom recurrence rules
+- **Recurring Tasks** — daily, weekly and monthly rules, from the task detail panel or Quick Add ("every Monday")
 - **Dark Mode** — full dark-mode support
-- **Keyboard Shortcuts** — complete keyboard navigation
+- **Keyboard Shortcuts** — keyboard navigation for the main task views
 - **Mobile Responsive** — works on all screen sizes
+
+### Not yet implemented
+
+Listed so the settings screens don't overpromise: **presence and typing
+indicators** are built but not surfaced in the UI, **reminder delivery method**
+is always browser push (the email path exists server-side but isn't
+selectable), **two-factor auth** and **integrations** (Calendar, Slack, GitHub)
+are placeholders, and there is **no email-change flow** and **no Todoist
+import**.
 
 ## Tech Stack
 
@@ -33,7 +42,7 @@ A self-hosted, open-source task management application — full-featured and Tod
 | Storage | S3-compatible (AWS S3 or MinIO) |
 | Frontend | React 18, TypeScript, Vite |
 | Styling | Tailwind CSS |
-| State | Zustand + TanStack Query |
+| State | Zustand |
 | Forms | React Hook Form + Zod |
 | Drag & Drop | dnd-kit |
 | Monorepo | pnpm workspaces + Turborepo |

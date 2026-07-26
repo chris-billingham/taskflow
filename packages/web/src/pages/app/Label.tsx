@@ -20,7 +20,16 @@ export default function Label() {
   const executeFilter = useFilterStore((s) => s.executeFilter);
 
   const taskMap = useTaskStore((s) => s.tasks);
-  const { updateTask, deleteTask, completeTask, uncompleteTask, duplicateTask, reorderTasks } = useTaskActions();
+  const {
+    createTask,
+    updateTask,
+    deleteTask,
+    completeTask,
+    uncompleteTask,
+    duplicateTask,
+    reorderTasks,
+    quickAddTask,
+  } = useTaskActions();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +109,24 @@ export default function Label() {
 
   const handleDuplicate = async (taskId: string) => {
     await duplicateTask(taskId);
+    fetchTasks();
+  };
+
+  const handleAddSubtask = async (text: string) => {
+    if (!selectedTask) return;
+    await createTask({
+      content: text,
+      projectId: selectedTask.projectId,
+      parentId: selectedTask.id,
+    });
+    fetchTasks();
+  };
+
+  // Tag the new task with this label so it lands in the view the user is
+  // looking at, rather than being created and immediately filtered out.
+  const handleQuickAdd = async (text: string) => {
+    if (!label) return;
+    await quickAddTask(`${text} @${label.name}`);
     fetchTasks();
   };
 
@@ -213,8 +240,8 @@ export default function Label() {
           onCompleteTask={handleComplete}
           onUncompleteTask={handleUncomplete}
           onDeleteTask={handleDeleteTask}
-          onAddSubtask={async () => {}}
-          onQuickAdd={async () => {}}
+          onAddSubtask={handleAddSubtask}
+          onQuickAdd={handleQuickAdd}
         />
       ) : (
         <>
@@ -246,7 +273,7 @@ export default function Label() {
               onComplete={handleComplete}
               onUncomplete={handleUncomplete}
               onDelete={handleDeleteTask}
-              onAddSubtask={async () => {}}
+              onAddSubtask={handleAddSubtask}
               subtasks={selectedTaskSubtasks}
             />
           )}

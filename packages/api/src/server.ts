@@ -17,6 +17,7 @@ import { stopPresenceCleanup } from './websocket/presence.js';
 import { ensureBucketExists } from './config/storage.js';
 import { initMailer } from './services/mailService.js';
 import { syncAdminsFromEnv } from './services/adminService.js';
+import { ensureDefaultTemplates } from './services/templateService.js';
 import { prisma } from './config/database.js';
 import { Prisma } from '@prisma/client';
 import { openapiSpec } from './docs/openapi.js';
@@ -272,6 +273,15 @@ const start = async () => {
       });
     } catch (adminErr) {
       server.log.error({ err: adminErr }, 'Failed to sync ADMIN_EMAILS');
+    }
+
+    // Built-in templates ship with the app but were only ever installed by
+    // `pnpm db:seed`, which no production install runs — so the gallery was
+    // empty everywhere. Idempotent, and non-fatal for the same reason.
+    try {
+      await ensureDefaultTemplates({ info: (msg) => server.log.info(msg) });
+    } catch (templateErr) {
+      server.log.error({ err: templateErr }, 'Failed to install default templates');
     }
 
     await server.listen({ port: env.API_PORT, host: env.HOST });

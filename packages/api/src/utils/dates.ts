@@ -66,6 +66,49 @@ export function userDayBoundariesUTC(tz: string, base: Date = new Date()) {
   return { todayStart, tomorrowStart };
 }
 
+/** Milliseconds `tz` is ahead of UTC at the given instant (DST-aware). */
+function tzOffsetMs(tz: string, at: Date): number {
+  const { year, month, day, hour, minute, second } = tzParts(tz, at);
+  const asIfUTC = Date.UTC(year, month - 1, day, hour, minute, second);
+  // tzParts has second precision; truncate the comparison instant to match.
+  return asIfUTC - Math.floor(at.getTime() / 1000) * 1000;
+}
+
+/**
+ * The UTC instant at which the clock in `tz` reads `time` ("HH:MM") on the
+ * calendar date encoded by `dateUTCMidnight`.
+ *
+ * Task due times are wall-clock strings — "09:00" means 9am where the user is,
+ * not 9am on the server. Anything converting one to a real instant (reminders)
+ * must go through here; using local getters/setters silently offset the result
+ * by the host's timezone.
+ */
+export function zonedWallClockToUTC(
+  dateUTCMidnight: Date,
+  time: string,
+  tz: string,
+): Date {
+  const [hour, minute] = time.split(':').map(Number);
+  const wall = Date.UTC(
+    dateUTCMidnight.getUTCFullYear(),
+    dateUTCMidnight.getUTCMonth(),
+    dateUTCMidnight.getUTCDate(),
+    Number.isFinite(hour) ? hour : 0,
+    Number.isFinite(minute) ? minute : 0,
+  );
+
+  // Fixed-point: the offset depends on the instant, which depends on the
+  // offset. Two passes settle every zone except inside a DST gap, where the
+  // second pass picks the post-transition reading.
+  let ts = wall;
+  for (let i = 0; i < 2; i++) {
+    const next = wall - tzOffsetMs(tz, new Date(ts));
+    if (next === ts) break;
+    ts = next;
+  }
+  return new Date(ts);
+}
+
 /**
  * A Date whose LOCAL components mirror the wall clock in `tz` right now.
  * Lets calendar arithmetic written with local getters/setters (the natural-

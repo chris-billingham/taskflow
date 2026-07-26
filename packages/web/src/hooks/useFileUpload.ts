@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import api from '@/services/api';
 
 export interface Attachment {
@@ -33,7 +33,64 @@ export const ALLOWED_TYPES = new Set([
   'application/json',
 ]);
 
-export const MAX_FILE_SIZE_MB = 25;
+// Fallback only. The real limit is MAX_FILE_SIZE_MB on the API and is fetched
+// at runtime by useUploadLimits() — hardcoding it here meant raising the
+// server limit changed nothing for the browser.
+export const DEFAULT_MAX_FILE_SIZE_MB = 25;
+
+export interface UploadLimits {
+  maxFileSizeMb: number;
+  allowedMimeTypes: Set<string>;
+}
+
+let cachedLimits: UploadLimits | null = null;
+let inFlight: Promise<UploadLimits> | null = null;
+
+async function fetchLimits(): Promise<UploadLimits> {
+  if (cachedLimits) return cachedLimits;
+  inFlight ??= api
+    .get('/attachments/limits')
+    .then(({ data }) => {
+      cachedLimits = {
+        maxFileSizeMb: data.data.maxFileSizeMb,
+        allowedMimeTypes: new Set<string>(data.data.allowedMimeTypes),
+      };
+      return cachedLimits;
+    })
+    .catch(() => {
+      // Server unreachable — fall back to the shipped defaults rather than
+      // blocking uploads entirely; the API re-validates regardless.
+      cachedLimits = {
+        maxFileSizeMb: DEFAULT_MAX_FILE_SIZE_MB,
+        allowedMimeTypes: ALLOWED_TYPES,
+      };
+      return cachedLimits;
+    })
+    .finally(() => {
+      inFlight = null;
+    });
+  return inFlight;
+}
+
+/** Upload limits as configured on the server, with the defaults until loaded. */
+export function useUploadLimits(): UploadLimits {
+  const [limits, setLimits] = useState<UploadLimits>({
+    maxFileSizeMb: cachedLimits?.maxFileSizeMb ?? DEFAULT_MAX_FILE_SIZE_MB,
+    allowedMimeTypes: cachedLimits?.allowedMimeTypes ?? ALLOWED_TYPES,
+  });
+
+  useEffect(() => {
+    let active = true;
+    void fetchLimits().then((l) => {
+      if (active) setLimits(l);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return limits;
+}
 
 export function isImage(mimeType: string) {
   return mimeType.startsWith('image/');
@@ -52,11 +109,13 @@ export function useFileUpload() {
   const cancelRef = useRef<AbortController | null>(null);
 
   const upload = async (file: File, endpoint: string): Promise<Attachment> => {
-    if (!ALLOWED_TYPES.has(file.type)) {
+    const limits = await fetchLimits();
+
+    if (!limits.allowedMimeTypes.has(file.type)) {
       throw new Error(`File type "${file.type}" is not supported`);
     }
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      throw new Error(`File exceeds the ${MAX_FILE_SIZE_MB}MB size limit`);
+    if (file.size > limits.maxFileSizeMb * 1024 * 1024) {
+      throw new Error(`File exceeds the ${limits.maxFileSizeMb}MB size limit`);
     }
 
     setUploading(true);

@@ -4,6 +4,7 @@ import {
   attachmentParamsSchema,
   taskAttachmentParamsSchema,
   commentAttachmentParamsSchema,
+  ALLOWED_MIME_TYPES,
 } from '../schemas/attachment.js';
 import * as fileService from '../services/fileService.js';
 import { ValidationError } from '../errors/index.js';
@@ -23,6 +24,21 @@ export function contentDisposition(filename: string, inline: boolean): string {
 
 export async function attachmentRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate);
+
+  // GET /api/v1/attachments/limits — the web app validates uploads before
+  // sending them, and used to do so against its own hardcoded 25MB constant.
+  // Raising MAX_FILE_SIZE_MB server-side then had no effect: the browser
+  // still refused the file and the hint still read "Max 25MB". Serving the
+  // real limits keeps the two ends from drifting.
+  app.get('/attachments/limits', async (_request, reply) => {
+    return reply.send({
+      success: true,
+      data: {
+        maxFileSizeMb: env.MAX_FILE_SIZE_MB,
+        allowedMimeTypes: [...ALLOWED_MIME_TYPES],
+      },
+    });
+  });
 
   // Uploads are the most expensive thing a single request can do (25MB to
   // object storage) — give them their own budget.

@@ -3,6 +3,7 @@ import { X, Download, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import type { Attachment } from '@/hooks/useFileUpload';
 import { useAttachmentImage } from '@/hooks/useAttachmentImage';
 import { downloadAttachment } from '@/services/attachments';
+import { toastError } from '@/stores/toastStore';
 
 interface ImagePreviewProps {
   attachments: Attachment[];
@@ -31,7 +32,7 @@ export function ImagePreview({ attachments, initialIndex, onClose }: ImagePrevie
     try {
       await downloadAttachment(current);
     } catch {
-      // Swallowed for now — toast feedback lands with the Phase 7 error system.
+      toastError('Could not download this attachment');
     } finally {
       setDownloading(false);
     }

@@ -6,6 +6,7 @@ import { isImage, formatFileSize } from '@/hooks/useFileUpload';
 import { useAttachmentImage } from '@/hooks/useAttachmentImage';
 import { downloadAttachment } from '@/services/attachments';
 import api from '@/services/api';
+import { toastError } from '@/stores/toastStore';
 
 interface AttachmentItemProps {
   attachment: Attachment;
@@ -37,7 +38,7 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
     try {
       await downloadAttachment(attachment);
     } catch {
-      // Swallowed for now — toast feedback lands with the Phase 7 error system.
+      toastError('Could not download this attachment');
     } finally {
       setDownloading(false);
     }
@@ -50,6 +51,7 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
       await api.delete(`/attachments/${attachment.id}`);
       onDelete(attachment.id);
     } catch {
+      toastError(`Could not delete "${attachment.filename}"`);
       setDeleting(false);
     }
   };

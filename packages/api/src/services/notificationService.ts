@@ -158,7 +158,7 @@ let vapidConfigured: boolean | null = null;
 /** True when VAPID keys are configured (checked once, lazily). */
 export function isPushConfigured(): boolean {
   if (vapidConfigured === null) {
-    if (env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY) {
+    if (env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT) {
       webpush.setVapidDetails(
         env.VAPID_SUBJECT,
         env.VAPID_PUBLIC_KEY,
@@ -212,6 +212,7 @@ export async function sendEmailNotification(
   userId: string,
   type: NotificationType,
   data: Record<string, unknown>,
+  bypassFrequency = false,
 ) {
   if (!isMailerReady()) return;
 
@@ -220,7 +221,12 @@ export async function sendEmailNotification(
   // Non-reminder notifications only email immediately when the user chose
   // "immediate" — otherwise the daily/weekly digest covers them. Reminders
   // are time-critical and were explicitly requested, so they always send.
-  if (type !== 'REMINDER' && type !== 'TASK_DUE_SOON' && prefs.emailFrequency !== 'immediate') {
+  //
+  // The digest itself calls in with `bypassFrequency` rather than borrowing a
+  // notification type to dodge this check: it used to send as TASK_DUE_SOON,
+  // which meant genuine due-soon emails ignored the user's daily/weekly
+  // choice as a side effect.
+  if (type !== 'REMINDER' && !bypassFrequency && prefs.emailFrequency !== 'immediate') {
     return;
   }
 

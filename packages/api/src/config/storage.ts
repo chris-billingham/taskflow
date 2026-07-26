@@ -13,9 +13,11 @@ import { env } from './env.js';
 export const s3 = new S3Client({
   endpoint: env.S3_ENDPOINT,
   region: env.S3_REGION,
+  // Non-null: loadEnv() requires both in production and fills the MinIO dev
+  // defaults otherwise, so neither is undefined by the time this runs.
   credentials: {
-    accessKeyId: env.S3_ACCESS_KEY,
-    secretAccessKey: env.S3_SECRET_KEY,
+    accessKeyId: env.S3_ACCESS_KEY!,
+    secretAccessKey: env.S3_SECRET_KEY!,
   },
   forcePathStyle: true,
 });

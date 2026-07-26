@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { Upload, X, AlertCircle } from 'lucide-react';
-import { ALLOWED_TYPES, MAX_FILE_SIZE_MB } from '@/hooks/useFileUpload';
+import { useUploadLimits } from '@/hooks/useFileUpload';
 
 interface FileUploadProps {
   onFiles: (files: File[]) => void;
@@ -14,25 +14,26 @@ export function FileUpload({ onFiles, uploading, progress, error, disabled }: Fi
   const [dragging, setDragging] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { maxFileSizeMb, allowedMimeTypes } = useUploadLimits();
 
   const validateAndFilter = useCallback(
     (files: FileList | File[]): File[] => {
       const arr = Array.from(files);
-      const invalid = arr.filter((f) => !ALLOWED_TYPES.has(f.type));
-      const oversized = arr.filter((f) => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
+      const invalid = arr.filter((f) => !allowedMimeTypes.has(f.type));
+      const oversized = arr.filter((f) => f.size > maxFileSizeMb * 1024 * 1024);
 
       if (invalid.length > 0) {
         setValidationError(`"${invalid[0].name}" is not a supported file type`);
         return [];
       }
       if (oversized.length > 0) {
-        setValidationError(`"${oversized[0].name}" exceeds the ${MAX_FILE_SIZE_MB}MB size limit`);
+        setValidationError(`"${oversized[0].name}" exceeds the ${maxFileSizeMb}MB size limit`);
         return [];
       }
       setValidationError(null);
       return arr;
     },
-    [],
+    [maxFileSizeMb, allowedMimeTypes],
   );
 
   const handleDrop = (e: React.DragEvent) => {
@@ -97,7 +98,7 @@ export function FileUpload({ onFiles, uploading, progress, error, disabled }: Fi
               Drop files here or <span className="text-primary-600 font-medium">browse</span>
             </span>
             <span className="text-[11px] text-gray-400">
-              Max {MAX_FILE_SIZE_MB}MB · Images, PDFs, documents, archives
+              Max {maxFileSizeMb}MB · Images, PDFs, documents, archives
             </span>
           </div>
         )}

@@ -3,15 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+function Toggle({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange?: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={onChange}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        checked ? 'bg-[#db4c3f]' : 'bg-gray-200 dark:bg-gray-600'
-      }`}
+        disabled ? 'cursor-not-allowed' : ''
+      } ${checked ? 'bg-[#db4c3f]' : 'bg-gray-200 dark:bg-gray-600'}`}
     >
       <span
         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -105,14 +114,15 @@ export default function Account() {
         </button>
       </section>
 
-      {/* Two-factor (placeholder) */}
-      <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      {/* Two-factor — not implemented. Rendered as a disabled control rather
+          than a live-looking switch wired to a no-op, which read as broken. */}
+      <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 opacity-60">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Two-factor authentication</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Add an extra layer of security (coming soon)</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Not available yet</p>
           </div>
-          <Toggle checked={false} onChange={() => {}} />
+          <Toggle checked={false} disabled />
         </div>
       </section>
 

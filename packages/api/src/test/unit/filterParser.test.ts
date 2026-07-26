@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../../config/database.js', () => ({
   prisma: {
@@ -292,5 +292,87 @@ describe('parseFilterQuery', () => {
       // single atom fallback
       expect(result).toHaveProperty('OR');
     }
+  });
+});
+
+/**
+ * Date-window boundaries, asserted as exact instants.
+ *
+ * The pre-existing tests only checked `toBeInstanceOf(Date)`, which is why a
+ * real bug survived: "today"/"overdue" were converted to the user's timezone
+ * but "tomorrow" and explicit `due:<date>` still ran through local
+ * setHours()/setDate(), so both windows shifted by the HOST's UTC offset. Every
+ * expectation below is a literal UTC instant so a regression fails loudly
+ * rather than silently selecting the wrong day.
+ */
+describe('parseFilterQuery — date window boundaries', () => {
+  beforeEach(() => {
+    mockPrisma.project.findFirst.mockResolvedValue(null);
+    mockPrisma.label.findFirst.mockResolvedValue(null);
+    mockPrisma.user.findFirst.mockResolvedValue(null);
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const range = (result: Record<string, unknown>) =>
+    result.dueDate as { gte: Date; lte: Date; lt?: Date };
+
+  it('"today" spans exactly the user\'s UTC-encoded calendar day', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'UTC' });
+    vi.setSystemTime(new Date('2026-07-26T12:00:00.000Z'));
+
+    const { gte, lte } = range(await parseFilterQuery('today', TEST_USER_ID));
+    expect(gte.toISOString()).toBe('2026-07-26T00:00:00.000Z');
+    expect(lte.toISOString()).toBe('2026-07-26T23:59:59.999Z');
+  });
+
+  it('"tomorrow" spans the following day, not a host-offset window', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'UTC' });
+    vi.setSystemTime(new Date('2026-07-26T12:00:00.000Z'));
+
+    const { gte, lte } = range(await parseFilterQuery('tomorrow', TEST_USER_ID));
+    expect(gte.toISOString()).toBe('2026-07-27T00:00:00.000Z');
+    expect(lte.toISOString()).toBe('2026-07-27T23:59:59.999Z');
+  });
+
+  it('"tomorrow" follows the USER\'s calendar day across the date line', async () => {
+    // 20:00 UTC is already the 27th in Sydney, so "tomorrow" is the 28th.
+    mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'Australia/Sydney' });
+    vi.setSystemTime(new Date('2026-07-26T20:00:00.000Z'));
+
+    const { gte, lte } = range(await parseFilterQuery('tomorrow', TEST_USER_ID));
+    expect(gte.toISOString()).toBe('2026-07-28T00:00:00.000Z');
+    expect(lte.toISOString()).toBe('2026-07-28T23:59:59.999Z');
+  });
+
+  it('"overdue" cuts at the user\'s midnight, west of UTC', async () => {
+    // 02:00 UTC is still the 25th in Los Angeles.
+    mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'America/Los_Angeles' });
+    vi.setSystemTime(new Date('2026-07-26T02:00:00.000Z'));
+
+    const result = await parseFilterQuery('overdue', TEST_USER_ID);
+    const { lt } = result.dueDate as { lt: Date };
+    expect(lt.toISOString()).toBe('2026-07-25T00:00:00.000Z');
+  });
+
+  it('an explicit "due: <date>" spans that calendar date in UTC', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'Europe/London' });
+    vi.setSystemTime(new Date('2026-07-26T12:00:00.000Z'));
+
+    const { gte, lte } = range(await parseFilterQuery('due: 2026-03-15', TEST_USER_ID));
+    expect(gte.toISOString()).toBe('2026-03-15T00:00:00.000Z');
+    expect(lte.toISOString()).toBe('2026-03-15T23:59:59.999Z');
+  });
+
+  it('"due: next 3 days" runs from the user\'s today to today+3', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'UTC' });
+    vi.setSystemTime(new Date('2026-07-26T12:00:00.000Z'));
+
+    const { gte, lte } = range(await parseFilterQuery('due: next 3 days', TEST_USER_ID));
+    expect(gte.toISOString()).toBe('2026-07-26T00:00:00.000Z');
+    expect(lte.toISOString()).toBe('2026-07-29T00:00:00.000Z');
   });
 });

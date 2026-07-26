@@ -72,12 +72,20 @@ export function startDigestWorker() {
 
         const summary = notifications.map((n) => `- ${n.title}: ${n.body}`).join('\n');
 
-        await sendEmailNotification(userId, 'TASK_DUE_SOON', {
-          subject: `Your ${period} Taskflow digest`,
-          summary,
-          count: _count.id,
-          period,
-        });
+        // The type is inert for digests (subject and summary are supplied
+        // below), and the frequency gate is bypassed explicitly: this job has
+        // already established the user asked for exactly this cadence.
+        await sendEmailNotification(
+          userId,
+          'TASK_DUE_SOON',
+          {
+            subject: `Your ${period} Taskflow digest`,
+            summary,
+            count: _count.id,
+            period,
+          },
+          true,
+        );
 
         // Mark AFTER the send so a failed send retries next period.
         await prisma.notification.updateMany({

@@ -10,6 +10,28 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { useAuthStore } from '@/stores/authStore';
 
+// Taskflow ships no Terms or Privacy Policy of its own — the operator of each
+// self-hosted instance is the data controller and supplies their own. These
+// were previously href="#", so the mandatory consent checkbox pointed at
+// nothing. Set the vars to publish real documents; unset, the labels render as
+// plain text instead of dead links.
+const TERMS_URL = import.meta.env.VITE_TERMS_URL || '';
+const PRIVACY_URL = import.meta.env.VITE_PRIVACY_URL || '';
+
+function LegalLink({ href, children }: { href: string; children: React.ReactNode }) {
+  if (!href) return <span className="text-gray-600">{children}</span>;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-[#db4c3f] hover:text-[#c53727]"
+    >
+      {children}
+    </a>
+  );
+}
+
 const registerSchema = z
   .object({
     name: z.string().min(1, 'Name is required'),
@@ -154,13 +176,16 @@ export default function Register() {
             />
             <span className="text-sm text-gray-600">
               I agree to the{' '}
-              <a href="#" className="text-[#db4c3f] hover:text-[#c53727]">
-                Terms of Service
-              </a>{' '}
-              and{' '}
-              <a href="#" className="text-[#db4c3f] hover:text-[#c53727]">
-                Privacy Policy
-              </a>
+              <LegalLink href={TERMS_URL}>Terms of Service</LegalLink> and{' '}
+              <LegalLink href={PRIVACY_URL}>Privacy Policy</LegalLink>
+              {!TERMS_URL && !PRIVACY_URL && (
+                <>
+                  {' '}
+                  <span className="text-gray-400">
+                    of this instance, as set by its operator
+                  </span>
+                </>
+              )}
             </span>
           </label>
           {errors.acceptTerms && (

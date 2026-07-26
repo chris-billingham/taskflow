@@ -41,8 +41,12 @@ export default function DataExport() {
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Export your data</h3>
+            {/* Scoped deliberately: the export covers records you own or
+                authored. It does not include file attachments, reminders,
+                templates, or tasks assigned to you that someone else created. */}
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Download a JSON file containing all your tasks, projects, comments, labels, and activity history.
+              Download a JSON file of the tasks and projects you own, plus your comments,
+              labels, filters and recent activity. File attachments are not included.
             </p>
             {exportError && <p className="text-sm text-red-600 mt-2">{exportError}</p>}
             <button
@@ -65,8 +69,12 @@ export default function DataExport() {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Your data is yours</h3>
+            {/* No "encrypted at rest" claim: this is self-hosted, and whether
+                the database and object store are encrypted is entirely down to
+                how the operator provisioned them. */}
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              We never sell your data to third parties. Your tasks and projects are stored securely and encrypted at rest.
+              This is a self-hosted instance — your tasks and projects live only on the
+              infrastructure its operator controls, and are never sent to a third party.
             </p>
           </div>
         </div>

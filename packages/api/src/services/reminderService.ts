@@ -1,6 +1,7 @@
 import { prisma } from '../config/database.js';
-import { ForbiddenError, NotFoundError } from '../errors/index.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import { requireTaskAccess } from './access.js';
+import { getUserTimezone, zonedWallClockToUTC } from '../utils/dates.js';
 import type { CreateReminderInput } from '../schemas/reminder.js';
 
 export async function getTaskReminders(taskId: string, userId: string) {
@@ -12,18 +13,25 @@ export async function getTaskReminders(taskId: string, userId: string) {
   });
 }
 
-/** Trigger instant for a RELATIVE reminder given the task's due date/time. */
+/**
+ * Trigger instant for a RELATIVE reminder given the task's due date/time.
+ *
+ * `dueTime` is a wall-clock string in the USER's timezone, so it is resolved
+ * through zonedWallClockToUTC — the previous local setHours() fired reminders
+ * offset by the server's timezone for everyone not sitting in it. A task with
+ * no due date has no anchor to be relative to; callers must treat null as
+ * "cannot arm this reminder".
+ */
 export function computeRelativeTriggerAt(
   dueDate: Date | null,
   dueTime: string | null,
   minutesBefore: number,
+  tz: string = 'UTC',
 ): Date | null {
   if (!dueDate) return null;
-  const due = new Date(dueDate);
-  if (dueTime) {
-    const [hours, minutes] = dueTime.split(':').map(Number);
-    due.setHours(hours, minutes, 0, 0);
-  }
+  const due = dueTime
+    ? zonedWallClockToUTC(dueDate, dueTime, tz)
+    : new Date(dueDate);
   return new Date(due.getTime() - minutesBefore * 60 * 1000);
 }
 
@@ -33,7 +41,20 @@ export async function createReminder(data: CreateReminderInput, userId: string) 
   // For RELATIVE reminders, compute triggerAt from task dueDate
   let triggerAt = data.triggerAt ? new Date(data.triggerAt) : null;
   if (data.type === 'RELATIVE' && data.minutesBefore) {
-    triggerAt = computeRelativeTriggerAt(task.dueDate, task.dueTime, data.minutesBefore);
+    // Reject rather than store a null trigger: the poll matches on
+    // triggerAt <= now, so an unanchored reminder is a row that can never
+    // fire while the UI lists it as armed.
+    if (!task.dueDate) {
+      throw new ValidationError(
+        'Add a due date to the task before setting a reminder relative to it.',
+      );
+    }
+    triggerAt = computeRelativeTriggerAt(
+      task.dueDate,
+      task.dueTime,
+      data.minutesBefore,
+      await getUserTimezone(userId),
+    );
   }
 
   return prisma.reminder.create({
@@ -60,14 +81,28 @@ export async function recomputeRelativeReminders(
 ) {
   const reminders = await prisma.reminder.findMany({
     where: { taskId, type: 'RELATIVE', minutesBefore: { not: null } },
-    select: { id: true, minutesBefore: true },
+    select: { id: true, minutesBefore: true, userId: true },
   });
 
+  // Reminders on a shared task can belong to several people in different
+  // zones; resolve each owner's timezone once.
+  const tzByUser = new Map<string, string>();
   for (const reminder of reminders) {
+    let tz = tzByUser.get(reminder.userId);
+    if (!tz) {
+      tz = await getUserTimezone(reminder.userId);
+      tzByUser.set(reminder.userId, tz);
+    }
+
     await prisma.reminder.update({
       where: { id: reminder.id },
       data: {
-        triggerAt: computeRelativeTriggerAt(dueDate, dueTime, reminder.minutesBefore!),
+        triggerAt: computeRelativeTriggerAt(
+          dueDate,
+          dueTime,
+          reminder.minutesBefore!,
+          tz,
+        ),
         isSent: false,
         sentAt: null,
         attempts: 0,

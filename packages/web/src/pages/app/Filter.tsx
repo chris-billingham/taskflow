@@ -19,14 +19,35 @@ export default function Filter() {
   const executeFilter = useFilterStore((s) => s.executeFilter);
 
   const taskMap = useTaskStore((s) => s.tasks);
-  const { updateTask, deleteTask, completeTask, uncompleteTask, duplicateTask, reorderTasks } = useTaskActions();
+  const {
+    createTask,
+    updateTask,
+    deleteTask,
+    completeTask,
+    uncompleteTask,
+    duplicateTask,
+    reorderTasks,
+    quickAddTask,
+  } = useTaskActions();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+
+  // Filter.viewStyle is a persisted column (and was already accepted by the
+  // API) but the page kept its own local state, so the saved choice was never
+  // loaded and never written back. Read it from the filter and persist changes.
+  const viewMode: 'list' | 'calendar' =
+    filter?.viewStyle === 'CALENDAR' ? 'calendar' : 'list';
+
+  const setViewMode = (mode: 'list' | 'calendar') => {
+    if (!filter) return;
+    void updateFilter(filter.id, {
+      viewStyle: mode === 'calendar' ? 'CALENDAR' : 'LIST',
+    });
+  };
 
   const fetchTasks = useCallback(async () => {
     if (!filter) return;
@@ -92,6 +113,24 @@ export default function Filter() {
 
   const handleDuplicate = async (taskId: string) => {
     await duplicateTask(taskId);
+    fetchTasks();
+  };
+
+  const handleAddSubtask = async (text: string) => {
+    if (!selectedTask) return;
+    await createTask({
+      content: text,
+      projectId: selectedTask.projectId,
+      parentId: selectedTask.id,
+    });
+    fetchTasks();
+  };
+
+  // A saved filter is an arbitrary query, so there's no way to guarantee a new
+  // task matches it — create it normally and refetch. It appears here if the
+  // query happens to select it, exactly as it would after a manual reload.
+  const handleQuickAdd = async (text: string) => {
+    await quickAddTask(text);
     fetchTasks();
   };
 
@@ -215,8 +254,8 @@ export default function Filter() {
           onCompleteTask={handleComplete}
           onUncompleteTask={handleUncomplete}
           onDeleteTask={handleDeleteTask}
-          onAddSubtask={async () => {}}
-          onQuickAdd={async () => {}}
+          onAddSubtask={handleAddSubtask}
+          onQuickAdd={handleQuickAdd}
         />
       ) : (
         <>
@@ -248,7 +287,7 @@ export default function Filter() {
               onComplete={handleComplete}
               onUncomplete={handleUncomplete}
               onDelete={handleDeleteTask}
-              onAddSubtask={async () => {}}
+              onAddSubtask={handleAddSubtask}
               subtasks={selectedTaskSubtasks}
             />
           )}

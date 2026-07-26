@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Send, Paperclip, X } from 'lucide-react';
-import { ALLOWED_TYPES, MAX_FILE_SIZE_MB, formatFileSize } from '@/hooks/useFileUpload';
+import { useUploadLimits, formatFileSize } from '@/hooks/useFileUpload';
 
 interface CommentEditorProps {
   onSubmit: (content: string, files: File[]) => Promise<void>;
@@ -25,6 +25,7 @@ export function CommentEditor({
   const [submitting, setSubmitting] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
+  const { maxFileSizeMb, allowedMimeTypes } = useUploadLimits();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,12 +56,12 @@ export function CommentEditor({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-    const invalid = files.find((f) => !ALLOWED_TYPES.has(f.type));
-    const oversized = files.find((f) => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
+    const invalid = files.find((f) => !allowedMimeTypes.has(f.type));
+    const oversized = files.find((f) => f.size > maxFileSizeMb * 1024 * 1024);
     if (invalid) {
       setFileError(`"${invalid.name}" is not a supported file type`);
     } else if (oversized) {
-      setFileError(`"${oversized.name}" exceeds the ${MAX_FILE_SIZE_MB}MB limit`);
+      setFileError(`"${oversized.name}" exceeds the ${maxFileSizeMb}MB limit`);
     } else {
       setFileError(null);
       setPendingFiles((prev) => [...prev, ...files]);

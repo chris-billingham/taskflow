@@ -78,7 +78,12 @@ export default function Profile() {
               disabled
               className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 cursor-not-allowed"
             />
-            <p className="text-xs text-gray-400 mt-1">Email changes require verification</p>
+            {/* There is no change-email flow anywhere in the app (no endpoint,
+                and admins can't do it either). The old hint said changes
+                "require verification", implying one existed. */}
+            <p className="text-xs text-gray-400 mt-1">
+              Your sign-in address is fixed for the life of the account.
+            </p>
           </div>
         </section>
 
