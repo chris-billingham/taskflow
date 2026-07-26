@@ -32,6 +32,12 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === 'true'),
+  // Web Push (optional). Generate a pair with:
+  //   docker compose -f docker-compose.yml run --rm api npx web-push generate-vapid-keys
+  // Push notifications are disabled until both keys are set.
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:admin@taskflow.local'),
 });
 
 function loadEnv() {

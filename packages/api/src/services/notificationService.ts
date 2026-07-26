@@ -1,6 +1,53 @@
+import webpush from 'web-push';
 import { prisma } from '../config/database.js';
+import { env } from '../config/env.js';
 import { NotFoundError, ForbiddenError } from '../errors/index.js';
+import { isMailerReady, sendNotificationEmail } from './mailService.js';
 import type { NotificationType } from '@prisma/client';
+
+// ─── Notification Preferences ────────────────────────────────────────────
+
+export interface NotificationPrefs {
+  emailEnabled: boolean;
+  emailFrequency: 'immediate' | 'daily' | 'weekly';
+  disabledTypes: NotificationType[];
+}
+
+const DEFAULT_PREFS: NotificationPrefs = {
+  emailEnabled: true,
+  emailFrequency: 'daily',
+  disabledTypes: [],
+};
+
+export async function getNotificationPreferences(
+  userId: string,
+): Promise<NotificationPrefs> {
+  const row = await prisma.notificationPreference.findUnique({
+    where: { userId },
+  });
+  if (!row) return DEFAULT_PREFS;
+  return {
+    emailEnabled: row.emailEnabled,
+    emailFrequency: row.emailFrequency as NotificationPrefs['emailFrequency'],
+    disabledTypes: row.disabledTypes,
+  };
+}
+
+export async function updateNotificationPreferences(
+  userId: string,
+  data: Partial<NotificationPrefs>,
+): Promise<NotificationPrefs> {
+  const row = await prisma.notificationPreference.upsert({
+    where: { userId },
+    create: { userId, ...data },
+    update: data,
+  });
+  return {
+    emailEnabled: row.emailEnabled,
+    emailFrequency: row.emailFrequency as NotificationPrefs['emailFrequency'],
+    disabledTypes: row.disabledTypes,
+  };
+}
 
 // ─── In-App Notifications ────────────────────────────────────────────────
 
@@ -11,6 +58,14 @@ export async function createNotification(
   body: string,
   data?: Record<string, unknown>,
 ) {
+  // Muted types are suppressed at the source — no in-app entry, and nothing
+  // downstream (push/email/digest) ever sees them. REMINDER is never muted:
+  // reminders are explicitly created by the user per task.
+  if (type !== 'REMINDER') {
+    const prefs = await getNotificationPreferences(userId);
+    if (prefs.disabledTypes.includes(type)) return null;
+  }
+
   return prisma.notification.create({
     data: {
       userId,
@@ -98,40 +153,102 @@ export async function getUserPushSubscriptions(userId: string) {
   return prisma.pushSubscription.findMany({ where: { userId } });
 }
 
+let vapidConfigured: boolean | null = null;
+
+/** True when VAPID keys are configured (checked once, lazily). */
+export function isPushConfigured(): boolean {
+  if (vapidConfigured === null) {
+    if (env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY) {
+      webpush.setVapidDetails(
+        env.VAPID_SUBJECT,
+        env.VAPID_PUBLIC_KEY,
+        env.VAPID_PRIVATE_KEY,
+      );
+      vapidConfigured = true;
+    } else {
+      vapidConfigured = false;
+    }
+  }
+  return vapidConfigured;
+}
+
 export async function sendPushNotification(
   userId: string,
   title: string,
   body: string,
-  _data?: Record<string, unknown>,
+  data?: Record<string, unknown>,
 ) {
-  // Web Push sending requires the web-push library and VAPID keys.
-  // For now, we store the notification and log the push attempt.
-  // In production, integrate with web-push:
-  //   import webpush from 'web-push';
-  //   webpush.setVapidDetails(subject, publicKey, privateKey);
-  //   const subs = await getUserPushSubscriptions(userId);
-  //   for (const sub of subs) {
-  //     await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ title, body, _data }));
-  //   }
-  console.log(`[Push] Would send to user ${userId}: ${title} - ${body}`);
+  if (!isPushConfigured()) return;
+
+  const subscriptions = await getUserPushSubscriptions(userId);
+  const payload = JSON.stringify({ title, body, data });
+
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        payload,
+      );
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode;
+      // 404/410: the browser revoked this subscription — it's dead, drop it.
+      if (statusCode === 404 || statusCode === 410) {
+        await prisma.pushSubscription
+          .delete({ where: { endpoint: sub.endpoint } })
+          .catch(() => {});
+      } else {
+        console.error(
+          `[Push] delivery failed for user ${userId}:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+  }
 }
 
 // ─── Email Notifications ─────────────────────────────────────────────────
 
 export async function sendEmailNotification(
   userId: string,
-  _type: NotificationType,
+  type: NotificationType,
   data: Record<string, unknown>,
 ) {
-  // Email sending requires nodemailer configuration with SMTP.
-  // For now, log the email notification attempt.
-  // In production, integrate with nodemailer:
-  //   import { createTransport } from 'nodemailer';
-  //   const user = await prisma.user.findUnique({ where: { id: userId } });
-  //   transporter.sendMail({ to: user.email, subject: ..., html: ... });
+  if (!isMailerReady()) return;
+
+  const prefs = await getNotificationPreferences(userId);
+  if (!prefs.emailEnabled) return;
+  // Non-reminder notifications only email immediately when the user chose
+  // "immediate" — otherwise the daily/weekly digest covers them. Reminders
+  // are time-critical and were explicitly requested, so they always send.
+  if (type !== 'REMINDER' && type !== 'TASK_DUE_SOON' && prefs.emailFrequency !== 'immediate') {
+    return;
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { email: true, name: true },
   });
-  console.log(`[Email] Would send ${_type} notification to ${user?.email}`, data);
+  if (!user) return;
+
+  const subject =
+    typeof data.subject === 'string'
+      ? data.subject
+      : type === 'REMINDER'
+        ? `Reminder: ${String(data.taskContent ?? 'a task needs your attention')}`
+        : 'Taskflow notification';
+  const body =
+    typeof data.summary === 'string'
+      ? data.summary
+      : type === 'REMINDER'
+        ? `Your reminder for "${String(data.taskContent ?? 'a task')}" is due.`
+        : JSON.stringify(data);
+
+  try {
+    await sendNotificationEmail(user.email, user.name, subject, body);
+  } catch (err) {
+    console.error(
+      `[Email] notification send failed for ${user.email}:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
 }

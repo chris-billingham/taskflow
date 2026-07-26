@@ -110,6 +110,7 @@ model User {
   reminders         Reminder[]
   notifications     Notification[]
   pushSubscriptions PushSubscription[]
+  notificationPreference NotificationPreference?
   attachments       Attachment[]      @relation("AttachmentUploader")
   templates         Template[]
   activityLogs      ActivityLog[]
@@ -537,6 +538,22 @@ model Notification {
 }
 
 // ─── PushSubscription ──────────────────────────────────────────────────────
+
+model NotificationPreference {
+  id             String             @id @default(cuid())
+  userId         String             @unique
+  emailEnabled   Boolean            @default(true)
+  emailFrequency String             @default("daily") // immediate | daily | weekly
+  // Notification types the user has muted (suppressed everywhere: in-app,
+  // push and email). REMINDER is deliberately not mutable — reminders are
+  // explicitly created by the user per task.
+  disabledTypes  NotificationType[] @default([])
+  updatedAt      DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
 
 model PushSubscription {
   id        String   @id @default(cuid())

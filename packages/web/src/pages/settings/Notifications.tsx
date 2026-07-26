@@ -1,27 +1,90 @@
 import { useState, useEffect } from 'react';
 import { Bell, Mail, Smartphone } from 'lucide-react';
-import { subscribeToPush, unsubscribeFromPush, isPushSubscribed } from '@/services/notifications';
+import {
+  subscribeToPush,
+  unsubscribeFromPush,
+  isPushSubscribed,
+  getVapidPublicKey,
+} from '@/services/notifications';
+import api from '@/services/api';
+import { toastError } from '@/stores/toastStore';
+
+// Server-side NotificationType enum values for the mutable types.
+const NOTIFICATION_TYPES = [
+  { key: 'TASK_ASSIGNED', label: 'Task assigned to you', description: 'When someone assigns a task to you' },
+  { key: 'TASK_DUE_SOON', label: 'Task due soon', description: 'Automatic reminder when a task is due soon' },
+  { key: 'TASK_OVERDUE', label: 'Task overdue', description: 'When a task passes its due date' },
+  { key: 'COMMENT_ON_TASK', label: 'Comment on your task', description: 'When someone comments on a task you created' },
+  { key: 'MENTION_IN_COMMENT', label: '@mention in comment', description: 'When someone mentions you in a comment' },
+  { key: 'PROJECT_SHARED', label: 'Project shared with you', description: 'When someone shares a project with you' },
+  { key: 'WORKSPACE_INVITE', label: 'Workspace invite', description: 'When you receive a workspace invitation' },
+] as const;
+
+type NotificationTypeKey = (typeof NOTIFICATION_TYPES)[number]['key'];
+
+interface Prefs {
+  emailEnabled: boolean;
+  emailFrequency: 'immediate' | 'daily' | 'weekly';
+  disabledTypes: NotificationTypeKey[];
+}
+
+function Toggle({
+  on,
+  onClick,
+  disabled,
+  label,
+}: {
+  on: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+        on ? 'bg-[#db4c3f]' : 'bg-gray-200'
+      }`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          on ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  );
+}
 
 export default function NotificationSettings() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
-  const [emailEnabled, setEmailEnabled] = useState(true);
-  const [emailFrequency, setEmailFrequency] = useState<'immediate' | 'daily' | 'weekly'>('daily');
-
-  // Notification type toggles
-  const [enabledTypes, setEnabledTypes] = useState({
-    taskAssigned: true,
-    taskDueSoon: true,
-    taskOverdue: true,
-    commentOnTask: true,
-    mentionInComment: true,
-    projectShared: true,
-    workspaceInvite: true,
-  });
+  const [pushAvailable, setPushAvailable] = useState<boolean | null>(null);
+  const [prefs, setPrefs] = useState<Prefs | null>(null);
 
   useEffect(() => {
     isPushSubscribed().then(setPushEnabled);
+    getVapidPublicKey().then((key) => setPushAvailable(!!key));
+    api
+      .get('/settings/notifications')
+      .then(({ data }) => setPrefs(data.data))
+      .catch(() => toastError('Failed to load notification preferences'));
   }, []);
+
+  // Optimistic save: flip locally, persist, roll back + toast on failure.
+  const savePrefs = async (next: Prefs) => {
+    const previous = prefs;
+    setPrefs(next);
+    try {
+      await api.put('/settings/notifications', next);
+    } catch {
+      setPrefs(previous);
+      toastError('Failed to save notification preferences');
+    }
+  };
 
   const handleTogglePush = async () => {
     setPushLoading(true);
@@ -32,27 +95,28 @@ export default function NotificationSettings() {
       } else {
         const success = await subscribeToPush();
         setPushEnabled(success);
+        if (!success) {
+          toastError('Could not enable push notifications — check browser permissions');
+        }
       }
     } catch (err) {
       console.error('Failed to toggle push notifications:', err);
+      toastError('Could not change push notification state');
     } finally {
       setPushLoading(false);
     }
   };
 
-  const toggleType = (key: keyof typeof enabledTypes) => {
-    setEnabledTypes((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleType = (key: NotificationTypeKey) => {
+    if (!prefs) return;
+    const disabled = prefs.disabledTypes.includes(key);
+    void savePrefs({
+      ...prefs,
+      disabledTypes: disabled
+        ? prefs.disabledTypes.filter((t) => t !== key)
+        : [...prefs.disabledTypes, key],
+    });
   };
-
-  const notificationTypes = [
-    { key: 'taskAssigned' as const, label: 'Task assigned to you', description: 'When someone assigns a task to you' },
-    { key: 'taskDueSoon' as const, label: 'Task due soon', description: 'Automatic reminder when a task is due soon' },
-    { key: 'taskOverdue' as const, label: 'Task overdue', description: 'When a task passes its due date' },
-    { key: 'commentOnTask' as const, label: 'Comment on your task', description: 'When someone comments on a task you created' },
-    { key: 'mentionInComment' as const, label: '@mention in comment', description: 'When someone mentions you in a comment' },
-    { key: 'projectShared' as const, label: 'Project shared with you', description: 'When someone shares a project with you' },
-    { key: 'workspaceInvite' as const, label: 'Workspace invite', description: 'When you receive a workspace invitation' },
-  ];
 
   return (
     <div className="max-w-2xl">
@@ -68,22 +132,19 @@ export default function NotificationSettings() {
           <div>
             <p className="text-sm font-medium text-gray-900">Browser push notifications</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              Receive notifications even when the app is in the background
+              {pushAvailable === false
+                ? 'Not available: this server has no VAPID keys configured (see .env.example)'
+                : 'Receive notifications even when the app is in the background'}
             </p>
           </div>
-          <button
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              pushEnabled ? 'bg-[#db4c3f]' : 'bg-gray-200'
-            }`}
-            onClick={handleTogglePush}
-            disabled={pushLoading}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                pushEnabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
+          {pushAvailable !== false && (
+            <Toggle
+              on={pushEnabled}
+              onClick={handleTogglePush}
+              disabled={pushLoading || pushAvailable === null}
+              label="Browser push notifications"
             />
-          </button>
+          )}
         </div>
       </section>
 
@@ -101,23 +162,20 @@ export default function NotificationSettings() {
                 Receive notification summaries via email
               </p>
             </div>
-            <button
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                emailEnabled ? 'bg-[#db4c3f]' : 'bg-gray-200'
-              }`}
-              onClick={() => setEmailEnabled(!emailEnabled)}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  emailEnabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            <Toggle
+              on={prefs?.emailEnabled ?? true}
+              onClick={() => prefs && savePrefs({ ...prefs, emailEnabled: !prefs.emailEnabled })}
+              disabled={!prefs}
+              label="Email notifications"
+            />
           </div>
 
-          {emailEnabled && (
+          {prefs?.emailEnabled && (
             <div className="p-4 bg-white rounded-lg border border-gray-200">
-              <p className="text-sm font-medium text-gray-900 mb-3">Email frequency</p>
+              <p className="text-sm font-medium text-gray-900 mb-1">Email frequency</p>
+              <p className="text-xs text-gray-500 mb-3">
+                Immediate emails each notification as it happens; daily and weekly send a digest of unread notifications.
+              </p>
               <div className="space-y-2">
                 {(['immediate', 'daily', 'weekly'] as const).map((freq) => (
                   <label key={freq} className="flex items-center gap-2 cursor-pointer">
@@ -125,8 +183,8 @@ export default function NotificationSettings() {
                       type="radio"
                       name="emailFrequency"
                       value={freq}
-                      checked={emailFrequency === freq}
-                      onChange={() => setEmailFrequency(freq)}
+                      checked={prefs.emailFrequency === freq}
+                      onChange={() => savePrefs({ ...prefs, emailFrequency: freq })}
                       className="text-[#db4c3f] focus:ring-[#db4c3f]"
                     />
                     <span className="text-sm text-gray-700 capitalize">{freq}</span>
@@ -144,25 +202,23 @@ export default function NotificationSettings() {
           <Bell className="w-5 h-5 text-gray-700" />
           <h2 className="text-lg font-semibold text-gray-900">Notification Types</h2>
         </div>
+        <p className="text-xs text-gray-500 mb-3">
+          Muted types are suppressed everywhere: in-app, push and email.
+          Reminders you set on tasks always fire.
+        </p>
         <div className="space-y-1 bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
-          {notificationTypes.map(({ key, label, description }) => (
+          {NOTIFICATION_TYPES.map(({ key, label, description }) => (
             <div key={key} className="flex items-center justify-between px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-gray-900">{label}</p>
                 <p className="text-xs text-gray-500">{description}</p>
               </div>
-              <button
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  enabledTypes[key] ? 'bg-[#db4c3f]' : 'bg-gray-200'
-                }`}
+              <Toggle
+                on={!prefs?.disabledTypes.includes(key)}
                 onClick={() => toggleType(key)}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    enabledTypes[key] ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+                disabled={!prefs}
+                label={label}
+              />
             </div>
           ))}
         </div>

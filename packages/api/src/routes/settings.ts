@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { isValidTimeZone } from '../utils/dates.js';
 import { z } from 'zod';
+import * as notificationService from '../services/notificationService.js';
+import { isValidTimeZone } from '../utils/dates.js';
 import { authenticate } from '../middleware/authenticate.js';
 import * as userService from '../services/userService.js';
 import { ValidationError } from '../errors/index.js';
@@ -19,6 +20,17 @@ const updatePreferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']).nullable().optional(),
 });
 
+// REMINDER is deliberately absent: per-task reminders the user created
+// themselves cannot be globally muted here.
+const notificationPrefsSchema = z.object({
+  emailEnabled: z.boolean().optional(),
+  emailFrequency: z.enum(['immediate', 'daily', 'weekly']).optional(),
+  disabledTypes: z
+    .array(z.enum(['TASK_ASSIGNED', 'TASK_DUE_SOON', 'TASK_OVERDUE', 'COMMENT_ON_TASK', 'MENTION_IN_COMMENT', 'PROJECT_SHARED', 'WORKSPACE_INVITE']))
+    .max(7)
+    .optional(),
+});
+
 export async function settingsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate);
 
@@ -34,6 +46,25 @@ export async function settingsRoutes(app: FastifyInstance) {
   });
 
   // GET /api/v1/settings/export
+  // GET /api/v1/settings/notifications - notification preferences
+  app.get('/notifications', async (request, reply) => {
+    const data = await notificationService.getNotificationPreferences(request.user.id);
+    return reply.send({ success: true, data });
+  });
+
+  // PUT /api/v1/settings/notifications - update notification preferences
+  app.put('/notifications', async (request, reply) => {
+    const result = notificationPrefsSchema.safeParse(request.body);
+    if (!result.success) {
+      throw new ValidationError(result.error.issues[0].message);
+    }
+    const data = await notificationService.updateNotificationPreferences(
+      request.user.id,
+      result.data,
+    );
+    return reply.send({ success: true, data });
+  });
+
   app.get('/export', async (request, reply) => {
     const data = await userService.exportUserData(request.user.id);
     return reply

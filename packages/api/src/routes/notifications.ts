@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { env } from '../config/env.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { ValidationError } from '../errors/index.js';
 import * as notificationService from '../services/notificationService.js';
@@ -27,6 +28,15 @@ const unsubscribePushSchema = z.object({
 });
 
 export async function notificationRoutes(app: FastifyInstance) {
+  // GET /api/v1/notifications/vapid-public-key — served by the API so a
+  // self-hosted deployment doesn't need a frontend rebuild to enable push.
+  app.get('/notifications/vapid-public-key', async (_request, reply) => {
+    return reply.send({
+      success: true,
+      data: { publicKey: env.VAPID_PUBLIC_KEY ?? null },
+    });
+  });
+
   app.addHook('preHandler', authenticate);
 
   // GET /api/v1/notifications - Get user notifications

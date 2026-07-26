@@ -1,6 +1,21 @@
 import api from './api';
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+// Served by the API so self-hosted deployments can enable push without a
+// frontend rebuild; the build-time env var remains as a fallback.
+let cachedVapidKey: string | null | undefined;
+
+export async function getVapidPublicKey(): Promise<string | null> {
+  if (cachedVapidKey !== undefined) return cachedVapidKey;
+  let key: string | null;
+  try {
+    const { data } = await api.get('/notifications/vapid-public-key');
+    key = data.data.publicKey || import.meta.env.VITE_VAPID_PUBLIC_KEY || null;
+  } catch {
+    key = import.meta.env.VITE_VAPID_PUBLIC_KEY || null;
+  }
+  cachedVapidKey = key;
+  return key;
+}
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -38,7 +53,8 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 }
 
 export async function subscribeToPush(): Promise<boolean> {
-  if (!VAPID_PUBLIC_KEY) {
+  const vapidKey = await getVapidPublicKey();
+  if (!vapidKey) {
     console.warn('VAPID public key not configured');
     return false;
   }
@@ -54,7 +70,7 @@ export async function subscribeToPush(): Promise<boolean> {
   try {
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY).buffer as ArrayBuffer,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
     });
 
     const json = subscription.toJSON();

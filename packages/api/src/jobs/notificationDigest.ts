@@ -41,8 +41,22 @@ export function startDigestWorker() {
         _count: { id: true },
       });
 
+      // Respect preferences: a digest only goes to users who want email AND
+      // chose THIS cadence ("immediate" users were emailed at creation time).
+      const prefRows = await prisma.notificationPreference.findMany({
+        where: { userId: { in: usersWithNotifications.map((u) => u.userId) } },
+      });
+      const prefByUser = new Map(prefRows.map((p) => [p.userId, p]));
+      const wantsThisDigest = (userId: string) => {
+        const p = prefByUser.get(userId);
+        const emailEnabled = p?.emailEnabled ?? true;
+        const frequency = p?.emailFrequency ?? 'daily';
+        return emailEnabled && frequency === period;
+      };
+
       for (const { userId, _count } of usersWithNotifications) {
         if (_count.id === 0) continue;
+        if (!wantsThisDigest(userId)) continue;
 
         const notifications = await prisma.notification.findMany({
           where: {

@@ -138,3 +138,20 @@ export async function sendWorkspaceInviteEmail(
     ),
   );
 }
+
+export async function sendNotificationEmail(
+  to: string,
+  name: string,
+  subject: string,
+  bodyText: string,
+): Promise<void> {
+  await send(
+    to,
+    subject,
+    `Hi ${name},\n\n${bodyText}`,
+    layout(
+      subject,
+      `<p>Hi ${escapeHtml(name)},</p><p style="white-space:pre-line">${escapeHtml(bodyText)}</p>`,
+    ),
+  );
+}
