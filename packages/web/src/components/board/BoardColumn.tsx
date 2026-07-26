@@ -93,17 +93,17 @@ export function BoardColumn({
     <div
       ref={setSortableRef}
       style={sortableStyle}
-      className="group bg-gray-50 rounded-lg min-w-[280px] w-[280px] flex flex-col max-h-[calc(100vh-200px)] flex-shrink-0"
+      className="group bg-gray-50 dark:bg-gray-700 rounded-lg min-w-[280px] w-[280px] flex flex-col max-h-[calc(100vh-200px)] flex-shrink-0"
     >
       {/* Column header */}
-      <div className="px-3 py-2 flex items-center gap-2 border-b border-gray-200">
+      <div className="px-3 py-2 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
         {!isVirtual && (
           <div
             className="cursor-grab flex-shrink-0 opacity-0 hover:opacity-100 transition-opacity"
             {...sortableAttributes}
             {...sortableListeners}
           >
-            <GripVertical className="w-4 h-4 text-gray-300" />
+            <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600" />
           </div>
         )}
 
@@ -112,7 +112,7 @@ export function BoardColumn({
           onClick={() => setCollapsed(!collapsed)}
         >
           <ChevronDown
-            className={`w-4 h-4 text-gray-400 transition-transform ${
+            className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${
               collapsed ? '-rotate-90' : ''
             }`}
           />
@@ -121,7 +121,7 @@ export function BoardColumn({
         {isEditing && !isVirtual ? (
           <input
             ref={inputRef}
-            className="flex-1 text-sm font-semibold bg-white border border-[#db4c3f] rounded px-1 py-0.5 outline-none"
+            className="flex-1 text-sm font-semibold bg-white dark:bg-gray-800 border border-[#db4c3f] rounded px-1 py-0.5 outline-none"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             onBlur={handleSubmitEdit}
@@ -135,7 +135,7 @@ export function BoardColumn({
           />
         ) : (
           <span
-            className="flex-1 text-sm font-semibold text-gray-700 truncate cursor-pointer"
+            className="flex-1 text-sm font-semibold text-gray-700 dark:text-gray-300 truncate cursor-pointer"
             onClick={() => {
               if (!isVirtual) setIsEditing(true);
             }}
@@ -144,13 +144,13 @@ export function BoardColumn({
           </span>
         )}
 
-        <span className="text-xs text-gray-400 flex-shrink-0">
+        <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
           {tasks.length}
         </span>
 
         {!isVirtual && onDeleteSection && (
           <button
-            className="p-1 rounded hover:bg-gray-200 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity flex-shrink-0"
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity flex-shrink-0"
             onClick={() => {
               if (window.confirm(`Delete section "${title}"? Its tasks move out of the board columns.`)) {
                 onDeleteSection(columnId);
@@ -159,7 +159,7 @@ export function BoardColumn({
             title="Delete section"
             aria-label="Delete section"
           >
-            <Trash2 className="w-3.5 h-3.5 text-gray-400" />
+            <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
           </button>
         )}
       </div>
@@ -193,8 +193,8 @@ export function BoardColumn({
 
           {tasks.length === 0 && (
             <div
-              className={`text-xs text-gray-400 text-center py-4 border-2 border-dashed border-gray-200 rounded-lg ${
-                isOver ? 'border-blue-300 bg-blue-50' : ''
+              className={`text-xs text-gray-400 dark:text-gray-500 text-center py-4 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg ${
+                isOver ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20' : ''
               }`}
             >
               {isOver ? 'Drop here' : 'No tasks'}

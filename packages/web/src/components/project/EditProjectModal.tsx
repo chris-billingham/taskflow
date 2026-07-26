@@ -94,14 +94,14 @@ export function EditProjectModal({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Edit project" className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Edit project" className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Edit project</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit project</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-gray-100"
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
@@ -118,7 +118,7 @@ export function EditProjectModal({
 
           {/* Color picker */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Color
             </label>
             <div className="flex flex-wrap gap-2">
@@ -138,7 +138,7 @@ export function EditProjectModal({
 
           {/* View style */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               View
             </label>
             <div className="flex gap-2">
@@ -149,7 +149,7 @@ export function EditProjectModal({
                   className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     viewStyle === style
                       ? 'bg-[#db4c3f] text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                   onClick={() => setViewStyle(style)}
                 >
@@ -199,11 +199,11 @@ export function EditProjectModal({
 
         {/* Delete confirmation */}
         {showDeleteConfirm && (
-          <div className="absolute inset-0 bg-white rounded-xl p-6 flex flex-col items-center justify-center">
-            <p className="text-lg font-semibold text-gray-900 mb-2">
+          <div className="absolute inset-0 bg-white dark:bg-gray-800 rounded-xl p-6 flex flex-col items-center justify-center">
+            <p className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Delete project?
             </p>
-            <p className="text-sm text-gray-600 mb-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
               This will permanently delete "{project.name}" and all its tasks.
             </p>
             <div className="flex gap-2">

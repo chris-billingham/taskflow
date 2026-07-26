@@ -15,7 +15,7 @@ export function ActivityLog({ taskId, taskUpdatedAt }: ActivityLogProps) {
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
         <Activity className="w-4 h-4" />
         Activity
       </h3>
@@ -23,7 +23,7 @@ export function ActivityLog({ taskId, taskUpdatedAt }: ActivityLogProps) {
       {/* Loading state */}
       {loading && activities.length === 0 && (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+          <Loader2 className="w-4 h-4 text-gray-400 dark:text-gray-500 animate-spin" />
         </div>
       )}
 
@@ -37,14 +37,14 @@ export function ActivityLog({ taskId, taskUpdatedAt }: ActivityLogProps) {
 
       {/* Empty state */}
       {!loading && !error && activities.length === 0 && (
-        <p className="text-xs text-gray-400 italic py-2">
+        <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">
           No activity yet.
         </p>
       )}
 
       {/* Activity list */}
       {activities.length > 0 && (
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">
           {activities.map((activity) => (
             <ActivityItemComponent key={activity.id} activity={activity} />
           ))}

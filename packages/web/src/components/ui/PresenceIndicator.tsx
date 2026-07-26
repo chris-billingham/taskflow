@@ -64,7 +64,7 @@ export function PresenceIndicator({ taskId, className = '' }: PresenceIndicatorP
           </div>
         )}
       </div>
-      <span className="text-xs text-gray-500">
+      <span className="text-xs text-gray-500 dark:text-gray-400">
         {viewers.length === 1
           ? `${viewers[0].userName} is viewing`
           : `${viewers.length} viewing`}

@@ -16,12 +16,12 @@ const actionConfig: Record<string, { icon: typeof Plus; color: string; label: st
   CREATED: { icon: Plus, color: 'text-green-500', label: 'created' },
   UPDATED: { icon: Pencil, color: 'text-blue-500', label: 'updated' },
   DELETED: { icon: Trash2, color: 'text-red-500', label: 'deleted' },
-  COMPLETED: { icon: CheckCircle2, color: 'text-green-600', label: 'completed' },
+  COMPLETED: { icon: CheckCircle2, color: 'text-green-600 dark:text-green-400', label: 'completed' },
   UNCOMPLETED: { icon: RotateCcw, color: 'text-orange-500', label: 'reopened' },
   MOVED: { icon: ArrowRightLeft, color: 'text-purple-500', label: 'moved' },
   COMMENTED: { icon: MessageSquare, color: 'text-blue-400', label: 'commented on' },
-  ARCHIVED: { icon: Archive, color: 'text-gray-500', label: 'archived' },
-  UNARCHIVED: { icon: ArchiveRestore, color: 'text-gray-500', label: 'unarchived' },
+  ARCHIVED: { icon: Archive, color: 'text-gray-500 dark:text-gray-400', label: 'archived' },
+  UNARCHIVED: { icon: ArchiveRestore, color: 'text-gray-500 dark:text-gray-400', label: 'unarchived' },
 };
 
 function getChangedFields(oldData: Record<string, unknown> | null, newData: Record<string, unknown> | null): string[] {
@@ -39,7 +39,7 @@ interface ActivityItemProps {
 export function ActivityItemComponent({ activity }: ActivityItemProps) {
   const config = actionConfig[activity.action] || {
     icon: Plus,
-    color: 'text-gray-400',
+    color: 'text-gray-400 dark:text-gray-500',
     label: activity.action.toLowerCase(),
   };
   const Icon = config.icon;
@@ -54,19 +54,19 @@ export function ActivityItemComponent({ activity }: ActivityItemProps) {
         <Icon className="w-3.5 h-3.5" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-600">
-          <span className="font-medium text-gray-900">{activity.user.name}</span>
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          <span className="font-medium text-gray-900 dark:text-white">{activity.user.name}</span>
           {' '}{config.label}{' '}
-          <span className="text-gray-500">
+          <span className="text-gray-500 dark:text-gray-400">
             this {activity.entityType.toLowerCase()}
           </span>
           {changedFields.length > 0 && (
-            <span className="text-gray-400">
+            <span className="text-gray-400 dark:text-gray-500">
               {' '}&middot; changed {changedFields.join(', ')}
             </span>
           )}
         </p>
-        <p className="text-[11px] text-gray-400 mt-0.5">
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
           {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
         </p>
       </div>

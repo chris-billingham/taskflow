@@ -36,7 +36,7 @@ export function ProjectItem({
         className={`group flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm ${
           isActive
             ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
-            : 'text-gray-700 hover:bg-gray-100'
+            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
         }`}
         style={{ paddingLeft: `${8 + depth * 16}px` }}
         onClick={() => navigate(`/projects/${project.id}`)}
@@ -52,7 +52,7 @@ export function ProjectItem({
           }}
         >
           <ChevronRight
-            className={`w-3.5 h-3.5 text-gray-400 transition-transform ${
+            className={`w-3.5 h-3.5 text-gray-400 dark:text-gray-500 transition-transform ${
               isExpanded ? 'rotate-90' : ''
             }`}
           />
@@ -69,20 +69,20 @@ export function ProjectItem({
 
         {/* Task count */}
         {taskCount > 0 && (
-          <span className="text-xs text-gray-400 flex-shrink-0">{taskCount}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{taskCount}</span>
         )}
 
         {/* More actions */}
         <div className="relative flex-shrink-0">
           <button
-            className="w-6 h-6 items-center justify-center rounded hover:bg-gray-200 hidden group-hover:flex"
+            className="w-6 h-6 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 hidden group-hover:flex"
             title="Project options"
             onClick={(e) => {
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
           >
-            <MoreHorizontal className="w-4 h-4 text-gray-500" />
+            <MoreHorizontal className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           </button>
 
           {showMenu && (
@@ -94,9 +94,9 @@ export function ProjectItem({
                   setShowMenu(false);
                 }}
               />
-              <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+              <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMenu(false);
@@ -106,7 +106,7 @@ export function ProjectItem({
                   Edit project
                 </button>
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMenu(false);
@@ -116,7 +116,7 @@ export function ProjectItem({
                   {project.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 </button>
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMenu(false);
@@ -126,7 +126,7 @@ export function ProjectItem({
                   Duplicate
                 </button>
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMenu(false);
@@ -135,9 +135,9 @@ export function ProjectItem({
                 >
                   {project.isArchived ? 'Unarchive' : 'Archive'}
                 </button>
-                <hr className="my-1 border-gray-200" />
+                <hr className="my-1 border-gray-200 dark:border-gray-700" />
                 <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                  className="w-full text-left px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMenu(false);

@@ -39,7 +39,7 @@ export default function VerifyEmail() {
           No verification token found. Use the link from your email, or sign in
           to request a new one.
         </Alert>
-        <p className="mt-4 text-sm text-center text-gray-500">
+        <p className="mt-4 text-sm text-center text-gray-500 dark:text-gray-400">
           <Link to="/login" className="text-primary-600 hover:underline">
             Back to sign in
           </Link>
@@ -75,7 +75,7 @@ export default function VerifyEmail() {
       {status === 'error' && (
         <>
           <Alert variant="error">{message}</Alert>
-          <p className="mt-4 text-sm text-center text-gray-500">
+          <p className="mt-4 text-sm text-center text-gray-500 dark:text-gray-400">
             <Link to="/login" className="text-primary-600 hover:underline">
               Back to sign in
             </Link>

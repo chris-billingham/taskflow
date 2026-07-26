@@ -52,13 +52,13 @@ function Toggle({
       aria-checked={on}
       aria-label={label}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-        on ? 'bg-[#db4c3f]' : 'bg-gray-200'
+        on ? 'bg-[#db4c3f]' : 'bg-gray-200 dark:bg-gray-600'
       }`}
       onClick={onClick}
       disabled={disabled}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+        className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-gray-800 transition-transform ${
           on ? 'translate-x-6' : 'translate-x-1'
         }`}
       />
@@ -127,18 +127,18 @@ export default function NotificationSettings() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Notification Settings</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Notification Settings</h1>
 
       {/* Push Notifications */}
       <section className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <Smartphone className="w-5 h-5 text-gray-700" />
-          <h2 className="text-lg font-semibold text-gray-900">Push Notifications</h2>
+          <Smartphone className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Push Notifications</h2>
         </div>
-        <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div>
-            <p className="text-sm font-medium text-gray-900">Browser push notifications</p>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">Browser push notifications</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {pushAvailable === false
                 ? 'Not available: this server has no VAPID keys configured (see .env.example)'
                 : 'Receive notifications even when the app is in the background'}
@@ -158,14 +158,14 @@ export default function NotificationSettings() {
       {/* Email Notifications */}
       <section className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <Mail className="w-5 h-5 text-gray-700" />
-          <h2 className="text-lg font-semibold text-gray-900">Email Notifications</h2>
+          <Mail className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Email Notifications</h2>
         </div>
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <div>
-              <p className="text-sm font-medium text-gray-900">Email notifications</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Email notifications</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 Receive notification summaries via email
               </p>
             </div>
@@ -178,9 +178,9 @@ export default function NotificationSettings() {
           </div>
 
           {prefs?.emailEnabled && (
-            <div className="p-4 bg-white rounded-lg border border-gray-200">
-              <p className="text-sm font-medium text-gray-900 mb-1">Email frequency</p>
-              <p className="text-xs text-gray-500 mb-3">
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Email frequency</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                 Immediate emails each notification as it happens; daily and weekly send a digest of unread notifications.
               </p>
               <div className="space-y-2">
@@ -194,7 +194,7 @@ export default function NotificationSettings() {
                       onChange={() => savePrefs({ ...prefs, emailFrequency: freq })}
                       className="text-[#db4c3f] focus:ring-[#db4c3f]"
                     />
-                    <span className="text-sm text-gray-700 capitalize">{freq}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{freq}</span>
                   </label>
                 ))}
               </div>
@@ -206,19 +206,19 @@ export default function NotificationSettings() {
       {/* Notification Types */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <Bell className="w-5 h-5 text-gray-700" />
-          <h2 className="text-lg font-semibold text-gray-900">Notification Types</h2>
+          <Bell className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Notification Types</h2>
         </div>
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
           Muted types are suppressed everywhere: in-app, push and email.
           Reminders you set on tasks always fire.
         </p>
-        <div className="space-y-1 bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+        <div className="space-y-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
           {NOTIFICATION_TYPES.map(({ key, label, description }) => (
             <div key={key} className="flex items-center justify-between px-4 py-3">
               <div>
-                <p className="text-sm font-medium text-gray-900">{label}</p>
-                <p className="text-xs text-gray-500">{description}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
               </div>
               <Toggle
                 on={!prefs?.disabledTypes.includes(key)}

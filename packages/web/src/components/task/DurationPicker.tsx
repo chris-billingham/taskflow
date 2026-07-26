@@ -66,22 +66,22 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
   return (
     <div className="relative" ref={ref}>
       <button
-        className="flex items-center gap-1.5 px-2 py-1 text-sm rounded hover:bg-gray-100 text-gray-700"
+        className="flex items-center gap-1.5 px-2 py-1 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
         onClick={() => setIsOpen(!isOpen)}
         type="button"
       >
-        <Clock className="w-3.5 h-3.5 text-gray-400" />
-        {value ? formatDuration(value) : <span className="text-gray-400">None</span>}
+        <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+        {value ? formatDuration(value) : <span className="text-gray-400 dark:text-gray-500">None</span>}
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+        <div className="absolute top-full left-0 mt-1 z-50 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
           {/* Presets */}
           {presets.map((p) => (
             <button
               key={p.value}
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 ${
-                value === p.value ? 'bg-gray-50 font-medium' : 'text-gray-700'
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                value === p.value ? 'bg-gray-50 dark:bg-gray-700 font-medium' : 'text-gray-700 dark:text-gray-300'
               }`}
               onClick={() => {
                 onChange(p.value);
@@ -93,7 +93,7 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
             </button>
           ))}
 
-          <hr className="my-1 border-gray-100" />
+          <hr className="my-1 border-gray-100 dark:border-gray-700" />
 
           {/* Custom input */}
           {customMode ? (
@@ -101,7 +101,7 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
               <div className="flex items-center gap-1">
                 <input
                   ref={customHRef}
-                  className="w-12 text-sm border border-gray-200 rounded px-1.5 py-1 text-center focus:outline-none focus:border-[#db4c3f]"
+                  className="w-12 text-sm border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-center focus:outline-none focus:border-[#db4c3f]"
                   type="number"
                   min="0"
                   max="23"
@@ -117,9 +117,9 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
                     }
                   }}
                 />
-                <span className="text-xs text-gray-500">h</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">h</span>
                 <input
-                  className="w-12 text-sm border border-gray-200 rounded px-1.5 py-1 text-center focus:outline-none focus:border-[#db4c3f]"
+                  className="w-12 text-sm border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-center focus:outline-none focus:border-[#db4c3f]"
                   type="number"
                   min="0"
                   max="59"
@@ -135,7 +135,7 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
                     }
                   }}
                 />
-                <span className="text-xs text-gray-500">m</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">m</span>
                 <button
                   className="ml-1 px-2 py-1 text-xs font-medium text-white bg-[#db4c3f] rounded hover:bg-[#c53727]"
                   onClick={handleCustomSubmit}
@@ -146,7 +146,7 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
             </div>
           ) : (
             <button
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               onClick={() => setCustomMode(true)}
             >
               Custom...
@@ -156,9 +156,9 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
           {/* Clear */}
           {value !== null && (
             <>
-              <hr className="my-1 border-gray-100" />
+              <hr className="my-1 border-gray-100 dark:border-gray-700" />
               <button
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                 onClick={() => {
                   onChange(null);
                   setIsOpen(false);

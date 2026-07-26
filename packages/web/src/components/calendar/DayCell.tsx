@@ -32,8 +32,8 @@ export function DayCell({
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[100px] border-b border-r border-gray-200 p-1 transition-colors ${
-        isOver ? 'bg-blue-50' : ''
+      className={`min-h-[100px] border-b border-r border-gray-200 dark:border-gray-700 p-1 transition-colors ${
+        isOver ? 'bg-blue-50 dark:bg-blue-900/20' : ''
       } ${!day.isCurrentMonth ? 'bg-gray-50/50' : ''}`}
       onClick={() => onSlotClick(day.dateStr, '09:00')}
     >
@@ -43,8 +43,8 @@ export function DayCell({
           day.isToday
             ? 'bg-[#db4c3f] text-white font-bold'
             : !day.isCurrentMonth
-              ? 'text-gray-300'
-              : 'text-gray-700 hover:bg-gray-100'
+              ? 'text-gray-300 dark:text-gray-600'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
         }`}
         onClick={(e) => {
           e.stopPropagation();
@@ -68,7 +68,7 @@ export function DayCell({
         ))}
         {extraCount > 0 && (
           <button
-            className="text-xs text-gray-500 hover:text-gray-700 px-1"
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-1"
             onClick={(e) => {
               e.stopPropagation();
               onDayClick(day.dateStr);

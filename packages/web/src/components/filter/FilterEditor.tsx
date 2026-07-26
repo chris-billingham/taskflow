@@ -81,7 +81,7 @@ export function FilterEditor() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Filters</h3>
         <button
           className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-[#db4c3f] hover:bg-[#db4c3f]/5 rounded-lg"
           onClick={() => setShowCreate(!showCreate)}
@@ -93,9 +93,9 @@ export function FilterEditor() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
           <input
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#db4c3f] mb-2"
+            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-[#db4c3f] mb-2"
             placeholder="Filter name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -121,7 +121,7 @@ export function FilterEditor() {
               />
             ))}
           </div>
-          <div className="mb-3 text-xs text-gray-500">
+          <div className="mb-3 text-xs text-gray-500 dark:text-gray-400">
             <p className="font-medium mb-1">Available operators:</p>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5">
               <span>today, tomorrow, overdue</span>
@@ -143,14 +143,14 @@ export function FilterEditor() {
             </button>
             {newQuery.trim() && queryValid && (
               <button
-                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                 onClick={() => handlePreview(newQuery)}
               >
                 <Play className="w-3.5 h-3.5" /> Preview
               </button>
             )}
             <button
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
               onClick={() => {
                 setShowCreate(false);
                 setNewName('');
@@ -165,7 +165,7 @@ export function FilterEditor() {
 
       {/* Filters list */}
       {filters.length === 0 ? (
-        <p className="text-sm text-gray-500 py-4 text-center">
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
           No filters yet. Create one to save common queries.
         </p>
       ) : (
@@ -173,9 +173,9 @@ export function FilterEditor() {
           {filters.map((filter) => (
             <div key={filter.id}>
               {editingId === filter.id ? (
-                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
                   <input
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#db4c3f] mb-2"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-[#db4c3f] mb-2"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     autoFocus
@@ -206,7 +206,7 @@ export function FilterEditor() {
                       Save
                     </button>
                     <button
-                      className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+                      className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       onClick={() => setEditingId(null)}
                     >
                       Cancel
@@ -214,7 +214,7 @@ export function FilterEditor() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 group">
+                <div className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
                   <span
                     className="w-3 h-3 rounded flex-shrink-0"
                     style={{ backgroundColor: filter.color }}
@@ -223,39 +223,39 @@ export function FilterEditor() {
                     className="flex-1 min-w-0 text-left cursor-pointer"
                     onClick={() => navigate(`/filters/${filter.id}`)}
                   >
-                    <div className="text-sm text-gray-700 hover:text-[#db4c3f]">{filter.name}</div>
-                    <div className="text-xs text-gray-400 font-mono truncate">{filter.query}</div>
+                    <div className="text-sm text-gray-700 dark:text-gray-300 hover:text-[#db4c3f]">{filter.name}</div>
+                    <div className="text-xs text-gray-400 dark:text-gray-500 font-mono truncate">{filter.query}</div>
                   </button>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                     <button
-                      className="p-1 rounded hover:bg-gray-200"
+                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                       onClick={() => updateFilter(filter.id, { isFavorite: !filter.isFavorite })}
                       title={filter.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                     >
                       {filter.isFavorite ? (
                         <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
                       ) : (
-                        <Star className="w-3.5 h-3.5 text-gray-400" />
+                        <Star className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                       )}
                     </button>
                     <button
-                      className="p-1 rounded hover:bg-gray-200"
+                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                       onClick={() => handlePreview(filter.query)}
                       title="Preview results"
                     >
-                      <Play className="w-3.5 h-3.5 text-gray-400" />
+                      <Play className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                     </button>
                     <button
-                      className="p-1 rounded hover:bg-gray-200"
+                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                       onClick={() => startEdit(filter)}
                     >
-                      <Pencil className="w-3.5 h-3.5 text-gray-400" />
+                      <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                     </button>
                     <button
-                      className="p-1 rounded hover:bg-red-50"
+                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                       onClick={() => setDeleteConfirm(filter.id)}
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+                      <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 hover:text-red-500" />
                     </button>
                   </div>
                 </div>
@@ -267,7 +267,7 @@ export function FilterEditor() {
 
       {/* Preview results */}
       {previewQuery && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-blue-700">
               Preview: <span className="font-mono">{previewQuery}</span>
@@ -289,11 +289,11 @@ export function FilterEditor() {
           ) : (
             <ul className="space-y-1">
               {previewResults.slice(0, 10).map((task: any) => (
-                <li key={task.id} className="text-sm text-gray-700 flex items-center gap-2">
+                <li key={task.id} className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <span className={`w-1.5 h-1.5 rounded-full ${task.isCompleted ? 'bg-green-400' : 'bg-gray-400'}`} />
                   {task.content}
                   {task.project && (
-                    <span className="text-xs text-gray-400">({task.project.name})</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">({task.project.name})</span>
                   )}
                 </li>
               ))}
@@ -311,14 +311,14 @@ export function FilterEditor() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/50" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-white rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete filter?</h3>
-            <p className="text-sm text-gray-600 mb-6">
+          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Delete filter?</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 onClick={() => setDeleteConfirm(null)}
               >
                 Cancel

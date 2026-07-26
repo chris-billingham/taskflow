@@ -24,11 +24,11 @@ export function MonthView({
   return (
     <div>
       {/* Weekday header */}
-      <div className="grid grid-cols-7 border-b border-gray-200">
+      <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
         {WEEKDAY_NAMES.map((name) => (
           <div
             key={name}
-            className="text-center text-xs font-medium text-gray-500 py-2 border-r border-gray-200 last:border-r-0"
+            className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-2 border-r border-gray-200 dark:border-gray-700 last:border-r-0"
           >
             {name}
           </div>

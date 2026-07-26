@@ -220,8 +220,8 @@ export default function Upcoming() {
         <button
           className={`p-1.5 rounded transition-colors ${
             viewMode === 'list'
-              ? 'bg-gray-200 text-gray-900'
-              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+              ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
           onClick={() => setViewMode('list')}
           title="List view"
@@ -231,8 +231,8 @@ export default function Upcoming() {
         <button
           className={`p-1.5 rounded transition-colors ${
             viewMode === 'calendar'
-              ? 'bg-gray-200 text-gray-900'
-              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+              ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
           onClick={() => setViewMode('calendar')}
           title="Calendar view"
@@ -276,10 +276,10 @@ export default function Upcoming() {
 
           {error && !loading && (
             <div className="text-center py-16">
-              <h3 className="text-lg font-medium text-gray-700 mb-1">
+              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Couldn't load Upcoming
               </h3>
-              <p className="text-sm text-gray-500 mb-4">{error}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{error}</p>
               <button
                 className="px-4 py-1.5 text-sm text-white bg-[#db4c3f] rounded-lg hover:bg-[#c53727]"
                 onClick={() => refetch()}
@@ -291,11 +291,11 @@ export default function Upcoming() {
 
           {isEmpty && (
             <div className="text-center py-16">
-              <CalendarRange className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <h3 className="text-lg font-medium text-gray-500 mb-1">
+              <CalendarRange className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Nothing upcoming
               </h3>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-400 dark:text-gray-500">
                 Add tasks with due dates to see them here.
               </p>
             </div>
@@ -332,14 +332,14 @@ export default function Upcoming() {
           {upcomingView && upcomingView.noDate.length > 0 && (
             <div className="mb-4">
               <button
-                className="flex items-center gap-2 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200 w-full"
+                className="flex items-center gap-2 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 w-full"
                 onClick={() => setNoDateCollapsed(!noDateCollapsed)}
               >
                 <ChevronDown
                   className={`w-4 h-4 transition-transform ${noDateCollapsed ? '-rotate-90' : ''}`}
                 />
                 No date
-                <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
                   {upcomingView.noDate.length}
                 </span>
               </button>

@@ -107,7 +107,7 @@ export function TaskItem({
   return (
     <div>
       <div
-        className={`group flex items-start gap-0 border-b border-gray-100 hover:bg-gray-50/50 transition-colors ${
+        className={`group flex items-start gap-0 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 transition-colors ${
           task.isCompleted ? 'opacity-60' : ''
         } ${!isSubtask ? `border-l-2 ${borderColor}` : ''}`}
       >
@@ -117,7 +117,7 @@ export function TaskItem({
             className="pt-3 pl-1 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
             {...dragHandleProps}
           >
-            <GripVertical className="w-4 h-4 text-gray-300" />
+            <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600" />
           </div>
         )}
 
@@ -131,7 +131,7 @@ export function TaskItem({
             }}
           >
             <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform ${
+              className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${
                 expanded ? '' : '-rotate-90'
               }`}
             />
@@ -185,8 +185,8 @@ export function TaskItem({
             />
           ) : (
             <span
-              className={`text-sm text-gray-900 ${
-                task.isCompleted ? 'line-through text-gray-500' : ''
+              className={`text-sm text-gray-900 dark:text-white ${
+                task.isCompleted ? 'line-through text-gray-500 dark:text-gray-400' : ''
               }`}
               onDoubleClick={(e) => {
                 e.stopPropagation();
@@ -207,7 +207,7 @@ export function TaskItem({
                 indication that it would. */}
             {task.isRecurring && task.recurrenceRule && (
               <span
-                className="text-xs text-gray-400 flex items-center gap-1"
+                className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1"
                 title={describeRecurrence(task.recurrenceRule) ?? 'Repeats'}
               >
                 <Repeat className="w-3 h-3" />
@@ -217,7 +217,7 @@ export function TaskItem({
             <LabelBadges labels={task.taskLabels} />
             {/* Subtask count with branch icon like the reference */}
             {hasSubtasks && (
-              <span className="text-xs text-gray-400 flex items-center gap-1">
+              <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
                 <GitBranch className="w-3 h-3" />
                 {completedSubtasks}/{subtaskCount}
               </span>
@@ -231,8 +231,8 @@ export function TaskItem({
                     alt=""
                   />
                 ) : (
-                  <div className="w-4 h-4 rounded-full bg-gray-300 flex items-center justify-center">
-                    <User className="w-2.5 h-2.5 text-gray-500" />
+                  <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                    <User className="w-2.5 h-2.5 text-gray-500 dark:text-gray-400" />
                   </div>
                 )}
               </span>
@@ -255,20 +255,20 @@ export function TaskItem({
           {/* More menu */}
           <div className="relative" ref={menuRef}>
             <button
-              className="p-1.5 rounded hover:bg-gray-200"
+              className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
               title="Task options"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
             >
-              <MoreHorizontal className="w-4 h-4 text-gray-400" />
+              <MoreHorizontal className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
 
             {showMenu && (
-              <div className="absolute top-full right-0 mt-1 z-50 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+              <div className="absolute top-full right-0 mt-1 z-50 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
                 <button
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsEditing(true);
@@ -278,7 +278,7 @@ export function TaskItem({
                   Edit
                 </button>
                 <button
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDuplicate(task.id);
@@ -288,9 +288,9 @@ export function TaskItem({
                   <Copy className="w-4 h-4" />
                   Duplicate
                 </button>
-                <hr className="my-1 border-gray-100" />
+                <hr className="my-1 border-gray-100 dark:border-gray-700" />
                 <button
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete(task.id);
@@ -308,7 +308,7 @@ export function TaskItem({
 
       {/* Inline subtask list — rendered directly below parent, indented */}
       {showSubtasks && hasSubtasks && expanded && subtasks && (
-        <div className="ml-16 border-l border-gray-200">
+        <div className="ml-16 border-l border-gray-200 dark:border-gray-700">
           {subtasks.map((sub) => (
             <TaskItem
               key={sub.id}

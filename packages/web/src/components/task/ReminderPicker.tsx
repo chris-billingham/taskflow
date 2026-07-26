@@ -111,17 +111,17 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
           {reminders.map((reminder) => (
             <div
               key={reminder.id}
-              className="flex items-center gap-1.5 text-xs text-amber-600 group"
+              className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 group"
             >
               <Bell className="w-3 h-3" />
-              <span className={reminder.isSent ? 'line-through text-gray-400' : ''}>
+              <span className={reminder.isSent ? 'line-through text-gray-400 dark:text-gray-500' : ''}>
                 {formatReminder(reminder)}
               </span>
               <button
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-100"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => removeReminder(reminder.id)}
               >
-                <X className="w-3 h-3 text-gray-400" />
+                <X className="w-3 h-3 text-gray-400 dark:text-gray-500" />
               </button>
             </div>
           ))}
@@ -130,7 +130,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
 
       {/* Add reminder button */}
       <button
-        className="flex items-center gap-1 text-xs text-gray-500 hover:text-amber-600 px-2 py-1 rounded hover:bg-gray-100"
+        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-amber-600 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
         onClick={() => setIsOpen(!isOpen)}
         type="button"
       >
@@ -140,27 +140,27 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+        <div className="absolute top-full left-0 mt-1 z-50 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
           {/* Presets */}
           {presets.map((preset) => (
             <button
               key={preset.minutesBefore}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               onClick={() => addPreset(preset.minutesBefore)}
             >
-              <Clock className="w-4 h-4 text-gray-400" />
+              <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               {preset.label}
             </button>
           ))}
 
-          <hr className="my-1 border-gray-100" />
+          <hr className="my-1 border-gray-100 dark:border-gray-700" />
 
           {/* Custom time */}
           {showCustom ? (
             <div className="px-3 py-2 space-y-2">
               <input
                 type="datetime-local"
-                className="w-full text-sm border border-gray-200 rounded px-2 py-1"
+                className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1"
                 value={customDateTime}
                 onChange={(e) => setCustomDateTime(e.target.value)}
                 autoFocus
@@ -173,7 +173,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
                   Add
                 </button>
                 <button
-                  className="flex-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
+                  className="flex-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                   onClick={() => setShowCustom(false)}
                 >
                   Cancel
@@ -182,10 +182,10 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
             </div>
           ) : (
             <button
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               onClick={() => setShowCustom(true)}
             >
-              <Bell className="w-4 h-4 text-gray-400" />
+              <Bell className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               Custom time...
             </button>
           )}

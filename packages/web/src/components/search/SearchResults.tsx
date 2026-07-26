@@ -24,7 +24,7 @@ export function SearchResultsPanel({
   if (!hasResults) {
     return (
       <div className="py-12 text-center">
-        <p className="text-gray-500 text-sm">No results found</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">No results found</p>
       </div>
     );
   }
@@ -32,10 +32,10 @@ export function SearchResultsPanel({
   let idx = 0;
 
   return (
-    <div className="divide-y divide-gray-100">
+    <div className="divide-y divide-gray-100 dark:divide-gray-700">
       {results.tasks.length > 0 && (
         <section>
-          <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
+          <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-700">
             Tasks · {results.tasks.length}
           </p>
           {results.tasks.map((task) => {
@@ -55,7 +55,7 @@ export function SearchResultsPanel({
 
       {results.projects.length > 0 && (
         <section>
-          <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
+          <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-700">
             Projects · {results.projects.length}
           </p>
           {results.projects.map((project) => {
@@ -75,7 +75,7 @@ export function SearchResultsPanel({
 
       {results.comments.length > 0 && (
         <section>
-          <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
+          <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-700">
             Comments · {results.comments.length}
           </p>
           {results.comments.map((comment) => {

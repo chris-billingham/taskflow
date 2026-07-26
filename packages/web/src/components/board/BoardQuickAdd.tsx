@@ -36,7 +36,7 @@ export function BoardQuickAdd({ onSubmit }: BoardQuickAddProps) {
   if (!isExpanded) {
     return (
       <button
-        className="w-full flex items-center gap-1.5 px-2 py-1.5 text-sm text-gray-500 hover:text-[#db4c3f] transition-colors rounded-lg hover:bg-white/60"
+        className="w-full flex items-center gap-1.5 px-2 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-[#db4c3f] transition-colors rounded-lg hover:bg-white/60"
         onClick={() => setIsExpanded(true)}
       >
         <Plus className="w-4 h-4" />
@@ -46,10 +46,10 @@ export function BoardQuickAdd({ onSubmit }: BoardQuickAddProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-2">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-2">
       <input
         ref={inputRef}
-        className="w-full text-sm bg-transparent outline-none placeholder-gray-400 py-1"
+        className="w-full text-sm bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500 py-1"
         placeholder="Task name"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -63,7 +63,7 @@ export function BoardQuickAdd({ onSubmit }: BoardQuickAddProps) {
       />
       <div className="flex items-center justify-end gap-2 mt-1">
         <button
-          className="px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded"
+          className="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
           onClick={handleCancel}
         >
           Cancel

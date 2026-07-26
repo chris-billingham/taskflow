@@ -20,11 +20,11 @@ export function CommentList({ taskId }: CommentListProps) {
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1">
         <MessageSquare className="w-4 h-4" />
         Comments
         {comments.length > 0 && (
-          <span className="text-xs text-gray-400 font-normal">
+          <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">
             ({comments.length})
           </span>
         )}
@@ -54,7 +54,7 @@ export function CommentList({ taskId }: CommentListProps) {
       {/* Loading state */}
       {loading && comments.length === 0 && (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+          <Loader2 className="w-4 h-4 text-gray-400 dark:text-gray-500 animate-spin" />
         </div>
       )}
 
@@ -68,7 +68,7 @@ export function CommentList({ taskId }: CommentListProps) {
 
       {/* Empty state */}
       {!loading && !error && comments.length === 0 && (
-        <p className="text-xs text-gray-400 italic py-2">
+        <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">
           No comments yet. Be the first to comment.
         </p>
       )}

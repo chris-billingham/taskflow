@@ -22,7 +22,7 @@ function FileIcon({ mimeType }: { mimeType: string }) {
     return <Archive className="w-8 h-8 text-yellow-500" />;
   if (mimeType === 'application/json' || mimeType.startsWith('text/'))
     return <Code className="w-8 h-8 text-green-500" />;
-  return <File className="w-8 h-8 text-gray-400" />;
+  return <File className="w-8 h-8 text-gray-400 dark:text-gray-500" />;
 }
 
 export function AttachmentItem({ attachment, currentUserId, onDelete, onImageClick }: AttachmentItemProps) {
@@ -59,10 +59,10 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
   const uploaderInitial = attachment.uploadedBy.name?.charAt(0).toUpperCase() ?? '?';
 
   return (
-    <div className="flex items-start gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 group">
+    <div className="flex items-start gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 group">
       {/* Thumbnail or icon */}
       <div
-        className={`flex-shrink-0 w-10 h-10 rounded flex items-center justify-center bg-gray-100 overflow-hidden ${
+        className={`flex-shrink-0 w-10 h-10 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-700 overflow-hidden ${
           isImage(attachment.mimeType) ? 'cursor-pointer' : ''
         }`}
         onClick={() => isImage(attachment.mimeType) && onImageClick?.(attachment)}
@@ -84,7 +84,7 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div
-          className={`text-xs font-medium text-gray-800 truncate ${
+          className={`text-xs font-medium text-gray-800 dark:text-gray-100 truncate ${
             isImage(attachment.mimeType) ? 'cursor-pointer hover:text-primary-600' : ''
           }`}
           title={attachment.filename}
@@ -104,7 +104,7 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
               {uploaderInitial}
             </div>
           )}
-          <span className="text-[11px] text-gray-400">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">
             {formatFileSize(attachment.size)} ·{' '}
             {formatDistanceToNow(new Date(attachment.createdAt), { addSuffix: true })}
           </span>
@@ -114,15 +114,15 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          className="p-1 rounded hover:bg-gray-200 disabled:opacity-50"
+          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
           onClick={handleDownload}
           disabled={downloading}
           title="Download"
         >
           {downloading ? (
-            <Loader2 className="w-3.5 h-3.5 text-gray-500 animate-spin" />
+            <Loader2 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 animate-spin" />
           ) : (
-            <Download className="w-3.5 h-3.5 text-gray-500" />
+            <Download className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
           )}
         </button>
         {isOwn && (

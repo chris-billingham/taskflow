@@ -6,6 +6,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { SettingsLayout } from '@/layouts/SettingsLayout';
 import { Spinner } from '@/components/ui/Spinner';
 import { ToastContainer } from '@/components/ui/ToastContainer';
+import { useTheme } from '@/hooks/useTheme';
 // Core daily-use pages stay in the main bundle for instant navigation.
 import Today from '@/pages/app/Today';
 import Upcoming from '@/pages/app/Upcoming';
@@ -46,6 +47,13 @@ function RouteFallback() {
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
+
+  // At the app root, not in AppLayout. Mounted only there, the theme was never
+  // applied on any route AppLayout doesn't wrap — so loading or refreshing any
+  // /settings/* page, or an auth page, rendered light regardless of the user's
+  // choice. It only ever looked right because client-side navigation from a
+  // task view left the class AppLayout had already put on <html>.
+  useTheme();
 
   useEffect(() => {
     initialize();

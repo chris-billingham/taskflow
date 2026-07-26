@@ -184,7 +184,7 @@ export function TaskList({
 
   if (tasks.length === 0) {
     return (
-      <p className="text-sm text-gray-400 italic py-3 px-2">{emptyMessage}</p>
+      <p className="text-sm text-gray-400 dark:text-gray-500 italic py-3 px-2">{emptyMessage}</p>
     );
   }
 

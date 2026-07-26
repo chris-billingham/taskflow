@@ -37,7 +37,7 @@ function AnytimeDropZone({ dateStr }: { dateStr: string }) {
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[4px] transition-colors ${isOver ? 'bg-blue-50' : ''}`}
+      className={`min-h-[4px] transition-colors ${isOver ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
     />
   );
 }
@@ -100,17 +100,17 @@ export function WeekView({
   return (
     <div className="flex flex-col h-[calc(100vh-220px)]">
       {/* Day headers */}
-      <div className="flex border-b border-gray-200 flex-shrink-0">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         {/* Time label spacer */}
         <div className="w-16 flex-shrink-0" />
         {days.map((day) => (
           <div
             key={day.dateStr}
-            className="flex-1 text-center py-2 border-l border-gray-200"
+            className="flex-1 text-center py-2 border-l border-gray-200 dark:border-gray-700"
           >
             <div
               className={`text-xs font-medium ${
-                day.isToday ? 'text-[#db4c3f]' : 'text-gray-500'
+                day.isToday ? 'text-[#db4c3f]' : 'text-gray-500 dark:text-gray-400'
               }`}
             >
               {format(day.date, 'EEE')}
@@ -119,7 +119,7 @@ export function WeekView({
               className={`text-sm font-bold inline-flex items-center justify-center w-7 h-7 rounded-full ${
                 day.isToday
                   ? 'bg-[#db4c3f] text-white'
-                  : 'text-gray-900'
+                  : 'text-gray-900 dark:text-white'
               }`}
             >
               {format(day.date, 'd')}
@@ -130,8 +130,8 @@ export function WeekView({
 
       {/* Anytime row */}
       {days.some((d) => (anytimeByDay.get(d.dateStr) || []).length > 0) && (
-        <div className="flex border-b border-gray-200 flex-shrink-0">
-          <div className="w-16 flex-shrink-0 text-xs text-gray-400 text-right pr-2 pt-1">
+        <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="w-16 flex-shrink-0 text-xs text-gray-400 dark:text-gray-500 text-right pr-2 pt-1">
             Anytime
           </div>
           {days.map((day) => {
@@ -139,7 +139,7 @@ export function WeekView({
             return (
               <div
                 key={day.dateStr}
-                className="flex-1 border-l border-gray-200 p-1 space-y-0.5"
+                className="flex-1 border-l border-gray-200 dark:border-gray-700 p-1 space-y-0.5"
               >
                 <AnytimeDropZone dateStr={day.dateStr} />
                 {anytimeTasks.map((task) => (
@@ -165,7 +165,7 @@ export function WeekView({
           <div className="w-16 flex-shrink-0">
             {hours.map((hour) => (
               <div key={hour} className="h-12 relative">
-                <span className="absolute -top-2 right-2 text-xs text-gray-400">
+                <span className="absolute -top-2 right-2 text-xs text-gray-400 dark:text-gray-500">
                   {formatUserHour(hour)}
                 </span>
               </div>
@@ -180,7 +180,7 @@ export function WeekView({
             return (
               <div
                 key={day.dateStr}
-                className="flex-1 border-l border-gray-200 relative"
+                className="flex-1 border-l border-gray-200 dark:border-gray-700 relative"
               >
                 {/* Time slots */}
                 {hours.map((hour) => (

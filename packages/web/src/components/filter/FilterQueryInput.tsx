@@ -156,8 +156,8 @@ export function FilterQueryInput({ value, onChange, onValidation, placeholder }:
           ref={inputRef}
           className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none pr-8 font-mono ${
             validation && !validation.valid
-              ? 'border-red-300 focus:border-red-500'
-              : 'border-gray-200 focus:border-[#db4c3f]'
+              ? 'border-red-300 dark:border-red-800 focus:border-red-500'
+              : 'border-gray-200 dark:border-gray-700 focus:border-[#db4c3f]'
           }`}
           placeholder={placeholder || 'e.g. today & p1 & @work'}
           value={value}
@@ -191,19 +191,19 @@ export function FilterQueryInput({ value, onChange, onValidation, placeholder }:
       {showSuggestions && suggestions.length > 0 && (
         <div
           ref={suggestionsRef}
-          className="absolute top-full left-0 mt-1 w-full z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 max-h-48 overflow-y-auto"
+          className="absolute top-full left-0 mt-1 w-full z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 max-h-48 overflow-y-auto"
         >
           {suggestions.map((s, i) => (
             <button
               key={s.trigger}
               className={`w-full flex items-center justify-between px-3 py-1.5 text-sm ${
-                i === selectedIndex ? 'bg-gray-100' : 'hover:bg-gray-50'
+                i === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
               onMouseDown={() => applySuggestion(s)}
               onMouseEnter={() => setSelectedIndex(i)}
             >
               <span className="font-mono text-[#db4c3f]">{s.label}</span>
-              <span className="text-xs text-gray-400">{s.desc}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{s.desc}</span>
             </button>
           ))}
         </div>

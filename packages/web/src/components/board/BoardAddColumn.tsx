@@ -38,7 +38,7 @@ export function BoardAddColumn({ onCreateSection }: BoardAddColumnProps) {
     return (
       <div className="min-w-[280px] w-[280px] flex-shrink-0">
         <button
-          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           onClick={() => setIsExpanded(true)}
         >
           <Plus className="w-4 h-4" />
@@ -50,10 +50,10 @@ export function BoardAddColumn({ onCreateSection }: BoardAddColumnProps) {
 
   return (
     <div className="min-w-[280px] w-[280px] flex-shrink-0">
-      <div className="bg-gray-50 rounded-lg p-3">
+      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
         <input
           ref={inputRef}
-          className="w-full text-sm font-medium bg-white border border-gray-200 rounded px-2 py-1.5 outline-none focus:border-[#db4c3f]"
+          className="w-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:border-[#db4c3f]"
           placeholder="Section name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -67,7 +67,7 @@ export function BoardAddColumn({ onCreateSection }: BoardAddColumnProps) {
         />
         <div className="flex items-center justify-end gap-2 mt-2">
           <button
-            className="px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 rounded"
+            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
             onClick={handleCancel}
           >
             Cancel

@@ -69,19 +69,19 @@ export function CommentItem({
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-xs font-medium text-gray-900">
+            <span className="text-xs font-medium text-gray-900 dark:text-white">
               {comment.author.name}
             </span>
-            <span className="text-[11px] text-gray-400">
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">
               {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
             </span>
             {isEdited && (
-              <span className="text-[11px] text-gray-400 italic">(edited)</span>
+              <span className="text-[11px] text-gray-400 dark:text-gray-500 italic">(edited)</span>
             )}
           </div>
 
           {/* Content */}
-          <div className="prose prose-sm max-w-none text-gray-700 text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+          <div className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300 text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             <ReactMarkdown>{comment.content}</ReactMarkdown>
           </div>
 
@@ -89,7 +89,7 @@ export function CommentItem({
           <div className="flex items-center gap-2 mt-1">
             {!isReply && onReply && (
               <button
-                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600"
+                className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 onClick={() => setReplying(true)}
               >
                 <Reply className="w-3 h-3" />
@@ -103,16 +103,16 @@ export function CommentItem({
         {isOwn && (
           <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              className="p-1 rounded hover:bg-gray-100"
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => setShowMenu(!showMenu)}
               onBlur={() => setTimeout(() => setShowMenu(false), 150)}
             >
-              <MoreHorizontal className="w-4 h-4 text-gray-400" />
+              <MoreHorizontal className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
             {showMenu && (
-              <div className="absolute right-0 top-7 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10 min-w-[120px]">
+              <div className="absolute right-0 top-7 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-10 min-w-[120px]">
                 <button
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                   onClick={() => {
                     setEditing(true);
                     setShowMenu(false);
@@ -122,7 +122,7 @@ export function CommentItem({
                   Edit
                 </button>
                 <button
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                   onClick={() => {
                     onDelete(comment.id);
                     setShowMenu(false);

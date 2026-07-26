@@ -50,10 +50,10 @@ export function JoinWorkspace() {
 
   if (isLoading || status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-700">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-[#db4c3f] animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Joining workspace...</p>
+          <p className="text-gray-600 dark:text-gray-400">Joining workspace...</p>
         </div>
       </div>
     );
@@ -61,13 +61,13 @@ export function JoinWorkspace() {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-700">
         <div className="text-center max-w-sm mx-4">
           <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
             Unable to join
           </h2>
-          <p className="text-gray-600 mb-6">{errorMessage}</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{errorMessage}</p>
           <Button onClick={() => navigate('/today')}>Go to Taskflow</Button>
         </div>
       </div>
@@ -75,13 +75,13 @@ export function JoinWorkspace() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-700">
       <div className="text-center max-w-sm mx-4">
         <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           You're in!
         </h2>
-        <p className="text-gray-600 mb-6">
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
           You've successfully joined the workspace.
         </p>
         <Button onClick={() => navigate('/today')}>Get started</Button>

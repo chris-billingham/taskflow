@@ -73,7 +73,7 @@ export function ProjectHeader({
         {isEditingName ? (
           <input
             ref={nameInputRef}
-            className="text-2xl font-bold text-gray-900 bg-transparent border-b-2 border-[#db4c3f] outline-none flex-1"
+            className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-[#db4c3f] outline-none flex-1"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             onBlur={handleNameSubmit}
@@ -87,7 +87,7 @@ export function ProjectHeader({
           />
         ) : (
           <h1
-            className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-gray-700"
+            className="text-2xl font-bold text-gray-900 dark:text-white cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
             onClick={() => !project.isInbox && setIsEditingName(true)}
           >
             {project.name}
@@ -105,8 +105,8 @@ export function ProjectHeader({
                 key={style}
                 className={`p-1.5 rounded transition-colors ${
                   project.viewStyle === style
-                    ? 'bg-gray-200 text-gray-900'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                    ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
                 onClick={() => onUpdateViewStyle(style)}
                 title={style.charAt(0) + style.slice(1).toLowerCase()}
@@ -119,7 +119,7 @@ export function ProjectHeader({
 
         <div className="flex items-center gap-1">
           <button
-            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 rounded hover:bg-gray-100"
+            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={onAddSection}
           >
             <Plus className="w-4 h-4" />
@@ -129,7 +129,7 @@ export function ProjectHeader({
           {/* More menu */}
           <div className="relative">
             <button
-              className="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              className="p-1.5 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => setShowMenu(!showMenu)}
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -141,9 +141,9 @@ export function ProjectHeader({
                   className="fixed inset-0 z-40"
                   onClick={() => setShowMenu(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
                   <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     onClick={() => {
                       setShowMenu(false);
                       onDuplicate();
@@ -153,7 +153,7 @@ export function ProjectHeader({
                     Duplicate project
                   </button>
                   <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     onClick={() => {
                       setShowMenu(false);
                       onArchive();
@@ -164,9 +164,9 @@ export function ProjectHeader({
                   </button>
                   {!project.isInbox && (
                     <>
-                      <hr className="my-1 border-gray-200" />
+                      <hr className="my-1 border-gray-200 dark:border-gray-700" />
                       <button
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                         onClick={() => {
                           setShowMenu(false);
                           onDelete();

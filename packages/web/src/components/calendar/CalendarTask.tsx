@@ -25,7 +25,7 @@ const priorityBgColors: Record<number, string> = {
   1: 'bg-red-100',
   2: 'bg-orange-100',
   3: 'bg-blue-100',
-  4: 'bg-gray-100',
+  4: 'bg-gray-100 dark:bg-gray-700',
 };
 
 // Must match WeekView HOUR_HEIGHT
@@ -121,7 +121,7 @@ export function CalendarTask({
         style={dragStyle}
         {...attributes}
         {...listeners}
-        className={`flex items-center gap-1 px-1 py-0.5 rounded text-xs border-l-2 ${borderColor} bg-white hover:bg-gray-50 cursor-pointer truncate group/task`}
+        className={`flex items-center gap-1 px-1 py-0.5 rounded text-xs border-l-2 ${borderColor} bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer truncate group/task`}
         onClick={(e) => {
           e.stopPropagation();
           onTaskClick(task);
@@ -142,9 +142,9 @@ export function CalendarTask({
             }}
           />
         </div>
-        <span className="truncate text-gray-900">{task.content}</span>
+        <span className="truncate text-gray-900 dark:text-white">{task.content}</span>
         {task.dueTime && (
-          <span className="text-gray-400 flex-shrink-0 ml-auto">
+          <span className="text-gray-400 dark:text-gray-500 flex-shrink-0 ml-auto">
             {formatUserTimeCompact(task.dueTime)}
           </span>
         )}
@@ -191,11 +191,11 @@ export function CalendarTask({
           />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-gray-900 truncate">
+          <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
             {task.content}
           </p>
           {timeLabel && (
-            <p className="text-[10px] text-gray-500 mt-0.5">{timeLabel}</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{timeLabel}</p>
           )}
         </div>
       </div>

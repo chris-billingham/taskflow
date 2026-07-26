@@ -21,8 +21,8 @@ export function TimeSlot({
   return (
     <div
       ref={setNodeRef}
-      className={`h-12 border-b border-gray-100 relative transition-colors ${
-        isOver ? 'bg-blue-50' : 'hover:bg-gray-50/50'
+      className={`h-12 border-b border-gray-100 dark:border-gray-700 relative transition-colors ${
+        isOver ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50/50'
       } ${isCurrentHour ? 'bg-blue-50/30' : ''}`}
       onClick={() => onSlotClick(dateStr, timeStr)}
     >

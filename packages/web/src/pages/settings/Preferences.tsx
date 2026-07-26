@@ -1,9 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import api from '@/services/api';
 
 type Theme = 'light' | 'dark' | 'system';
+
+/** Same resolution useTheme() applies, for the pre-save preview. */
+function applyTheme(t: Theme) {
+  const root = document.documentElement;
+  if (t === 'dark') {
+    root.classList.add('dark');
+  } else if (t === 'light') {
+    root.classList.remove('dark');
+  } else {
+    root.classList.toggle(
+      'dark',
+      window.matchMedia('(prefers-color-scheme: dark)').matches,
+    );
+  }
+}
 
 function OptionGroup<T extends string | number>({
   label,
@@ -48,19 +63,25 @@ export default function Preferences() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  // Read by the unmount cleanup, which must not re-run when this flips.
+  const savedRef = useRef(false);
 
-  // Apply theme immediately on change
+  // Preview the theme as soon as it's clicked, before saving — picking a theme
+  // you can't see applied is a poor trade for one round-trip.
   const handleThemeChange = (t: Theme) => {
     setTheme(t);
-    const root = document.documentElement;
-    if (t === 'dark') {
-      root.classList.add('dark');
-    } else if (t === 'light') {
-      root.classList.remove('dark');
-    } else {
-      root.classList.toggle('dark', window.matchMedia('(prefers-color-scheme: dark)').matches);
-    }
+    applyTheme(t);
   };
+
+  // ...but a preview that was never saved must not outlive this page. Leaving
+  // without pressing Save previously left the previewed theme applied until the
+  // next full reload, so the app disagreed with the stored preference.
+  const savedTheme = (user?.theme as Theme) ?? 'system';
+  useEffect(() => {
+    return () => {
+      if (!savedRef.current) applyTheme(savedTheme);
+    };
+  }, [savedTheme]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -73,6 +94,7 @@ export default function Preferences() {
         timeFormat,
       });
       updateUser(data.data);
+      savedRef.current = true;
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {

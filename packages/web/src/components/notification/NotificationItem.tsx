@@ -42,12 +42,12 @@ function timeAgo(dateStr: string): string {
 }
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
-  const config = typeConfig[notification.type] || { icon: Bell, color: 'text-gray-500' };
+  const config = typeConfig[notification.type] || { icon: Bell, color: 'text-gray-500 dark:text-gray-400' };
   const Icon = config.icon;
 
   return (
     <button
-      className={`w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-gray-50 transition-colors ${
+      className={`w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
         !notification.isRead ? 'bg-blue-50/50' : ''
       }`}
       onClick={() => onClick(notification)}
@@ -57,11 +57,11 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-sm ${!notification.isRead ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+        <p className={`text-sm ${!notification.isRead ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
           {notification.title}
         </p>
-        <p className="text-xs text-gray-500 mt-0.5 truncate">{notification.body}</p>
-        <p className="text-xs text-gray-400 mt-1">{timeAgo(notification.createdAt)}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{notification.body}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{timeAgo(notification.createdAt)}</p>
       </div>
 
       {!notification.isRead && (

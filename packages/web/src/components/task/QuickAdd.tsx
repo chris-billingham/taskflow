@@ -60,7 +60,7 @@ const priorityColors: Record<number, string> = {
   1: 'text-red-500',
   2: 'text-orange-500',
   3: 'text-blue-500',
-  4: 'text-gray-400',
+  4: 'text-gray-400 dark:text-gray-500',
 };
 
 export function QuickAdd({
@@ -110,7 +110,7 @@ export function QuickAdd({
   if (!isExpanded && inline) {
     return (
       <button
-        className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-500 hover:text-[#db4c3f] transition-colors rounded-lg hover:bg-gray-50"
+        className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#db4c3f] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={() => setIsExpanded(true)}
       >
         <Plus className="w-4 h-4" />
@@ -120,11 +120,11 @@ export function QuickAdd({
   }
 
   return (
-    <div className={`${inline ? 'border border-gray-200 rounded-lg' : ''}`}>
+    <div className={`${inline ? 'border border-gray-200 dark:border-gray-700 rounded-lg' : ''}`}>
       <div className="p-2">
         <input
           ref={inputRef}
-          className="w-full text-sm bg-transparent outline-none placeholder-gray-400 py-1"
+          className="w-full text-sm bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500 py-1"
           placeholder={`${placeholder} (use #project, @label, p1-4, today, tomorrow...)`}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -141,13 +141,13 @@ export function QuickAdd({
         {hasPreview && (
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             {preview.dueDate && (
-              <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
                 <Calendar className="w-3 h-3" />
                 {preview.dueDate}
               </span>
             )}
             {preview.priority && (
-              <span className={`flex items-center gap-1 text-xs ${priorityColors[preview.priority]} bg-gray-50 px-1.5 py-0.5 rounded`}>
+              <span className={`flex items-center gap-1 text-xs ${priorityColors[preview.priority]} bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 rounded`}>
                 <Flag className="w-3 h-3" fill={preview.priority < 4 ? 'currentColor' : 'none'} />
                 P{preview.priority}
               </span>
@@ -160,7 +160,7 @@ export function QuickAdd({
             {preview.labels?.map((label) => (
               <span
                 key={label}
-                className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded"
+                className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded"
               >
                 <Tag className="w-3 h-3" />
                 {label}
@@ -171,13 +171,13 @@ export function QuickAdd({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between px-2 py-1.5 border-t border-gray-100">
+      <div className="flex items-center justify-between px-2 py-1.5 border-t border-gray-100 dark:border-gray-700">
         <div className="flex items-center gap-1">
           {/* Additional action buttons could go here */}
         </div>
         <div className="flex items-center gap-2">
           <button
-            className="px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded"
+            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
             onClick={handleCancel}
           >
             Cancel

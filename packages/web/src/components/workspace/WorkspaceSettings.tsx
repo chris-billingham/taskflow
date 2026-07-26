@@ -51,7 +51,7 @@ export function WorkspaceSettings() {
   if (!workspace) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Select a workspace to view settings.</p>
+        <p className="text-gray-500 dark:text-gray-400">Select a workspace to view settings.</p>
       </div>
     );
   }
@@ -100,7 +100,7 @@ export function WorkspaceSettings() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
         Workspace settings
       </h1>
 
@@ -112,8 +112,8 @@ export function WorkspaceSettings() {
               key={id}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
                 activeTab === id
-                  ? 'bg-gray-100 text-gray-900 font-medium'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
               onClick={() => setActiveTab(id)}
             >
@@ -134,11 +134,11 @@ export function WorkspaceSettings() {
                 disabled={!isAdmin}
               />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Description
                 </label>
                 <textarea
-                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#db4c3f] focus:border-[#db4c3f] resize-none disabled:bg-gray-50 disabled:text-gray-500"
+                  className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db4c3f] focus:border-[#db4c3f] resize-none disabled:bg-gray-50 disabled:text-gray-500"
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -146,7 +146,7 @@ export function WorkspaceSettings() {
                 />
               </div>
               {saveError && (
-                <p className="text-sm text-red-600">{saveError}</p>
+                <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
               )}
               {isAdmin && (
                 <Button type="submit" isLoading={isSaving}>
@@ -159,7 +159,7 @@ export function WorkspaceSettings() {
           {activeTab === 'members' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-700">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {members.length} member{members.length !== 1 ? 's' : ''}
                 </h3>
                 {isAdmin && (
@@ -195,11 +195,11 @@ export function WorkspaceSettings() {
 
           {activeTab === 'projects' && (
             <div className="space-y-2">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Team projects in this workspace are accessible to all workspace
                 members based on their role.
               </p>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-400 dark:text-gray-500">
                 {workspace._count?.projects ?? 0} team project
                 {(workspace._count?.projects ?? 0) !== 1 ? 's' : ''}
               </p>
@@ -208,11 +208,11 @@ export function WorkspaceSettings() {
 
           {activeTab === 'danger' && isOwner && (
             <div className="space-y-4">
-              <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+              <div className="p-4 border border-red-200 dark:border-red-900 rounded-lg bg-red-50 dark:bg-red-900/20">
                 <h3 className="text-sm font-semibold text-red-800 mb-2">
                   Delete workspace
                 </h3>
-                <p className="text-sm text-red-600 mb-4">
+                <p className="text-sm text-red-600 dark:text-red-400 mb-4">
                   This will permanently delete the workspace, all team
                   projects, and remove all members. This action cannot be
                   undone.

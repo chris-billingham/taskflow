@@ -82,10 +82,10 @@ export default function Project() {
   if (!project) {
     return (
       <div className="text-center py-20">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           Project not found
         </h2>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           This project may have been deleted or you don't have access.
         </p>
         <button
@@ -287,7 +287,7 @@ export default function Project() {
           {hasMore && (
             <div className="flex justify-center py-3">
               <button
-                className="px-4 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                 onClick={() => loadMore()}
                 disabled={loadingMore}
               >
@@ -319,17 +319,17 @@ export default function Project() {
             className="fixed inset-0 bg-black/50"
             onClick={() => setShowDeleteConfirm(false)}
           />
-          <div className="relative bg-white rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Delete project?
             </h3>
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               This will permanently delete "{project.name}" and all its tasks
               and sections.
             </p>
             <div className="flex justify-end gap-2">
               <button
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancel

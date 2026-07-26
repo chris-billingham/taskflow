@@ -64,8 +64,8 @@ export default function Label() {
   if (!label && !loading) {
     return (
       <div className="text-center py-20">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Label not found</h2>
-        <p className="text-gray-600 mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Label not found</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           This label may have been deleted.
         </p>
         <button
@@ -153,7 +153,7 @@ export default function Label() {
         {editing ? (
           <div className="flex items-center gap-2 flex-1">
             <input
-              className="text-2xl font-bold text-gray-900 bg-transparent border-b-2 border-[#db4c3f] focus:outline-none"
+              className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-[#db4c3f] focus:outline-none"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => {
@@ -169,7 +169,7 @@ export default function Label() {
               Save
             </button>
             <button
-              className="text-sm text-gray-500 hover:underline"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:underline"
               onClick={() => setEditing(false)}
             >
               Cancel
@@ -177,22 +177,22 @@ export default function Label() {
           </div>
         ) : (
           <div className="flex items-center gap-2 flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">{label?.name}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{label?.name}</h1>
             <button
-              className="p-1 rounded hover:bg-gray-100"
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={handleStartEdit}
             >
-              <Pencil className="w-4 h-4 text-gray-400" />
+              <Pencil className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
             {label && (
               <button
-                className="p-1 rounded hover:bg-gray-100"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => updateLabel(label.id, { isFavorite: !label.isFavorite })}
               >
                 {label.isFavorite ? (
                   <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                 ) : (
-                  <Star className="w-4 h-4 text-gray-400" />
+                  <Star className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 )}
               </button>
             )}
@@ -200,8 +200,8 @@ export default function Label() {
               <button
                 className={`p-1 rounded transition-colors ${
                   viewMode === 'list'
-                    ? 'bg-gray-200 text-gray-900'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                    ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
                 onClick={() => setViewMode('list')}
                 title="List view"
@@ -211,8 +211,8 @@ export default function Label() {
               <button
                 className={`p-1 rounded transition-colors ${
                   viewMode === 'calendar'
-                    ? 'bg-gray-200 text-gray-900'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                    ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
                 onClick={() => setViewMode('calendar')}
                 title="Calendar view"

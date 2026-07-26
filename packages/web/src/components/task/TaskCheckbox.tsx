@@ -12,7 +12,7 @@ const priorityColors: Record<number, { border: string; bg: string }> = {
   1: { border: 'border-red-500', bg: 'bg-red-500' },
   2: { border: 'border-orange-500', bg: 'bg-orange-500' },
   3: { border: 'border-blue-500', bg: 'bg-blue-500' },
-  4: { border: 'border-gray-300', bg: 'bg-gray-400' },
+  4: { border: 'border-gray-300 dark:border-gray-600', bg: 'bg-gray-400' },
 };
 
 export function TaskCheckbox({ checked, priority, disabled, onChange }: TaskCheckboxProps) {
@@ -33,7 +33,7 @@ export function TaskCheckbox({ checked, priority, disabled, onChange }: TaskChec
       className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
         checked
           ? `${colors.bg} border-transparent`
-          : `${colors.border} hover:bg-gray-50`
+          : `${colors.border} hover:bg-gray-50 dark:hover:bg-gray-700`
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${
         animating ? 'scale-110' : ''
       }`}

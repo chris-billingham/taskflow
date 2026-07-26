@@ -64,7 +64,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
     <div className="relative" ref={ref}>
       <div className="flex items-center gap-1">
         <button
-          className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-gray-500 hover:bg-gray-100"
+          className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
           onClick={() => setIsOpen(!isOpen)}
           type="button"
         >
@@ -81,7 +81,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
                   {initial}
                 </div>
               )}
-              <span className="text-gray-700">{assignee.name}</span>
+              <span className="text-gray-700 dark:text-gray-300">{assignee.name}</span>
             </>
           ) : (
             <>
@@ -92,7 +92,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
         </button>
         {value && (
           <button
-            className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+            className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             onClick={() => onChange(null)}
             title="Remove assignee"
             type="button"
@@ -103,13 +103,13 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-56 bg-white rounded-lg shadow-lg border border-gray-200">
+        <div className="absolute top-full left-0 mt-1 z-50 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
           {/* Search */}
-          <div className="p-2 border-b border-gray-100">
+          <div className="p-2 border-b border-gray-100 dark:border-gray-700">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <input
-                className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-primary-500"
+                className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-primary-500"
                 placeholder="Search members..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -121,7 +121,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
           {/* Unassign option */}
           {value && (
             <button
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 border-b border-gray-100"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700"
               onClick={() => {
                 onChange(null);
                 setIsOpen(false);
@@ -135,7 +135,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
           {/* Member list */}
           <div className="max-h-48 overflow-y-auto py-1">
             {loading ? (
-              <p className="px-3 py-2 text-xs text-gray-400">Loading...</p>
+              <p className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">Loading...</p>
             ) : (
               <>
                 {filteredMembers.map((member) => {
@@ -144,7 +144,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
                   return (
                     <button
                       key={member.id}
-                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 ${
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
                         isSelected ? 'bg-primary-50' : ''
                       }`}
                       onClick={() => {
@@ -163,7 +163,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
                           {memberInitial}
                         </div>
                       )}
-                      <span className="text-gray-700 flex-1 text-left truncate">
+                      <span className="text-gray-700 dark:text-gray-300 flex-1 text-left truncate">
                         {member.name}
                       </span>
                       {isSelected && (
@@ -174,7 +174,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
                 })}
 
                 {filteredMembers.length === 0 && (
-                  <p className="px-3 py-2 text-xs text-gray-400">No members found</p>
+                  <p className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">No members found</p>
                 )}
               </>
             )}

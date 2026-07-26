@@ -127,13 +127,13 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <SearchInput query={query} onChange={setQuery} loading={loading} autoFocus />
 
         <div className="max-h-[60vh] overflow-y-auto">
           {showPlaceholder && (
             <div className="py-12 text-center">
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-400 dark:text-gray-500 text-sm">
                 Type to search tasks, projects, and comments
               </p>
             </div>
@@ -141,13 +141,13 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
           {showRecents && (
             <div>
-              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-100">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-700">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   Recent Searches
                 </p>
                 <button
                   onClick={clearRecentSearches}
-                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
                   Clear
                 </button>
@@ -155,11 +155,11 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               {recentSearches.map((term) => (
                 <button
                   key={term}
-                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   onClick={() => setQuery(term)}
                 >
-                  <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <span className="text-sm text-gray-700">{term}</span>
+                  <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{term}</span>
                 </button>
               ))}
             </div>
@@ -178,13 +178,13 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
           {showEmpty && (
             <div className="py-12 text-center">
-              <p className="text-gray-500 text-sm">No results for &ldquo;{query}&rdquo;</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">No results for &ldquo;{query}&rdquo;</p>
             </div>
           )}
         </div>
 
         {totalResults > 0 && (
-          <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 flex items-center gap-4 text-xs text-gray-400">
+          <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
             <span>
               <kbd className="font-mono">↑↓</kbd> navigate
             </span>

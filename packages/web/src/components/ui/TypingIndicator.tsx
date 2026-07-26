@@ -96,7 +96,7 @@ export function TypingIndicator({ taskId }: TypingIndicatorProps) {
         : `${users.length} people are typing`;
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-gray-500 px-1 py-0.5">
+    <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 px-1 py-0.5">
       <span>{label}</span>
       <span className="flex gap-0.5">
         <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />

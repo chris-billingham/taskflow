@@ -55,16 +55,16 @@ export function Modal({ isOpen, onClose, children, title, size = 'md' }: ModalPr
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`relative bg-white rounded-xl shadow-xl mx-4 w-full ${sizes[size]} animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-xl mx-4 w-full ${sizes[size]} animate-in fade-in zoom-in-95 duration-200`}
       >
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
             <button
-              className="p-1 rounded-lg hover:bg-gray-100"
+              className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={onClose}
             >
-              <X className="w-5 h-5 text-gray-400" />
+              <X className="w-5 h-5 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
         )}

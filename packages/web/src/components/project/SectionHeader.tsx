@@ -42,13 +42,13 @@ export function SectionHeader({
   };
 
   return (
-    <div className="group flex items-center gap-2 py-2 border-b border-gray-200">
+    <div className="group flex items-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
       <button
         className="w-5 h-5 flex items-center justify-center flex-shrink-0"
         onClick={onToggleCollapse}
       >
         <ChevronRight
-          className={`w-4 h-4 text-gray-400 transition-transform ${
+          className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${
             !section.isCollapsed ? 'rotate-90' : ''
           }`}
         />
@@ -57,7 +57,7 @@ export function SectionHeader({
       {isEditing ? (
         <input
           ref={inputRef}
-          className="text-sm font-semibold text-gray-900 bg-transparent border-b border-[#db4c3f] outline-none flex-1"
+          className="text-sm font-semibold text-gray-900 dark:text-white bg-transparent border-b border-[#db4c3f] outline-none flex-1"
           value={editName}
           onChange={(e) => setEditName(e.target.value)}
           onBlur={handleSubmit}
@@ -71,7 +71,7 @@ export function SectionHeader({
         />
       ) : (
         <span
-          className="text-sm font-semibold text-gray-900 cursor-pointer flex-1"
+          className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer flex-1"
           onClick={() => setIsEditing(true)}
         >
           {section.name}
@@ -79,14 +79,14 @@ export function SectionHeader({
       )}
 
       {taskCount > 0 && (
-        <span className="text-xs text-gray-400">{taskCount}</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">{taskCount}</span>
       )}
 
       <button
-        className="w-6 h-6 items-center justify-center rounded hover:bg-gray-200 hidden group-hover:flex flex-shrink-0"
+        className="w-6 h-6 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 hidden group-hover:flex flex-shrink-0"
         onClick={onDelete}
       >
-        <Trash2 className="w-3.5 h-3.5 text-gray-400" />
+        <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
       </button>
     </div>
   );

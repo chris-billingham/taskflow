@@ -98,20 +98,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const hasFavoriteFiltersOrLabels = favoriteFilters.length > 0 || favoriteLabels.length > 0;
 
+  // The light sidebar tint is an arbitrary value, so its dark counterpart has
+  // to be spelled out — a utility-class sweep can't infer one.
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#FAFAFA] border-r border-gray-200">
+    <div className="flex flex-col h-full bg-[#FAFAFA] dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
       {/* Logo and workspace switcher */}
       <div className="px-4 py-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckSquare className="w-6 h-6 text-[#db4c3f]" />
-            <span className="text-lg font-bold text-gray-900">Taskflow</span>
+            <span className="text-lg font-bold text-gray-900 dark:text-white">Taskflow</span>
           </div>
           <button
-            className="p-1 rounded hover:bg-gray-200 md:hidden"
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 md:hidden"
             onClick={onClose}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
@@ -129,7 +131,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
               location.pathname === path
                 ? 'bg-[#db4c3f]/10 text-[#db4c3f] font-medium'
-                : 'text-gray-700 hover:bg-gray-100'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
             onClick={() => {
               navigate(path);
@@ -147,7 +149,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {favorites.length > 0 && (
           <div className="mb-4">
             <button
-              className="flex items-center justify-between w-full px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700"
+              className="flex items-center justify-between w-full px-2 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200"
               onClick={() => setFavoritesExpanded(!favoritesExpanded)}
             >
               <span className="flex items-center gap-1">
@@ -168,7 +170,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
                       location.pathname === `/projects/${p.id}`
                         ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => {
                       navigate(`/projects/${p.id}`);
@@ -191,7 +193,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {hasFavoriteFiltersOrLabels && (
           <div className="mb-4">
             <button
-              className="flex items-center justify-between w-full px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700"
+              className="flex items-center justify-between w-full px-2 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200"
               onClick={() => setFiltersLabelsExpanded(!filtersLabelsExpanded)}
             >
               <span className="flex items-center gap-1">
@@ -213,7 +215,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
                       location.pathname === `/filters/${f.id}`
                         ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => {
                       navigate(`/filters/${f.id}`);
@@ -234,7 +236,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
                       location.pathname === `/labels/${l.id}`
                         ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => {
                       navigate(`/labels/${l.id}`);
@@ -250,7 +252,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 ))}
                 {/* Show all link */}
                 <button
-                  className="w-full text-left px-2 py-1 text-xs text-gray-400 hover:text-[#db4c3f]"
+                  className="w-full text-left px-2 py-1 text-xs text-gray-400 dark:text-gray-500 hover:text-[#db4c3f]"
                   onClick={() => {
                     navigate('/filters-labels');
                     onClose();
@@ -267,7 +269,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="mb-4">
           <div className="flex items-center justify-between px-2 py-1">
             <button
-              className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700"
+              className="flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200"
               onClick={() => setProjectsExpanded(!projectsExpanded)}
             >
               My Projects
@@ -278,18 +280,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               />
             </button>
             <button
-              className="p-0.5 rounded hover:bg-gray-200"
+              className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
               onClick={() => { setCreateForTeam(false); setShowCreateModal(true); }}
               title="Add project"
             >
-              <Plus className="w-4 h-4 text-gray-500" />
+              <Plus className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
 
           {projectsExpanded && (
             <div className="mt-1">
               {loading ? (
-                <p className="px-2 py-1 text-xs text-gray-400">Loading...</p>
+                <p className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">Loading...</p>
               ) : personalTree.length > 0 ? (
                 <ProjectList
                   projects={personalTree}
@@ -297,7 +299,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onDelete={handleDeleteProject}
                 />
               ) : (
-                <p className="px-2 py-1 text-xs text-gray-400">No projects</p>
+                <p className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">No projects</p>
               )}
             </div>
           )}
@@ -308,7 +310,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div>
             <div className="flex items-center justify-between px-2 py-1">
               <button
-                className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700"
+                className="flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200"
                 onClick={() => setTeamProjectsExpanded(!teamProjectsExpanded)}
               >
                 <Building2 className="w-3.5 h-3.5" />
@@ -321,21 +323,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </button>
               <div className="flex items-center gap-1">
                 <button
-                  className="p-0.5 rounded hover:bg-gray-200"
+                  className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                   onClick={() => {
                     navigate('/workspace/settings');
                     onClose();
                   }}
                   title="Workspace settings"
                 >
-                  <Settings className="w-3.5 h-3.5 text-gray-500" />
+                  <Settings className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
                 </button>
                 <button
-                  className="p-0.5 rounded hover:bg-gray-200"
+                  className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                   onClick={() => { setCreateForTeam(true); setShowCreateModal(true); }}
                   title="Add team project"
                 >
-                  <Plus className="w-4 h-4 text-gray-500" />
+                  <Plus className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 </button>
               </div>
             </div>
@@ -343,7 +345,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             {teamProjectsExpanded && (
               <div className="mt-1">
                 {loading ? (
-                  <p className="px-2 py-1 text-xs text-gray-400">Loading...</p>
+                  <p className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">Loading...</p>
                 ) : teamTree.length > 0 ? (
                   <ProjectList
                     projects={teamTree}
@@ -351,7 +353,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     onDelete={handleDeleteProject}
                   />
                 ) : (
-                  <p className="px-2 py-1 text-xs text-gray-400">
+                  <p className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
                     No team projects yet
                   </p>
                 )}
@@ -362,9 +364,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </div>
 
       {/* User menu */}
-      <div className="relative border-t border-gray-200 px-2 py-2">
+      <div className="relative border-t border-gray-200 dark:border-gray-700 px-2 py-2">
         <button
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-gray-700 hover:bg-gray-100"
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           onClick={() => setShowUserMenu(!showUserMenu)}
         >
           <div className="w-7 h-7 rounded-full bg-[#db4c3f] flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
@@ -379,11 +381,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               className="fixed inset-0 z-40"
               onClick={() => setShowUserMenu(false)}
             />
-            <div className="absolute left-2 bottom-full mb-1 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+            <div className="absolute left-2 bottom-full mb-1 z-50 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
               {currentWorkspace && (
                 <>
                   <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     onClick={() => {
                       setShowUserMenu(false);
                       navigate('/workspace/settings');
@@ -392,11 +394,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <Building2 className="w-4 h-4" />
                     Workspace settings
                   </button>
-                  <hr className="my-1 border-gray-200" />
+                  <hr className="my-1 border-gray-200 dark:border-gray-700" />
                 </>
               )}
               <button
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => {
                   setShowUserMenu(false);
                   navigate('/settings/profile');
@@ -405,9 +407,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <Settings className="w-4 h-4" />
                 Settings
               </button>
-              <hr className="my-1 border-gray-200" />
+              <hr className="my-1 border-gray-200 dark:border-gray-700" />
               <button
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                 onClick={handleLogout}
               >
                 <LogOut className="w-4 h-4" />

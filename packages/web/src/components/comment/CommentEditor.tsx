@@ -77,7 +77,7 @@ export function CommentEditor({
     <div className="space-y-2">
       <textarea
         ref={textareaRef}
-        className="w-full text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 outline-none focus:border-primary-500 resize-none placeholder:text-gray-400"
+        className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-3 outline-none focus:border-primary-500 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500"
         rows={3}
         placeholder={placeholder}
         value={content}
@@ -93,15 +93,15 @@ export function CommentEditor({
           {pendingFiles.map((file, i) => (
             <div
               key={i}
-              className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700"
+              className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300"
             >
-              <Paperclip className="w-3 h-3 text-gray-400" />
+              <Paperclip className="w-3 h-3 text-gray-400 dark:text-gray-500" />
               <span className="max-w-[120px] truncate" title={file.name}>
                 {file.name}
               </span>
-              <span className="text-gray-400">({formatFileSize(file.size)})</span>
+              <span className="text-gray-400 dark:text-gray-500">({formatFileSize(file.size)})</span>
               <button
-                className="ml-0.5 text-gray-400 hover:text-gray-600"
+                className="ml-0.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 onClick={() => removeFile(i)}
                 type="button"
               >
@@ -118,7 +118,7 @@ export function CommentEditor({
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-gray-400">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">
             Markdown supported &middot; Ctrl+Enter to submit
           </span>
           {showAttachments && (
@@ -132,7 +132,7 @@ export function CommentEditor({
               />
               <button
                 type="button"
-                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 onClick={() => fileInputRef.current?.click()}
                 title="Attach files"
                 disabled={submitting}
@@ -145,7 +145,7 @@ export function CommentEditor({
         <div className="flex items-center gap-2">
           {onCancel && (
             <button
-              className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md"
+              className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
               onClick={onCancel}
               disabled={submitting}
             >

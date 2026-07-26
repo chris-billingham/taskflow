@@ -69,7 +69,7 @@ function SortableSectionItem({
       {!section.isCollapsed && (
         renderContent ? renderContent(section) : (
           <div className="pl-7 py-2">
-            <p className="text-sm text-gray-400 italic">No tasks yet</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 italic">No tasks yet</p>
           </div>
         )
       )}
@@ -188,7 +188,7 @@ export function SectionList({
         </div>
       ) : (
         <button
-          className="mt-3 flex items-center gap-1 text-sm text-gray-500 hover:text-[#db4c3f] transition-colors"
+          className="mt-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-[#db4c3f] transition-colors"
           onClick={() => setIsAdding(true)}
         >
           <Plus className="w-4 h-4" />

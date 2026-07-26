@@ -85,7 +85,7 @@ export function LabelManager() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Labels</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Labels</h3>
         <button
           className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-[#db4c3f] hover:bg-[#db4c3f]/5 rounded-lg"
           onClick={() => setShowCreate(!showCreate)}
@@ -97,9 +97,9 @@ export function LabelManager() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
           <input
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#db4c3f] mb-2"
+            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-[#db4c3f] mb-2"
             placeholder="Label name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -127,7 +127,7 @@ export function LabelManager() {
               {creating ? 'Adding...' : 'Add'}
             </button>
             <button
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
               onClick={() => {
                 setShowCreate(false);
                 setNewName('');
@@ -141,7 +141,7 @@ export function LabelManager() {
 
       {/* Labels list */}
       {labels.length === 0 ? (
-        <p className="text-sm text-gray-500 py-4 text-center">
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
           No labels yet. Create one to get started.
         </p>
       ) : (
@@ -149,13 +149,13 @@ export function LabelManager() {
           {labels.map((label) => (
             <div
               key={label.id}
-              className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 group"
+              className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group"
               draggable
               onDragStart={(e) => handleDragStart(e, label.id)}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, label.id)}
             >
-              <GripVertical className="w-4 h-4 text-gray-300 cursor-grab opacity-0 group-hover:opacity-100" />
+              <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600 cursor-grab opacity-0 group-hover:opacity-100" />
 
               {editingId === label.id ? (
                 <div className="flex-1 flex items-center gap-2">
@@ -168,7 +168,7 @@ export function LabelManager() {
                     />
                   </div>
                   <input
-                    className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:border-[#db4c3f]"
+                    className="flex-1 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-[#db4c3f]"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     onKeyDown={(e) => {
@@ -178,13 +178,13 @@ export function LabelManager() {
                     autoFocus
                   />
                   <button
-                    className="p-1 rounded hover:bg-green-50 text-green-600"
+                    className="p-1 rounded hover:bg-green-50 text-green-600 dark:text-green-400"
                     onClick={() => handleUpdate(label.id)}
                   >
                     <Check className="w-4 h-4" />
                   </button>
                   <button
-                    className="p-1 rounded hover:bg-gray-100 text-gray-400"
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500"
                     onClick={() => setEditingId(null)}
                   >
                     <X className="w-4 h-4" />
@@ -197,34 +197,34 @@ export function LabelManager() {
                     style={{ backgroundColor: label.color }}
                   />
                   <button
-                    className="flex-1 text-sm text-gray-700 text-left hover:text-[#db4c3f] cursor-pointer"
+                    className="flex-1 text-sm text-gray-700 dark:text-gray-300 text-left hover:text-[#db4c3f] cursor-pointer"
                     onClick={() => navigate(`/labels/${label.id}`)}
                   >
                     {label.name}
                   </button>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                     <button
-                      className="p-1 rounded hover:bg-gray-200"
+                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                       onClick={() => updateLabel(label.id, { isFavorite: !label.isFavorite })}
                       title={label.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                     >
                       {label.isFavorite ? (
                         <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
                       ) : (
-                        <Star className="w-3.5 h-3.5 text-gray-400" />
+                        <Star className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                       )}
                     </button>
                     <button
-                      className="p-1 rounded hover:bg-gray-200"
+                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                       onClick={() => startEdit(label)}
                     >
-                      <Pencil className="w-3.5 h-3.5 text-gray-400" />
+                      <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                     </button>
                     <button
-                      className="p-1 rounded hover:bg-red-50"
+                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                       onClick={() => setDeleteConfirm(label.id)}
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+                      <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 hover:text-red-500" />
                     </button>
                   </div>
                 </>
@@ -238,14 +238,14 @@ export function LabelManager() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/50" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-white rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete label?</h3>
-            <p className="text-sm text-gray-600 mb-6">
+          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Delete label?</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               This will remove the label from all tasks. This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 onClick={() => setDeleteConfirm(null)}
               >
                 Cancel

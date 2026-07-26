@@ -83,7 +83,7 @@ export default function ForgotPassword() {
 
           <Link
             to="/login"
-            className="flex items-center justify-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to sign in

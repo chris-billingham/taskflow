@@ -60,8 +60,8 @@ export function FileUpload({ onFiles, uploading, progress, error, disabled }: Fi
           dragging
             ? 'border-primary-400 bg-primary-50'
             : disabled || uploading
-              ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-              : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+              ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 cursor-not-allowed'
+              : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 hover:bg-gray-50 dark:hover:bg-gray-700'
         }`}
         onClick={() => !disabled && !uploading && inputRef.current?.click()}
         onDragOver={(e) => {
@@ -82,22 +82,22 @@ export function FileUpload({ onFiles, uploading, progress, error, disabled }: Fi
 
         {uploading ? (
           <div className="space-y-1.5">
-            <div className="text-xs text-gray-500">Uploading...</div>
-            <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+            <div className="text-xs text-gray-500 dark:text-gray-400">Uploading...</div>
+            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 overflow-hidden">
               <div
                 className="bg-primary-500 h-1.5 rounded-full transition-all duration-200"
                 style={{ width: `${progress ?? 0}%` }}
               />
             </div>
-            <div className="text-[11px] text-gray-400">{progress ?? 0}%</div>
+            <div className="text-[11px] text-gray-400 dark:text-gray-500">{progress ?? 0}%</div>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1">
-            <Upload className="w-5 h-5 text-gray-400" />
-            <span className="text-xs text-gray-500">
+            <Upload className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               Drop files here or <span className="text-primary-600 font-medium">browse</span>
             </span>
-            <span className="text-[11px] text-gray-400">
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">
               Max {maxFileSizeMb}MB · Images, PDFs, documents, archives
             </span>
           </div>
@@ -105,7 +105,7 @@ export function FileUpload({ onFiles, uploading, progress, error, disabled }: Fi
       </div>
 
       {displayError && (
-        <div className="flex items-center gap-1.5 text-xs text-red-600">
+        <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
           <span>{displayError}</span>
           <button

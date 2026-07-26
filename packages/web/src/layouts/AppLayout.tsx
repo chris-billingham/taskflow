@@ -10,7 +10,6 @@ import { SearchModal } from '@/components/search/SearchModal';
 import { useTaskStore } from '@/stores/taskStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useRealTimeSync } from '@/hooks/useRealTimeSync';
-import { useTheme } from '@/hooks/useTheme';
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -20,7 +19,8 @@ export function AppLayout() {
 
   useSocket();
   useRealTimeSync();
-  useTheme();
+  // useTheme lives at the app root (App.tsx) so it covers settings and auth
+  // routes too, which this layout does not wrap.
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -58,30 +58,30 @@ export function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content area */}
       <div className="md:pl-64">
         {/* Mobile header bar */}
-        <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+        <div className="md:hidden sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between">
           <button
-            className="p-1.5 rounded hover:bg-gray-100"
+            className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={() => setSidebarOpen(true)}
           >
-            <Menu className="w-5 h-5 text-gray-700" />
+            <Menu className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
           <div className="flex items-center gap-1">
             <button
-              className="p-1.5 rounded hover:bg-gray-100"
+              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => setSearchOpen(true)}
               title="Search (/)"
             >
-              <Search className="w-5 h-5 text-gray-500" />
+              <Search className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
             <NotificationCenter />
             <button
-              className="p-1.5 rounded hover:bg-gray-100"
+              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => setQuickAddOpen(true)}
             >
               <Plus className="w-5 h-5 text-[#db4c3f]" />
@@ -93,11 +93,11 @@ export function AppLayout() {
         <div className="hidden md:flex fixed top-4 right-20 z-30 items-center gap-3">
           <SyncStatus />
           <button
-            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             onClick={() => setSearchOpen(true)}
             title="Search (/)"
           >
-            <Search className="w-5 h-5 text-gray-500" />
+            <Search className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
           <NotificationCenter />
         </div>

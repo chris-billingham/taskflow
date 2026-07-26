@@ -19,7 +19,7 @@ const TERMS_URL = import.meta.env.VITE_TERMS_URL || '';
 const PRIVACY_URL = import.meta.env.VITE_PRIVACY_URL || '';
 
 function LegalLink({ href, children }: { href: string; children: React.ReactNode }) {
-  if (!href) return <span className="text-gray-600">{children}</span>;
+  if (!href) return <span className="text-gray-600 dark:text-gray-400">{children}</span>;
   return (
     <a
       href={href}
@@ -147,13 +147,13 @@ export default function Register() {
           />
           {password && (
             <div className="mt-2">
-              <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                 <div
                   className={`h-full ${strength.color} transition-all duration-300 rounded-full`}
                   style={{ width: strength.width }}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">{strength.label}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{strength.label}</p>
             </div>
           )}
         </div>
@@ -171,17 +171,17 @@ export default function Register() {
           <label className="flex items-start gap-2">
             <input
               type="checkbox"
-              className="rounded border-gray-300 text-[#db4c3f] focus:ring-[#db4c3f] mt-0.5"
+              className="rounded border-gray-300 dark:border-gray-600 text-[#db4c3f] focus:ring-[#db4c3f] mt-0.5"
               {...register('acceptTerms')}
             />
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               I agree to the{' '}
               <LegalLink href={TERMS_URL}>Terms of Service</LegalLink> and{' '}
               <LegalLink href={PRIVACY_URL}>Privacy Policy</LegalLink>
               {!TERMS_URL && !PRIVACY_URL && (
                 <>
                   {' '}
-                  <span className="text-gray-400">
+                  <span className="text-gray-400 dark:text-gray-500">
                     of this instance, as set by its operator
                   </span>
                 </>
@@ -189,7 +189,7 @@ export default function Register() {
             </span>
           </label>
           {errors.acceptTerms && (
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
               {errors.acceptTerms.message}
             </p>
           )}
@@ -199,7 +199,7 @@ export default function Register() {
           Create account
         </Button>
 
-        <p className="text-center text-sm text-gray-600">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
           Already have an account?{' '}
           <Link
             to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login'}

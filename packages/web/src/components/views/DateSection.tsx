@@ -54,19 +54,19 @@ export function DateSection({
 
   return (
     <div id={`date-section-${date}`} className="mb-4">
-      <div className="sticky top-0 bg-white z-10 flex items-center gap-2 py-2 border-b border-gray-200">
+      <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 flex items-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
         <h3
           className={`text-sm font-semibold ${
-            today ? 'text-[#db4c3f]' : 'text-gray-700'
+            today ? 'text-[#db4c3f]' : 'text-gray-700 dark:text-gray-300'
           }`}
         >
           {headerText}
         </h3>
         {subText && (
-          <span className="text-xs text-gray-400">{subText}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{subText}</span>
         )}
         {tasks.length > 0 && (
-          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+          <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
             {tasks.length}
           </span>
         )}

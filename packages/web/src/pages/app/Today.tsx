@@ -242,10 +242,10 @@ export default function Today() {
 
       {error && !loading && (
         <div className="text-center py-16">
-          <h3 className="text-lg font-medium text-gray-700 mb-1">
+          <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
             Couldn't load Today
           </h3>
-          <p className="text-sm text-gray-500 mb-4">{error}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{error}</p>
           <button
             className="px-4 py-1.5 text-sm text-white bg-[#db4c3f] rounded-lg hover:bg-[#c53727]"
             onClick={() => refetch()}
@@ -257,11 +257,11 @@ export default function Today() {
 
       {isEmpty && (
         <div className="text-center py-16">
-          <CalendarDays className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-gray-500 mb-1">
+          <CalendarDays className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+          <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-1">
             All clear for today
           </h3>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-400 dark:text-gray-500">
             Enjoy your day or add a new task below.
           </p>
         </div>
@@ -312,9 +312,9 @@ function TimeSection({
 }) {
   return (
     <div className="mb-4">
-      <div className="flex items-center gap-2 py-2 border-b border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-700">{label}</h3>
-        <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+      <div className="flex items-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{label}</h3>
+        <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
           {tasks.length}
         </span>
       </div>

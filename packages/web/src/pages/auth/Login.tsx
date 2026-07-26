@@ -88,7 +88,7 @@ export default function Login() {
           Sign in
         </Button>
 
-        <p className="text-center text-sm text-gray-600">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
           Don&apos;t have an account?{' '}
           <Link
             to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : '/register'}
