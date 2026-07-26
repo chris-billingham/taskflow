@@ -11,6 +11,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { useTodayView, useTaskActions } from '@/hooks/useTasks';
 import { useTaskStore } from '@/stores/taskStore';
 import type { Task } from '@/stores/taskStore';
+import { getSubtasks } from '@/utils/subtaskIndex';
 
 export default function Today() {
   const { todayView, loading, refetch, rescheduleOverdue } = useTodayView();
@@ -285,9 +286,7 @@ function TimeSection({
       </div>
       <div className="space-y-0.5">
         {tasks.map((task) => {
-          const subtasks = Array.from(allTasks.values())
-            .filter((t) => t.parentId === task.id)
-            .sort((a, b) => a.sortOrder - b.sortOrder);
+          const subtasks = getSubtasks(allTasks, task.id);
           return (
             <TaskItem
               key={task.id}

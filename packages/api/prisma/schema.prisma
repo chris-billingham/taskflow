@@ -309,7 +309,8 @@ model Task {
   attachments Attachment[] @relation("TaskAttachments")
   activityLogs ActivityLog[]
 
-  @@index([projectId])
+  // Composite matches the hot list query (WHERE projectId ORDER BY sortOrder)
+  @@index([projectId, sortOrder])
   @@index([sectionId])
   @@index([parentId])
   @@index([creatorId])

@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { extname } from 'path';
 import { fileTypeFromBuffer } from 'file-type';
 import { prisma } from '../config/database.js';
-import { uploadObject, deleteObject, getObjectStream } from '../config/storage.js';
+import { uploadObject, deleteObject, deleteObjects, getObjectStream } from '../config/storage.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import {
   requireTaskAccess,
@@ -203,4 +203,37 @@ export async function deleteFile(id: string, userId: string) {
   await prisma.attachment.delete({ where: { id } });
 
   return { message: 'Attachment deleted successfully' };
+}
+
+/**
+ * Delete the given attachment rows AND their object-storage bytes. Called
+ * after task/project deletion (the FKs SetNull, so without this every delete
+ * leaked orphaned rows plus unreachable objects that grew MinIO forever —
+ * and were faithfully mirrored into every backup).
+ */
+export async function reclaimAttachments(
+  attachments: Array<{ id: string; url: string }>,
+): Promise<void> {
+  if (attachments.length === 0) return;
+  await deleteObjects(attachments.map((a) => a.url));
+  await prisma.attachment.deleteMany({
+    where: { id: { in: attachments.map((a) => a.id) } },
+  });
+}
+
+/** Sweep rows orphaned by cascades (both FKs null) plus their objects. */
+export async function sweepOrphanedAttachments(): Promise<number> {
+  const orphans = await prisma.attachment.findMany({
+    where: {
+      taskId: null,
+      commentId: null,
+      // grace period: uploads are linked at creation, so anything unlinked
+      // for an hour is genuinely orphaned
+      createdAt: { lt: new Date(Date.now() - 60 * 60 * 1000) },
+    },
+    select: { id: true, url: true },
+    take: 1000,
+  });
+  await reclaimAttachments(orphans);
+  return orphans.length;
 }

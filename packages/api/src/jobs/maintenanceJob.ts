@@ -1,6 +1,7 @@
 import { Worker, Queue } from 'bullmq';
 import { createBullMQConnection } from '../config/redis.js';
 import { prisma } from '../config/database.js';
+import { sweepOrphanedAttachments } from '../services/fileService.js';
 
 const QUEUE_NAME = 'maintenance';
 
@@ -29,9 +30,13 @@ export function startMaintenanceWorker() {
         where: { expiresAt: { lt: new Date() } },
       });
 
-      if (tokens.count || invites.count) {
+      // Attachments orphaned by cascades (workspace/account deletion paths
+      // that don't collect keys inline) — reclaim rows + object bytes.
+      const swept = await sweepOrphanedAttachments();
+
+      if (tokens.count || invites.count || swept) {
         console.log(
-          `[Maintenance] pruned ${tokens.count} expired refresh tokens, ${invites.count} expired invites`,
+          `[Maintenance] pruned ${tokens.count} expired refresh tokens, ${invites.count} expired invites, ${swept} orphaned attachments`,
         );
       }
     },

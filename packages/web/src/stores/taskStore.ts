@@ -93,6 +93,9 @@ interface TaskState {
   // View data
   todayView: TodayViewData | null;
   upcomingView: UpcomingViewData | null;
+  // Cursor for the current task-list query; null = no more pages
+  tasksNextCursor: string | null;
+  loadingMore: boolean;
   viewLoading: boolean;
 
   // Actions
@@ -127,6 +130,7 @@ interface TaskState {
   removeTask: (id: string) => void;
 
   // View actions
+  loadMoreTasks: (query?: TaskQuery) => Promise<void>;
   fetchTodayView: () => Promise<void>;
   fetchUpcomingView: (days?: number, includeNoDate?: boolean) => Promise<void>;
   rescheduleOverdue: (targetDate: string) => Promise<void>;
@@ -143,6 +147,8 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
   error: null,
   todayView: null,
   upcomingView: null,
+  tasksNextCursor: null,
+  loadingMore: false,
   viewLoading: false,
 
   fetchTasks: async (query) => {
@@ -168,13 +174,45 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
           }
         }
       }
-      set({ tasks, loading: false });
+      set({ tasks, loading: false, tasksNextCursor: data.nextCursor ?? null });
     } catch (err: any) {
       if (seq !== fetchTasksSeq) return;
       set({
         error: err.response?.data?.message || 'Failed to fetch tasks',
         loading: false,
       });
+    }
+  },
+
+  loadMoreTasks: async (query) => {
+    const { tasksNextCursor, loadingMore } = get();
+    if (!tasksNextCursor || loadingMore) return;
+    set({ loadingMore: true });
+    try {
+      const params = new URLSearchParams();
+      if (query) {
+        Object.entries(query).forEach(([key, value]) => {
+          if (value !== undefined) params.append(key, value);
+        });
+      }
+      params.append('cursor', tasksNextCursor);
+      const { data } = await api.get(`/tasks?${params.toString()}`);
+      set((state) => {
+        const tasks = new Map(state.tasks);
+        for (const t of data.data) {
+          tasks.set(t.id, t);
+          if (t.subtasks && Array.isArray(t.subtasks)) {
+            for (const sub of t.subtasks) tasks.set(sub.id, sub);
+          }
+        }
+        return {
+          tasks,
+          loadingMore: false,
+          tasksNextCursor: data.nextCursor ?? null,
+        };
+      });
+    } catch {
+      set({ loadingMore: false });
     }
   },
 

@@ -25,6 +25,7 @@ import {
   recomputeRelativeReminders,
 } from './reminderService.js';
 import { logActivity } from './activityService.js';
+import { reclaimAttachments } from './fileService.js';
 import {
   broadcastTaskCreated,
   broadcastTaskUpdated,
@@ -221,13 +222,23 @@ export async function getTasks(query: TaskQuery, userId: string) {
     }),
   };
 
+  const take = query.limit ?? 100;
   const tasks = await prisma.task.findMany({
     where,
     include: taskListInclude,
-    orderBy: { sortOrder: 'asc' },
+    // The id tiebreak makes the sort total, so the cursor never skips or
+    // repeats rows that share a sortOrder.
+    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    take: take + 1,
+    ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
   });
 
-  return tasks;
+  const hasMore = tasks.length > take;
+  const page = hasMore ? tasks.slice(0, take) : tasks;
+  return {
+    tasks: page,
+    nextCursor: hasMore ? page[page.length - 1].id : null,
+  };
 }
 
 export async function getTaskById(id: string, userId: string) {
@@ -399,8 +410,27 @@ export async function updateTask(
 export async function deleteTask(id: string, userId: string) {
   const task = await requireTaskAccess(id, userId, 'EDIT');
 
+  // Attachment rows survive task deletion as orphans (SetNull) — collect the
+  // whole subtree's attachments first so their bytes can be reclaimed.
+  const descendantIds = [id];
+  let frontier = [id];
+  while (frontier.length > 0) {
+    const children: Array<{ id: string }> = await prisma.task.findMany({
+      where: { parentId: { in: frontier } },
+      select: { id: true },
+    });
+    frontier = children.map((c) => c.id);
+    descendantIds.push(...frontier);
+  }
+  const attachments = await prisma.attachment.findMany({
+    where: { taskId: { in: descendantIds } },
+    select: { id: true, url: true },
+  });
+
   // Cascade delete handles subtasks via Prisma schema
   await prisma.task.delete({ where: { id } });
+
+  runSideEffect('reclaimAttachments', () => reclaimAttachments(attachments));
 
   runSideEffect('logActivity:DELETED', () => logActivity({
     action: 'DELETED',

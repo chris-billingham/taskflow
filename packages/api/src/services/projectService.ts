@@ -7,6 +7,7 @@ import {
 } from './access.js';
 import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.js';
 import { logActivity } from './activityService.js';
+import { reclaimAttachments } from './fileService.js';
 import {
   broadcastProjectUpdated,
   broadcastProjectDeleted,
@@ -171,7 +172,18 @@ export async function deleteProject(id: string, userId: string) {
     throw new ForbiddenError('Cannot delete the Inbox project');
   }
 
+  // Collect attachments across the project's tasks before the cascade
+  // orphans their rows, so their storage bytes can be reclaimed.
+  const attachments = await prisma.attachment.findMany({
+    where: { task: { projectId: id } },
+    select: { id: true, url: true },
+  });
+
   await prisma.project.delete({ where: { id } });
+
+  reclaimAttachments(attachments).catch((err) =>
+    console.error('[projectService] attachment reclaim failed:', err),
+  );
 
   logActivity({
     action: 'DELETED',
@@ -322,45 +334,97 @@ export async function duplicateProject(
     await requireWorkspaceRole(original.workspaceId, userId, 'MEMBER');
   }
 
-  // Create the duplicate project
-  const duplicate = await prisma.project.create({
-    data: {
-      name: newName ?? `${original.name} (copy)`,
-      color: original.color,
-      ownerId: userId,
-      workspaceId: original.workspaceId,
-      parentId: original.parentId,
-      viewStyle: original.viewStyle,
+  // Everything the copy needs: incomplete top-level tasks with their labels
+  // and subtasks. (The old loop-of-creates was N+1 round trips with no
+  // transaction — a mid-copy failure left a permanently half-populated
+  // project — and silently dropped subtasks, labels, dates and assignees.)
+  const sourceTasks = await prisma.task.findMany({
+    where: { projectId: id, parentId: null },
+    orderBy: { sortOrder: 'asc' },
+    include: {
+      taskLabels: { select: { labelId: true, label: { select: { userId: true } } } },
+      subtasks: {
+        orderBy: { sortOrder: 'asc' },
+        include: { taskLabels: { select: { labelId: true, label: { select: { userId: true } } } } },
+      },
     },
   });
 
-  // Duplicate sections
-  const sectionMap = new Map<string, string>();
-  for (const section of original.sections) {
-    const newSection = await prisma.section.create({
+  const duplicate = await prisma.$transaction(async (tx) => {
+    const created = await tx.project.create({
       data: {
-        name: section.name,
-        projectId: duplicate.id,
-        sortOrder: section.sortOrder,
+        name: newName ?? `${original.name} (copy)`,
+        color: original.color,
+        description: original.description,
+        ownerId: userId,
+        workspaceId: original.workspaceId,
+        parentId: original.parentId,
+        viewStyle: original.viewStyle,
       },
     });
-    sectionMap.set(section.id, newSection.id);
-  }
 
-  // Duplicate tasks
-  for (const task of original.tasks) {
-    await prisma.task.create({
-      data: {
-        content: task.content,
-        description: task.description,
-        projectId: duplicate.id,
-        sectionId: task.sectionId ? sectionMap.get(task.sectionId) : null,
-        creatorId: userId,
-        priority: task.priority,
-        sortOrder: task.sortOrder,
-      },
-    });
-  }
+    const sectionMap = new Map<string, string>();
+    for (const section of original.sections) {
+      const newSection = await tx.section.create({
+        data: {
+          name: section.name,
+          projectId: created.id,
+          sortOrder: section.sortOrder,
+        },
+      });
+      sectionMap.set(section.id, newSection.id);
+    }
+
+    // Labels are per-user: only the duplicating user's own labels carry over.
+    const ownLabelIds = (labels: Array<{ labelId: string; label: { userId: string } }>) =>
+      labels.filter((l) => l.label.userId === userId).map((l) => ({ labelId: l.labelId }));
+
+    for (const task of sourceTasks) {
+      const parentLabels = ownLabelIds(task.taskLabels);
+      const newTask = await tx.task.create({
+        data: {
+          content: task.content,
+          description: task.description,
+          projectId: created.id,
+          sectionId: task.sectionId ? sectionMap.get(task.sectionId) : null,
+          creatorId: userId,
+          assigneeId: task.assigneeId,
+          dueDate: task.dueDate,
+          dueTime: task.dueTime,
+          deadline: task.deadline,
+          duration: task.duration,
+          priority: task.priority,
+          isRecurring: task.isRecurring,
+          recurrenceRule: task.recurrenceRule,
+          sortOrder: task.sortOrder,
+          taskLabels: parentLabels.length ? { create: parentLabels } : undefined,
+        },
+      });
+
+      if (task.subtasks.length > 0) {
+        for (const sub of task.subtasks) {
+          const subLabels = ownLabelIds(sub.taskLabels);
+          await tx.task.create({
+            data: {
+              content: sub.content,
+              description: sub.description,
+              projectId: created.id,
+              parentId: newTask.id,
+              creatorId: userId,
+              assigneeId: sub.assigneeId,
+              dueDate: sub.dueDate,
+              dueTime: sub.dueTime,
+              priority: sub.priority,
+              sortOrder: sub.sortOrder,
+              taskLabels: subLabels.length ? { create: subLabels } : undefined,
+            },
+          });
+        }
+      }
+    }
+
+    return created;
+  }, { timeout: 30_000 });
 
   return prisma.project.findUnique({
     where: { id: duplicate.id },

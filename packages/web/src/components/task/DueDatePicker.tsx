@@ -57,6 +57,8 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Listen only while open — these mount once per task row.
+    if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setIsOpen(false);
@@ -64,7 +66,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

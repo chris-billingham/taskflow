@@ -23,6 +23,7 @@ import { BoardAddColumn } from '@/components/board/BoardAddColumn';
 import { TaskDetail } from '@/components/task/TaskDetail';
 import type { Task } from '@/stores/taskStore';
 import type { ProjectSection } from '@/stores/projectStore';
+import { getSubtasks } from '@/utils/subtaskIndex';
 
 interface BoardViewProps {
   tasks: Task[];
@@ -258,9 +259,7 @@ export function BoardView({
     : null;
 
   const selectedTaskSubtasks = selectedTask
-    ? Array.from(allTasks.values())
-        .filter((t) => t.parentId === selectedTask.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
+    ? getSubtasks(allTasks, selectedTask.id)
     : [];
 
   const handleAddSubtask = useCallback(

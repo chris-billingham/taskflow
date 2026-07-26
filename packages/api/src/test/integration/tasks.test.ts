@@ -80,7 +80,7 @@ function authHeaders() {
 
 describe('GET /api/v1/tasks', () => {
   it('returns 200 with task list', async () => {
-    vi.mocked(taskService.getTasks).mockResolvedValue([SAMPLE_TASK] as never);
+    vi.mocked(taskService.getTasks).mockResolvedValue({ tasks: [SAMPLE_TASK], nextCursor: null } as never);
 
     const response = await app.inject({
       method: 'GET',
@@ -101,7 +101,7 @@ describe('GET /api/v1/tasks', () => {
   });
 
   it('passes query params to service', async () => {
-    vi.mocked(taskService.getTasks).mockResolvedValue([] as never);
+    vi.mocked(taskService.getTasks).mockResolvedValue({ tasks: [], nextCursor: null } as never);
 
     await app.inject({
       method: 'GET',

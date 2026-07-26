@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, Clock } from 'lucide-react';
 import { TaskItem } from '@/components/task/TaskItem';
 import type { Task } from '@/stores/taskStore';
+import { getSubtasks } from '@/utils/subtaskIndex';
 
 interface OverdueSectionProps {
   tasks: Task[];
@@ -58,9 +59,7 @@ export function OverdueSection({
       {!collapsed && (
         <div className="px-1 pb-1">
           {tasks.map((task) => {
-            const subtasks = Array.from(allTasks.values())
-              .filter((t) => t.parentId === task.id)
-              .sort((a, b) => a.sortOrder - b.sortOrder);
+            const subtasks = getSubtasks(allTasks, task.id);
             return (
               <TaskItem
                 key={task.id}

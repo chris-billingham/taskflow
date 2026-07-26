@@ -39,6 +39,10 @@ export const taskParamsSchema = z.object({
 });
 
 export const taskQuerySchema = z.object({
+  // Cursor pagination: unbounded task lists serialised tens of thousands of
+  // rows on mature accounts (multi-second responses, container OOM).
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  cursor: z.string().optional(),
   projectId: z.string().optional(),
   sectionId: z.string().optional(),
   parentId: z.string().optional(),

@@ -10,6 +10,7 @@ import { ChevronDown, GripVertical, Trash2 } from 'lucide-react';
 import { BoardCard } from './BoardCard';
 import { BoardQuickAdd } from './BoardQuickAdd';
 import type { Task } from '@/stores/taskStore';
+import { getSubtasks } from '@/utils/subtaskIndex';
 
 interface BoardColumnProps {
   columnId: string;
@@ -171,9 +172,7 @@ export function BoardColumn({
             strategy={verticalListSortingStrategy}
           >
             {tasks.map((task) => {
-              const subtasks = Array.from(allTasks.values())
-                .filter((t) => t.parentId === task.id)
-                .sort((a, b) => a.sortOrder - b.sortOrder);
+              const subtasks = getSubtasks(allTasks, task.id);
               return (
                 <BoardCard
                   key={task.id}

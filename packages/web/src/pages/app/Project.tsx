@@ -36,7 +36,7 @@ export default function Project() {
   } = useProjectSections(id);
 
   const queryObj = useMemo(() => (id ? { projectId: id } : undefined), [id]);
-  const { tasks, refetch: refetchTasks } = useTasks(queryObj);
+  const { tasks, refetch: refetchTasks, hasMore, loadingMore, loadMore } = useTasks(queryObj);
   const taskMap = useTaskStore((s) => s.tasks);
   const {
     createTask,
@@ -283,6 +283,18 @@ export default function Project() {
               );
             }}
           />
+
+          {hasMore && (
+            <div className="flex justify-center py-3">
+              <button
+                className="px-4 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => loadMore()}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading…' : 'Load more tasks'}
+              </button>
+            </div>
+          )}
 
           {/* Task detail panel */}
           {currentSelectedTask && (

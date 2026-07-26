@@ -16,6 +16,7 @@ import { TaskDetail } from '@/components/task/TaskDetail';
 import { Modal } from '@/components/ui/Modal';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import type { Task } from '@/stores/taskStore';
+import { getSubtasks } from '@/utils/subtaskIndex';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -128,9 +129,7 @@ export function CalendarView({
     : null;
 
   const selectedTaskSubtasks = selectedTask
-    ? Array.from(allTasks.values())
-        .filter((t) => t.parentId === selectedTask.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
+    ? getSubtasks(allTasks, selectedTask.id)
     : [];
 
   // Format the date/time for modal title

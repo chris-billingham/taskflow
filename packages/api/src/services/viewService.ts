@@ -22,6 +22,9 @@ export async function getTodayTasks(userId: string) {
     },
     include: taskInclude,
     orderBy: { sortOrder: 'asc' },
+    // Safety cap: this view serialises nested subtasks per task; unbounded it
+    // OOMed the container on mature accounts.
+    take: 500,
   });
 
   const overdue: typeof tasks = [];
@@ -84,6 +87,7 @@ export async function getUpcomingTasks(
     },
     include: taskInclude,
     orderBy: [{ dueDate: 'asc' }, { sortOrder: 'asc' }],
+    take: 500,
   });
 
   const overdue: typeof tasks = [];
@@ -111,6 +115,7 @@ export async function getUpcomingTasks(
       },
       include: taskInclude,
       orderBy: { sortOrder: 'asc' },
+      take: 500,
     });
   }
 

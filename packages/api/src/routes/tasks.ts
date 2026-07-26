@@ -23,8 +23,8 @@ export async function taskRoutes(app: FastifyInstance) {
       throw new ValidationError(query.error.issues[0].message);
     }
 
-    const data = await taskService.getTasks(query.data, request.user.id);
-    return reply.send({ success: true, data });
+    const { tasks, nextCursor } = await taskService.getTasks(query.data, request.user.id);
+    return reply.send({ success: true, data: tasks, nextCursor });
   });
 
   // POST /api/v1/tasks - Create task

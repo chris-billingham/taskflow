@@ -4,6 +4,7 @@ import {
   HeadBucketCommand,
   PutObjectCommand,
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -40,6 +41,19 @@ export async function uploadObject(key: string, body: Buffer, contentType: strin
 
 export async function deleteObject(key: string) {
   await s3.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
+}
+
+/** Batch object deletion (S3 caps a single request at 1000 keys). */
+export async function deleteObjects(keys: string[]) {
+  for (let i = 0; i < keys.length; i += 1000) {
+    const chunk = keys.slice(i, i + 1000);
+    await s3.send(
+      new DeleteObjectsCommand({
+        Bucket: env.S3_BUCKET,
+        Delete: { Objects: chunk.map((Key) => ({ Key })), Quiet: true },
+      }),
+    );
+  }
 }
 
 export async function createPresignedUrl(key: string, expiresIn = 3600) {

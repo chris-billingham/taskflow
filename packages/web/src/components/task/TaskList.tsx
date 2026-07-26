@@ -17,6 +17,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { TaskItem } from './TaskItem';
 import type { Task } from '@/stores/taskStore';
+import { getSubtasks } from '@/utils/subtaskIndex';
 
 interface TaskListProps {
   tasks: Task[];
@@ -68,9 +69,7 @@ function SortableTaskItem({
 
   // Get subtasks from allTasks map
   const subtasks = allTasks
-    ? Array.from(allTasks.values())
-        .filter((t) => t.parentId === task.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
+    ? getSubtasks(allTasks, task.id)
     : task.subtasks;
 
   return (
@@ -126,9 +125,7 @@ function DraggableTaskItem({
   };
 
   const subtasks = allTasks
-    ? Array.from(allTasks.values())
-        .filter((t) => t.parentId === task.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
+    ? getSubtasks(allTasks, task.id)
     : task.subtasks;
 
   return (

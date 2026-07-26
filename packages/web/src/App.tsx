@@ -1,29 +1,46 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AppLayout } from '@/layouts/AppLayout';
 import { SettingsLayout } from '@/layouts/SettingsLayout';
-import Login from '@/pages/auth/Login';
-import Register from '@/pages/auth/Register';
-import ForgotPassword from '@/pages/auth/ForgotPassword';
-import ResetPassword from '@/pages/auth/ResetPassword';
-import VerifyEmail from '@/pages/auth/VerifyEmail';
+import { Spinner } from '@/components/ui/Spinner';
+// Core daily-use pages stay in the main bundle for instant navigation.
 import Today from '@/pages/app/Today';
 import Upcoming from '@/pages/app/Upcoming';
 import Project from '@/pages/app/Project';
-import Label from '@/pages/app/Label';
-import Filter from '@/pages/app/Filter';
-import FiltersLabels from '@/pages/app/FiltersLabels';
-import WorkspaceSettingsPage from '@/pages/settings/Workspace';
-import NotificationSettings from '@/pages/settings/Notifications';
-import Profile from '@/pages/settings/Profile';
-import Account from '@/pages/settings/Account';
-import Preferences from '@/pages/settings/Preferences';
-import Integrations from '@/pages/settings/Integrations';
-import DataExport from '@/pages/settings/DataExport';
-import TemplatesSettings from '@/pages/settings/Templates';
-import { JoinWorkspace } from '@/components/workspace/JoinWorkspace';
+import Login from '@/pages/auth/Login';
+
+// Everything else loads on demand — auth flows, settings and secondary views
+// don't belong in the first paint of a task list.
+const Register = lazy(() => import('@/pages/auth/Register'));
+const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/auth/ResetPassword'));
+const VerifyEmail = lazy(() => import('@/pages/auth/VerifyEmail'));
+const Label = lazy(() => import('@/pages/app/Label'));
+const Filter = lazy(() => import('@/pages/app/Filter'));
+const FiltersLabels = lazy(() => import('@/pages/app/FiltersLabels'));
+const WorkspaceSettingsPage = lazy(() => import('@/pages/settings/Workspace'));
+const NotificationSettings = lazy(() => import('@/pages/settings/Notifications'));
+const Profile = lazy(() => import('@/pages/settings/Profile'));
+const Account = lazy(() => import('@/pages/settings/Account'));
+const Preferences = lazy(() => import('@/pages/settings/Preferences'));
+const Integrations = lazy(() => import('@/pages/settings/Integrations'));
+const DataExport = lazy(() => import('@/pages/settings/DataExport'));
+const TemplatesSettings = lazy(() => import('@/pages/settings/Templates'));
+const JoinWorkspace = lazy(() =>
+  import('@/components/workspace/JoinWorkspace').then((m) => ({
+    default: m.JoinWorkspace,
+  })),
+);
+
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <Spinner size="lg" />
+    </div>
+  );
+}
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -34,6 +51,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
@@ -82,6 +100,7 @@ function App() {
         <Route path="/" element={<Navigate to="/today" replace />} />
         <Route path="*" element={<Navigate to="/today" replace />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

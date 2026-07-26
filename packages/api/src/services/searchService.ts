@@ -1,5 +1,23 @@
 import { prisma } from '../config/database.js';
 
+/**
+ * Build a prefix-matching tsquery from raw user input. Terms are stripped of
+ * tsquery syntax, AND-ed, and matched as prefixes so type-ahead works
+ * ("proj mee" finds "project meeting"). Returns null when nothing indexable
+ * remains. Using tsquery in the WHERE clause (instead of the previous
+ * unindexed ILIKE '%term%') lets Postgres use the GIN indexes — searches were
+ * full table scans plus a per-row to_tsvector for ranking.
+ */
+function buildTsQuery(raw: string): string | null {
+  const terms = raw
+    .split(/\s+/)
+    .map((t) => t.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean)
+    .slice(0, 8);
+  if (terms.length === 0) return null;
+  return terms.map((t) => `${t}:*`).join(' & ');
+}
+
 export interface TaskSearchResult {
   type: 'task';
   id: string;
@@ -74,7 +92,8 @@ export async function searchTasks(
   options: SearchOptions = {},
 ): Promise<TaskSearchResult[]> {
   const { limit = 10, offset = 0 } = options;
-  const searchPattern = `%${query}%`;
+  const tsQuery = buildTsQuery(query);
+  if (!tsQuery) return [];
 
   const rows = await prisma.$queryRaw<
     Array<{
@@ -100,19 +119,15 @@ export async function searchTasks(
       t."dueDate",
       t."isCompleted",
       t.priority,
-      COALESCE(
-        ts_rank(
-          to_tsvector('english', t.content || ' ' || COALESCE(t.description, '')),
-          plainto_tsquery('english', ${query})
-        ),
-        0
+      ts_rank(
+        to_tsvector('english', t.content || ' ' || COALESCE(t.description, '')),
+        to_tsquery('english', ${tsQuery})
       ) AS rank
     FROM tasks t
     JOIN projects p ON p.id = t."projectId"
-    WHERE (
-      t.content ILIKE ${searchPattern}
-      OR t.description ILIKE ${searchPattern}
-    )
+    -- Expression matches tasks_content_search_idx exactly, so the GIN index applies
+    WHERE to_tsvector('english', t.content || ' ' || COALESCE(t.description, ''))
+      @@ to_tsquery('english', ${tsQuery})
     AND (
       t."assigneeId" = ${userId}
       OR p."ownerId" = ${userId}
@@ -138,7 +153,8 @@ export async function searchProjects(
   options: SearchOptions = {},
 ): Promise<ProjectSearchResult[]> {
   const { limit = 10, offset = 0 } = options;
-  const searchPattern = `%${query}%`;
+  const tsQuery = buildTsQuery(query);
+  if (!tsQuery) return [];
 
   const rows = await prisma.$queryRaw<
     Array<{
@@ -157,16 +173,14 @@ export async function searchProjects(
       COALESCE(
         ts_rank(
           to_tsvector('english', p.name || ' ' || COALESCE(p.description, '')),
-          plainto_tsquery('english', ${query})
+          to_tsquery('english', ${tsQuery})
         ),
         0
       ) AS rank
     FROM projects p
     LEFT JOIN tasks t ON t."projectId" = p.id AND t."isCompleted" = false
-    WHERE (
-      p.name ILIKE ${searchPattern}
-      OR p.description ILIKE ${searchPattern}
-    )
+    WHERE to_tsvector('english', p.name || ' ' || COALESCE(p.description, ''))
+      @@ to_tsquery('english', ${tsQuery})
     AND p."isArchived" = false
     AND (
       p."ownerId" = ${userId}
@@ -197,7 +211,8 @@ export async function searchComments(
   options: SearchOptions = {},
 ): Promise<CommentSearchResult[]> {
   const { limit = 10, offset = 0 } = options;
-  const searchPattern = `%${query}%`;
+  const tsQuery = buildTsQuery(query);
+  if (!tsQuery) return [];
 
   const rows = await prisma.$queryRaw<
     Array<{
@@ -220,7 +235,7 @@ export async function searchComments(
       COALESCE(
         ts_rank(
           to_tsvector('english', c.content),
-          plainto_tsquery('english', ${query})
+          to_tsquery('english', ${tsQuery})
         ),
         0
       ) AS rank
@@ -228,7 +243,7 @@ export async function searchComments(
     LEFT JOIN tasks t ON t.id = c."taskId"
     LEFT JOIN projects tp ON tp.id = t."projectId"
     LEFT JOIN projects cp ON cp.id = c."projectId"
-    WHERE c.content ILIKE ${searchPattern}
+    WHERE to_tsvector('english', c.content) @@ to_tsquery('english', ${tsQuery})
     AND c."parentId" IS NULL
     AND (
       c."authorId" = ${userId}

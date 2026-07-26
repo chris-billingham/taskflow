@@ -67,6 +67,9 @@ export function TaskItem({
   }, [isEditing]);
 
   useEffect(() => {
+    // Listen only while the menu is open: an always-on listener PER ROW meant
+    // a 500-task list ran ~500 contains() checks on every document click.
+    if (!showMenu) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
@@ -74,7 +77,7 @@ export function TaskItem({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showMenu]);
 
   const handleSubmitEdit = () => {
     const trimmed = editContent.trim();

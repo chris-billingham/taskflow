@@ -23,6 +23,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { useUpcomingView, useTaskActions } from '@/hooks/useTasks';
 import { useTaskStore } from '@/stores/taskStore';
 import type { Task } from '@/stores/taskStore';
+import { getSubtasks } from '@/utils/subtaskIndex';
 
 const UPCOMING_DAYS = 14;
 
@@ -312,9 +313,7 @@ export default function Upcoming() {
               {!noDateCollapsed && (
                 <div className="space-y-0.5">
                   {upcomingView.noDate.map((task) => {
-                    const subtasks = Array.from(taskMap.values())
-                      .filter((t) => t.parentId === task.id)
-                      .sort((a, b) => a.sortOrder - b.sortOrder);
+                    const subtasks = getSubtasks(taskMap, task.id);
                     return (
                       <TaskItem
                         key={task.id}

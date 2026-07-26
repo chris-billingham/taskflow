@@ -19,12 +19,23 @@ export function useTasks(query?: TaskQuery) {
   const loading = useTaskStore((s) => s.loading);
   const error = useTaskStore((s) => s.error);
   const fetchTasks = useTaskStore((s) => s.fetchTasks);
+  const loadMoreTasks = useTaskStore((s) => s.loadMoreTasks);
+  const hasMore = useTaskStore((s) => s.tasksNextCursor !== null);
+  const loadingMore = useTaskStore((s) => s.loadingMore);
 
   useEffect(() => {
     fetchTasks(query);
   }, [fetchTasks, query?.projectId, query?.sectionId, query?.completed]);
 
-  return { tasks, loading, error, refetch: () => fetchTasks(query) };
+  return {
+    tasks,
+    loading,
+    error,
+    hasMore,
+    loadingMore,
+    loadMore: () => loadMoreTasks(query),
+    refetch: () => fetchTasks(query),
+  };
 }
 
 export function useTask(id: string | undefined) {
