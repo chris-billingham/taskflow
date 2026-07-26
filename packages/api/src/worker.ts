@@ -13,6 +13,11 @@ import {
   startMaintenanceWorker,
   scheduleMaintenanceJobs,
 } from './jobs/maintenanceJob.js';
+import {
+  createDueTaskQueue,
+  startDueTaskWorker,
+  scheduleDueTaskChecks,
+} from './jobs/dueTaskJob.js';
 
 export async function initializeWorkers() {
   console.log('[Worker] Initializing BullMQ workers...');
@@ -29,6 +34,12 @@ export async function initializeWorkers() {
   await scheduleDigestJobs(digestQueue);
   console.log('[Worker] Notification digest worker started');
 
+  // Due-soon / overdue notices - hourly, gated on each user's local time
+  const dueTaskQueue = createDueTaskQueue();
+  const dueTaskWorker = startDueTaskWorker();
+  await scheduleDueTaskChecks(dueTaskQueue);
+  console.log('[Worker] Due-task check worker started');
+
   // Daily cleanup - expired refresh tokens and invites
   const maintenanceQueue = createMaintenanceQueue();
   const maintenanceWorker = startMaintenanceWorker();
@@ -41,12 +52,14 @@ export async function initializeWorkers() {
     await Promise.all([
       reminderWorker.close(),
       digestWorker.close(),
+      dueTaskWorker.close(),
       maintenanceWorker.close(),
       reminderQueue.close(),
       digestQueue.close(),
+      dueTaskQueue.close(),
       maintenanceQueue.close(),
     ]);
   };
 
-  return { shutdown, reminderQueue, digestQueue };
+  return { shutdown, reminderQueue, digestQueue, dueTaskQueue };
 }

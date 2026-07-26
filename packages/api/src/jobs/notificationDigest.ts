@@ -2,8 +2,29 @@ import { Worker, Queue } from 'bullmq';
 import { createBullMQConnection } from '../config/redis.js';
 import { prisma } from '../config/database.js';
 import { sendEmailNotification } from '../services/notificationService.js';
+import { isValidTimeZone } from '../utils/dates.js';
 
 const QUEUE_NAME = 'notification-digest';
+
+// Local hour at which a user receives their digest.
+const DIGEST_LOCAL_HOUR = 8;
+
+/** Hour (0-23) and ISO weekday (1 = Monday) as read in `tz` at `at`. */
+function localHourAndWeekday(tz: string, at: Date): { hour: number; weekday: number } {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: tz,
+    hour: '2-digit',
+    weekday: 'short',
+    hourCycle: 'h23',
+  }).formatToParts(at);
+
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+  const weekdayName = parts.find((p) => p.type === 'weekday')?.value ?? '';
+  const weekday =
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(weekdayName) + 1;
+
+  return { hour, weekday };
+}
 
 export function createDigestQueue() {
   return new Queue(QUEUE_NAME, {
@@ -20,7 +41,8 @@ export function startDigestWorker() {
     QUEUE_NAME,
     async (job) => {
       const { period } = job.data as { period: 'daily' | 'weekly' };
-      const since = new Date();
+      const now = new Date();
+      const since = new Date(now);
 
       if (period === 'daily') {
         since.setDate(since.getDate() - 1);
@@ -54,9 +76,28 @@ export function startDigestWorker() {
         return emailEnabled && frequency === period;
       };
 
+      // Send at DIGEST_LOCAL_HOUR in each user's own timezone. This job now
+      // runs hourly and each user qualifies in exactly one of those runs — the
+      // old schedule fired once at 08:00 UTC, which is the middle of the night
+      // for a large share of any real user base.
+      const tzRows = await prisma.user.findMany({
+        where: { id: { in: usersWithNotifications.map((u) => u.userId) } },
+        select: { id: true, timezone: true },
+      });
+      const tzByUser = new Map(tzRows.map((u) => [u.id, u.timezone]));
+      const isLocalSendTime = (userId: string) => {
+        const raw = tzByUser.get(userId);
+        const tz = raw && isValidTimeZone(raw) ? raw : 'UTC';
+        const { hour, weekday } = localHourAndWeekday(tz, now);
+        if (hour !== DIGEST_LOCAL_HOUR) return false;
+        // Weekly digests additionally wait for the user's Monday.
+        return period === 'weekly' ? weekday === 1 : true;
+      };
+
       for (const { userId, _count } of usersWithNotifications) {
         if (_count.id === 0) continue;
         if (!wantsThisDigest(userId)) continue;
+        if (!isLocalSendTime(userId)) continue;
 
         const notifications = await prisma.notification.findMany({
           where: {
@@ -108,21 +149,19 @@ export function startDigestWorker() {
 }
 
 export async function scheduleDigestJobs(queue: Queue) {
-  // Daily digest at 8 AM UTC
+  // Both digests run HOURLY and each user is selected in whichever pass lands
+  // on 08:00 in their own timezone (Monday 08:00 for the weekly). The previous
+  // schedule was a single 08:00 UTC pass, which ignored User.timezone
+  // entirely and delivered in the small hours for much of the world.
   await queue.add(
     'daily-digest',
     { period: 'daily' },
-    {
-      repeat: { pattern: '0 8 * * *' }, // cron: 8 AM every day
-    },
+    { repeat: { pattern: '0 * * * *' } },
   );
 
-  // Weekly digest on Monday at 8 AM UTC
   await queue.add(
     'weekly-digest',
     { period: 'weekly' },
-    {
-      repeat: { pattern: '0 8 * * 1' }, // cron: 8 AM every Monday
-    },
+    { repeat: { pattern: '0 * * * *' } },
   );
 }

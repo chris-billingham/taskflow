@@ -77,6 +77,62 @@ export async function createNotification(
   });
 }
 
+/**
+ * Deliver one notification across every channel the user has enabled: in-app
+ * row, browser push, and email.
+ *
+ * Producers call this rather than the three functions separately. Muting is
+ * enforced once, at the top: createNotification returns null for a disabled
+ * type and nothing downstream runs, so a muted type cannot leak out via push
+ * or email. Push and email are best-effort — a dead subscription or an
+ * unreachable SMTP host must not fail the action that triggered the notice.
+ */
+export async function notify(
+  userId: string,
+  type: NotificationType,
+  title: string,
+  body: string,
+  data?: Record<string, unknown>,
+) {
+  const notification = await createNotification(userId, type, title, body, data);
+  if (!notification) return null;
+
+  await Promise.allSettled([
+    sendPushNotification(userId, title, body, data),
+    sendEmailNotification(userId, type, { subject: title, summary: body, ...data }),
+  ]);
+
+  return notification;
+}
+
+/**
+ * notify() for several recipients at once, skipping the actor and duplicates.
+ * Every producer needs this shape: "tell the people involved, but not the
+ * person who did it".
+ */
+export async function notifyMany(
+  userIds: Array<string | null | undefined>,
+  options: {
+    exclude?: string;
+    type: NotificationType;
+    title: string;
+    body: string;
+    data?: Record<string, unknown>;
+  },
+) {
+  const recipients = new Set(
+    userIds.filter((id): id is string => !!id && id !== options.exclude),
+  );
+
+  await Promise.allSettled(
+    [...recipients].map((id) =>
+      notify(id, options.type, options.title, options.body, options.data),
+    ),
+  );
+
+  return recipients.size;
+}
+
 export async function getUserNotifications(
   userId: string,
   unreadOnly = false,

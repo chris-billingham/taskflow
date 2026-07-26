@@ -8,6 +8,8 @@ import {
   broadcastCommentUpdated,
   broadcastCommentDeleted,
 } from './syncService.js';
+import { notifyMany } from './notificationService.js';
+import { resolveMentions, type MentionCandidate } from '../utils/mentions.js';
 
 const authorSelect = {
   id: true,
@@ -89,7 +91,104 @@ export async function createComment(
 
   broadcastCommentCreated(comment, task.projectId);
 
+  // Fire-and-forget, like the activity log above: a notification failure must
+  // not fail the comment that is already committed.
+  notifyComment(task, comment, data.parentId ?? null, userId).catch((err) =>
+    console.warn('[commentService] comment notifications failed:', err),
+  );
+
   return comment;
+}
+
+/**
+ * Notify the people with a stake in a task when it gets a new comment.
+ *
+ * Nothing in the app produced COMMENT_ON_TASK or MENTION_IN_COMMENT before
+ * this, so both preference toggles governed events that never happened.
+ *
+ * Recipients are the task's creator, its assignee, and the author of the
+ * comment being replied to. Anyone explicitly @mentioned gets the mention
+ * notice INSTEAD of the generic one — being told twice about the same comment
+ * reads as a bug, and the mention is the more specific fact.
+ */
+async function notifyComment(
+  task: { id: string; content: string; projectId: string; creatorId: string | null; assigneeId: string | null },
+  comment: { id: string; content: string },
+  parentId: string | null,
+  authorId: string,
+) {
+  const [author, parent, candidates] = await Promise.all([
+    prisma.user.findUnique({ where: { id: authorId }, select: { name: true } }),
+    parentId
+      ? prisma.comment.findUnique({
+          where: { id: parentId },
+          select: { authorId: true },
+        })
+      : Promise.resolve(null),
+    // Mentions resolve only against people who can already see the task, so a
+    // comment can't notify (or probe for) accounts in another tenant.
+    getTaskAudience(task.projectId),
+  ]);
+
+  const authorName = author?.name ?? 'Someone';
+  const mentioned = resolveMentions(comment.content, candidates).filter(
+    (id) => id !== authorId,
+  );
+
+  await notifyMany(mentioned, {
+    exclude: authorId,
+    type: 'MENTION_IN_COMMENT',
+    title: `${authorName} mentioned you`,
+    body: `${authorName} mentioned you on "${task.content}": ${comment.content}`,
+    data: { taskId: task.id, projectId: task.projectId, commentId: comment.id },
+  });
+
+  const mentionedSet = new Set(mentioned);
+  const others = [task.creatorId, task.assigneeId, parent?.authorId].filter(
+    (id): id is string => !!id && !mentionedSet.has(id),
+  );
+
+  await notifyMany(others, {
+    exclude: authorId,
+    type: 'COMMENT_ON_TASK',
+    title: `New comment on "${task.content}"`,
+    body: `${authorName}: ${comment.content}`,
+    data: { taskId: task.id, projectId: task.projectId, commentId: comment.id },
+  });
+}
+
+/**
+ * Everyone who can see a project, as mention candidates: the owner, direct
+ * project members, and — for a workspace project — the workspace's members.
+ */
+async function getTaskAudience(projectId: string): Promise<MentionCandidate[]> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      workspaceId: true,
+      owner: { select: { id: true, name: true, email: true } },
+      members: { select: { user: { select: { id: true, name: true, email: true } } } },
+    },
+  });
+  if (!project) return [];
+
+  const byId = new Map<string, MentionCandidate>();
+  if (project.owner) byId.set(project.owner.id, project.owner);
+  for (const member of project.members) {
+    byId.set(member.user.id, member.user);
+  }
+
+  if (project.workspaceId) {
+    const wsMembers = await prisma.workspaceMember.findMany({
+      where: { workspaceId: project.workspaceId },
+      select: { user: { select: { id: true, name: true, email: true } } },
+    });
+    for (const member of wsMembers) {
+      byId.set(member.user.id, member.user);
+    }
+  }
+
+  return [...byId.values()];
 }
 
 export async function updateComment(

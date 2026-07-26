@@ -209,3 +209,143 @@ describe('sendPushNotification', () => {
     });
   });
 });
+
+/**
+ * notify() and notifyMany() are the entry points every producer uses, so the
+ * guarantees asserted here apply to all of them at once: muting wins over
+ * every channel, and best-effort delivery never propagates a failure back to
+ * the action that triggered the notification.
+ */
+describe('notify — multi-channel fan-out', () => {
+  it('creates the row and attempts both push and email', async () => {
+    const svc = await loadService();
+    envState.VAPID_PUBLIC_KEY = 'pub';
+    envState.VAPID_PRIVATE_KEY = 'priv';
+    mockPrisma.pushSubscription.findMany.mockResolvedValue([
+      { endpoint: 'https://push.example/1', p256dh: 'k', auth: 'a' },
+    ]);
+    mockPrisma.notificationPreference.findUnique.mockResolvedValue({
+      emailEnabled: true,
+      emailFrequency: 'immediate',
+      disabledTypes: [],
+    });
+
+    const result = await svc.notify('u1', 'TASK_ASSIGNED', 'Title', 'Body', {
+      taskId: 't1',
+    });
+
+    expect(result).toEqual({ id: 'n1' });
+    expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1);
+    expect(sendNotificationMock).toHaveBeenCalledTimes(1);
+    expect(mockSendNotificationEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('a muted type reaches no channel at all', async () => {
+    const svc = await loadService();
+    envState.VAPID_PUBLIC_KEY = 'pub';
+    envState.VAPID_PRIVATE_KEY = 'priv';
+    mockPrisma.pushSubscription.findMany.mockResolvedValue([
+      { endpoint: 'https://push.example/1', p256dh: 'k', auth: 'a' },
+    ]);
+    mockPrisma.notificationPreference.findUnique.mockResolvedValue({
+      emailEnabled: true,
+      emailFrequency: 'immediate',
+      disabledTypes: ['TASK_ASSIGNED'],
+    });
+
+    const result = await svc.notify('u1', 'TASK_ASSIGNED', 'Title', 'Body');
+
+    expect(result).toBeNull();
+    expect(mockPrisma.notification.create).not.toHaveBeenCalled();
+    expect(sendNotificationMock).not.toHaveBeenCalled();
+    expect(mockSendNotificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('still records the in-app row when push delivery throws', async () => {
+    const svc = await loadService();
+    envState.VAPID_PUBLIC_KEY = 'pub';
+    envState.VAPID_PRIVATE_KEY = 'priv';
+    mockPrisma.pushSubscription.findMany.mockResolvedValue([
+      { endpoint: 'https://push.example/1', p256dh: 'k', auth: 'a' },
+    ]);
+    sendNotificationMock.mockRejectedValueOnce({ statusCode: 500 });
+
+    await expect(
+      svc.notify('u1', 'TASK_ASSIGNED', 'Title', 'Body'),
+    ).resolves.toEqual({ id: 'n1' });
+    expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reject when the mailer is unavailable', async () => {
+    const svc = await loadService();
+    mockIsMailerReady.mockReturnValue(false);
+
+    await expect(
+      svc.notify('u1', 'TASK_ASSIGNED', 'Title', 'Body'),
+    ).resolves.toEqual({ id: 'n1' });
+    expect(mockSendNotificationEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('notifyMany — recipient fan-out', () => {
+  it('notifies each distinct recipient once', async () => {
+    const svc = await loadService();
+    const count = await svc.notifyMany(['a', 'b', 'a'], {
+      type: 'COMMENT_ON_TASK',
+      title: 'T',
+      body: 'B',
+    });
+
+    expect(count).toBe(2);
+    expect(mockPrisma.notification.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips the actor so nobody is notified about their own action', async () => {
+    const svc = await loadService();
+    const count = await svc.notifyMany(['author', 'other'], {
+      exclude: 'author',
+      type: 'COMMENT_ON_TASK',
+      title: 'T',
+      body: 'B',
+    });
+
+    expect(count).toBe(1);
+    expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops null and undefined ids (unassigned tasks, deleted creators)', async () => {
+    const svc = await loadService();
+    const count = await svc.notifyMany([null, undefined, 'real'], {
+      type: 'TASK_ASSIGNED',
+      title: 'T',
+      body: 'B',
+    });
+
+    expect(count).toBe(1);
+    expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('is a no-op for an empty recipient list', async () => {
+    const svc = await loadService();
+    const count = await svc.notifyMany([], {
+      type: 'TASK_ASSIGNED',
+      title: 'T',
+      body: 'B',
+    });
+
+    expect(count).toBe(0);
+    expect(mockPrisma.notification.create).not.toHaveBeenCalled();
+  });
+
+  it('one failing recipient does not stop the others', async () => {
+    const svc = await loadService();
+    mockPrisma.notification.create
+      .mockRejectedValueOnce(new Error('db blip'))
+      .mockResolvedValue({ id: 'n2' });
+
+    await expect(
+      svc.notifyMany(['a', 'b'], { type: 'TASK_ASSIGNED', title: 'T', body: 'B' }),
+    ).resolves.toBe(2);
+    expect(mockPrisma.notification.create).toHaveBeenCalledTimes(2);
+  });
+});

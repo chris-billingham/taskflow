@@ -13,6 +13,7 @@ import type {
 } from '../schemas/workspace.js';
 import { logActivity } from './activityService.js';
 import { isMailerReady, sendWorkspaceInviteEmail } from './mailService.js';
+import { notify } from './notificationService.js';
 import { getIO } from '../websocket/events.js';
 
 function generateSlug(name: string): string {
@@ -273,6 +274,25 @@ export async function inviteMember(
       expiresAt,
     },
   });
+
+  // An invitee who already has an account gets an in-app notice too. Email is
+  // optional on a self-hosted instance, so without this the invite was
+  // invisible to them unless someone passed on the link by hand.
+  if (existingUser) {
+    const inviter = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+    notify(
+      existingUser.id,
+      'WORKSPACE_INVITE',
+      'Workspace invitation',
+      `${inviter?.name ?? 'A teammate'} invited you to join "${workspace.name}"`,
+      { workspaceId: workspace.id, inviteToken: invite.token },
+    ).catch((err) =>
+      console.warn('[workspaceService] invite notification failed:', err),
+    );
+  }
 
   if (isMailerReady()) {
     const inviter = await prisma.user.findUnique({

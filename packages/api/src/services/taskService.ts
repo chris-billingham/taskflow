@@ -31,6 +31,7 @@ import {
   broadcastTaskUpdated,
   broadcastTaskDeleted,
 } from './syncService.js';
+import { notify } from './notificationService.js';
 
 // Runs a post-mutation side effect (logging, broadcast) without blocking the
 // response. Errors are caught and warned so they don't silently swallow.
@@ -334,7 +335,41 @@ export async function createTask(data: CreateTaskInput, userId: string) {
   }));
   runSideEffect('broadcastTaskCreated', () => broadcastTaskCreated(task));
 
+  if (task.assigneeId && task.assigneeId !== userId) {
+    runSideEffect('notify:TASK_ASSIGNED', () =>
+      notifyAssignment(task, userId),
+    );
+  }
+
   return task;
+}
+
+/**
+ * Tell an assignee that a task is theirs.
+ *
+ * Assignment is the notification users notice the absence of most — before
+ * this, nothing in the app produced a TASK_ASSIGNED notice even though the
+ * type, the preference toggle and the delivery channels all existed.
+ * Self-assignment is deliberately silent.
+ */
+async function notifyAssignment(
+  task: { id: string; content: string; projectId: string; assigneeId: string | null },
+  actorId: string,
+) {
+  if (!task.assigneeId || task.assigneeId === actorId) return;
+
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { name: true },
+  });
+
+  await notify(
+    task.assigneeId,
+    'TASK_ASSIGNED',
+    'Task assigned to you',
+    `${actor?.name ?? 'Someone'} assigned you "${task.content}"`,
+    { taskId: task.id, projectId: task.projectId },
+  );
 }
 
 export async function updateTask(
@@ -403,6 +438,12 @@ export async function updateTask(
     newData: data as Record<string, unknown>,
   }));
   runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(task));
+
+  // Only on an actual change of hands — re-saving a task whose assignee is
+  // unchanged must not re-notify them.
+  if (task.assigneeId && task.assigneeId !== oldTask.assigneeId) {
+    runSideEffect('notify:TASK_ASSIGNED', () => notifyAssignment(task, userId));
+  }
 
   return task;
 }
