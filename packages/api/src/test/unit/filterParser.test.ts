@@ -4,7 +4,7 @@ vi.mock('../../config/database.js', () => ({
   prisma: {
     project: { findFirst: vi.fn() },
     label: { findFirst: vi.fn() },
-    user: { findFirst: vi.fn() },
+    user: { findFirst: vi.fn(), findUnique: vi.fn() },
   },
 }));
 
@@ -14,7 +14,10 @@ import { prisma } from '../../config/database.js';
 const mockPrisma = prisma as unknown as {
   project: { findFirst: ReturnType<typeof vi.fn> };
   label: { findFirst: ReturnType<typeof vi.fn> };
-  user: { findFirst: ReturnType<typeof vi.fn> };
+  user: {
+    findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+  };
 };
 
 const TEST_USER_ID = 'user-123';
@@ -95,6 +98,7 @@ describe('validateFilterQuery', () => {
 
 describe('parseFilterQuery', () => {
   beforeEach(() => {
+  mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'UTC' });
     mockPrisma.project.findFirst.mockResolvedValue(null);
     mockPrisma.label.findFirst.mockResolvedValue(null);
     mockPrisma.user.findFirst.mockResolvedValue(null);

@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { projectAccessWhere } from '../services/access.js';
+import { getUserTimezone, userDayBoundariesUTC } from './dates.js';
 
 interface ParseContext {
   userId: string;
@@ -477,11 +478,15 @@ export async function parseFilterQuery(
   query: string,
   userId: string,
 ): Promise<Prisma.TaskWhereInput> {
+  // "today"/"overdue" boundaries are the USER's calendar day, expressed as
+  // the UTC-midnight encoding stored due dates use — not the server's local
+  // midnight, which drifted a day for anyone in a different timezone.
   const now = new Date();
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(now);
-  todayEnd.setHours(23, 59, 59, 999);
+  const { todayStart, tomorrowStart } = userDayBoundariesUTC(
+    await getUserTimezone(userId),
+    now,
+  );
+  const todayEnd = new Date(tomorrowStart.getTime() - 1);
 
   const ctx: ParseContext = { userId, now, todayStart, todayEnd };
   const tokens = tokenize(query);

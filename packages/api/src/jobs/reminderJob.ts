@@ -1,6 +1,10 @@
 import { Worker, Queue } from 'bullmq';
 import { createBullMQConnection } from '../config/redis.js';
-import { getDueReminders, markReminderSent } from '../services/reminderService.js';
+import {
+  getDueReminders,
+  claimReminder,
+  releaseReminderAfterFailure,
+} from '../services/reminderService.js';
 import {
   createNotification,
   sendPushNotification,
@@ -26,6 +30,13 @@ export function startReminderWorker() {
       const dueReminders = await getDueReminders();
 
       for (const reminder of dueReminders) {
+        // Claim BEFORE sending. The old order (send, then mark) meant any
+        // failure after the notification went out re-delivered the same
+        // reminder every 60 seconds forever. Claim-first bounds duplicates
+        // to at most one per crash, and failures release the claim with a
+        // capped attempt counter.
+        if (!(await claimReminder(reminder.id))) continue;
+
         try {
           const taskContent = reminder.task.content;
           const title = 'Task Reminder';
@@ -54,11 +65,11 @@ export function startReminderWorker() {
               ...data,
             });
           }
-
-          // Mark as sent
-          await markReminderSent(reminder.id);
         } catch (err) {
           console.error(`Failed to process reminder ${reminder.id}:`, err);
+          await releaseReminderAfterFailure(reminder.id).catch(() => {
+            /* claim stays; better under- than over-notify */
+          });
         }
       }
     },

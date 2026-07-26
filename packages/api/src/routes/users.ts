@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { isValidTimeZone } from '../utils/dates.js';
 import { z } from 'zod';
 import { authenticate } from '../middleware/authenticate.js';
 import { changePasswordSchema } from '../schemas/auth.js';
@@ -8,7 +9,11 @@ import { ValidationError } from '../errors/index.js';
 const updateUserSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   avatarUrl: z.string().url().nullable().optional(),
-  timezone: z.string().max(64).optional(),
+  timezone: z
+    .string()
+    .max(64)
+    .refine(isValidTimeZone, 'Must be a valid IANA timezone (e.g. Europe/London)')
+    .optional(),
   weekStart: z.number().int().min(0).max(6).optional(),
   dateFormat: z.string().max(32).nullable().optional(),
   timeFormat: z.string().max(32).nullable().optional(),

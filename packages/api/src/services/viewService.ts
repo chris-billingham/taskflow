@@ -4,12 +4,14 @@ import { taskInclude } from './taskService.js';
 // old local fragment ignored workspaces, so team tasks silently vanished from
 // Today/Upcoming while remaining visible in their project views.
 import { taskAccessWhere } from './access.js';
+import { getUserTimezone, userDayBoundariesUTC } from '../utils/dates.js';
 
 export async function getTodayTasks(userId: string) {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrowStart = new Date(todayStart);
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  // Boundaries are the USER's calendar day (their IANA timezone), encoded as
+  // the UTC-midnight instants stored due dates use — server TZ is irrelevant.
+  const { todayStart, tomorrowStart } = userDayBoundariesUTC(
+    await getUserTimezone(userId),
+  );
 
   const tasks = await prisma.task.findMany({
     where: {
@@ -68,10 +70,9 @@ export async function getUpcomingTasks(
   days: number = 7,
   includeNoDate: boolean = false,
 ) {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const { todayStart } = userDayBoundariesUTC(await getUserTimezone(userId));
   const endDate = new Date(todayStart);
-  endDate.setDate(endDate.getDate() + days);
+  endDate.setUTCDate(endDate.getUTCDate() + days);
 
   // Overdue + upcoming range
   const tasks = await prisma.task.findMany({
@@ -125,8 +126,7 @@ export async function getUpcomingTasks(
 }
 
 export async function rescheduleOverdue(userId: string, targetDate: string) {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const { todayStart } = userDayBoundariesUTC(await getUserTimezone(userId));
 
   const result = await prisma.task.updateMany({
     where: {

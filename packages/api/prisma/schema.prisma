@@ -430,6 +430,8 @@ model Reminder {
   method        ReminderMethod @default(PUSH)
   isSent        Boolean        @default(false)
   sentAt        DateTime?
+  // Failed delivery attempts; retried up to a cap instead of every 60s forever
+  attempts      Int            @default(0)
   createdAt     DateTime       @default(now())
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
@@ -437,8 +439,8 @@ model Reminder {
 
   @@index([taskId])
   @@index([userId])
-  @@index([triggerAt])
-  @@index([isSent])
+  // Composite index matches the due-reminder poll (WHERE isSent = false AND triggerAt <= now)
+  @@index([isSent, triggerAt])
   @@map("reminders")
 }
 
@@ -520,6 +522,9 @@ model Notification {
   data      Json?            // { taskId, projectId, commentId, etc. }
   isRead    Boolean          @default(false)
   readAt    DateTime?
+  // Watermark: set once a digest email has included this notification, so
+  // overlapping daily/weekly windows never email the same item twice
+  digestedAt DateTime?
   createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

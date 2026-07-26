@@ -52,7 +52,10 @@ export const taskQuerySchema = z.object({
 });
 
 export const bulkTaskSchema = z.object({
-  taskIds: z.array(z.string()).min(1, 'At least one task ID is required'),
+  taskIds: z
+    .array(z.string())
+    .min(1, 'At least one task ID is required')
+    .max(100, 'Bulk operations are limited to 100 tasks at a time'),
   action: z.enum(['complete', 'uncomplete', 'delete', 'move', 'updatePriority']),
   data: z.object({
     projectId: z.string().optional(),

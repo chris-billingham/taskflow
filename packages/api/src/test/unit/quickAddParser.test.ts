@@ -4,6 +4,7 @@ vi.mock('../../config/database.js', () => ({
   prisma: {
     project: { findFirst: vi.fn() },
     label: { findMany: vi.fn() },
+    user: { findUnique: vi.fn() },
   },
 }));
 
@@ -13,6 +14,7 @@ import { prisma } from '../../config/database.js';
 const mockPrisma = prisma as unknown as {
   project: { findFirst: ReturnType<typeof vi.fn> };
   label: { findMany: ReturnType<typeof vi.fn> };
+  user: { findUnique: ReturnType<typeof vi.fn> };
 };
 
 const TEST_USER_ID = 'user-test';
@@ -25,6 +27,7 @@ beforeEach(() => {
   vi.setSystemTime(FIXED_DATE);
   mockPrisma.project.findFirst.mockResolvedValue(null);
   mockPrisma.label.findMany.mockResolvedValue([]);
+  mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'UTC' });
 });
 
 describe('parseQuickAdd - content extraction', () => {
@@ -65,6 +68,12 @@ describe('parseQuickAdd - priority parsing', () => {
   it('parses !! as priority 2', async () => {
     const result = await parseQuickAdd('High task !!', TEST_USER_ID);
     expect(result.priority).toBe(2);
+  });
+
+  it('ignores punctuation attached to words ("Ship it!" is not a priority)', async () => {
+    const result = await parseQuickAdd('Ship it!', TEST_USER_ID);
+    expect(result.priority).toBeUndefined();
+    expect(result.content).toBe('Ship it!');
   });
 
   it('parses ! as priority 3', async () => {
@@ -114,16 +123,28 @@ describe('parseQuickAdd - date parsing', () => {
     expect(result.dueDate).toBe('2024-01-08'); // Next Monday from Thursday Jan 4
   });
 
-  it('uses the LOCAL calendar date, never UTC truncation', async () => {
-    // 23:30 UTC: any timezone east of UTC is already on the next local day.
-    // toISOString().split('T') here used to hand back the UTC (previous) day,
-    // so "today" produced a task that was born overdue.
+  it('computes "today" on the user\'s wall clock, not the server\'s', async () => {
+    // 23:30 UTC on the 15th is already June 16 in Auckland (UTC+12). The old
+    // code truncated in server time, so "today" became yesterday for any user
+    // east of the server — tasks were born overdue.
     vi.setSystemTime(new Date('2024-06-15T23:30:00.000Z'));
-    const now = new Date();
-    const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'Pacific/Auckland' });
 
     const result = await parseQuickAdd('Ship the release today', TEST_USER_ID);
-    expect(result.dueDate).toBe(expected);
+    expect(result.dueDate).toBe('2024-06-16');
+  });
+
+  it('an invalid stored timezone falls back to UTC instead of crashing', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'Not/AZone' });
+    const result = await parseQuickAdd('Ship it today', TEST_USER_ID);
+    expect(result.dueDate).toBe('2024-01-04');
+  });
+
+  it('"next week" from a Sunday is the next day (Monday), not a week later', async () => {
+    // 2024-01-07 is a Sunday.
+    vi.setSystemTime(new Date('2024-01-07T12:00:00.000Z'));
+    const result = await parseQuickAdd('Plan sprint next week', TEST_USER_ID);
+    expect(result.dueDate).toBe('2024-01-08');
   });
 
   it('sets no dueDate when no date keyword present', async () => {
@@ -229,9 +250,18 @@ describe('parseQuickAdd - project parsing', () => {
 
 describe('parseQuickAdd - label parsing', () => {
   it('extracts label names and resolves to IDs', async () => {
-    mockPrisma.label.findMany.mockResolvedValue([{ id: 'label-1' }, { id: 'label-2' }]);
+    mockPrisma.label.findMany.mockResolvedValue([
+      { id: 'label-1', name: 'urgent' },
+      { id: 'label-2', name: 'work' },
+    ]);
     const result = await parseQuickAdd('Task @urgent @work', TEST_USER_ID);
     expect(result.labelIds).toEqual(['label-1', 'label-2']);
+  });
+
+  it('matches labels case-insensitively', async () => {
+    mockPrisma.label.findMany.mockResolvedValue([{ id: 'label-9', name: 'Work' }]);
+    const result = await parseQuickAdd('Review deck @work', TEST_USER_ID);
+    expect(result.labelIds).toEqual(['label-9']);
   });
 
   it('sets no labelIds when labels not found', async () => {
@@ -244,7 +274,7 @@ describe('parseQuickAdd - label parsing', () => {
 describe('parseQuickAdd - combined parsing', () => {
   it('parses a complex task string', async () => {
     mockPrisma.project.findFirst.mockResolvedValue({ id: 'proj-1' });
-    mockPrisma.label.findMany.mockResolvedValue([{ id: 'label-1' }]);
+    mockPrisma.label.findMany.mockResolvedValue([{ id: 'label-1', name: 'important' }]);
 
     const result = await parseQuickAdd(
       'Team sync #Work @important p2 today at 10am every week',

@@ -32,6 +32,28 @@ interface AuthState {
 // triggers the API's reuse-detection and invalidates all tokens).
 let initPromise: Promise<void> | null = null;
 
+// The server computes Today/Upcoming and parses "today" in the user's stored
+// timezone. Backfill it from the browser once, but ONLY while it's still the
+// server default (UTC) — a deliberately chosen timezone is never overridden.
+function syncBrowserTimezone(
+  user: User | null,
+  updateUser: (data: Partial<User>) => void,
+): void {
+  try {
+    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!user || !browserTz || browserTz === 'UTC' || user.timezone !== 'UTC') {
+      return;
+    }
+    void api.patch('/users/me', { timezone: browserTz }).then(() => {
+      updateUser({ timezone: browserTz });
+    }).catch(() => {
+      /* cosmetic; next login retries */
+    });
+  } catch {
+    /* Intl unavailable — keep UTC */
+  }
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -46,6 +68,7 @@ export const useAuthStore = create<AuthState>()(
         setAccessToken(accessToken);
         // Refresh token is set as an httpOnly cookie by the server
         set({ user, isAuthenticated: true, isLoading: false });
+        syncBrowserTimezone(user, get().updateUser);
       },
 
       register: async (name: string, email: string, password: string) => {
@@ -108,6 +131,7 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               isLoading: false,
             });
+            syncBrowserTimezone(userResponse.data.data, get().updateUser);
           } catch {
             setAccessToken(null);
             set({ user: null, isAuthenticated: false, isLoading: false });

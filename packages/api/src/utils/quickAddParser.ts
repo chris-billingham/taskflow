@@ -1,4 +1,5 @@
 import { prisma } from '../config/database.js';
+import { getUserTimezone, nowAsTzWallClock } from './dates.js';
 
 export interface ParsedTask {
   content: string;
@@ -22,11 +23,13 @@ export async function parseQuickAdd(text: string, userId: string): Promise<Parse
     result.priority = parseInt(priorityMatch[1], 10);
     remaining = remaining.replace(priorityMatch[0], '').trim();
   } else {
-    const exclamationMatch = remaining.match(/(!{1,3})(?!\w)/);
+    // Sigils must stand alone ("call mum !!"), otherwise ordinary
+    // punctuation ("Ship it!") silently mutated both priority and content.
+    const exclamationMatch = remaining.match(/(?:^|\s)(!{1,3})(?=\s|$)/);
     if (exclamationMatch) {
       const count = exclamationMatch[1].length;
       result.priority = Math.max(1, 4 - count); // !!! = p1, !! = p2, ! = p3
-      remaining = remaining.replace(exclamationMatch[0], '').trim();
+      remaining = remaining.replace(exclamationMatch[0], ' ').trim();
     }
   }
 
@@ -58,15 +61,16 @@ export async function parseQuickAdd(text: string, userId: string): Promise<Parse
     remaining = remaining.replace(match[0], '').trim();
   }
   if (labelNames.length > 0) {
-    const labels = await prisma.label.findMany({
-      where: {
-        userId,
-        name: { in: labelNames, mode: 'insensitive' },
-      },
-      select: { id: true },
+    // `mode: 'insensitive'` has no effect on `in` filters (it compiles to a
+    // case-sensitive SQL IN), so match in code instead.
+    const userLabels = await prisma.label.findMany({
+      where: { userId },
+      select: { id: true, name: true },
     });
-    if (labels.length > 0) {
-      result.labelIds = labels.map((l) => l.id);
+    const wanted = new Set(labelNames.map((n) => n.toLowerCase()));
+    const matched = userLabels.filter((l) => wanted.has(l.name.toLowerCase()));
+    if (matched.length > 0) {
+      result.labelIds = matched.map((l) => l.id);
     }
   }
 
@@ -119,7 +123,9 @@ export async function parseQuickAdd(text: string, userId: string): Promise<Parse
   }
 
   // Parse date: "today", "tomorrow", day names, "Jan 15", "next week", "in 3 days"
-  const now = new Date();
+  // All calendar arithmetic runs on the USER's wall clock — the server's
+  // timezone is irrelevant to what "today" means for them.
+  const now = nowAsTzWallClock(await getUserTimezone(userId));
   const datePatterns: [RegExp, () => Date | null][] = [
     [/\btoday\b/i, () => now],
     [/\btomorrow\b/i, () => {
@@ -129,7 +135,8 @@ export async function parseQuickAdd(text: string, userId: string): Promise<Parse
     }],
     [/\bnext\s+week\b/i, () => {
       const d = new Date(now);
-      d.setDate(d.getDate() + (7 - d.getDay() + 1)); // next Monday
+      // Days until the next Monday, strictly in the future (Sun -> +1, Mon -> +7).
+      d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7));
       return d;
     }],
     [/\bin\s+(\d+)\s+days?\b/i, () => {

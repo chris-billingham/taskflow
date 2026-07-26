@@ -28,11 +28,14 @@ export function startDigestWorker() {
         since.setDate(since.getDate() - 7);
       }
 
-      // Find users who have unread notifications since the period
+      // Find users who have unread, not-yet-digested notifications in the
+      // period. digestedAt is the watermark: without it, the daily and weekly
+      // windows overlap and the same items get emailed repeatedly.
       const usersWithNotifications = await prisma.notification.groupBy({
         by: ['userId'],
         where: {
           isRead: false,
+          digestedAt: null,
           createdAt: { gte: since },
         },
         _count: { id: true },
@@ -41,16 +44,17 @@ export function startDigestWorker() {
       for (const { userId, _count } of usersWithNotifications) {
         if (_count.id === 0) continue;
 
-        // Get the unread notifications for the digest
         const notifications = await prisma.notification.findMany({
           where: {
             userId,
             isRead: false,
+            digestedAt: null,
             createdAt: { gte: since },
           },
           orderBy: { createdAt: 'desc' },
           take: 20,
         });
+        if (notifications.length === 0) continue;
 
         const summary = notifications.map((n) => `- ${n.title}: ${n.body}`).join('\n');
 
@@ -59,6 +63,12 @@ export function startDigestWorker() {
           summary,
           count: _count.id,
           period,
+        });
+
+        // Mark AFTER the send so a failed send retries next period.
+        await prisma.notification.updateMany({
+          where: { id: { in: notifications.map((n) => n.id) } },
+          data: { digestedAt: new Date() },
         });
       }
     },
