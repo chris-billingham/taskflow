@@ -1,5 +1,10 @@
 import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
+import {
+  requireProjectAccess,
+  requireWorkspaceRole,
+  projectAccessWhere,
+} from './access.js';
 import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.js';
 import { logActivity } from './activityService.js';
 import {
@@ -7,54 +12,9 @@ import {
   broadcastProjectDeleted,
 } from './syncService.js';
 
-async function verifyProjectAccess(projectId: string, userId: string) {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { id: true, ownerId: true, workspaceId: true },
-  });
-  if (!project) {
-    throw new NotFoundError('Project not found');
-  }
-  if (project.ownerId !== userId) {
-    // Check if user is a direct project member
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!member) {
-      // Check if user is a workspace member (for team projects)
-      if (project.workspaceId) {
-        const wsMember = await prisma.workspaceMember.findUnique({
-          where: {
-            workspaceId_userId: { workspaceId: project.workspaceId, userId },
-          },
-        });
-        if (wsMember) return project;
-      }
-      throw new ForbiddenError('You do not have access to this project');
-    }
-  }
-  return project;
-}
-
 export async function getUserProjects(userId: string) {
-  // Get workspace IDs the user belongs to
-  const memberships = await prisma.workspaceMember.findMany({
-    where: { userId },
-    select: { workspaceId: true },
-  });
-  const workspaceIds = memberships.map((m) => m.workspaceId);
-
   const projects = await prisma.project.findMany({
-    where: {
-      OR: [
-        { ownerId: userId },
-        { members: { some: { userId } } },
-        // Include workspace projects the user has access to
-        ...(workspaceIds.length > 0
-          ? [{ workspaceId: { in: workspaceIds } }]
-          : []),
-      ],
-    },
+    where: projectAccessWhere(userId),
     include: {
       sections: {
         orderBy: { sortOrder: 'asc' },
@@ -75,7 +35,7 @@ export async function getUserProjects(userId: string) {
 }
 
 export async function getProjectById(id: string, userId: string) {
-  await verifyProjectAccess(id, userId);
+  await requireProjectAccess(id, userId, 'VIEW');
 
   const project = await prisma.project.findUnique({
     where: { id },
@@ -110,19 +70,14 @@ export async function getProjectById(id: string, userId: string) {
 export async function createProject(data: CreateProjectInput, userId: string) {
   // If parentId provided, verify access to parent
   if (data.parentId) {
-    await verifyProjectAccess(data.parentId, userId);
+    await requireProjectAccess(data.parentId, userId, 'EDIT');
   }
 
-  // If a workspace is targeted, the caller must be a member of it — otherwise a
-  // user could inject projects/tasks into a workspace they don't belong to.
+  // If a workspace is targeted, the caller must be at least a MEMBER of it —
+  // GUESTs may comment on existing projects but not create new ones, and
+  // non-members could otherwise inject projects into foreign workspaces.
   if (data.workspaceId) {
-    const wsMember = await prisma.workspaceMember.findUnique({
-      where: { workspaceId_userId: { workspaceId: data.workspaceId, userId } },
-      select: { userId: true },
-    });
-    if (!wsMember) {
-      throw new ForbiddenError('You do not have access to this workspace');
-    }
+    await requireWorkspaceRole(data.workspaceId, userId, 'MEMBER');
   }
 
   // Get max sortOrder for user's projects
@@ -170,7 +125,7 @@ export async function updateProject(
   data: UpdateProjectInput,
   userId: string,
 ) {
-  const oldProject = await verifyProjectAccess(id, userId);
+  const oldProject = await requireProjectAccess(id, userId, 'ADMIN');
 
   const project = await prisma.project.update({
     where: { id },
@@ -211,9 +166,7 @@ export async function deleteProject(id: string, userId: string) {
   if (!project) {
     throw new NotFoundError('Project not found');
   }
-  if (project.ownerId !== userId) {
-    throw new ForbiddenError('Only the project owner can delete it');
-  }
+  await requireProjectAccess(id, userId, 'ADMIN');
   if (project.isInbox) {
     throw new ForbiddenError('Cannot delete the Inbox project');
   }
@@ -234,7 +187,7 @@ export async function deleteProject(id: string, userId: string) {
 }
 
 export async function archiveProject(id: string, userId: string) {
-  await verifyProjectAccess(id, userId);
+  await requireProjectAccess(id, userId, 'ADMIN');
 
   const project = await prisma.project.update({
     where: { id },
@@ -255,7 +208,7 @@ export async function archiveProject(id: string, userId: string) {
 }
 
 export async function unarchiveProject(id: string, userId: string) {
-  await verifyProjectAccess(id, userId);
+  await requireProjectAccess(id, userId, 'ADMIN');
 
   const project = await prisma.project.update({
     where: { id },
@@ -360,13 +313,9 @@ export async function duplicateProject(
   if (!original) {
     throw new NotFoundError('Project not found');
   }
-  if (original.ownerId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: id, userId } },
-    });
-    if (!member) {
-      throw new ForbiddenError('You do not have access to this project');
-    }
+  await requireProjectAccess(id, userId, 'VIEW');
+  if (original.workspaceId) {
+    await requireWorkspaceRole(original.workspaceId, userId, 'MEMBER');
   }
 
   // Create the duplicate project

@@ -1,6 +1,12 @@
 import { prisma } from '../config/database.js';
-import { ForbiddenError, NotFoundError } from '../errors/index.js';
+import { requireTaskAccess, requireProjectAccess } from './access.js';
 import type { ActivityAction, EntityType, Prisma } from '@prisma/client';
+
+const activityInclude = {
+  user: {
+    select: { id: true, name: true, avatarUrl: true },
+  },
+};
 
 interface LogActivityInput {
   action: ActivityAction;
@@ -26,75 +32,12 @@ export async function logActivity(input: LogActivityInput) {
   });
 }
 
-async function verifyTaskAccess(taskId: string, userId: string) {
-  const task = await prisma.task.findUnique({
-    where: { id: taskId },
-    include: { project: { select: { ownerId: true, workspaceId: true } } },
-  });
-  if (!task) {
-    throw new NotFoundError('Task not found');
-  }
-  if (task.project.ownerId !== userId && task.creatorId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: task.projectId, userId } },
-    });
-    if (!member) {
-      if (task.project.workspaceId) {
-        const wsMember = await prisma.workspaceMember.findUnique({
-          where: {
-            workspaceId_userId: {
-              workspaceId: task.project.workspaceId,
-              userId,
-            },
-          },
-        });
-        if (wsMember) return task;
-      }
-      throw new ForbiddenError('You do not have access to this task');
-    }
-  }
-  return task;
-}
-
-async function verifyProjectAccess(projectId: string, userId: string) {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { id: true, ownerId: true, workspaceId: true },
-  });
-  if (!project) {
-    throw new NotFoundError('Project not found');
-  }
-  if (project.ownerId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!member) {
-      if (project.workspaceId) {
-        const wsMember = await prisma.workspaceMember.findUnique({
-          where: {
-            workspaceId_userId: { workspaceId: project.workspaceId, userId },
-          },
-        });
-        if (wsMember) return project;
-      }
-      throw new ForbiddenError('You do not have access to this project');
-    }
-  }
-  return project;
-}
-
-const activityInclude = {
-  user: {
-    select: { id: true, name: true, avatarUrl: true },
-  },
-};
-
 export async function getTaskActivity(
   taskId: string,
   userId: string,
   limit = 50,
 ) {
-  await verifyTaskAccess(taskId, userId);
+  await requireTaskAccess(taskId, userId, 'VIEW');
 
   return prisma.activityLog.findMany({
     where: { taskId },
@@ -109,7 +52,7 @@ export async function getProjectActivity(
   userId: string,
   limit = 50,
 ) {
-  await verifyProjectAccess(projectId, userId);
+  await requireProjectAccess(projectId, userId, 'VIEW');
 
   return prisma.activityLog.findMany({
     where: {

@@ -1,5 +1,6 @@
 import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
+import { requireTaskAccess } from './access.js';
 import type { CreateCommentInput, UpdateCommentInput } from '../schemas/comment.js';
 import { logActivity } from './activityService.js';
 import {
@@ -7,25 +8,6 @@ import {
   broadcastCommentUpdated,
   broadcastCommentDeleted,
 } from './syncService.js';
-
-async function verifyTaskAccess(taskId: string, userId: string) {
-  const task = await prisma.task.findUnique({
-    where: { id: taskId },
-    include: { project: { select: { ownerId: true } } },
-  });
-  if (!task) {
-    throw new NotFoundError('Task not found');
-  }
-  if (task.project.ownerId !== userId && task.creatorId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: task.projectId, userId } },
-    });
-    if (!member) {
-      throw new ForbiddenError('You do not have access to this task');
-    }
-  }
-  return task;
-}
 
 const authorSelect = {
   id: true,
@@ -40,7 +22,7 @@ export async function getTaskComments(
   limit = 50,
   cursor?: string,
 ) {
-  await verifyTaskAccess(taskId, userId);
+  await requireTaskAccess(taskId, userId, 'VIEW');
 
   const comments = await prisma.comment.findMany({
     where: { taskId, parentId: null },
@@ -66,7 +48,7 @@ export async function createComment(
   data: CreateCommentInput,
   userId: string,
 ) {
-  const task = await verifyTaskAccess(taskId, userId);
+  const task = await requireTaskAccess(taskId, userId, 'COMMENT');
 
   // Validate parentId if provided
   if (data.parentId) {

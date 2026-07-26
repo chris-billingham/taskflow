@@ -1,28 +1,10 @@
 import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
+import { requireTaskAccess } from './access.js';
 import type { CreateReminderInput } from '../schemas/reminder.js';
 
-async function verifyTaskAccess(taskId: string, userId: string) {
-  const task = await prisma.task.findUnique({
-    where: { id: taskId },
-    include: { project: { select: { ownerId: true } } },
-  });
-  if (!task) {
-    throw new NotFoundError('Task not found');
-  }
-  if (task.project.ownerId !== userId && task.creatorId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: task.projectId, userId } },
-    });
-    if (!member) {
-      throw new ForbiddenError('You do not have access to this task');
-    }
-  }
-  return task;
-}
-
 export async function getTaskReminders(taskId: string, userId: string) {
-  await verifyTaskAccess(taskId, userId);
+  await requireTaskAccess(taskId, userId, 'VIEW');
 
   return prisma.reminder.findMany({
     where: { taskId, userId },
@@ -31,7 +13,7 @@ export async function getTaskReminders(taskId: string, userId: string) {
 }
 
 export async function createReminder(data: CreateReminderInput, userId: string) {
-  const task = await verifyTaskAccess(data.taskId, userId);
+  const task = await requireTaskAccess(data.taskId, userId, 'VIEW');
 
   // For RELATIVE reminders, compute triggerAt from task dueDate
   let triggerAt = data.triggerAt ? new Date(data.triggerAt) : null;

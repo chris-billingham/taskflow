@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/database.js';
+import { projectAccessWhere } from '../services/access.js';
 
 interface ParseContext {
   userId: string;
@@ -223,7 +224,7 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
     const project = await prisma.project.findFirst({
       where: {
         name: { equals: projectName, mode: 'insensitive' },
-        ownerId: ctx.userId,
+        AND: [projectAccessWhere(ctx.userId)],
       },
     });
     if (project) {
@@ -240,7 +241,9 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
     for (const part of parts) {
       const where: Prisma.ProjectWhereInput = {
         name: { equals: part.trim(), mode: 'insensitive' },
-        ownerId: ctx.userId,
+        // Any project the user can see, not just owned ones — team projects
+        // were unfindable by name in filters.
+        AND: [projectAccessWhere(ctx.userId)],
       };
       if (currentProject) {
         where.parentId = currentProject.id;

@@ -86,7 +86,9 @@ describe('connection auto-join', () => {
     ]);
     // The project query must include workspace projects, not just owned/member.
     const where = mockPrisma.project.findMany.mock.calls[0][0].where;
-    expect(where.OR).toContainEqual({ workspaceId: { in: ['w1'] } });
+    expect(where.OR).toContainEqual({
+      workspace: { members: { some: { userId: USER_ID } } },
+    });
   });
 
   it('joins nothing extra when the user has no projects', async () => {
@@ -134,7 +136,7 @@ describe('subscribe:project', () => {
       ownerId: 'someone-else',
       workspaceId: 'w1',
     });
-    mockPrisma.workspaceMember.findUnique.mockResolvedValue({ userId: USER_ID });
+    mockPrisma.workspaceMember.findUnique.mockResolvedValue({ role: 'MEMBER' });
     const socket = register();
     const ack = vi.fn();
 

@@ -50,3 +50,13 @@ export function emitToProject(projectId: string, event: string, data: unknown): 
 export function emitToWorkspace(workspaceId: string, event: string, data: unknown): void {
   io?.to(`workspace:${workspaceId}`).emit(event, data);
 }
+
+/**
+ * Kill every live socket a user has. Called on credential rotation (password
+ * change/reset) and refresh-token reuse detection: a websocket authenticated
+ * with a now-stolen token would otherwise keep streaming the user's data
+ * indefinitely — sockets are only re-authenticated at handshake time.
+ */
+export function disconnectUserSockets(userId: string): void {
+  io?.in(`user:${userId}`).disconnectSockets(true);
+}

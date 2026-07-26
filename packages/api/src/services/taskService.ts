@@ -1,6 +1,15 @@
 import { prisma } from '../config/database.js';
 import type { Prisma } from '@prisma/client';
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
+import {
+  requireTaskAccess,
+  requireProjectAccess,
+  taskAccessWhere,
+  effectiveProjectLevels,
+  levelSatisfies,
+  hasProjectAccess,
+  type AccessLevel,
+} from './access.js';
 import { getRequestId } from '../utils/requestContext.js';
 import type {
   CreateTaskInput,
@@ -68,37 +77,6 @@ const taskListInclude = {
   },
 };
 
-async function verifyTaskAccess(taskId: string, userId: string) {
-  const task = await prisma.task.findUnique({
-    where: { id: taskId },
-    include: { project: { select: { ownerId: true, workspaceId: true } } },
-  });
-  if (!task) {
-    throw new NotFoundError('Task not found');
-  }
-  if (task.project.ownerId !== userId && task.creatorId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: task.projectId, userId } },
-    });
-    if (!member) {
-      // Check workspace membership for team projects
-      if (task.project.workspaceId) {
-        const wsMember = await prisma.workspaceMember.findUnique({
-          where: {
-            workspaceId_userId: {
-              workspaceId: task.project.workspaceId,
-              userId,
-            },
-          },
-        });
-        if (wsMember) return task;
-      }
-      throw new ForbiddenError('You do not have access to this task');
-    }
-  }
-  return task;
-}
-
 // Labels are per-user (Label.userId). Reject label ids that don't exist or
 // belong to another user — otherwise a caller could attach (and, via the task
 // response, read) another user's labels, or hit an opaque 500 on an FK error.
@@ -113,104 +91,116 @@ async function assertLabelsOwned(labelIds: string[], userId: string) {
   }
 }
 
-async function verifyProjectAccess(projectId: string, userId: string) {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { id: true, ownerId: true, workspaceId: true },
-  });
-  if (!project) {
-    throw new NotFoundError('Project not found');
-  }
-  if (project.ownerId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
+/**
+ * Validate references a task points at. Every one of these is attacker-
+ * controlled input that previously went straight into the write:
+ * - sectionId must belong to the task's project (else the task renders in a
+ *   foreign project's board, or nowhere).
+ * - parentId must be a task in the SAME project and must not create a cycle.
+ *   An unvalidated parentId let any user graft their task under an arbitrary
+ *   task id — disclosing the victim's task content through the `parent`
+ *   include and polluting their subtask lists.
+ * - assigneeId must be a user who can see the project (assignment otherwise
+ *   injects tasks into a stranger's views/search).
+ */
+async function assertTaskReferences(
+  {
+    projectId,
+    sectionId,
+    parentId,
+    assigneeId,
+    taskId,
+  }: {
+    projectId: string;
+    sectionId?: string | null;
+    parentId?: string | null;
+    assigneeId?: string | null;
+    taskId?: string; // present on updates, for cycle detection
+  },
+) {
+  if (sectionId) {
+    const section = await prisma.section.findUnique({
+      where: { id: sectionId },
+      select: { projectId: true },
     });
-    if (!member) {
-      // Check workspace membership for team projects
-      if (project.workspaceId) {
-        const wsMember = await prisma.workspaceMember.findUnique({
-          where: {
-            workspaceId_userId: { workspaceId: project.workspaceId, userId },
-          },
-        });
-        if (wsMember) return project;
-      }
-      throw new ForbiddenError('You do not have access to this project');
+    if (!section || section.projectId !== projectId) {
+      throw new ValidationError('Section does not belong to this project');
     }
   }
-  return project;
+
+  if (parentId) {
+    if (taskId && parentId === taskId) {
+      throw new ValidationError('A task cannot be its own parent');
+    }
+    const parent = await prisma.task.findUnique({
+      where: { id: parentId },
+      select: { projectId: true, parentId: true },
+    });
+    if (!parent || parent.projectId !== projectId) {
+      throw new ValidationError('Parent task does not belong to this project');
+    }
+    // Walk the ancestor chain to reject cycles (bounded to be safe against
+    // pre-existing bad data).
+    if (taskId) {
+      let cursor = parent.parentId;
+      for (let depth = 0; cursor && depth < 100; depth++) {
+        if (cursor === taskId) {
+          throw new ValidationError('Cannot nest a task under its own subtask');
+        }
+        const next: { parentId: string | null } | null = await prisma.task.findUnique({
+          where: { id: cursor },
+          select: { parentId: true },
+        });
+        cursor = next?.parentId ?? null;
+      }
+    }
+  }
+
+  if (assigneeId) {
+    if (!(await hasProjectAccess(projectId, assigneeId, 'VIEW'))) {
+      throw new ValidationError(
+        'Assignee does not have access to this project',
+      );
+    }
+  }
 }
 
 type TaskWithProject = {
   id: string;
   projectId: string;
-  creatorId: string | null;
+  assigneeId: string | null;
   project: { ownerId: string | null; workspaceId: string | null };
 };
 
-async function verifyBulkTaskAccess(tasks: TaskWithProject[], userId: string) {
-  // Collect project IDs where the user is not owner/creator to batch-check membership
-  const projectIdsToCheck = [
-    ...new Set(
-      tasks
-        .filter((t) => t.project.ownerId !== userId && t.creatorId !== userId)
-        .map((t) => t.projectId),
-    ),
-  ];
-  if (projectIdsToCheck.length === 0) return;
-
-  const [projectMembers, workspaceIds] = await Promise.all([
-    prisma.projectMember.findMany({
-      where: { projectId: { in: projectIdsToCheck }, userId },
-      select: { projectId: true },
-    }),
-    Promise.resolve(
-      [
-        ...new Set(
-          tasks
-            .filter((t) => t.project.workspaceId !== null)
-            .map((t) => t.project.workspaceId as string),
-        ),
-      ],
-    ),
-  ]);
-
-  const memberProjectIds = new Set(projectMembers.map((m) => m.projectId));
-
-  const wsMembers = workspaceIds.length > 0
-    ? await prisma.workspaceMember.findMany({
-        where: { workspaceId: { in: workspaceIds }, userId },
-        select: { workspaceId: true },
-      })
-    : [];
-  const memberWorkspaceIds = new Set(wsMembers.map((m) => m.workspaceId));
+/**
+ * Bulk access check: the user must hold `level` on every task's project (or
+ * be the task's assignee, who can always work their own task). Resolved with
+ * two queries regardless of task count.
+ */
+async function verifyBulkTaskAccess(
+  tasks: TaskWithProject[],
+  userId: string,
+  level: AccessLevel = 'EDIT',
+) {
+  const levels = await effectiveProjectLevels(
+    tasks.map((t) => ({
+      id: t.projectId,
+      ownerId: t.project.ownerId,
+      workspaceId: t.project.workspaceId,
+    })),
+    userId,
+  );
 
   for (const task of tasks) {
-    if ((task.project.ownerId && task.project.ownerId === userId) || task.creatorId === userId) continue;
-    if (memberProjectIds.has(task.projectId)) continue;
-    if (task.project.workspaceId && memberWorkspaceIds.has(task.project.workspaceId)) continue;
+    if (task.assigneeId === userId && levelSatisfies('EDIT', level)) continue;
+    if (levelSatisfies(levels.get(task.projectId), level)) continue;
     throw new ForbiddenError('You do not have access to all specified tasks');
   }
 }
 
 export async function getTasks(query: TaskQuery, userId: string) {
-  // Get workspace IDs the user belongs to
-  const memberships = await prisma.workspaceMember.findMany({
-    where: { userId },
-    select: { workspaceId: true },
-  });
-  const workspaceIds = memberships.map((m) => m.workspaceId);
-
   const where: Prisma.TaskWhereInput = {
-    project: {
-      OR: [
-        { ownerId: userId },
-        { members: { some: { userId } } },
-        ...(workspaceIds.length > 0
-          ? [{ workspaceId: { in: workspaceIds } }]
-          : []),
-      ],
-    },
+    AND: [taskAccessWhere(userId)],
     projectId: query.projectId,
     sectionId: query.sectionId,
     parentId: query.parentId ?? null,
@@ -237,7 +227,7 @@ export async function getTasks(query: TaskQuery, userId: string) {
 }
 
 export async function getTaskById(id: string, userId: string) {
-  await verifyTaskAccess(id, userId);
+  await requireTaskAccess(id, userId, 'VIEW');
 
   const task = await prisma.task.findUnique({
     where: { id },
@@ -272,10 +262,16 @@ export async function getTaskById(id: string, userId: string) {
 }
 
 export async function createTask(data: CreateTaskInput, userId: string) {
-  await verifyProjectAccess(data.projectId, userId);
+  await requireProjectAccess(data.projectId, userId, 'EDIT');
   if (data.labelIds?.length) {
     await assertLabelsOwned(data.labelIds, userId);
   }
+  await assertTaskReferences({
+    projectId: data.projectId,
+    sectionId: data.sectionId,
+    parentId: data.parentId,
+    assigneeId: data.assigneeId,
+  });
 
   // Get max sortOrder
   const maxSort = await prisma.task.aggregate({
@@ -331,13 +327,20 @@ export async function updateTask(
   data: UpdateTaskInput,
   userId: string,
 ) {
-  const oldTask = await verifyTaskAccess(id, userId);
+  const oldTask = await requireTaskAccess(id, userId, 'EDIT');
 
   const { labelIds, ...updateData } = data;
 
   if (labelIds !== undefined && labelIds.length > 0) {
     await assertLabelsOwned(labelIds, userId);
   }
+  await assertTaskReferences({
+    projectId: oldTask.projectId,
+    sectionId: updateData.sectionId,
+    parentId: updateData.parentId,
+    assigneeId: updateData.assigneeId,
+    taskId: id,
+  });
 
   // Prepare date fields
   const prismaData: Prisma.TaskUpdateInput = {
@@ -383,7 +386,7 @@ export async function updateTask(
 }
 
 export async function deleteTask(id: string, userId: string) {
-  const task = await verifyTaskAccess(id, userId);
+  const task = await requireTaskAccess(id, userId, 'EDIT');
 
   // Cascade delete handles subtasks via Prisma schema
   await prisma.task.delete({ where: { id } });
@@ -401,7 +404,7 @@ export async function deleteTask(id: string, userId: string) {
 }
 
 export async function completeTask(id: string, userId: string) {
-  const task = await verifyTaskAccess(id, userId);
+  const task = await requireTaskAccess(id, userId, 'EDIT');
 
   // Idempotency guard: a double-click or concurrent request must not re-run the
   // completion logic (which, for recurring tasks, spawns the next occurrence).
@@ -500,7 +503,7 @@ export async function completeTask(id: string, userId: string) {
 }
 
 export async function uncompleteTask(id: string, userId: string) {
-  const oldTask = await verifyTaskAccess(id, userId);
+  const oldTask = await requireTaskAccess(id, userId, 'EDIT');
 
   const task = await prisma.task.update({
     where: { id },
@@ -526,11 +529,17 @@ export async function moveTask(
   data: MoveTaskInput,
   userId: string,
 ) {
-  const oldTask = await verifyTaskAccess(id, userId);
+  const oldTask = await requireTaskAccess(id, userId, 'EDIT');
 
   if (data.projectId) {
-    await verifyProjectAccess(data.projectId, userId);
+    await requireProjectAccess(data.projectId, userId, 'EDIT');
   }
+  await assertTaskReferences({
+    projectId: data.projectId ?? oldTask.projectId,
+    sectionId: data.sectionId,
+    parentId: data.parentId,
+    taskId: id,
+  });
 
   const updateData: Prisma.TaskUpdateInput = {
     ...(data.projectId !== undefined && { project: { connect: { id: data.projectId } } }),
@@ -563,7 +572,7 @@ export async function moveTask(
 }
 
 export async function duplicateTask(id: string, userId: string) {
-  const original = await verifyTaskAccess(id, userId);
+  const original = await requireTaskAccess(id, userId, 'EDIT');
 
   const task = await prisma.task.create({
     data: {
@@ -598,7 +607,12 @@ export async function bulkUpdate(
   // Verify access to all tasks
   const tasks = await prisma.task.findMany({
     where: { id: { in: taskIds } },
-    include: { project: { select: { ownerId: true, workspaceId: true } } },
+    select: {
+      id: true,
+      projectId: true,
+      assigneeId: true,
+      project: { select: { ownerId: true, workspaceId: true } },
+    },
   });
 
   if (tasks.length !== taskIds.length) {
@@ -628,9 +642,21 @@ export async function bulkUpdate(
       });
       break;
 
-    case 'move':
+    case 'move': {
       if (actionData?.projectId) {
-        await verifyProjectAccess(actionData.projectId, userId);
+        await requireProjectAccess(actionData.projectId, userId, 'EDIT');
+      }
+      if (actionData?.sectionId) {
+        // All tasks land in the same target; the section must belong to it.
+        const targetProjectId = actionData?.projectId ?? tasks[0]?.projectId;
+        const sameProject = tasks.every((t) => t.projectId === (actionData?.projectId ?? t.projectId));
+        if (!sameProject && !actionData?.projectId) {
+          throw new ValidationError('Cannot bulk-set a section across different projects');
+        }
+        await assertTaskReferences({
+          projectId: targetProjectId,
+          sectionId: actionData.sectionId,
+        });
       }
       await prisma.task.updateMany({
         where: { id: { in: taskIds } },
@@ -640,6 +666,7 @@ export async function bulkUpdate(
         },
       });
       break;
+    }
 
     case 'updatePriority':
       if (actionData?.priority) {
@@ -695,7 +722,12 @@ export async function reorderTasks(taskIds: string[], userId: string) {
 
   const tasks = await prisma.task.findMany({
     where: { id: { in: taskIds } },
-    include: { project: { select: { ownerId: true, workspaceId: true } } },
+    select: {
+      id: true,
+      projectId: true,
+      assigneeId: true,
+      project: { select: { ownerId: true, workspaceId: true } },
+    },
   });
 
   if (tasks.length !== taskIds.length) {

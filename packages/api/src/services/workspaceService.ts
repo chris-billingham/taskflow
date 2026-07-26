@@ -13,6 +13,7 @@ import type {
 } from '../schemas/workspace.js';
 import { logActivity } from './activityService.js';
 import { isMailerReady, sendWorkspaceInviteEmail } from './mailService.js';
+import { getIO } from '../websocket/events.js';
 
 function generateSlug(name: string): string {
   return (
@@ -380,6 +381,56 @@ export async function updateMemberRole(
   return member;
 }
 
+
+/**
+ * A membership row is not just a grant — projects the leaver OWNS inside the
+ * workspace are the team's working data. Reassign them to the workspace owner
+ * so they stay owned by someone with access, then drop the membership, all in
+ * one transaction. Finally kick the leaver's live sockets out of the
+ * workspace's realtime rooms (room membership is a read grant that would
+ * otherwise persist until they reconnect).
+ */
+async function revokeMembership(workspaceId: string, memberId: string) {
+  const workspace = await prisma.workspace.findUniqueOrThrow({
+    where: { id: workspaceId },
+    select: { ownerId: true },
+  });
+
+  const ownedProjects = await prisma.project.findMany({
+    where: { workspaceId, ownerId: memberId },
+    select: { id: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    if (ownedProjects.length > 0) {
+      await tx.project.updateMany({
+        where: { id: { in: ownedProjects.map((p) => p.id) } },
+        data: { ownerId: workspace.ownerId },
+      });
+    }
+    // Direct project memberships inside this workspace go too.
+    await tx.projectMember.deleteMany({
+      where: { userId: memberId, project: { workspaceId } },
+    });
+    await tx.workspaceMember.delete({
+      where: { workspaceId_userId: { workspaceId, userId: memberId } },
+    });
+  });
+
+  // Evict live sockets from the rooms this membership granted.
+  const io = getIO();
+  if (io) {
+    const projectIds = await prisma.project.findMany({
+      where: { workspaceId },
+      select: { id: true },
+    });
+    io.in(`user:${memberId}`).socketsLeave([
+      `workspace:${workspaceId}`,
+      ...projectIds.map((p) => `project:${p.id}`),
+    ]);
+  }
+}
+
 export async function removeMember(
   workspaceId: string,
   memberId: string,
@@ -398,9 +449,7 @@ export async function removeMember(
     throw new ForbiddenError('Cannot remove the workspace owner');
   }
 
-  await prisma.workspaceMember.delete({
-    where: { workspaceId_userId: { workspaceId, userId: memberId } },
-  });
+  await revokeMembership(workspaceId, memberId);
 
   return { message: 'Member removed successfully' };
 }
@@ -414,9 +463,7 @@ export async function leaveWorkspace(workspaceId: string, userId: string) {
     );
   }
 
-  await prisma.workspaceMember.delete({
-    where: { workspaceId_userId: { workspaceId, userId } },
-  });
+  await revokeMembership(workspaceId, userId);
 
   return { message: 'Left workspace successfully' };
 }

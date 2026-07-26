@@ -1,4 +1,5 @@
 import { prisma } from '../config/database.js';
+import { taskAccessWhere } from './access.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 import type { CreateFilterInput, UpdateFilterInput } from '../schemas/filter.js';
 import { parseFilterQuery, validateFilterQuery } from '../utils/filterParser.js';
@@ -48,22 +49,11 @@ export async function deleteFilter(id: string, userId: string) {
 export async function executeFilter(query: string, userId: string) {
   const where = await parseFilterQuery(query, userId);
 
-  // Scope to projects the user owns or is a member of
-  const userProjects = await prisma.project.findMany({
-    where: {
-      OR: [
-        { ownerId: userId },
-        { members: { some: { userId } } },
-      ],
-    },
-    select: { id: true },
-  });
-  const projectIds = userProjects.map((p) => p.id);
-
   const tasks = await prisma.task.findMany({
     where: {
       AND: [
-        { projectId: { in: projectIds } },
+        // Full visibility scope: owned, direct-member, workspace, assigned.
+        taskAccessWhere(userId),
         where,
       ],
     },

@@ -1,6 +1,7 @@
 import { prisma } from '../config/database.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/index.js';
+import { disconnectUserSockets } from '../websocket/events.js';
 
 export async function getUserById(id: string) {
   const user = await prisma.user.findUnique({
@@ -95,8 +96,10 @@ export async function changePassword(
     data: { passwordHash },
   });
 
-  // Invalidate all refresh tokens
+  // Invalidate all refresh tokens and kill live sockets — anything holding
+  // the old credentials must be forced to re-authenticate.
   await prisma.refreshToken.deleteMany({ where: { userId: id } });
+  disconnectUserSockets(id);
 
   return { message: 'Password changed successfully' };
 }

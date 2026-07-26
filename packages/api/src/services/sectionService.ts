@@ -1,5 +1,6 @@
 import { prisma } from '../config/database.js';
-import { ForbiddenError, NotFoundError } from '../errors/index.js';
+import { NotFoundError } from '../errors/index.js';
+import { requireProjectAccess } from './access.js';
 import type { CreateSectionInput, UpdateSectionInput } from '../schemas/section.js';
 import {
   broadcastSectionCreated,
@@ -7,46 +8,24 @@ import {
   broadcastSectionDeleted,
 } from './syncService.js';
 
-async function verifyProjectAccess(projectId: string, userId: string) {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { id: true, ownerId: true },
-  });
-  if (!project) {
-    throw new NotFoundError('Project not found');
-  }
-  if (project.ownerId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!member) {
-      throw new ForbiddenError('You do not have access to this project');
-    }
-  }
-  return project;
-}
-
-async function verifySectionAccess(sectionId: string, userId: string) {
+async function requireSectionAccess(
+  sectionId: string,
+  userId: string,
+  level: 'VIEW' | 'EDIT',
+) {
   const section = await prisma.section.findUnique({
     where: { id: sectionId },
-    include: { project: { select: { ownerId: true } } },
+    select: { id: true, name: true, projectId: true, sortOrder: true },
   });
   if (!section) {
     throw new NotFoundError('Section not found');
   }
-  if (section.project.ownerId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: section.projectId, userId } },
-    });
-    if (!member) {
-      throw new ForbiddenError('You do not have access to this section');
-    }
-  }
+  await requireProjectAccess(section.projectId, userId, level);
   return section;
 }
 
 export async function getProjectSections(projectId: string, userId: string) {
-  await verifyProjectAccess(projectId, userId);
+  await requireProjectAccess(projectId, userId, 'VIEW');
 
   return prisma.section.findMany({
     where: { projectId },
@@ -60,7 +39,7 @@ export async function getProjectSections(projectId: string, userId: string) {
 }
 
 export async function createSection(data: CreateSectionInput, userId: string) {
-  await verifyProjectAccess(data.projectId, userId);
+  await requireProjectAccess(data.projectId, userId, 'EDIT');
 
   // Get max sortOrder
   const maxSort = await prisma.section.aggregate({
@@ -91,7 +70,7 @@ export async function updateSection(
   data: UpdateSectionInput,
   userId: string,
 ) {
-  await verifySectionAccess(id, userId);
+  await requireSectionAccess(id, userId, 'EDIT');
 
   const section = await prisma.section.update({
     where: { id },
@@ -109,7 +88,7 @@ export async function updateSection(
 }
 
 export async function deleteSection(id: string, userId: string) {
-  const section = await verifySectionAccess(id, userId);
+  const section = await requireSectionAccess(id, userId, 'EDIT');
 
   // Move tasks to no section
   await prisma.task.updateMany({
@@ -127,27 +106,18 @@ export async function deleteSection(id: string, userId: string) {
 export async function reorderSections(sectionIds: string[], userId: string) {
   if (sectionIds.length === 0) return { message: 'Nothing to reorder' };
 
-  // Verify all sections exist and belong to a project the user has access to
+  // Verify all sections exist and the user may edit their projects
   const sections = await prisma.section.findMany({
     where: { id: { in: sectionIds } },
-    include: { project: { select: { ownerId: true } } },
+    select: { id: true, projectId: true },
   });
 
   if (sections.length !== sectionIds.length) {
     throw new NotFoundError('One or more sections not found');
   }
 
-  for (const section of sections) {
-    if (section.project.ownerId !== userId) {
-      const member = await prisma.projectMember.findUnique({
-        where: {
-          projectId_userId: { projectId: section.projectId, userId },
-        },
-      });
-      if (!member) {
-        throw new ForbiddenError('You do not have access to reorder these sections');
-      }
-    }
+  for (const projectId of new Set(sections.map((s) => s.projectId))) {
+    await requireProjectAccess(projectId, userId, 'EDIT');
   }
 
   const updates = sectionIds.map((id, index) =>

@@ -4,6 +4,11 @@ import { fileTypeFromBuffer } from 'file-type';
 import { prisma } from '../config/database.js';
 import { uploadObject, deleteObject, getObjectStream } from '../config/storage.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
+import {
+  requireTaskAccess,
+  requireProjectAccess,
+  type AccessLevel,
+} from './access.js';
 import { ALLOWED_MIME_TYPES } from '../schemas/attachment.js';
 import { env } from '../config/env.js';
 
@@ -74,53 +79,27 @@ const uploaderSelect = {
   avatarUrl: true,
 };
 
-async function verifyTaskAccess(taskId: string, userId: string) {
-  const task = await prisma.task.findUnique({
-    where: { id: taskId },
-    include: { project: { select: { ownerId: true, workspaceId: true } } },
-  });
-  if (!task) throw new NotFoundError('Task not found');
-  if (task.project.ownerId !== userId && task.creatorId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: task.projectId, userId } },
-    });
-    if (!member) {
-      if (task.project.workspaceId) {
-        const wsMember = await prisma.workspaceMember.findUnique({
-          where: { workspaceId_userId: { workspaceId: task.project.workspaceId, userId } },
-        });
-        if (wsMember) return task;
-      }
-      throw new ForbiddenError('You do not have access to this task');
-    }
-  }
-  return task;
-}
-
-async function verifyCommentAccess(commentId: string, userId: string) {
+/**
+ * Comments live on a task OR directly on a project (schema supports both).
+ * The previous check only handled the task shape — a project-scoped comment
+ * fell through with NO access check at all.
+ */
+async function requireCommentAccess(
+  commentId: string,
+  userId: string,
+  level: AccessLevel,
+) {
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
-    include: {
-      task: { include: { project: { select: { ownerId: true, id: true, workspaceId: true } } } },
-    },
+    select: { id: true, taskId: true, projectId: true, authorId: true },
   });
   if (!comment) throw new NotFoundError('Comment not found');
-  if (comment.task) {
-    const task = comment.task;
-    if (task.project.ownerId !== userId && task.creatorId !== userId) {
-      const member = await prisma.projectMember.findUnique({
-        where: { projectId_userId: { projectId: task.projectId, userId } },
-      });
-      if (!member) {
-        if (task.project.workspaceId) {
-          const wsMember = await prisma.workspaceMember.findUnique({
-            where: { workspaceId_userId: { workspaceId: task.project.workspaceId, userId } },
-          });
-          if (wsMember) return comment;
-        }
-        throw new ForbiddenError('You do not have access to this comment');
-      }
-    }
+  if (comment.taskId) {
+    await requireTaskAccess(comment.taskId, userId, level);
+  } else if (comment.projectId) {
+    await requireProjectAccess(comment.projectId, userId, level);
+  } else if (comment.authorId !== userId) {
+    throw new ForbiddenError('You do not have access to this comment');
   }
   return comment;
 }
@@ -144,8 +123,8 @@ export async function uploadFile(
 
   await assertContentMatchesDeclaredType(fileBuffer, mimeType);
 
-  if (taskId) await verifyTaskAccess(taskId, userId);
-  if (commentId) await verifyCommentAccess(commentId, userId);
+  if (taskId) await requireTaskAccess(taskId, userId, 'EDIT');
+  if (commentId) await requireCommentAccess(commentId, userId, 'COMMENT');
 
   const ext = extname(originalFilename) || '';
   const key = `attachments/${userId}/${randomUUID()}${ext}`;
@@ -167,7 +146,7 @@ export async function uploadFile(
 }
 
 export async function getTaskAttachments(taskId: string, userId: string) {
-  await verifyTaskAccess(taskId, userId);
+  await requireTaskAccess(taskId, userId, 'VIEW');
 
   return prisma.attachment.findMany({
     where: { taskId },
@@ -177,7 +156,7 @@ export async function getTaskAttachments(taskId: string, userId: string) {
 }
 
 export async function getCommentAttachments(commentId: string, userId: string) {
-  await verifyCommentAccess(commentId, userId);
+  await requireCommentAccess(commentId, userId, 'VIEW');
 
   return prisma.attachment.findMany({
     where: { commentId },
@@ -198,9 +177,9 @@ export async function getDownloadStream(id: string, userId: string) {
 
   // Verify user has access via task or comment
   if (attachment.taskId) {
-    await verifyTaskAccess(attachment.taskId, userId);
+    await requireTaskAccess(attachment.taskId, userId, 'VIEW');
   } else if (attachment.commentId) {
-    await verifyCommentAccess(attachment.commentId, userId);
+    await requireCommentAccess(attachment.commentId, userId, 'VIEW');
   } else if (attachment.uploadedById !== userId) {
     throw new ForbiddenError('You do not have access to this attachment');
   }

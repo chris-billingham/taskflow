@@ -1,14 +1,9 @@
 import { prisma } from '../config/database.js';
 import { taskInclude } from './taskService.js';
-
-const userAccessWhere = (userId: string) => ({
-  project: {
-    OR: [
-      { ownerId: userId },
-      { members: { some: { userId } } },
-    ],
-  },
-});
+// Full visibility scope (owned + direct member + workspace + assigned): the
+// old local fragment ignored workspaces, so team tasks silently vanished from
+// Today/Upcoming while remaining visible in their project views.
+import { taskAccessWhere } from './access.js';
 
 export async function getTodayTasks(userId: string) {
   const now = new Date();
@@ -18,7 +13,7 @@ export async function getTodayTasks(userId: string) {
 
   const tasks = await prisma.task.findMany({
     where: {
-      ...userAccessWhere(userId),
+      ...taskAccessWhere(userId),
       isCompleted: false,
       parentId: null,
       dueDate: { lt: tomorrowStart },
@@ -81,7 +76,7 @@ export async function getUpcomingTasks(
   // Overdue + upcoming range
   const tasks = await prisma.task.findMany({
     where: {
-      ...userAccessWhere(userId),
+      ...taskAccessWhere(userId),
       isCompleted: false,
       parentId: null,
       dueDate: { lt: endDate },
@@ -108,7 +103,7 @@ export async function getUpcomingTasks(
   if (includeNoDate) {
     noDateTasks = await prisma.task.findMany({
       where: {
-        ...userAccessWhere(userId),
+        ...taskAccessWhere(userId),
         isCompleted: false,
         parentId: null,
         dueDate: null,
@@ -135,8 +130,21 @@ export async function rescheduleOverdue(userId: string, targetDate: string) {
 
   const result = await prisma.task.updateMany({
     where: {
-      ...userAccessWhere(userId),
+      AND: [
+        taskAccessWhere(userId),
+        // Bulk-rescheduling is personal: only tasks assigned to the caller,
+        // or created by them and unassigned. Without this, one member's
+        // "Reschedule all" silently moved every overdue task their teammates
+        // could see — including colleagues' assigned work.
+        {
+          OR: [
+            { assigneeId: userId },
+            { creatorId: userId, assigneeId: null },
+          ],
+        },
+      ],
       isCompleted: false,
+      parentId: null,
       dueDate: { lt: todayStart },
     },
     data: {

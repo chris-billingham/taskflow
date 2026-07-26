@@ -114,8 +114,7 @@ export async function searchTasks(
       OR t.description ILIKE ${searchPattern}
     )
     AND (
-      t."creatorId" = ${userId}
-      OR t."assigneeId" = ${userId}
+      t."assigneeId" = ${userId}
       OR p."ownerId" = ${userId}
       OR EXISTS (
         SELECT 1 FROM project_members pm
@@ -236,8 +235,7 @@ export async function searchComments(
       OR (
         c."taskId" IS NOT NULL
         AND (
-          t."creatorId" = ${userId}
-          OR t."assigneeId" = ${userId}
+          t."assigneeId" = ${userId}
           OR tp."ownerId" = ${userId}
           OR EXISTS (
             SELECT 1 FROM project_members pm

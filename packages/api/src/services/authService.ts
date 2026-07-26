@@ -14,6 +14,7 @@ import {
   ValidationError,
 } from '../errors/index.js';
 import type { RegisterInput } from '../schemas/auth.js';
+import { disconnectUserSockets } from '../websocket/events.js';
 import {
   isMailerReady,
   sendVerificationEmail,
@@ -177,9 +178,11 @@ export async function refreshTokens(refreshToken: string) {
       where: { token: refreshToken },
     });
     if (!stored || stored.expiresAt < new Date()) {
-      // Token missing or expired — possible reuse attack; revoke all user tokens
+      // Token missing or expired — possible reuse attack; revoke all user
+      // tokens and kill any live sockets they authenticate.
       if (payload.id) {
         await tx.refreshToken.deleteMany({ where: { userId: payload.id } });
+        disconnectUserSockets(payload.id);
       }
       throw new UnauthorizedError('Refresh token expired or already used');
     }
@@ -248,8 +251,10 @@ export async function resetPassword(token: string, newPassword: string) {
   // Invalidate the reset token
   await redis.del(`password-reset:${tokenHash}`);
 
-  // Invalidate all refresh tokens for this user
+  // Invalidate all refresh tokens for this user and kill live sockets —
+  // a password reset means the old credentials may be compromised.
   await prisma.refreshToken.deleteMany({ where: { userId } });
+  disconnectUserSockets(userId);
 
   return { message: 'Password has been reset' };
 }

@@ -65,6 +65,7 @@ export async function getWorkspaceTemplates(workspaceId: string, userId: string)
 export async function getPublicTemplates() {
   return prisma.template.findMany({
     where: { isPublic: true },
+    take: 50,
     include: {
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
@@ -177,7 +178,7 @@ export async function createTemplate(data: CreateTemplateInput, userId: string) 
       data: templateData as object,
       userId,
       workspaceId: data.workspaceId,
-      isPublic: data.isPublic ?? false,
+      isPublic: false,
     },
     include: {
       user: { select: { id: true, name: true, avatarUrl: true } },
