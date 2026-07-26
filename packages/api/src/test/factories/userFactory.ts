@@ -7,6 +7,8 @@ export function buildUser(overrides: Record<string, unknown> = {}) {
     email: `user${counter}@example.com`,
     name: `Test User ${counter}`,
     passwordHash: '$2b$12$testhashedpassword',
+    role: 'USER' as const,
+    isActive: true,
     emailVerified: false,
     emailVerifyToken: null,
     avatarUrl: null,

@@ -26,6 +26,16 @@ APP_URL=https://your-domain.example.com
 CORS_ORIGIN=https://your-domain.example.com
 ```
 
+### Instance administrators
+
+```env
+ADMIN_EMAILS=you@example.com,ops@example.com
+```
+
+Comma-separated addresses that hold the instance-level `ADMIN` role. Promote-only
+and idempotent — see [User Management](user-management.md) for the full workflow
+and the recovery procedure.
+
 ### Email (optional)
 
 ```env

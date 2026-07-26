@@ -1,5 +1,15 @@
 import { NavLink } from 'react-router-dom';
-import { User, Lock, Sliders, Bell, Plug, Download, LayoutTemplate } from 'lucide-react';
+import {
+  User,
+  Lock,
+  Sliders,
+  Bell,
+  Plug,
+  Download,
+  LayoutTemplate,
+  ShieldCheck,
+} from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
 
 const items = [
   { to: '/settings/profile', label: 'Profile', icon: User },
@@ -11,10 +21,15 @@ const items = [
   { to: '/settings/export', label: 'Data & Privacy', icon: Download },
 ];
 
+const adminItem = { to: '/settings/admin', label: 'Users', icon: ShieldCheck };
+
 export function SettingsNav({ onNavigate }: { onNavigate?: () => void }) {
+  const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN');
+  const navItems = isAdmin ? [...items, adminItem] : items;
+
   return (
     <nav className="space-y-0.5">
-      {items.map(({ to, label, icon: Icon }) => (
+      {navItems.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}

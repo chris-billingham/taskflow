@@ -205,6 +205,9 @@ jobs:
           S3_ENDPOINT: http://localhost:9000
           S3_ACCESS_KEY: minioadmin
           S3_SECRET_KEY: minioadmin
+          # admin.spec.ts registers this address and expects it to come out an
+          # administrator — that IS the bootstrap path under test.
+          ADMIN_EMAILS: e2e-admin@taskflow.test
 
       - name: Wait for API to be ready
         run: |

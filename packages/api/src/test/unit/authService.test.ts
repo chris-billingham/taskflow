@@ -104,6 +104,8 @@ const TEST_USER = {
   passwordHash: '$2b$12$hashedpw',
   emailVerified: true,
   emailVerifyToken: null,
+  role: 'USER' as const,
+  isActive: true,
 };
 
 describe('register', () => {
@@ -223,6 +225,25 @@ describe('login', () => {
     mockPrisma.user.findUnique.mockResolvedValue({ ...TEST_USER, emailVerified: false });
     await expect(login('test@example.com', 'correct-password')).rejects.toThrow(UnauthorizedError);
   });
+
+  it('refuses a suspended account and mints no session', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ ...TEST_USER, isActive: false });
+
+    const err = await login('test@example.com', 'correct-password').catch((e) => e);
+    expect(err).toBeInstanceOf(UnauthorizedError);
+    expect(err.message).toMatch(/deactivated/i);
+    expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
+  });
+
+  it('checks suspension only AFTER the password, so it leaks no account state', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ ...TEST_USER, isActive: false });
+    mockVerifyPassword.mockResolvedValue(false as never);
+
+    // Wrong password on a suspended account must be indistinguishable from a
+    // wrong password on an active one.
+    const err = await login('test@example.com', 'wrong').catch((e) => e);
+    expect(err.message).toBe('Invalid email or password');
+  });
 });
 
 describe('logout', () => {
@@ -283,6 +304,21 @@ describe('refreshTokens', () => {
   it('throws UnauthorizedError when token verification fails', async () => {
     mockVerifyRefreshToken.mockReturnValue(null as never);
     await expect(refreshTokens('invalid-token')).rejects.toThrow(UnauthorizedError);
+  });
+
+  it('ends the session when the account was suspended mid-session', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ ...TEST_USER, isActive: false });
+    mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 1 });
+
+    await expect(refreshTokens('valid-refresh-token')).rejects.toThrow(
+      UnauthorizedError,
+    );
+    // Remaining tokens are dropped so the session cannot roll forward another
+    // 30 days on a different device.
+    expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith({
+      where: { userId: TEST_USER.id },
+    });
+    expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
   });
 
   it('throws UnauthorizedError when token not found in DB (reuse detection)', async () => {

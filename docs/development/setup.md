@@ -98,6 +98,37 @@ docker-compose -f docker-compose.dev.yml up -d
 pnpm --filter @taskflow/api db:migrate
 ```
 
+## Running the E2E suite locally
+
+Playwright drives a real browser against real servers, so both dev servers must
+be running alongside the dev compose stack:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d          # Postgres, Redis, MinIO
+
+ADMIN_EMAILS=e2e-admin@taskflow.test \
+  pnpm --filter @taskflow/api dev                       # terminal 2
+pnpm --filter @taskflow/web dev                         # terminal 3
+
+pnpm --filter @taskflow/e2e test                        # terminal 4
+```
+
+`ADMIN_EMAILS` is required: `admin.spec.ts` registers that address and asserts it
+comes out an administrator, which is the bootstrap path under test. The CI job
+sets the same value.
+
+Two things that cost time when they go wrong:
+
+- **Check nothing else is already bound to ports 3001 / 31779.** A stale dev
+  server from an earlier session will happily serve the tests with old code, and
+  the failures look like application bugs rather than a stale process.
+  (`lsof -nP -iTCP:3001 -sTCP:LISTEN`)
+- **Restart the Vite dev server after dependency changes** — a stale optimizer
+  cache causes flaky, hard-to-read failures.
+
+Note that `waitForLoadState('networkidle')` never settles on a signed-in page:
+the realtime socket keeps a connection open. Wait for a rendered element instead.
+
 ## Environment Variables
 
 The `.env` file at the repo root is shared by all packages. The API reads it via `tsx --env-file=.env`.

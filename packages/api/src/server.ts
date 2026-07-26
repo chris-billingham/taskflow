@@ -16,6 +16,7 @@ import { createWebSocketServer } from './websocket/server.js';
 import { stopPresenceCleanup } from './websocket/presence.js';
 import { ensureBucketExists } from './config/storage.js';
 import { initMailer } from './services/mailService.js';
+import { syncAdminsFromEnv } from './services/adminService.js';
 import { prisma } from './config/database.js';
 import { Prisma } from '@prisma/client';
 import { openapiSpec } from './docs/openapi.js';
@@ -261,6 +262,17 @@ const start = async () => {
     // Verify SMTP before accepting requests: whether registration requires
     // email verification depends on the mailer being provably reachable.
     await initMailer(server.log);
+
+    // Promote any ADMIN_EMAILS accounts that predate the config. Never fatal:
+    // a database hiccup here must not stop the API from serving.
+    try {
+      await syncAdminsFromEnv(env.ADMIN_EMAILS, {
+        info: (msg) => server.log.info(msg),
+        warn: (msg) => server.log.warn(msg),
+      });
+    } catch (adminErr) {
+      server.log.error({ err: adminErr }, 'Failed to sync ADMIN_EMAILS');
+    }
 
     await server.listen({ port: env.API_PORT, host: env.HOST });
     server.log.info(

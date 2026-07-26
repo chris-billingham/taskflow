@@ -29,6 +29,7 @@ const Preferences = lazy(() => import('@/pages/settings/Preferences'));
 const Integrations = lazy(() => import('@/pages/settings/Integrations'));
 const DataExport = lazy(() => import('@/pages/settings/DataExport'));
 const TemplatesSettings = lazy(() => import('@/pages/settings/Templates'));
+const Admin = lazy(() => import('@/pages/settings/Admin'));
 const JoinWorkspace = lazy(() =>
   import('@/components/workspace/JoinWorkspace').then((m) => ({
     default: m.JoinWorkspace,
@@ -95,6 +96,9 @@ function App() {
           <Route path="/settings/templates" element={<TemplatesSettings />} />
           <Route path="/settings/integrations" element={<Integrations />} />
           <Route path="/settings/export" element={<DataExport />} />
+          {/* Admin console. The page itself redirects non-admins, and every
+              endpoint it calls re-checks the role server-side. */}
+          <Route path="/settings/admin" element={<Admin />} />
         </Route>
 
         {/* Default redirect */}

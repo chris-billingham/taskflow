@@ -18,6 +18,8 @@ export default defineConfig({
       JWT_REFRESH_SECRET: 'db-test-refresh-secret-0123456789abcd',
       NODE_ENV: 'test',
       LOG_LEVEL: 'silent',
+      // Exercises the ADMIN_EMAILS bootstrap against a real database.
+      ADMIN_EMAILS: 'bootstrap-admin@admin.test',
     },
     // Fixtures share one database — keep files sequential.
     pool: 'forks',

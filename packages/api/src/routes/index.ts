@@ -16,10 +16,12 @@ import { searchRoutes } from './search.js';
 import { settingsRoutes } from './settings.js';
 import { templateRoutes } from './templates.js';
 import { attachmentRoutes } from './attachments.js';
+import { adminRoutes } from './admin.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
   app.register(userRoutes, { prefix: '/api/v1/users' });
+  app.register(adminRoutes, { prefix: '/api/v1/admin' });
   app.register(workspaceRoutes, { prefix: '/api/v1/workspaces' });
   app.register(projectRoutes, { prefix: '/api/v1/projects' });
   app.register(sectionRoutes, { prefix: '/api/v1' });

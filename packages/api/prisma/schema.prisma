@@ -9,6 +9,15 @@ datasource db {
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
 
+// Instance-wide role, deliberately separate from WorkspaceRole/ProjectRole:
+// those govern access WITHIN a workspace or project, this one governs the
+// deployment itself (account lifecycle). A SystemRole.ADMIN is not implicitly
+// a member of anyone's workspace and gets no extra access to their content.
+enum SystemRole {
+  USER
+  ADMIN
+}
+
 enum WorkspaceRole {
   OWNER
   ADMIN
@@ -88,6 +97,11 @@ model User {
   timeFormat       String?
   theme            String?
   defaultProjectId String?
+  // Instance-level role. Admins manage accounts deployment-wide; see SystemRole.
+  role             SystemRole @default(USER)
+  // Suspended accounts keep all their data but cannot log in or refresh a
+  // session. Deactivating is the reversible alternative to deletion.
+  isActive         Boolean   @default(true)
   emailVerified    Boolean   @default(false)
   // sha256 hex of the raw token (the raw value is only ever in the email link)
   emailVerifyToken          String?   @unique
@@ -116,6 +130,10 @@ model User {
   activityLogs      ActivityLog[]
 
   @@index([email])
+  // The admin console filters on both; also backs the "is there another
+  // active admin left?" guard that runs before every demote/suspend/delete.
+  @@index([role])
+  @@index([isActive])
   @@map("users")
 }
 

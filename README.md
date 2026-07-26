@@ -116,6 +116,7 @@ bash scripts/install.sh
 | [Keyboard Shortcuts](docs/user-guide/keyboard-shortcuts.md) | All keyboard shortcuts |
 | [Installation](docs/admin-guide/installation.md) | Production setup |
 | [Configuration](docs/admin-guide/configuration.md) | All environment variables |
+| [User Management](docs/admin-guide/user-management.md) | Admin role, creating and suspending accounts |
 | [Backup & Restore](docs/admin-guide/backup-restore.md) | Data backup procedures |
 | [Architecture](docs/development/architecture.md) | System design |
 | [Development Setup](docs/development/setup.md) | Local dev guide |

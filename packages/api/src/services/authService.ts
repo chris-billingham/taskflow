@@ -14,7 +14,10 @@ import {
   ValidationError,
 } from '../errors/index.js';
 import type { RegisterInput } from '../schemas/auth.js';
+import type { SystemRole } from '@prisma/client';
 import { disconnectUserSockets } from '../websocket/events.js';
+import { isBootstrapAdminEmail } from '../config/env.js';
+import { provisionUser } from './userService.js';
 import {
   isMailerReady,
   sendVerificationEmail,
@@ -40,6 +43,28 @@ function tokenPayload(user: {
   name: string;
 }): TokenPayload {
   return { id: user.id, email: user.email, name: user.name };
+}
+
+/**
+ * The user object returned alongside a new token pair. `role` is included so
+ * the web app can show the admin console immediately after sign-in instead of
+ * waiting for the next /users/me. It is display state only — every admin
+ * endpoint re-checks the role server-side.
+ */
+function publicUser(user: {
+  id: string;
+  email: string;
+  name: string;
+  role?: SystemRole;
+  isActive?: boolean;
+}) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role ?? 'USER',
+    isActive: user.isActive ?? true,
+  };
 }
 
 async function createTokenPair(user: {
@@ -84,43 +109,23 @@ export async function register(data: RegisterInput) {
   // Create the user, their personal workspace, and their inbox project atomically.
   // If any step fails, none are persisted — otherwise a user could exist with no
   // inbox, which permanently breaks quick-add ("No default project found").
-  const user = await prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        email: data.email,
-        passwordHash,
-        name: data.name,
-        // Only the hash is stored; the raw token exists solely in the email.
-        emailVerifyToken: rawVerifyToken ? sha256(rawVerifyToken) : null,
-        emailVerifyTokenExpiresAt: rawVerifyToken
-          ? new Date(Date.now() + VERIFY_TOKEN_TTL_MS)
-          : null,
-        emailVerified: !emailConfigured,
-      },
-    });
-
-    const workspace = await tx.workspace.create({
-      data: {
-        name: 'Personal',
-        slug: `personal-${created.id}`,
-        ownerId: created.id,
-        members: {
-          create: { userId: created.id, role: 'OWNER' },
-        },
-      },
-    });
-
-    await tx.project.create({
-      data: {
-        name: 'Inbox',
-        ownerId: created.id,
-        workspaceId: workspace.id,
-        isInbox: true,
-      },
-    });
-
-    return created;
-  });
+  const user = await prisma.$transaction((tx) =>
+    provisionUser(tx, {
+      email: data.email,
+      passwordHash,
+      name: data.name,
+      // Only the hash is stored; the raw token exists solely in the email.
+      emailVerifyToken: rawVerifyToken ? sha256(rawVerifyToken) : null,
+      emailVerifyTokenExpiresAt: rawVerifyToken
+        ? new Date(Date.now() + VERIFY_TOKEN_TTL_MS)
+        : null,
+      emailVerified: !emailConfigured,
+      // On a fresh install the operator's own sign-up must land as an admin
+      // straight away; waiting for the next restart to be promoted would mean
+      // nobody can administer the instance in the meantime.
+      role: isBootstrapAdminEmail(data.email) ? 'ADMIN' : undefined,
+    }),
+  );
 
   if (rawVerifyToken) {
     sendInBackground('verification email', () =>
@@ -131,7 +136,7 @@ export async function register(data: RegisterInput) {
   const tokens = await createTokenPair(user);
 
   return {
-    user: { id: user.id, email: user.email, name: user.name },
+    user: publicUser(user),
     ...tokens,
   };
 }
@@ -147,6 +152,14 @@ export async function login(email: string, password: string) {
     throw new UnauthorizedError('Invalid email or password');
   }
 
+  // Checked only AFTER the password is proven, so the endpoint never reveals
+  // which addresses belong to suspended accounts to an anonymous caller.
+  if (!user.isActive) {
+    throw new UnauthorizedError(
+      'This account has been deactivated. Contact your administrator.',
+    );
+  }
+
   if (!user.emailVerified) {
     throw new UnauthorizedError('Please verify your email address before signing in');
   }
@@ -159,7 +172,7 @@ export async function login(email: string, password: string) {
   const tokens = await createTokenPair(user);
 
   return {
-    user: { id: user.id, email: user.email, name: user.name },
+    user: publicUser(user),
     ...tokens,
   };
 }
@@ -195,6 +208,13 @@ export async function refreshTokens(refreshToken: string) {
 
     const user = await tx.user.findUnique({ where: { id: stored.userId } });
     if (!user) throw new UnauthorizedError('User not found');
+
+    // A suspension between issuing and renewing must end the session rather
+    // than roll it forward for another 30 days.
+    if (!user.isActive) {
+      await tx.refreshToken.deleteMany({ where: { userId: user.id } });
+      throw new UnauthorizedError('This account has been deactivated');
+    }
 
     return user;
   });

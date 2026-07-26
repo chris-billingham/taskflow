@@ -62,6 +62,13 @@ Common HTTP status codes:
     { name: 'Settings', description: 'User settings and preferences' },
     { name: 'Templates', description: 'Task templates' },
     { name: 'Attachments', description: 'File attachments (S3/MinIO)' },
+    {
+      name: 'Admin',
+      description:
+        'Instance administration: the account lifecycle for the whole deployment. ' +
+        'Requires SystemRole.ADMIN, re-checked against the database on every request. ' +
+        'Grants no access to other users’ tasks, projects or comments.',
+    },
   ],
   components: {
     securitySchemes: {
@@ -737,6 +744,166 @@ Common HTTP status codes:
           },
         },
         responses: { 200: { description: 'Invitation sent' } },
+      },
+    },
+    '/api/v1/admin/stats': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Instance account counts',
+        responses: {
+          200: { description: 'Total, active, suspended, admin and unverified counts' },
+          403: { description: 'Administrator access required' },
+        },
+      },
+    },
+    '/api/v1/admin/users': {
+      get: {
+        tags: ['Admin'],
+        summary: 'List every account on the instance',
+        parameters: [
+          { name: 'search', in: 'query', schema: { type: 'string', maxLength: 200 } },
+          { name: 'role', in: 'query', schema: { type: 'string', enum: ['USER', 'ADMIN'] } },
+          { name: 'isActive', in: 'query', schema: { type: 'string', enum: ['true', 'false'] } },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
+        ],
+        responses: {
+          200: { description: 'Paginated user list' },
+          403: { description: 'Administrator access required' },
+        },
+      },
+      post: {
+        tags: ['Admin'],
+        summary: 'Create an account on a user’s behalf',
+        description:
+          'Admin-created accounts are email-verified up front. Omit `password` to have ' +
+          'the server generate one; it is returned once as `temporaryPassword` and is ' +
+          'never stored in plaintext or retrievable afterwards.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email', 'name'],
+                properties: {
+                  email: { type: 'string', format: 'email' },
+                  name: { type: 'string', minLength: 1, maxLength: 100 },
+                  password: { type: 'string', minLength: 8, maxLength: 72 },
+                  role: { type: 'string', enum: ['USER', 'ADMIN'] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Account created, with a one-time temporaryPassword when generated' },
+          403: { description: 'Administrator access required' },
+          409: { description: 'A user with this email already exists' },
+        },
+      },
+    },
+    '/api/v1/admin/users/{id}': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Account detail, with workspace memberships and content counts',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: { description: 'User detail' },
+          404: { description: 'User not found' },
+        },
+      },
+      delete: {
+        tags: ['Admin'],
+        summary: 'Permanently delete an account',
+        description:
+          'Refused for your own account (use DELETE /users/me), for the last active ' +
+          'administrator, and while the user still owns a workspace that other people ' +
+          'are members of — deleting them would take the team’s data with them.',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: { description: 'Account deleted' },
+          400: { description: 'Cannot delete your own account from the admin console' },
+          409: { description: 'Last administrator, or still owns a shared workspace' },
+        },
+      },
+    },
+    '/api/v1/admin/users/{id}/role': {
+      patch: {
+        tags: ['Admin'],
+        summary: 'Promote or demote an account',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['role'],
+                properties: { role: { type: 'string', enum: ['USER', 'ADMIN'] } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Updated user' },
+          409: { description: 'Cannot demote the last active administrator' },
+        },
+      },
+    },
+    '/api/v1/admin/users/{id}/status': {
+      patch: {
+        tags: ['Admin'],
+        summary: 'Suspend or reactivate an account',
+        description:
+          'Suspending keeps all data but blocks sign-in, deletes every refresh token ' +
+          'and drops live sockets. An access token already issued stays valid until it ' +
+          'expires (15 minutes at most).',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['isActive'],
+                properties: { isActive: { type: 'boolean' } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Updated user' },
+          400: { description: 'You cannot deactivate your own account' },
+          409: { description: 'Cannot deactivate the last active administrator' },
+        },
+      },
+    },
+    '/api/v1/admin/users/{id}/password': {
+      post: {
+        tags: ['Admin'],
+        summary: 'Set another user’s password',
+        description:
+          'Omit `password` to have the server generate one, returned once as ' +
+          '`temporaryPassword`. Always revokes that user’s sessions.',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  password: { type: 'string', minLength: 8, maxLength: 72 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Password reset; temporaryPassword present when generated' },
+          404: { description: 'User not found' },
+        },
       },
     },
   },

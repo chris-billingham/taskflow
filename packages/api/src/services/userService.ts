@@ -2,6 +2,65 @@ import { prisma } from '../config/database.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/index.js';
 import { disconnectUserSockets } from '../websocket/events.js';
+import type { Prisma, SystemRole } from '@prisma/client';
+
+/**
+ * Creates an account together with the two rows every user is required to
+ * have: their personal workspace and its Inbox project. Callers supply the
+ * transaction client — a user without an Inbox permanently breaks quick-add
+ * ("No default project found"), so all three rows land or none do.
+ *
+ * Shared by self-service registration and admin-created accounts so the two
+ * provisioning paths cannot drift apart.
+ */
+export async function provisionUser(
+  tx: Prisma.TransactionClient,
+  data: {
+    email: string;
+    passwordHash: string;
+    name: string;
+    emailVerified: boolean;
+    role?: SystemRole;
+    emailVerifyToken?: string | null;
+    emailVerifyTokenExpiresAt?: Date | null;
+  },
+) {
+  const created = await tx.user.create({
+    data: {
+      email: data.email,
+      passwordHash: data.passwordHash,
+      name: data.name,
+      emailVerified: data.emailVerified,
+      emailVerifyToken: data.emailVerifyToken ?? null,
+      emailVerifyTokenExpiresAt: data.emailVerifyTokenExpiresAt ?? null,
+      // Omitted rather than defaulted so the column default applies and the
+      // self-service path's insert shape is unchanged.
+      ...(data.role ? { role: data.role } : {}),
+    },
+  });
+
+  const workspace = await tx.workspace.create({
+    data: {
+      name: 'Personal',
+      slug: `personal-${created.id}`,
+      ownerId: created.id,
+      members: {
+        create: { userId: created.id, role: 'OWNER' },
+      },
+    },
+  });
+
+  await tx.project.create({
+    data: {
+      name: 'Inbox',
+      ownerId: created.id,
+      workspaceId: workspace.id,
+      isInbox: true,
+    },
+  });
+
+  return created;
+}
 
 export async function getUserById(id: string) {
   const user = await prisma.user.findUnique({
@@ -16,6 +75,9 @@ export async function getUserById(id: string) {
       dateFormat: true,
       timeFormat: true,
       theme: true,
+      // The web app hides the admin console unless the signed-in user is one.
+      role: true,
+      isActive: true,
       emailVerified: true,
       createdAt: true,
       updatedAt: true,
@@ -67,6 +129,8 @@ export async function updateUser(
       dateFormat: true,
       timeFormat: true,
       theme: true,
+      role: true,
+      isActive: true,
       emailVerified: true,
       createdAt: true,
       updatedAt: true,

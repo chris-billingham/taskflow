@@ -2,6 +2,31 @@
 
 All notable changes are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+#### Instance administration
+- `SystemRole` (`USER` | `ADMIN`) on users — an instance-level role for managing accounts
+  across the whole deployment, separate from `WorkspaceRole` and `ProjectRole`. It grants
+  no access to other users' tasks, projects or comments.
+- Admin console at **Settings → Users** (visible to admins only): list and search accounts,
+  create users, promote/demote, suspend/reactivate, reset passwords, delete accounts.
+- `/api/v1/admin/*` endpoints, gated by a fresh database read of the caller's role and
+  active flag on every request, so demotion and suspension take effect immediately.
+- Account suspension (`User.isActive`): blocks sign-in and token refresh, deletes refresh
+  tokens and drops live sockets, while keeping all data. Reversible.
+- Admin password reset with a server-generated temporary password shown exactly once —
+  works with no SMTP configured, which is the default for a self-hosted install.
+- `ADMIN_EMAILS` environment variable to bootstrap administrators. Promote-only and
+  idempotent; a listed address that registers becomes an admin immediately.
+- Guard rails: the last active administrator cannot be demoted, suspended or deleted;
+  admins cannot suspend or delete their own account from the console; deletion still
+  refuses while the user owns a workspace that other people are members of.
+
+### Changed
+- `/users/me` and the login/register responses now include `role` and `isActive`.
+
 ## [1.0.0] — 2025-05-01
 
 Initial release.

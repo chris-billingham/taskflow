@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware';
 import api, { setAccessToken, refreshAccessToken } from '@/services/api';
 import { disconnectSocket } from '@/services/socket';
 
+export type SystemRole = 'USER' | 'ADMIN';
+
 interface User {
   id: string;
   email: string;
@@ -14,6 +16,10 @@ interface User {
   timeFormat?: string | null;
   theme?: string | null;
   emailVerified?: boolean;
+  // Instance-level role. Only /users/me populates it, so treat a missing
+  // value as USER — the server enforces the real check regardless.
+  role?: SystemRole;
+  isActive?: boolean;
 }
 
 interface AuthState {

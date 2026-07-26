@@ -27,6 +27,20 @@ const envSchema = z.object({
   // Public base URL of the web app, used for links in emails. Falls back to
   // CORS_ORIGIN (which is the web origin in every shipped topology).
   APP_URL: z.string().url().optional(),
+  // Comma-separated addresses designated instance administrators. Promote-only
+  // and idempotent: listed accounts are promoted at boot (and any matching
+  // sign-up is created as an admin), but nothing here ever demotes, deletes or
+  // reactivates an account. This is the bootstrap and break-glass path.
+  ADMIN_EMAILS: z
+    .string()
+    .optional()
+    .default('')
+    .transform((v) =>
+      v
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => e.length > 0),
+    ),
   // Serve Swagger UI at /api/docs in production (always on in development)
   ENABLE_API_DOCS: z
     .string()
@@ -54,3 +68,12 @@ function loadEnv() {
 
 export const env = loadEnv();
 export type Env = z.infer<typeof envSchema>;
+
+/**
+ * Whether an address is designated an instance administrator by configuration.
+ * Lives here rather than in a service so both registration and the admin
+ * bootstrap read the same normalised list.
+ */
+export function isBootstrapAdminEmail(email: string): boolean {
+  return env.ADMIN_EMAILS.includes(email.trim().toLowerCase());
+}

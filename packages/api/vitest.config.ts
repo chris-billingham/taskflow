@@ -15,6 +15,8 @@ export default defineConfig({
       JWT_REFRESH_SECRET: 'test-refresh-secret-must-be-at-least-32-chars!',
       NODE_ENV: 'test',
       LOG_LEVEL: 'silent',
+      // Exercises ADMIN_EMAILS parsing (trimming, case-folding, blanks).
+      ADMIN_EMAILS: ' Boss@Example.COM ,second@example.com,, ',
     },
     coverage: {
       provider: 'v8',
