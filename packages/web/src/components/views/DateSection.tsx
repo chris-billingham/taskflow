@@ -1,4 +1,5 @@
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
+import { formatUserShortDate } from '@/utils/dateFormat';
 import { TaskList } from '@/components/task/TaskList';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import type { Task } from '@/stores/taskStore';
@@ -22,13 +23,13 @@ function formatDateHeader(dateStr: string): string {
   const date = parseISO(dateStr);
   if (isToday(date)) return 'Today';
   if (isTomorrow(date)) return 'Tomorrow';
-  return format(date, 'EEEE, MMM d');
+  return `${format(date, 'EEEE')}, ${formatUserShortDate(date)}`;
 }
 
 function formatDateSub(dateStr: string): string {
   const date = parseISO(dateStr);
   if (isToday(date) || isTomorrow(date)) {
-    return format(date, 'MMM d');
+    return formatUserShortDate(date);
   }
   return '';
 }

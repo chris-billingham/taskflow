@@ -14,6 +14,7 @@ import {
   startOfDay,
 } from 'date-fns';
 import type { Task } from '@/stores/taskStore';
+import { useAuthStore } from '@/stores/authStore';
 
 export type CalendarMode = 'week' | 'month';
 
@@ -25,9 +26,10 @@ export interface CalendarDay {
   tasks: Task[];
 }
 
-const WEEK_STARTS_ON = 0; // Sunday
-
 export function useCalendar(tasks: Task[], initialMode: CalendarMode = 'week') {
+  // Subscribed (not getState) so an open calendar re-renders when the user
+  // changes "Week starts on" in preferences.
+  const WEEK_STARTS_ON = (useAuthStore((s) => s.user?.weekStart) ?? 0) as 0 | 1 | 6;
   const [mode, setMode] = useState<CalendarMode>(initialMode);
   const [currentDate, setCurrentDate] = useState(() => startOfDay(new Date()));
 

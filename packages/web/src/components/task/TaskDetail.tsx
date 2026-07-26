@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { formatUserDate } from '@/utils/dateFormat';
 import {
   X,
   Calendar,
@@ -337,7 +338,7 @@ export function TaskDetail({
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
           <span className="text-xs text-gray-400">
-            Created {new Date(task.createdAt).toLocaleDateString()}
+            Created {formatUserDate(new Date(task.createdAt))}
           </span>
           {showDeleteConfirm ? (
             <div className="flex items-center gap-2">

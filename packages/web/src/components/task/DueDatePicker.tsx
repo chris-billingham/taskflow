@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { formatUserShortDate, formatUserTime } from '@/utils/dateFormat';
 import { Calendar, Sun, ArrowRight, X, Clock } from 'lucide-react';
 
 interface DueDatePickerProps {
@@ -29,7 +30,7 @@ function formatDateDisplay(dateStr: string | null): string {
   if (date.getTime() === today.getTime()) return 'Today';
   if (date.getTime() === tomorrow.getTime()) return 'Tomorrow';
 
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return formatUserShortDate(date);
 }
 
 function getDateColor(dateStr: string | null): string {
@@ -111,7 +112,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
       >
         <Calendar className="w-3.5 h-3.5" />
         {formatDateDisplay(value)}
-        {time && <span className="ml-0.5">{time}</span>}
+        {time && <span className="ml-0.5">{formatUserTime(time)}</span>}
       </button>
 
       {isOpen && (
@@ -248,7 +249,7 @@ export function DueDateBadge({ dueDate, dueTime }: { dueDate: string | null; due
     <span className={`flex items-center gap-1 text-xs ${color}`}>
       <Calendar className="w-3 h-3" />
       {label}
-      {dueTime && <span>{dueTime}</span>}
+      {dueTime && <span>{formatUserTime(dueTime)}</span>}
     </span>
   );
 }

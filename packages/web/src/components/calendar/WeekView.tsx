@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { formatUserHour } from '@/utils/dateFormat';
 import { format } from 'date-fns';
 import { useDroppable } from '@dnd-kit/core';
 import { CalendarTask } from './CalendarTask';
@@ -165,13 +166,7 @@ export function WeekView({
             {hours.map((hour) => (
               <div key={hour} className="h-12 relative">
                 <span className="absolute -top-2 right-2 text-xs text-gray-400">
-                  {hour === 0
-                    ? '12 AM'
-                    : hour < 12
-                      ? `${hour} AM`
-                      : hour === 12
-                        ? '12 PM'
-                        : `${hour - 12} PM`}
+                  {formatUserHour(hour)}
                 </span>
               </div>
             ))}
