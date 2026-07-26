@@ -19,7 +19,7 @@ Publicly the endpoint reports only `"status":"degraded"`. Ask from inside the
 container to find out which dependency is at fault:
 
 ```bash
-docker compose -f docker-compose.yml exec api wget -qO- http://localhost:3001/health
+docker compose -f docker-compose.yml exec api wget -qO- http://127.0.0.1:3001/health
 ```
 
 ```json

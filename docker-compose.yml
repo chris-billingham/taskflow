@@ -164,7 +164,7 @@ services:
       - traefik.http.middlewares.hsts.headers.stsIncludeSubdomains=true
       - traefik.http.routers.api.middlewares=hsts
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
       interval: 30s
       timeout: 5s
       start_period: 30s

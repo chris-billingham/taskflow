@@ -6,6 +6,38 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ### Fixed
 
+#### Production stack (found by booting it, not by reading it)
+
+None of these were reachable by any test suite: CI builds the images but never
+runs them, and every other suite runs against dev servers.
+
+- **`prisma migrate deploy` could not run in the production image, so no
+  deployment could create its database schema.** `node:20-alpine` ships
+  `libssl.so.3` but no `openssl` binary, so Prisma's platform detection fell back
+  to its `openssl-1.1.x` default and generated a client bound to engines for an
+  OpenSSL not present in the image; the schema engine then failed to load its
+  shared library and died with "Could not parse schema engine response". Both
+  stages now install `openssl`, and the build asserts the engines actually load
+  (`prisma version`) rather than shipping an image whose database layer is dead.
+- **The production image shipped with no Prisma query engine at all.** The
+  Dockerfile copied `node_modules/.prisma` out of the pnpm workspace by guessing
+  two paths and swallowing total failure with `|| echo "WARNING: .prisma not
+  found, skipping"`. Under pnpm the client is in neither place, so the guess
+  always missed and the directory arrived empty. The client is now generated
+  inside the pruned deployment tree, where the runtime resolves it.
+- **Every healthcheck failed against a perfectly healthy API.** The server binds
+  IPv4 `0.0.0.0`, but `localhost` resolves to `::1` first inside the container, so
+  BusyBox `wget` got connection refused. The api container sat permanently
+  `unhealthy`; worse, `install.sh` aborted with "API failed to become healthy" and
+  `upgrade.sh` triggered its rollback — both on a working deployment. All
+  container-internal probes now use `127.0.0.1`.
+- **`docker compose build --parallel` raced and failed on a cold cache.** `api`
+  and `worker` deliberately share one image tag, and two simultaneous exports onto
+  it fail with `image "...": already exists`. `install.sh` and `upgrade.sh` now
+  build `api web` explicitly; the worker uses the image api just built.
+  `upgrade.sh` was the worse case — it builds `--no-cache`, so both sides always
+  did real work and the race was near-certain on every source upgrade.
+
 #### Realtime reconciliation
 - **Missed broadcasts are now recovered instead of silently lost.** Realtime state
   arrived two ways — an HTTP fetch when a view mounted, and websocket broadcasts

@@ -21,7 +21,7 @@ version and the per-dependency breakdown. This is the form to reach for when
 diagnosing a `503`:
 
 ```bash
-docker compose -f docker-compose.yml exec api wget -qO- http://localhost:3001/health
+docker compose -f docker-compose.yml exec api wget -qO- http://127.0.0.1:3001/health
 ```
 
 ```json

@@ -72,8 +72,11 @@ if [ "$REGISTRY" != "taskflow" ]; then
   info "Pulling latest images from registry..."
   $COMPOSE pull api web worker
 else
+  # api and web only: `worker` shares the api image, and building both in parallel
+  # races two exports onto the same tag. --no-cache guarantees both do real work,
+  # so this would have failed on essentially every source upgrade.
   info "Building images from source..."
-  $COMPOSE build --parallel --no-cache
+  $COMPOSE build --parallel --no-cache api web
 fi
 
 # ── 5. Run database migrations ────────────────────────────────────────────────
@@ -98,7 +101,7 @@ $COMPOSE up -d --no-deps api
 
 info "Waiting for API to be healthy..."
 for i in $(seq 1 30); do
-  if $COMPOSE exec -T api wget -qO- http://localhost:3001/health &>/dev/null 2>&1; then
+  if $COMPOSE exec -T api wget -qO- http://127.0.0.1:3001/health &>/dev/null 2>&1; then
     info "API is healthy"
     break
   fi

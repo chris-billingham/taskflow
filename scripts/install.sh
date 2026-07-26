@@ -108,8 +108,12 @@ step "Preparing Docker network"
 docker network create traefik 2>/dev/null && info "Created 'traefik' network" || info "'traefik' network already exists"
 
 # ── 4. Build images ───────────────────────────────────────────────────────────
+# Only api and web: `worker` deliberately shares the api IMAGE, and building both
+# in parallel races two exports onto the same tag — on a cold cache that fails the
+# build outright with `image "...": already exists`. The worker picks up the image
+# api just built.
 step "Building Docker images"
-$COMPOSE build --parallel
+$COMPOSE build --parallel api web
 
 # ── 5. Start infrastructure ───────────────────────────────────────────────────
 step "Starting infrastructure services"
@@ -134,7 +138,7 @@ $COMPOSE up -d
 
 info "Waiting for API to be healthy..."
 for i in $(seq 1 30); do
-  if $COMPOSE exec -T api wget -qO- http://localhost:3001/health &>/dev/null 2>&1; then
+  if $COMPOSE exec -T api wget -qO- http://127.0.0.1:3001/health &>/dev/null 2>&1; then
     info "API is healthy"
     break
   fi
