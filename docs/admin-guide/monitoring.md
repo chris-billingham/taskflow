@@ -28,13 +28,13 @@ Returns `200` when healthy, `503` when degraded.
 
 ```bash
 # All services
-docker-compose logs -f
+docker compose -f docker-compose.yml logs -f
 
 # API only
-docker-compose logs -f api
+docker compose -f docker-compose.yml logs -f api
 
 # Last 100 lines
-docker-compose logs --tail=100 api
+docker compose -f docker-compose.yml logs --tail=100 api
 ```
 
 API logs are structured JSON in production. In development they use pino-pretty formatting.
@@ -46,18 +46,18 @@ API logs are structured JSON in production. In development they use pino-pretty 
 docker system df -v
 
 # Container disk usage
-docker-compose exec api df -h
-docker-compose exec postgres df -h
+docker compose -f docker-compose.yml exec api df -h
+docker compose -f docker-compose.yml exec postgres df -h
 ```
 
 ## Database Monitoring
 
 ```bash
 # Active connections
-docker-compose exec postgres psql -U taskflow -c "SELECT count(*) FROM pg_stat_activity;"
+docker compose -f docker-compose.yml exec postgres psql -U taskflow -c "SELECT count(*) FROM pg_stat_activity;"
 
 # Table sizes
-docker-compose exec postgres psql -U taskflow -c "
+docker compose -f docker-compose.yml exec postgres psql -U taskflow -c "
 SELECT relname, pg_size_pretty(pg_total_relation_size(relid))
 FROM pg_catalog.pg_statio_user_tables
 ORDER BY pg_total_relation_size(relid) DESC LIMIT 10;
@@ -67,8 +67,8 @@ ORDER BY pg_total_relation_size(relid) DESC LIMIT 10;
 ## Redis Monitoring
 
 ```bash
-docker-compose exec redis redis-cli info stats
-docker-compose exec redis redis-cli info memory
+docker compose -f docker-compose.yml exec redis redis-cli info stats
+docker compose -f docker-compose.yml exec redis redis-cli info memory
 ```
 
 ## Uptime Monitoring

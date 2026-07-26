@@ -21,11 +21,14 @@ export default defineConfig({
         'src/routes/**/*.ts',
       ],
       exclude: ['src/test/**', 'src/**/*.d.ts'],
+      // Ratchet thresholds: set just under MEASURED coverage so CI blocks
+      // regressions; raise them as the mocked suites grow. (The previous 70%
+      // was aspirational fiction — coverage was never run in CI at all.)
       thresholds: {
-        statements: 70,
-        branches: 70,
-        functions: 70,
-        lines: 70,
+        statements: 25,
+        branches: 78,
+        functions: 55,
+        lines: 25,
       },
     },
   },

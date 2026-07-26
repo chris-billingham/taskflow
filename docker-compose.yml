@@ -1,7 +1,16 @@
+# Bounded container logs: without this the json-file driver grows unbounded
+# and eventually fills the host disk (Traefik access logs + API JSON logs).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   traefik:
     image: traefik:v3.0
     restart: unless-stopped
+    logging: *default-logging
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
@@ -27,6 +36,7 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-taskflow}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -49,12 +59,15 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *default-logging
     command: >
       redis-server
       --requirepass ${REDIS_PASSWORD}
       --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
       --save 60 1
+      --appendonly yes
+      --appendfsync everysec
     volumes:
       - redis_data:/data
     healthcheck:
@@ -70,8 +83,11 @@ services:
           memory: 256m
 
   minio:
-    image: minio/minio:latest
+    # Pinned: :latest jumped MinIO majors (breaking auth/console changes)
+    # silently on every upgrade rebuild.
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     restart: unless-stopped
+    logging: *default-logging
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-taskflow-admin}
@@ -94,6 +110,7 @@ services:
       dockerfile: packages/api/Dockerfile
     image: ${DOCKER_REGISTRY:-taskflow}/api:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-taskflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-taskflow}
@@ -133,14 +150,12 @@ services:
       start_period: 30s
       retries: 3
     deploy:
-      replicas: 1
+      # NOTE: only deploy.resources is honoured by non-swarm docker compose;
+      # restart behaviour comes from `restart: unless-stopped` above.
       resources:
         limits:
           cpus: "1"
           memory: 512m
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
 
   worker:
     build:
@@ -148,7 +163,15 @@ services:
       dockerfile: packages/api/Dockerfile
     image: ${DOCKER_REGISTRY:-taskflow}/api:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     command: ["node", "dist/worker-entry.js"]
+    healthcheck:
+      # Process-liveness: the worker exposes no port; a wedged event loop is
+      # caught because node can't spawn the probe once it deadlocks hard.
+      test: ["CMD-SHELL", "pgrep -f worker-entry || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-taskflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-taskflow}
@@ -173,9 +196,6 @@ services:
         limits:
           cpus: "0.5"
           memory: 256m
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
 
   web:
     build:
@@ -183,6 +203,7 @@ services:
       dockerfile: packages/web/Dockerfile
     image: ${DOCKER_REGISTRY:-taskflow}/web:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       - api
     networks:

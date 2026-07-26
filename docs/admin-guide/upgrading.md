@@ -1,5 +1,10 @@
 # Upgrading
 
+> **Recommended:** run `make upgrade` (or `bash scripts/upgrade.sh`). It pulls
+> the latest source, takes a pre-upgrade backup, preserves the running images
+> as a `:rollback` tag, migrates, and automatically rolls back to the previous
+> images if the health check fails. The manual steps below are the fallback.
+
 ## Standard Upgrade Procedure
 
 ```bash
@@ -10,13 +15,13 @@ make backup
 git pull origin main
 
 # 3. Pull new Docker images
-docker-compose pull
+docker compose -f docker-compose.yml pull
 
 # 4. Run any new migrations
-docker-compose exec api npx prisma migrate deploy
+docker compose -f docker-compose.yml exec api npx prisma migrate deploy
 
 # 5. Restart with new images
-docker-compose up -d --force-recreate
+docker compose -f docker-compose.yml up -d --force-recreate
 ```
 
 The API is typically down for 5–15 seconds during `up -d`.
@@ -25,7 +30,7 @@ The API is typically down for 5–15 seconds during `up -d`.
 
 ```bash
 curl https://your-domain.example.com/health
-docker-compose logs api | tail -20
+docker compose -f docker-compose.yml logs api | tail -20
 ```
 
 ## Zero-Downtime Upgrades
@@ -38,7 +43,7 @@ If the upgrade introduces a regression:
 
 ```bash
 # Stop services
-docker-compose down
+docker compose -f docker-compose.yml down
 
 # Check out the previous release tag
 git checkout v1.0.0
@@ -47,7 +52,7 @@ git checkout v1.0.0
 make restore
 
 # Restart
-docker-compose up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 ## Breaking Changes
@@ -56,10 +61,10 @@ Check [CHANGELOG.md](../../CHANGELOG.md) before each upgrade. Breaking changes a
 
 ## Database Migrations
 
-Migrations run automatically during `docker-compose exec api npx prisma migrate deploy`. They are applied in order and cannot be rolled back automatically — this is why a backup before upgrading is essential.
+Migrations run automatically during `docker compose -f docker-compose.yml exec api npx prisma migrate deploy`. They are applied in order and cannot be rolled back automatically — this is why a backup before upgrading is essential.
 
 To view migration status:
 
 ```bash
-docker-compose exec api npx prisma migrate status
+docker compose -f docker-compose.yml exec api npx prisma migrate status
 ```

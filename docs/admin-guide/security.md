@@ -30,14 +30,16 @@ ufw enable
 
 ## HTTPS
 
-All production traffic must use HTTPS. The default Nginx configuration redirects HTTP to HTTPS. See [installation.md](installation.md) for Let's Encrypt setup.
+All production traffic must use HTTPS. Traefik terminates TLS with automatic
+Let's Encrypt certificates and redirects HTTP to HTTPS; HSTS is applied via a
+Traefik middleware. See [installation.md](installation.md).
 
 ## Authentication
 
-- Passwords are hashed with bcrypt (cost factor 10)
-- Access tokens expire after 15 minutes
-- Refresh tokens expire after 7 days and are stored in httpOnly cookies (not accessible to JavaScript)
-- Failed login attempts are not rate-limited by default — consider adding a reverse proxy rate limit rule
+- Passwords are hashed with bcrypt (cost factor 12)
+- Access tokens expire after 15 minutes; websocket sessions are force-disconnected when their token expires
+- Refresh tokens expire after 30 days, are stored in httpOnly `SameSite=Strict` cookies, are rotated on every use (reuse detection revokes all sessions), and are stored server-side only as sha256 hashes
+- Rate limits: global 300 requests/minute per IP, plus stricter budgets on auth routes (login 5/15min, register 5/h, password reset 3/h, verify-email 10/15min) and uploads (60/10min). Limits are Redis-backed and key on the real client IP behind the proxy
 
 ## CORS
 
@@ -49,9 +51,10 @@ CORS_ORIGIN=https://tasks.example.com
 
 ## File Uploads
 
-- Maximum upload size is configurable via `MAX_FILE_SIZE_MB` (default 50 MB)
+- Maximum upload size is configurable via `MAX_FILE_SIZE_MB` (default 25 MB)
+- Declared MIME types are verified against the file's magic bytes; SVG is not accepted
 - Files are stored in S3/MinIO, not on the API container's disk
-- Presigned URLs are used for downloads — direct bucket access is not exposed publicly
+- Downloads are streamed through the authenticated API with `Content-Disposition: attachment` — the bucket is never exposed publicly
 
 ## Database
 

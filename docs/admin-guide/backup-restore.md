@@ -1,84 +1,73 @@
 # Backup & Restore
 
-## What to Back Up
+## What a Backup Contains
 
-| Data | Location | Method |
-|------|----------|--------|
-| PostgreSQL database | Docker volume `taskflow_postgres` | `pg_dump` |
-| Uploaded files | S3 / MinIO bucket | S3 sync or MinIO mirror |
-| Environment config | `.env` file | Copy to secure storage |
+`make backup` (or `bash scripts/backup.sh`) writes a timestamped `.tar.gz`
+archive to `./backups/` containing everything a restore needs:
 
-## Automated Backups with Make
+| Data | Notes |
+|------|-------|
+| PostgreSQL dump | compressed SQL, taken with `pg_dump` |
+| Uploaded files | full MinIO bucket mirror |
+| Redis snapshot | queued jobs and reminder delivery state |
+| `.env` | encrypted when `BACKUP_PASSPHRASE` is set in `.env`; **plaintext otherwise — store archives securely** |
+| `manifest.json` | app version, latest applied migration, archive contents |
 
-```bash
-make backup         # Dumps database + syncs files
-make restore        # Restores from the most recent backup
-```
+A failed file mirror **aborts the backup** rather than reporting success with
+attachments missing. The last 7 archives are retained.
 
-Backups are written to `./backups/` by default.
-
-## Manual Database Backup
-
-```bash
-docker-compose exec postgres pg_dump \
-  -U taskflow \
-  taskflow \
-  | gzip > backups/taskflow-$(date +%Y%m%d-%H%M%S).sql.gz
-```
-
-## Manual Database Restore
+## Creating Backups
 
 ```bash
-# Stop the API first to avoid writes during restore
-docker-compose stop api
-
-gunzip -c backups/taskflow-20250101-120000.sql.gz \
-  | docker-compose exec -T postgres psql -U taskflow taskflow
-
-docker-compose start api
+make backup
+# or
+bash scripts/backup.sh
 ```
 
-## Backing Up Files (MinIO)
-
-If using the bundled MinIO container:
-
-```bash
-docker-compose exec minio mc mirror \
-  /data/taskflow \
-  /backup/taskflow-$(date +%Y%m%d)
-```
-
-If using AWS S3, use `aws s3 sync`:
-
-```bash
-aws s3 sync s3://your-taskflow-bucket ./backups/files/
-```
-
-## Scheduling Automatic Backups
-
-Add a cron job on the host:
+### Scheduling
 
 ```cron
-# Daily at 2 AM — database backup
-0 2 * * * cd /opt/taskflow && make backup >> /var/log/taskflow-backup.log 2>&1
+# Daily at 2 AM
+0 2 * * * cd /opt/taskflow && bash scripts/backup.sh >> /var/log/taskflow-backup.log 2>&1
 ```
 
-## Offsite Storage
+### Offsite
 
-Use `rclone` to sync backups to an offsite destination (S3, Backblaze B2, Google Drive):
+Set `BACKUP_S3_BUCKET` in `.env` to upload each archive to S3 after creation
+(requires the `aws` CLI on the host), or sync `./backups` with `rclone`:
 
 ```bash
 rclone sync ./backups remote:taskflow-backups
 ```
 
-## Verifying Backups
-
-Periodically test that restores work:
+## Restoring
 
 ```bash
-# Restore to a test database
-docker-compose exec postgres psql -U taskflow -c "CREATE DATABASE taskflow_test;"
-gunzip -c backups/latest.sql.gz \
-  | docker-compose exec -T postgres psql -U taskflow taskflow_test
-docker-compose exec postgres psql -U taskflow -c "DROP DATABASE taskflow_test;"
+# Interactive: lists available archives and prompts for one
+make restore
+
+# Or specify the archive
+bash scripts/restore.sh ./backups/taskflow_20260101_020000.tar.gz
 ```
+
+The restore script:
+
+1. **Verifies the archive first** — a corrupt archive or missing dump aborts
+   before anything is touched.
+2. Stops the `api` and `worker` containers.
+3. Drops and recreates the database, then loads the dump
+   (`ON_ERROR_STOP` — a mid-restore SQL error aborts loudly).
+4. Runs `prisma migrate deploy` so an older dump is reconciled with the
+   currently deployed code's schema.
+5. Restores the MinIO bucket **point-in-time**: objects uploaded after the
+   backup was taken are removed.
+6. Flushes Redis (stale sessions and queue jobs reference the pre-restore
+   world; users simply sign in again).
+7. Restarts the application containers.
+
+## Verifying Backups
+
+Run a periodic drill on a disposable stack: restore the latest archive with
+`TASKFLOW_COMPOSE_FILE` pointing at a test compose file, then check row counts
+and attachment downloads. The archive's `manifest.json` records what should be
+present.

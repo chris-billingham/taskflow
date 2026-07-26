@@ -1,5 +1,9 @@
 export const openapiSpec = {
   openapi: '3.0.3',
+  // NOTE: this spec covers the primary resources; sections, comments,
+  // filters, views, reminders, activity and attachments are implemented but
+  // not yet documented here. Treat the Zod schemas in src/schemas as the
+  // source of truth.
   info: {
     title: 'Taskflow API',
     version: '1.0.0',
@@ -90,7 +94,7 @@ Common HTTP status codes:
           deadline: { type: 'string', format: 'date', nullable: true },
           duration: { type: 'integer', description: 'Duration in minutes', nullable: true },
           priority: { type: 'integer', minimum: 1, maximum: 4, description: '1=urgent, 4=none' },
-          completed: { type: 'boolean' },
+          isCompleted: { type: 'boolean' },
           completedAt: { type: 'string', format: 'date-time', nullable: true },
           sortOrder: { type: 'integer' },
           assigneeId: { type: 'string', nullable: true },
@@ -106,7 +110,6 @@ Common HTTP status codes:
           id: { type: 'string' },
           name: { type: 'string' },
           color: { type: 'string', example: '#3b82f6' },
-          icon: { type: 'string', nullable: true },
           description: { type: 'string', nullable: true },
           workspaceId: { type: 'string' },
           ownerId: { type: 'string' },
@@ -132,7 +135,7 @@ Common HTTP status codes:
           id: { type: 'string' },
           name: { type: 'string' },
           color: { type: 'string', example: '#ef4444' },
-          userId: { type: 'string' },
+          authorId: { type: 'string' },
           createdAt: { type: 'string', format: 'date-time' },
         },
       },
@@ -553,9 +556,10 @@ Common HTTP status codes:
                 required: ['name'],
                 properties: {
                   name: { type: 'string' },
-                  color: { type: 'string' },
-                  icon: { type: 'string' },
-                  description: { type: 'string' },
+                  color: { type: 'string', description: 'Hex color, e.g. #3B82F6' },
+                  workspaceId: { type: 'string' },
+                  parentId: { type: 'string' },
+                  viewStyle: { type: 'string', enum: ['LIST', 'BOARD', 'CALENDAR'] },
                 },
               },
             },
@@ -595,7 +599,7 @@ Common HTTP status codes:
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['name', 'color'],
+                required: ['name'],
                 properties: {
                   name: { type: 'string' },
                   color: { type: 'string', example: '#ef4444' },
@@ -627,8 +631,8 @@ Common HTTP status codes:
         summary: 'Full-text search',
         parameters: [
           { name: 'q', in: 'query', required: true, schema: { type: 'string' }, description: 'Search query' },
-          { name: 'type', in: 'query', schema: { type: 'string', enum: ['tasks', 'projects', 'comments'] } },
-          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+          { name: 'type', in: 'query', schema: { type: 'string', enum: ['task', 'project', 'comment'] }, description: 'Comma-separable entity types' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
         ],
         responses: {
           200: {
@@ -651,22 +655,27 @@ Common HTTP status codes:
         summary: 'List notifications',
         parameters: [
           { name: 'unreadOnly', in: 'query', schema: { type: 'boolean' } },
-          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
-          { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+          { name: 'cursor', in: 'query', schema: { type: 'string' }, description: 'Cursor from the previous page' },
         ],
         responses: { 200: { description: 'Notification list' } },
       },
     },
-    '/api/v1/notifications/read-all': {
+    '/api/v1/notifications/mark-all-read': {
       post: {
         tags: ['Notifications'],
         summary: 'Mark all notifications as read',
         responses: { 200: { description: 'All marked read' } },
       },
     },
-    '/api/v1/settings': {
-      get: { tags: ['Settings'], summary: 'Get user settings', responses: { 200: { description: 'Settings object' } } },
-      patch: { tags: ['Settings'], summary: 'Update user settings', responses: { 200: { description: 'Updated settings' } } },
+    '/api/v1/settings/preferences': {
+      patch: { tags: ['Settings'], summary: 'Update user preferences', responses: { 200: { description: 'Updated preferences' } } },
+    },
+    '/api/v1/settings/export': {
+      get: { tags: ['Settings'], summary: 'Export all user data as JSON', responses: { 200: { description: 'Data export' } } },
+    },
+    '/api/v1/settings/data': {
+      delete: { tags: ['Settings'], summary: 'Delete account and personal data', responses: { 200: { description: 'Account deleted' }, 409: { description: 'Owns shared workspaces — transfer first' } } },
     },
     '/api/v1/templates': {
       get: { tags: ['Templates'], summary: 'List templates', responses: { 200: { description: 'Template list' } } },
@@ -683,8 +692,11 @@ Common HTTP status codes:
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['projectId'],
-                properties: { projectId: { type: 'string' } },
+                required: ['name'],
+                properties: {
+                  name: { type: 'string', description: 'Name for the project created from the template' },
+                  workspaceId: { type: 'string' },
+                },
               },
             },
           },
@@ -718,7 +730,7 @@ Common HTTP status codes:
                 required: ['email'],
                 properties: {
                   email: { type: 'string', format: 'email' },
-                  role: { type: 'string', enum: ['member', 'admin'] },
+                  role: { type: 'string', enum: ['ADMIN', 'MEMBER', 'GUEST'] },
                 },
               },
             },

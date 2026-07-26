@@ -55,5 +55,5 @@ shell-redis:
 
 clean:
 	@echo "WARNING: This will delete all data volumes."
-	@read -p "Type 'yes' to confirm: " CONFIRM; \
+	@printf "Type 'yes' to confirm: "; read CONFIRM; \
 	[ "$$CONFIRM" = "yes" ] && $(COMPOSE) down -v || echo "Aborted."

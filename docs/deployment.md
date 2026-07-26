@@ -75,14 +75,12 @@ docker compose logs traefik | grep -i cert
 
 ## Scaling the API
 
-The API is stateless (session data in Redis) and can be scaled horizontally:
-
-```bash
-# Run 3 API replicas
-docker compose up -d --scale api=3
-```
-
-Traefik automatically load-balances across replicas.
+The API's HTTP endpoints are stateless, **but do not scale `api` beyond one
+replica yet**: realtime uses Socket.io without a Redis adapter, so websocket
+events emitted by one replica are invisible to clients connected to another,
+and the load balancer has no sticky sessions for the socket handshake. Scale
+vertically (raise the `deploy.resources` limits), or add the Socket.io Redis
+adapter + sticky sessions first.
 
 ## Environment Variables
 
@@ -101,6 +99,9 @@ bash scripts/backup.sh
 Backups are saved to `./backups/` as timestamped `.tar.gz` archives containing:
 - PostgreSQL dump (compressed SQL)
 - MinIO file storage mirror
+- Redis snapshot (queued jobs / reminder state)
+- `.env` (encrypted when `BACKUP_PASSPHRASE` is set in `.env`; **plaintext otherwise — store backups securely**)
+- `manifest.json` recording the app version, latest applied migration, and archive contents
 
 ### Scheduled backups
 

@@ -80,7 +80,7 @@ describe('socket service room registry', () => {
 
     socket.subscribeToProject('p2', undefined);
     const calls = subscribeEmits(fakeSocket);
-    expect(calls.at(-1)?.[1]).toEqual({ projectId: 'p2', workspaceId: undefined });
+    expect(calls[calls.length - 1]?.[1]).toEqual({ projectId: 'p2', workspaceId: undefined });
   });
 
   it('re-joins every registered room on each reconnect', async () => {
@@ -103,7 +103,8 @@ describe('socket service room registry', () => {
     fakeSocket.fire('connect');
 
     socket.subscribeToProject('p1');
-    const denied = subscribeEmits(fakeSocket).at(-1)!;
+    const deniedCalls = subscribeEmits(fakeSocket);
+    const denied = deniedCalls[deniedCalls.length - 1];
     ackOfCall(denied)({ ok: false });
 
     fakeSocket.emit.mockClear();
