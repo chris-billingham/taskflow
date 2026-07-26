@@ -7,7 +7,9 @@ import {
   ChevronDown,
   User,
   GitBranch,
+  Repeat,
 } from 'lucide-react';
+import { describeRecurrence, shortRecurrenceLabel } from '@/utils/recurrence';
 import { TaskCheckbox } from './TaskCheckbox';
 import { DueDateBadge } from './DueDatePicker';
 import { DueDatePicker } from './DueDatePicker';
@@ -199,6 +201,18 @@ export function TaskItem({
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {task.dueDate && (
               <DueDateBadge dueDate={task.dueDate} dueTime={task.dueTime} />
+            )}
+            {/* A repeating task looked identical to a one-off in every list —
+                completing one silently spawned the next occurrence with no
+                indication that it would. */}
+            {task.isRecurring && task.recurrenceRule && (
+              <span
+                className="text-xs text-gray-400 flex items-center gap-1"
+                title={describeRecurrence(task.recurrenceRule) ?? 'Repeats'}
+              >
+                <Repeat className="w-3 h-3" />
+                {shortRecurrenceLabel(task.recurrenceRule)}
+              </span>
             )}
             <LabelBadges labels={task.taskLabels} />
             {/* Subtask count with branch icon like the reference */}

@@ -10,6 +10,7 @@ import {
   AlertCircle,
   User,
   Bell,
+  Repeat,
 } from 'lucide-react';
 import { TaskCheckbox } from './TaskCheckbox';
 import { DueDatePicker } from './DueDatePicker';
@@ -18,6 +19,7 @@ import { DurationPicker } from './DurationPicker';
 import { LabelPicker, LabelBadges } from './LabelPicker';
 import { AssigneePicker } from './AssigneePicker';
 import { ReminderPicker } from './ReminderPicker';
+import { RecurrencePicker } from './RecurrencePicker';
 import { QuickAdd } from './QuickAdd';
 import { CommentList } from '@/components/comment/CommentList';
 import { ActivityLog } from '@/components/activity/ActivityLog';
@@ -204,6 +206,27 @@ export function TaskDetail({
                 Reminders
               </span>
               <ReminderPicker taskId={task.id} />
+            </div>
+
+            {/* Repeat */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 w-24 flex items-center gap-2">
+                <Repeat className="w-4 h-4" />
+                Repeat
+              </span>
+              <RecurrencePicker
+                isRecurring={task.isRecurring}
+                recurrenceRule={task.recurrenceRule}
+                onChange={(recurrenceRule) =>
+                  // isRecurring is what the completion path checks before
+                  // spawning the next occurrence, so the flag and the rule have
+                  // to move together or the series silently does nothing.
+                  onUpdate(task.id, {
+                    recurrenceRule,
+                    isRecurring: recurrenceRule !== null,
+                  })
+                }
+              />
             </div>
 
             {/* Deadline */}
