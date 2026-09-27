@@ -46,6 +46,11 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   would work. Refusals return `REGISTRATION_CLOSED` before the duplicate-email
   check, so a closed instance doesn't reveal which addresses have accounts.
   Existing installs: set `REGISTRATION_MODE=open` to keep today's behaviour.
+- **Prisma 6** (from 5.22). No schema drift (the migration diff is empty) and
+  none of the removed APIs were in use. The `migrate` service calls the image's
+  Prisma binary directly instead of through `npx`.
+- Removed unused API dependencies: `@fastify/websocket`, `@fastify/jwt`, a
+  direct `pino`; `pino-pretty` is dev-only and no longer ships in the image.
 
 ### Fixed
 

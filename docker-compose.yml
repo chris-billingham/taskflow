@@ -139,7 +139,9 @@ services:
     pull_policy: never
     restart: "no"
     logging: *default-logging
-    command: ["sh", "-c", "npx prisma migrate deploy --schema prisma/schema.prisma"]
+    # The image's own Prisma CLI, called directly: npx would route through npm
+    # (update notices, and a registry lookup if the binary were ever missing).
+    command: ["./node_modules/.bin/prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"]
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-taskflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-taskflow}
     depends_on:
