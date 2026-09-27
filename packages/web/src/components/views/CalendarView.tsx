@@ -15,7 +15,7 @@ import { MonthView } from '@/components/calendar/MonthView';
 import { TaskDetail } from '@/components/task/TaskDetail';
 import { Modal } from '@/components/ui/Modal';
 import { QuickAdd } from '@/components/task/QuickAdd';
-import type { Task } from '@/stores/taskStore';
+import type { Task, QuickAddDue } from '@/stores/taskStore';
 import { getSubtasks } from '@/utils/subtaskIndex';
 import { formatUserDateWithWeekday } from '@/utils/dateFormat';
 
@@ -27,7 +27,7 @@ interface CalendarViewProps {
   onUncompleteTask: (id: string) => Promise<void>;
   onDeleteTask: (id: string) => Promise<void>;
   onAddSubtask: (text: string) => Promise<void>;
-  onQuickAdd: (text: string) => Promise<void>;
+  onQuickAdd: (text: string, due: QuickAddDue) => Promise<void>;
   defaultProjectId?: string;
   initialMode?: CalendarMode;
 }
@@ -113,12 +113,13 @@ export function CalendarView({
   const handleQuickAddSubmit = useCallback(
     async (text: string) => {
       const { dateStr, time } = quickAddState;
-      // Append date to the text for quick add parsing
-      const dateObj = new Date(dateStr + 'T12:00:00');
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const dateText = `${monthNames[dateObj.getMonth()]} ${dateObj.getDate()}`;
-      const timeText = time !== '09:00' ? ` ${time}` : '';
-      await onQuickAdd(`${text} ${dateText}${timeText}`);
+      // Send the cell's date (and a clicked week-view slot's time) as exact
+      // values. Writing them into the text for the parser put past and same-day
+      // dates a year out ("Sep 27" < now) and left a bare "14:00" in the name.
+      await onQuickAdd(text, {
+        dueDate: dateStr,
+        dueTime: time !== '09:00' ? time : undefined,
+      });
       setQuickAddState({ isOpen: false, dateStr: '', time: '' });
     },
     [quickAddState, onQuickAdd],

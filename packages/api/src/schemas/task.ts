@@ -71,6 +71,11 @@ export const bulkTaskSchema = z.object({
 export const quickAddSchema = z.object({
   text: z.string().min(1, 'Text is required').max(500),
   projectId: z.string().optional(),
+  // A date or time the caller already knows exactly (a calendar cell, an
+  // Upcoming day). Overrides whatever the text parser finds, so the caller
+  // never has to round-trip a date through words.
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dueDate must be YYYY-MM-DD').optional(),
+  dueTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'dueTime must be HH:mm').optional(),
 });
 
 export const moveTaskSchema = z.object({

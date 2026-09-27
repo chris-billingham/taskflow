@@ -267,4 +267,36 @@ describe('POST /api/v1/tasks/quick-add', () => {
     });
     expect(response.statusCode).toBe(400);
   });
+
+  it('passes an exact due date and time from a calendar cell to the service', async () => {
+    vi.mocked(taskService.quickAddTask).mockResolvedValue(SAMPLE_TASK as never);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/tasks/quick-add',
+      headers: authHeaders(),
+      payload: { text: 'Standup #Work', projectId: 'proj-1', dueDate: '2026-09-27', dueTime: '14:00' },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(taskService.quickAddTask).toHaveBeenCalledWith('Standup #Work', 'proj-1', TEST_USER.id, {
+      dueDate: '2026-09-27',
+      dueTime: '14:00',
+    });
+  });
+
+  it('rejects a malformed due date or time', async () => {
+    for (const payload of [
+      { text: 'x', dueDate: '27/09/2026' },
+      { text: 'x', dueTime: '2pm' },
+    ]) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/tasks/quick-add',
+        headers: authHeaders(),
+        payload,
+      });
+      expect(response.statusCode).toBe(400);
+    }
+  });
 });

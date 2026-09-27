@@ -1,6 +1,6 @@
 import '../mocks/socket';
 import { describe, it, expect } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../msw/server';
 import { API } from '../msw/handlers';
@@ -63,5 +63,24 @@ describe('Upcoming page', () => {
     // "No date" date-picker buttons.
     await user.click(screen.getByRole('button', { name: /^No date\s*1$/ }));
     expect(screen.queryByText('Someday: learn Rust')).not.toBeInTheDocument();
+  });
+
+  it("adds a task under a day with that day's exact date", async () => {
+    serveUpcoming(upcomingView());
+    let body: Record<string, unknown> | undefined;
+    server.use(
+      http.post(`${API}/tasks/quick-add`, async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(ok(makeTask({ content: 'Call the printer' })), { status: 201 });
+      }),
+    );
+
+    const { container, user } = renderPage(<Upcoming />, { route: '/upcoming', path: '/upcoming' });
+    await screen.findByText('Nothing upcoming');
+    const section = container.querySelector(`#date-section-${tomorrow}`) as HTMLElement;
+    await user.click(within(section).getByRole('button', { name: /Add task/ }));
+    await user.type(within(section).getByRole('textbox'), 'Call the printer{Enter}');
+
+    await waitFor(() => expect(body).toEqual({ text: 'Call the printer', dueDate: tomorrow }));
   });
 });

@@ -13,7 +13,7 @@ import { useProjectRoom } from '@/hooks/useProjectRoom';
 import { useProjectStore } from '@/stores/projectStore';
 import { useTasks, useTaskActions } from '@/hooks/useTasks';
 import { useTaskStore } from '@/stores/taskStore';
-import type { Task } from '@/stores/taskStore';
+import type { Task, QuickAddDue } from '@/stores/taskStore';
 import api from '@/services/api';
 import { toastError } from '@/stores/toastStore';
 
@@ -150,8 +150,8 @@ export default function Project() {
     }
   };
 
-  const handleQuickAdd = async (text: string) => {
-    await quickAddTask(text, project.id);
+  const handleQuickAdd = async (text: string, due?: QuickAddDue) => {
+    await quickAddTask(text, project.id, due);
     refetchTasks();
   };
 

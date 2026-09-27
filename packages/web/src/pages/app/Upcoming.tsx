@@ -23,7 +23,7 @@ import { TaskItem } from '@/components/task/TaskItem';
 import { Spinner } from '@/components/ui/Spinner';
 import { useUpcomingView, useTaskActions } from '@/hooks/useTasks';
 import { useTaskStore } from '@/stores/taskStore';
-import type { Task } from '@/stores/taskStore';
+import type { Task, QuickAddDue } from '@/stores/taskStore';
 import { getSubtasks } from '@/utils/subtaskIndex';
 
 const UPCOMING_DAYS = 14;
@@ -123,14 +123,16 @@ export default function Upcoming() {
     await reorderTasks(taskIds);
   };
 
-  const handleQuickAdd = async (text: string) => {
-    await quickAddTask(text);
+  const handleQuickAdd = async (text: string, due?: QuickAddDue) => {
+    await quickAddTask(text, undefined, due);
     refetch();
   };
 
   const handleQuickAddForDate = useCallback(
     (date: string) => async (text: string) => {
-      await quickAddTask(`${text} ${format(new Date(date + 'T12:00:00'), 'MMM d')}`);
+      // The section's date, sent exactly: as "MMM d" text, today's section
+      // parsed as a year from now.
+      await quickAddTask(text, undefined, { dueDate: date });
       refetch();
     },
     [quickAddTask, refetch],

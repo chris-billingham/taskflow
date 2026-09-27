@@ -60,6 +60,15 @@ export interface TaskQuery {
   search?: string;
 }
 
+/**
+ * An exact due date/time the caller already knows (a calendar cell, an
+ * Upcoming day). The server uses it instead of anything parsed from the text.
+ */
+export interface QuickAddDue {
+  dueDate?: string; // yyyy-MM-dd
+  dueTime?: string; // HH:mm
+}
+
 export interface TodayViewData {
   overdue: Task[];
   morning: Task[];
@@ -135,7 +144,7 @@ interface TaskState {
   moveTask: (id: string, data: { projectId?: string; sectionId?: string | null; parentId?: string | null }) => Promise<Task>;
   duplicateTask: (id: string) => Promise<Task>;
   bulkUpdate: (taskIds: string[], action: string, data?: Record<string, any>) => Promise<void>;
-  quickAddTask: (text: string, projectId?: string) => Promise<Task>;
+  quickAddTask: (text: string, projectId?: string, due?: QuickAddDue) => Promise<Task>;
   reorderTasks: (taskIds: string[]) => Promise<void>;
   setTask: (task: Task) => void;
   removeTask: (id: string) => void;
@@ -501,8 +510,8 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
     }
   },
 
-  quickAddTask: async (text, projectId) => {
-    const { data } = await api.post('/tasks/quick-add', { text, projectId });
+  quickAddTask: async (text, projectId, due) => {
+    const { data } = await api.post('/tasks/quick-add', { text, projectId, ...due });
     const task = data.data as Task;
     set((state) => {
       const tasks = new Map(state.tasks);

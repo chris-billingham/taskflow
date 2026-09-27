@@ -147,6 +147,17 @@ describe('parseQuickAdd - date parsing', () => {
     expect(result.dueDate).toBe('2024-01-08');
   });
 
+  it('reads a month and day that fall today as today, not next year', async () => {
+    // Midday on Jan 4: "Jan 4" resolves to midnight, which is earlier than now.
+    const result = await parseQuickAdd('Pay rent Jan 4', TEST_USER_ID);
+    expect(result.dueDate).toBe('2024-01-04');
+  });
+
+  it('rolls a month and day already past this year into next year', async () => {
+    const result = await parseQuickAdd('Renew insurance Jan 3', TEST_USER_ID);
+    expect(result.dueDate).toBe('2025-01-03');
+  });
+
   it('sets no dueDate when no date keyword present', async () => {
     const result = await parseQuickAdd('Just a task', TEST_USER_ID);
     expect(result.dueDate).toBeUndefined();

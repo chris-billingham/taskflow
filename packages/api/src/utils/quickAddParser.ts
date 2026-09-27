@@ -168,7 +168,10 @@ export async function parseQuickAdd(text: string, userId: string): Promise<Parse
       const month = months[m[1].toLowerCase().slice(0, 3)];
       const day = parseInt(m[2], 10);
       const d = new Date(now.getFullYear(), month, day);
-      if (d < now) d.setFullYear(d.getFullYear() + 1);
+      // Compare with the start of today, not this instant: "Sep 27" typed on
+      // Sep 27 means today, not a year from now.
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (d < startOfToday) d.setFullYear(d.getFullYear() + 1);
       return d;
     }],
   ];

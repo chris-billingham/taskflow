@@ -8,7 +8,7 @@ import { CalendarView } from '@/components/views/CalendarView';
 import { useFilterStore } from '@/stores/filterStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useTaskActions } from '@/hooks/useTasks';
-import type { Task } from '@/stores/taskStore';
+import type { Task, QuickAddDue } from '@/stores/taskStore';
 
 export default function Filter() {
   const { id } = useParams<{ id: string }>();
@@ -129,8 +129,8 @@ export default function Filter() {
   // A saved filter is an arbitrary query, so there's no way to guarantee a new
   // task matches it — create it normally and refetch. It appears here if the
   // query happens to select it, exactly as it would after a manual reload.
-  const handleQuickAdd = async (text: string) => {
-    await quickAddTask(text);
+  const handleQuickAdd = async (text: string, due?: QuickAddDue) => {
+    await quickAddTask(text, undefined, due);
     fetchTasks();
   };
 

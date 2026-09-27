@@ -49,6 +49,7 @@ export async function taskRoutes(app: FastifyInstance) {
       result.data.text,
       result.data.projectId,
       request.user.id,
+      { dueDate: result.data.dueDate, dueTime: result.data.dueTime },
     );
     return reply.status(201).send({ success: true, data });
   });

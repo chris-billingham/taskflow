@@ -981,6 +981,7 @@ export async function quickAddTask(
   text: string,
   defaultProjectId: string | undefined,
   userId: string,
+  due: { dueDate?: string; dueTime?: string } = {},
 ) {
   const parsed = await parseQuickAdd(text, userId);
 
@@ -1001,8 +1002,8 @@ export async function quickAddTask(
     {
       content: parsed.content,
       projectId,
-      dueDate: parsed.dueDate,
-      dueTime: parsed.dueTime,
+      dueDate: due.dueDate ?? parsed.dueDate,
+      dueTime: due.dueTime ?? parsed.dueTime,
       priority: parsed.priority,
       labelIds: parsed.labelIds,
       duration: parsed.duration,

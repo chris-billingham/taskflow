@@ -9,7 +9,7 @@ import { useLabelStore } from '@/stores/labelStore';
 import { useFilterStore } from '@/stores/filterStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useTaskActions } from '@/hooks/useTasks';
-import type { Task } from '@/stores/taskStore';
+import type { Task, QuickAddDue } from '@/stores/taskStore';
 
 export default function Label() {
   const { id } = useParams<{ id: string }>();
@@ -124,9 +124,9 @@ export default function Label() {
 
   // Tag the new task with this label so it lands in the view the user is
   // looking at, rather than being created and immediately filtered out.
-  const handleQuickAdd = async (text: string) => {
+  const handleQuickAdd = async (text: string, due?: QuickAddDue) => {
     if (!label) return;
-    await quickAddTask(`${text} @${label.name}`);
+    await quickAddTask(`${text} @${label.name}`, undefined, due);
     fetchTasks();
   };
 
