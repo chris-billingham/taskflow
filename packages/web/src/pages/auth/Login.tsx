@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { useAuthStore } from '@/stores/authStore';
+import api from '@/services/api';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -22,6 +23,10 @@ export default function Login() {
   const [searchParams] = useSearchParams();
   const login = useAuthStore((s) => s.login);
   const [error, setError] = useState('');
+  // Set when login fails only because the address is unverified — the one
+  // failure the user can fix from here, by asking for a fresh link.
+  const [unverified, setUnverified] = useState(false);
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
 
   const rawRedirect = searchParams.get('redirect');
   // Only allow relative paths to prevent open redirect attacks
@@ -33,6 +38,7 @@ export default function Login() {
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -41,11 +47,25 @@ export default function Login() {
   const onSubmit = async (formData: LoginForm) => {
     try {
       setError('');
+      setUnverified(false);
+      setResendState('idle');
       await login(formData.email, formData.password);
       navigate(redirect || '/today', { replace: true });
     } catch (err: any) {
+      setUnverified(err.response?.data?.error === 'EMAIL_NOT_VERIFIED');
       setError(err.response?.data?.message || 'Invalid email or password');
     }
+  };
+
+  const resendVerification = async () => {
+    setResendState('sending');
+    try {
+      await api.post('/auth/resend-verification', { email: getValues('email') });
+    } catch {
+      // Rate-limited or offline: the response is deliberately neutral either
+      // way, so there is nothing more specific worth showing.
+    }
+    setResendState('sent');
   };
 
   return (
@@ -54,6 +74,22 @@ export default function Login() {
         {error && (
           <Alert variant="error" onClose={() => setError('')}>
             {error}
+            {unverified && (
+              <div className="mt-2">
+                {resendState === 'sent' ? (
+                  <span>If the address is still unverified, a new link is on its way.</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="font-medium underline disabled:opacity-60"
+                    disabled={resendState === 'sending'}
+                    onClick={resendVerification}
+                  >
+                    {resendState === 'sending' ? 'Sending…' : 'Resend verification email'}
+                  </button>
+                )}
+              </div>
+            )}
           </Alert>
         )}
 

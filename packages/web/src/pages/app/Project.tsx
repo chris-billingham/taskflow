@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Spinner } from '@/components/ui/Spinner';
 import { ProjectHeader } from '@/components/project/ProjectHeader';
 import { SectionList } from '@/components/project/SectionList';
@@ -14,6 +14,8 @@ import { useProjectStore } from '@/stores/projectStore';
 import { useTasks, useTaskActions } from '@/hooks/useTasks';
 import { useTaskStore } from '@/stores/taskStore';
 import type { Task } from '@/stores/taskStore';
+import api from '@/services/api';
+import { toastError } from '@/stores/toastStore';
 
 export default function Project() {
   const { id } = useParams<{ id: string }>();
@@ -52,6 +54,43 @@ export default function Project() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkTaskId = searchParams.get('task');
+
+  // Open the task named by ?task= — notification, push and comment-search
+  // links all land here. It may not be in the store (a subtask, a completed
+  // task, or one beyond the first page), so fall back to fetching it.
+  useEffect(() => {
+    if (!deepLinkTaskId) return;
+    const known = useTaskStore.getState().tasks.get(deepLinkTaskId);
+    if (known) {
+      setSelectedTask(known);
+      return;
+    }
+    let cancelled = false;
+    api
+      .get(`/tasks/${deepLinkTaskId}`)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const task = data.data as Task;
+        // Completed tasks stay out of the Map so they don't join the open list.
+        if (!task.isCompleted) useTaskStore.getState().setTask(task);
+        setSelectedTask(task);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        toastError('That task no longer exists or you no longer have access');
+        setSearchParams({}, { replace: true });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [deepLinkTaskId, setSearchParams]);
+
+  const closeTaskDetail = () => {
+    setSelectedTask(null);
+    if (deepLinkTaskId) setSearchParams({}, { replace: true });
+  };
 
   // Split tasks into unsectioned and by section
   const unsectionedTasks = useMemo(
@@ -131,7 +170,7 @@ export default function Project() {
   const handleDeleteTask = async (taskId: string) => {
     await deleteTask(taskId);
     if (selectedTask?.id === taskId) {
-      setSelectedTask(null);
+      closeTaskDetail();
     }
   };
 
@@ -300,7 +339,7 @@ export default function Project() {
           {currentSelectedTask && (
             <TaskDetail
               task={currentSelectedTask}
-              onClose={() => setSelectedTask(null)}
+              onClose={closeTaskDetail}
               onUpdate={handleUpdateTask}
               onComplete={handleComplete}
               onUncomplete={handleUncomplete}

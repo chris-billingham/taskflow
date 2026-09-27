@@ -15,9 +15,11 @@ const OVERDUE_LOCAL_HOUR = 9;
 // hourly cadence of this job: a wider window would notify twice.
 const DUE_SOON_WINDOW_MS = 60 * 60 * 1000;
 
-// Tasks a single pass will consider. Bounded so a large instance drains across
-// runs instead of loading everything into memory.
-const BATCH_SIZE = 500;
+// Tasks loaded per page. Each pass walks EVERY candidate page by page (keyset
+// on id), so memory stays bounded without starving anything: taking one fixed
+// batch ordered by dueDate meant a backlog of >500 already-notified overdue
+// tasks was re-read every run and nothing newer was ever looked at.
+export const BATCH_SIZE = 500;
 
 export function createDueTaskQueue() {
   return new Queue(QUEUE_NAME, {
@@ -74,6 +76,77 @@ async function timezoneOf(userId: string, cache: Map<string, string>) {
   return tz;
 }
 
+interface Candidate {
+  id: string;
+  content: string;
+  projectId: string;
+  dueDate: Date | null;
+  dueTime: string | null;
+  assigneeId: string | null;
+  creatorId: string | null;
+  updatedAt: Date;
+}
+
+/** Decide and send at most one notice for a task; returns which, if any. */
+async function checkTask(
+  task: Candidate,
+  now: Date,
+  tzCache: Map<string, string>,
+): Promise<'TASK_DUE_SOON' | 'TASK_OVERDUE' | null> {
+  const userId = recipientOf(task);
+  if (!userId || !task.dueDate) return null;
+
+  const tz = await timezoneOf(userId, tzCache);
+  const { todayStart } = userDayBoundariesUTC(tz, now);
+
+  // Overdue: the due date is behind the user's current calendar day. The
+  // notice waits for a civil hour so a task that tips over at local midnight
+  // doesn't wake anybody.
+  if (task.dueDate < todayStart) {
+    const announceAt = zonedWallClockToUTC(
+      todayStart,
+      `${String(OVERDUE_LOCAL_HOUR).padStart(2, '0')}:00`,
+      tz,
+    );
+    if (now < announceAt) return null;
+    if (await alreadyNotified(userId, 'TASK_OVERDUE', task.id, task.updatedAt)) return null;
+    await notify(
+      userId,
+      'TASK_OVERDUE',
+      'Task overdue',
+      `"${task.content}" is past its due date`,
+      { taskId: task.id, projectId: task.projectId },
+    );
+    return 'TASK_OVERDUE';
+  }
+
+  // Due soon. A timed task counts down to its actual instant; a date-only
+  // task is announced on the morning of the day it is due.
+  const announceAt = task.dueTime
+    ? new Date(
+        zonedWallClockToUTC(task.dueDate, task.dueTime, tz).getTime() - DUE_SOON_WINDOW_MS,
+      )
+    : zonedWallClockToUTC(
+        task.dueDate,
+        `${String(DUE_SOON_LOCAL_HOUR).padStart(2, '0')}:00`,
+        tz,
+      );
+
+  if (now < announceAt) return null;
+  if (await alreadyNotified(userId, 'TASK_DUE_SOON', task.id, task.updatedAt)) return null;
+
+  await notify(
+    userId,
+    'TASK_DUE_SOON',
+    'Task due soon',
+    task.dueTime
+      ? `"${task.content}" is due at ${task.dueTime}`
+      : `"${task.content}" is due today`,
+    { taskId: task.id, projectId: task.projectId },
+  );
+  return 'TASK_DUE_SOON';
+}
+
 /**
  * One pass of the due-soon / overdue check.
  *
@@ -90,83 +163,41 @@ export async function runDueTaskCheck(now: Date = new Date()): Promise<{
   let dueSoon = 0;
   let overdue = 0;
 
-  // Widest possible net in one query: anything incomplete with a due date at
-  // or before tomorrow. Per-user timezone decides what actually qualifies.
+  // Widest possible net: anything incomplete with a due date at or before
+  // tomorrow. Per-user timezone decides what actually qualifies.
   const horizon = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-  const candidates = await prisma.task.findMany({
-    where: {
-      isCompleted: false,
-      parentId: null,
-      dueDate: { not: null, lt: horizon },
-    },
-    select: {
-      id: true,
-      content: true,
-      projectId: true,
-      dueDate: true,
-      dueTime: true,
-      assigneeId: true,
-      creatorId: true,
-      updatedAt: true,
-    },
-    orderBy: { dueDate: 'asc' },
-    take: BATCH_SIZE,
-  });
+  let afterId: string | undefined;
 
-  for (const task of candidates) {
-    const userId = recipientOf(task);
-    if (!userId || !task.dueDate) continue;
+  for (;;) {
+    const page = await prisma.task.findMany({
+      where: {
+        isCompleted: false,
+        parentId: null,
+        dueDate: { not: null, lt: horizon },
+        ...(afterId ? { id: { gt: afterId } } : {}),
+      },
+      select: {
+        id: true,
+        content: true,
+        projectId: true,
+        dueDate: true,
+        dueTime: true,
+        assigneeId: true,
+        creatorId: true,
+        updatedAt: true,
+      },
+      orderBy: { id: 'asc' },
+      take: BATCH_SIZE,
+    });
 
-    const tz = await timezoneOf(userId, tzCache);
-    const { todayStart } = userDayBoundariesUTC(tz, now);
-
-    // Overdue: the due date is behind the user's current calendar day. The
-    // notice waits for a civil hour so a task that tips over at local midnight
-    // doesn't wake anybody.
-    if (task.dueDate < todayStart) {
-      const announceAt = zonedWallClockToUTC(
-        todayStart,
-        `${String(OVERDUE_LOCAL_HOUR).padStart(2, '0')}:00`,
-        tz,
-      );
-      if (now >= announceAt && !(await alreadyNotified(userId, 'TASK_OVERDUE', task.id, task.updatedAt))) {
-        await notify(
-          userId,
-          'TASK_OVERDUE',
-          'Task overdue',
-          `"${task.content}" is past its due date`,
-          { taskId: task.id, projectId: task.projectId },
-        );
-        overdue++;
-      }
-      continue;
+    for (const task of page) {
+      const sent = await checkTask(task, now, tzCache);
+      if (sent === 'TASK_OVERDUE') overdue++;
+      else if (sent === 'TASK_DUE_SOON') dueSoon++;
     }
 
-    // Due soon. A timed task counts down to its actual instant; a date-only
-    // task is announced on the morning of the day it is due.
-    const announceAt = task.dueTime
-      ? new Date(
-          zonedWallClockToUTC(task.dueDate, task.dueTime, tz).getTime() - DUE_SOON_WINDOW_MS,
-        )
-      : zonedWallClockToUTC(
-          task.dueDate,
-          `${String(DUE_SOON_LOCAL_HOUR).padStart(2, '0')}:00`,
-          tz,
-        );
-
-    if (now < announceAt) continue;
-    if (await alreadyNotified(userId, 'TASK_DUE_SOON', task.id, task.updatedAt)) continue;
-
-    await notify(
-      userId,
-      'TASK_DUE_SOON',
-      'Task due soon',
-      task.dueTime
-        ? `"${task.content}" is due at ${task.dueTime}`
-        : `"${task.content}" is due today`,
-      { taskId: task.id, projectId: task.projectId },
-    );
-    dueSoon++;
+    if (page.length < BATCH_SIZE) break;
+    afterId = page[page.length - 1].id;
   }
 
   return { dueSoon, overdue };

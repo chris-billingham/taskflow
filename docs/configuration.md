@@ -118,6 +118,7 @@ S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 | `CORS_ORIGIN` | No | `http://localhost:5173` | Allowed CORS origin (compose sets `https://<DOMAIN>`) |
 | `APP_URL` | No | falls back to `CORS_ORIGIN` | Public base URL used for links in email |
 | `TRUST_PROXY_HOPS` | No | `1` | Number of proxy hops in front of the API |
+| `TRUST_PROXY_ADDRS` | No | `loopback,linklocal,uniquelocal` | Networks a proxy hop must come from to be trusted |
 | `RUN_WORKERS_IN_API` | No | off in production | Also run background jobs in the API process |
 | `ENABLE_API_DOCS` | No | off | Serve Swagger UI at `/api/docs` (always on in development) |
 
@@ -131,6 +132,18 @@ Add one for each extra proxy you put in front — a CDN, or an outer reverse
 proxy. Too low and all traffic keys on that proxy's IP, making the limits one
 shared bucket; too high and clients can forge `X-Forwarded-For` and give
 themselves a fresh bucket per request.
+
+### `TRUST_PROXY_ADDRS`
+
+A hop is only trusted if it connects from one of these networks
+(comma-separated: proxy-addr names such as `loopback`/`uniquelocal`, IPs, or
+CIDRs). The default covers loopback and the private ranges Docker assigns to
+bridge networks, so the shipped Traefik works unchanged. Narrow it to the
+Traefik network's CIDR if you can (`docker network inspect traefik`).
+
+Both settings are required: Fastify 5.12.1+ refuses to trust a bare hop count,
+because a count alone can't tell the real proxy from a client that sends enough
+fake hops.
 
 ### `RUN_WORKERS_IN_API`
 

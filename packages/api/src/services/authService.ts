@@ -161,7 +161,10 @@ export async function login(email: string, password: string) {
   }
 
   if (!user.emailVerified) {
-    throw new UnauthorizedError('Please verify your email address before signing in');
+    throw new UnauthorizedError(
+      'Please verify your email address before signing in',
+      'EMAIL_NOT_VERIFIED',
+    );
   }
 
   await prisma.user.update({

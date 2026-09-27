@@ -76,6 +76,7 @@ export default function VerifyEmail() {
         <>
           <Alert variant="error">{message}</Alert>
           <p className="mt-4 text-sm text-center text-gray-500 dark:text-gray-400">
+            Link expired? Sign in and you&apos;ll be offered a fresh one.{' '}
             <Link to="/login" className="text-primary-600 hover:underline">
               Back to sign in
             </Link>

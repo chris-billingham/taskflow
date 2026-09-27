@@ -37,10 +37,19 @@ test.describe('Project Management', () => {
     await createProject(page, projectName);
   });
 
+  test('Inbox is pinned in the sidebar on a fresh load', async ({ page }) => {
+    // The Inbox lives in the auto-created "Personal" workspace; it used to be
+    // hidden whenever no workspace was selected, which is the default.
+    const inboxLink = page.locator('aside nav').getByRole('button', { name: 'Inbox', exact: true });
+    await expect(inboxLink).toBeVisible();
+    await inboxLink.click();
+    await expect(page).toHaveURL(/\/projects\/[^/?]+$/);
+    await expect(page.getByRole('heading', { name: 'Inbox' }).first()).toBeVisible();
+  });
+
   test('can navigate to a project', async ({ page }) => {
     const projectName = `Nav Test ${Date.now()}`;
 
-    // Create a project (Inbox has workspaceId so lives in teamTree, not personalTree)
     await createProject(page, projectName);
 
     // Click the project name in the sidebar to navigate

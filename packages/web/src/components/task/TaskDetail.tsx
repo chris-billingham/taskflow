@@ -122,6 +122,7 @@ export function TaskDetail({
           <button
             className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={onClose}
+            aria-label="Close task detail"
           >
             <X className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </button>

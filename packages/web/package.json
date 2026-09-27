@@ -20,7 +20,6 @@
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.3.4",
-    "@tailwindcss/typography": "^0.5.19",
     "@taskflow/shared": "workspace:*",
     "axios": "^1.16.0",
     "date-fns": "^3.2.0",
@@ -29,12 +28,13 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.49.3",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^6.21.2",
-    "socket.io-client": "^4.6.1",
+    "react-router-dom": "^6.30.6",
+    "socket.io-client": "^4.8.4",
     "zod": "^3.22.4",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
     "@testing-library/user-event": "^14.5.2",

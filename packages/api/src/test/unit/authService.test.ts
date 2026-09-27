@@ -223,7 +223,10 @@ describe('login', () => {
 
   it('throws UnauthorizedError when email is not verified', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ ...TEST_USER, emailVerified: false });
-    await expect(login('test@example.com', 'correct-password')).rejects.toThrow(UnauthorizedError);
+    const err = await login('test@example.com', 'correct-password').catch((e) => e);
+    expect(err).toBeInstanceOf(UnauthorizedError);
+    // The web client keys its "resend verification email" offer on this code.
+    expect(err.code).toBe('EMAIL_NOT_VERIFIED');
   });
 
   it('refuses a suspended account and mints no session', async () => {

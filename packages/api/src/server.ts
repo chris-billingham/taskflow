@@ -8,6 +8,7 @@ import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { env, shouldRunWorkersInApi } from './config/env.js';
+import { buildTrustProxy } from './utils/trustProxy.js';
 import { registerRoutes } from './routes/index.js';
 import { runWithRequestContext } from './utils/requestContext.js';
 import { closeRedis, getRedis } from './config/redis.js';
@@ -36,7 +37,10 @@ const server = Fastify({
   // deployment; raise TRUST_PROXY_HOPS if you add another proxy in front, e.g.
   // a CDN — leaving it too low keys limits on the CDN's IP (one shared bucket),
   // setting it too high lets clients spoof again.
-  trustProxy: env.TRUST_PROXY_HOPS,
+  //
+  // The count alone is not enough on Fastify >= 5.12.1 (a numeric value there
+  // trusts nothing); see utils/trustProxy.ts.
+  trustProxy: buildTrustProxy(env.TRUST_PROXY_HOPS, env.TRUST_PROXY_ADDRS),
   bodyLimit: 1_048_576, // 1MB JSON body limit
   logger: {
     level: env.LOG_LEVEL,

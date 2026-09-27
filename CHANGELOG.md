@@ -6,6 +6,44 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ### Fixed
 
+#### September review
+
+- **Due-soon and overdue notifications stopped for everyone once an instance
+  had more than 500 stale overdue tasks.** The hourly job read one fixed batch
+  of the 500 oldest due tasks and never skipped already-notified ones, so the
+  same backlog was re-read every run. It now walks every candidate page by page.
+- **The Inbox was invisible by default.** It lives in the auto-created
+  "Personal" workspace, and the sidebar hid workspace projects whenever no
+  workspace was selected — the default. It is now a pinned nav entry.
+- **Notification, push and search links opened the project but not the task.**
+  They all carry `?task=<id>`, which nothing read. The project page now opens
+  that task (fetching it if it isn't loaded), and closing it clears the param.
+- **An expired verification link locked the user out.** Login now returns
+  `EMAIL_NOT_VERIFIED` and offers to resend the link.
+- **Upgrading Fastify to 5.12 would have collapsed every rate limit onto
+  Traefik's address.** Fastify 5.12.1 treats a numeric `trustProxy` as "trust
+  nothing". Trust is now `TRUST_PROXY_HOPS` *and* a check that each hop connects
+  from `TRUST_PROXY_ADDRS` (default: loopback and Docker's private ranges).
+- **The manual upgrade guide pulled `taskflow/*` from Docker Hub** (a namespace
+  the project doesn't own) and ran migrations with the old image. It now builds
+  from source and migrates with the new image, as `upgrade.sh` does.
+
+### Security
+
+- Patched runtime dependencies within their ranges: nodemailer 9.1.1, fastify
+  5.12.5, socket.io 4.8.4 (socket.io-parser 4.2.7), @fastify/swagger-ui 6,
+  fast-uri 4.1.3, ws 8.21+. `pnpm audit --prod` has no high or critical findings
+  (two moderate react-router 6 advisories remain; fixed by React Router 7).
+- All 17 `pnpm.overrides` removed — several were unbounded `>=` ranges that had
+  already pulled in unplanned majors. `file-type` is now declared at the major
+  actually in use (22).
+- CI now fails on any high/critical advisory in production dependencies.
+
+### Changed
+
+- Node 24 LTS in both Dockerfiles and CI (Node 20 reached end of life in April
+  2026); `engines.node` is `>=22.12.0`, and `.nvmrc` pins 24.
+
 #### Production stack (found by booting it, not by reading it)
 
 None of these were reachable by any test suite: CI builds the images but never

@@ -20,7 +20,7 @@ vi.mock('../../config/database.js', () => ({
 const notifyMock = vi.hoisted(() => vi.fn());
 vi.mock('../../services/notificationService.js', () => ({ notify: notifyMock }));
 
-import { runDueTaskCheck } from '../../jobs/dueTaskJob.js';
+import { runDueTaskCheck, BATCH_SIZE } from '../../jobs/dueTaskJob.js';
 import { prisma } from '../../config/database.js';
 
 const mockPrisma = prisma as unknown as {
@@ -232,5 +232,32 @@ describe('runDueTaskCheck — resilience', () => {
 
     expect(mockPrisma.user.findUnique).toHaveBeenCalledTimes(1);
     expect(notifyMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('runDueTaskCheck — backlog paging', () => {
+  it('reaches tasks beyond a full page of already-notified overdue ones', async () => {
+    // Page 1: a full batch of stale overdue tasks, every one already notified.
+    const stale = Array.from({ length: BATCH_SIZE }, (_, i) =>
+      task({ id: `a${String(i).padStart(4, '0')}`, dueDate: new Date('2026-01-01T00:00:00.000Z') }),
+    );
+    // Page 2: one fresh task due today that nobody has heard about.
+    const fresh = task({ id: 'b0001' });
+
+    mockPrisma.task.findMany
+      .mockResolvedValueOnce(stale)
+      .mockResolvedValueOnce([fresh]);
+    mockPrisma.notification.findFirst.mockImplementation(
+      async (args: { where: { type: string } }) =>
+        args.where.type === 'TASK_OVERDUE' ? { id: 'n' } : null,
+    );
+
+    const result = await runDueTaskCheck(new Date('2026-07-26T09:30:00.000Z'));
+
+    expect(result).toEqual({ dueSoon: 1, overdue: 0 });
+    expect(mockPrisma.task.findMany).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.task.findMany.mock.calls[1][0].where.id).toEqual({
+      gt: stale[stale.length - 1].id,
+    });
   });
 });

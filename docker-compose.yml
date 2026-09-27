@@ -143,6 +143,7 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      TRUST_PROXY_ADDRS: ${TRUST_PROXY_ADDRS:-loopback,linklocal,uniquelocal}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:

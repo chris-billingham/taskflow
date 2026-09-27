@@ -61,6 +61,11 @@ server. Getting this wrong disables the limits in one direction or the other:
 `1` is correct for the shipped stack (client → Traefik → API). Raise it by one
 for each additional proxy you place in front, such as a CDN.
 
+Each trusted hop must also connect from a network listed in
+`TRUST_PROXY_ADDRS` (default: loopback and the private ranges Docker uses), so
+a client that reaches the API directly can't set its own key by sending
+`X-Forwarded-For`.
+
 ## CORS
 
 `CORS_ORIGIN` should be set to exactly the frontend URL (no wildcard). Example:

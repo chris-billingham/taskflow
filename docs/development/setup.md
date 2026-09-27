@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js >= 18 ([nvm](https://github.com/nvm-sh/nvm) recommended)
+- Node.js >= 22.12, 24 LTS recommended ([nvm](https://github.com/nvm-sh/nvm) recommended)
 - pnpm >= 8: `npm install -g pnpm`
 - Docker >= 24 with Compose v2
 

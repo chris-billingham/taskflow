@@ -11,8 +11,10 @@ export class AppError extends Error {
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message = 'Unauthorized') {
-    super(message, 401, 'UNAUTHORIZED');
+  // `code` lets the client tell recoverable 401s apart (e.g. EMAIL_NOT_VERIFIED
+  // offers a resend link) without parsing the message.
+  constructor(message = 'Unauthorized', code = 'UNAUTHORIZED') {
+    super(message, 401, code);
   }
 }
 

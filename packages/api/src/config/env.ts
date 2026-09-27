@@ -15,6 +15,10 @@ const envSchema = z.object({
   // development: nothing there sets X-Forwarded-For (Vite's proxy doesn't), so
   // request.ip falls back to the socket address.
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(1),
+  // Networks a proxy hop must come from to be believed (proxy-addr names, IPs
+  // or CIDRs). The default covers Docker bridge networks and loopback (Vite's
+  // dev proxy); narrow it to the Traefik network's CIDR if you know it.
+  TRUST_PROXY_ADDRS: z.string().min(1).default('loopback,linklocal,uniquelocal'),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.string().default('info'),

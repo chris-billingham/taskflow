@@ -39,7 +39,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const handleSelectTask = useCallback(
     (result: TaskResult) => {
       if (query.trim()) saveRecentSearch(query);
-      navigate(`/projects/${result.projectId}`);
+      navigate(`/projects/${result.projectId}?task=${result.id}`);
       onClose();
     },
     [query, navigate, saveRecentSearch, onClose],

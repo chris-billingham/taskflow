@@ -7,24 +7,34 @@
 
 ## Standard Upgrade Procedure
 
+These are the same steps `scripts/upgrade.sh` runs, minus the automatic
+rollback.
+
 ```bash
 # 1. Back up first
 make backup
 
-# 2. Pull latest code
-git pull origin main
+# 2. Note the commit you are on, so you can return to it
+git rev-parse HEAD
 
-# 3. Pull new Docker images
-docker compose -f docker-compose.yml pull
+# 3. Pull latest code
+git pull --ff-only
 
-# 4. Run any new migrations
-docker compose -f docker-compose.yml exec api npx prisma migrate deploy
+# 4. Build the new images from source
+#    (Only if you set DOCKER_REGISTRY to a registry you publish to: replace this
+#    with `docker compose -f docker-compose.yml pull api web worker`. Never pull
+#    with the default DOCKER_REGISTRY=taskflow — that name resolves to Docker
+#    Hub, where the project does not own the `taskflow` namespace.)
+docker compose -f docker-compose.yml build api web
 
-# 5. Restart with new images
-docker compose -f docker-compose.yml up -d --force-recreate
+# 5. Run migrations with the NEW image, before any container is recreated
+#    (`exec` into the running api would apply the OLD image's migrations)
+docker compose -f docker-compose.yml run --rm api \
+  sh -c "npx prisma migrate deploy --schema prisma/schema.prisma"
+
+# 6. Restart with the new images
+docker compose -f docker-compose.yml up -d
 ```
-
-The API is typically down for 5–15 seconds during `up -d`.
 
 ## Checking the Upgrade Succeeded
 
@@ -35,25 +45,25 @@ docker compose -f docker-compose.yml logs api | tail -20
 
 ## Zero-Downtime Upgrades
 
-For production systems that cannot tolerate any downtime, run two API containers behind a load balancer and do a rolling restart. This requires external load balancer configuration not included in the default setup.
+Not supported. The API must run as a **single replica**: realtime sync keeps
+its Socket.IO rooms and presence in process memory, so a second API container
+would silently split clients between two servers that never see each other's
+events. Expect the brief restart window above.
 
 ## Rollback
 
-If the upgrade introduces a regression:
+If the upgrade introduces a regression, return to the commit you noted in
+step 2 and restore the pre-upgrade backup (migrations are not reversible):
 
 ```bash
-# Stop services
 docker compose -f docker-compose.yml down
-
-# Check out the previous release tag
-git checkout v1.0.0
-
-# Restore the database backup
+git checkout <previous-commit>
 make restore
-
-# Restart
-docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yml up -d --build
 ```
+
+`scripts/upgrade.sh` does the image half of this automatically if the new
+version fails its health check.
 
 ## Breaking Changes
 

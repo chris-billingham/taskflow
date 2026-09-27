@@ -13,6 +13,7 @@ import {
   X,
   Tag,
   Building2,
+  Inbox,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProjects } from '@/hooks/useProjects';
@@ -39,7 +40,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { favorites, tree, loading } = useProjects();
+  const { projects, favorites, tree, loading } = useProjects();
   const updateProject = useProjectStore((s) => s.updateProject);
   const deleteProject = useProjectStore((s) => s.deleteProject);
   const archiveProject = useProjectStore((s) => s.archiveProject);
@@ -79,18 +80,28 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
   };
 
+  // The Inbox gets its own pinned nav entry. It lives in the auto-created
+  // "Personal" workspace, so leaving it in the project trees hid it whenever
+  // no workspace was selected — which is the default.
+  const inbox = useMemo(
+    () => projects.find((p) => p.isInbox && p.ownerId === user?.id),
+    [projects, user?.id],
+  );
+
   // Separate personal projects from team (workspace) projects
   const { personalTree, teamTree } = useMemo(() => {
-    const personal = tree.filter((p) => !p.workspaceId);
+    const personal = tree.filter((p) => !p.workspaceId && !p.isInbox);
     const team = tree.filter(
       (p) =>
         p.workspaceId &&
+        !p.isInbox &&
         (!currentWorkspace || p.workspaceId === currentWorkspace.id),
     );
     return { personalTree: personal, teamTree: team };
   }, [tree, currentWorkspace]);
 
   const navItems = [
+    ...(inbox ? [{ path: `/projects/${inbox.id}`, label: 'Inbox', icon: Inbox }] : []),
     { path: '/today', label: 'Today', icon: CalendarDays },
     { path: '/upcoming', label: 'Upcoming', icon: CalendarRange },
     { path: '/filters-labels', label: 'Filters & Labels', icon: Filter },

@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
@@ -72,7 +72,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
@@ -107,7 +107,13 @@ jobs:
       # fixes require MAJOR upgrades of vite/vitest/react-router/turbo — tracked
       # as planned migrations. Runtime-dependency advisories are pinned via
       # pnpm.overrides in package.json and covered by the test suites.
-      - name: Security audit (informational)
+      # Gating: anything high or critical in what actually ships fails the build.
+      - name: Security audit (production deps)
+        run: pnpm audit --prod --audit-level=high
+
+      # Dev tooling (vitest/vite/eslint) is tracked but not gating until the
+      # toolchain majors land.
+      - name: Security audit (all deps, informational)
         run: pnpm audit --audit-level=high
         continue-on-error: true
 
@@ -166,7 +172,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies

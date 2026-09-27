@@ -52,7 +52,7 @@ import**.
 
 ### Prerequisites
 
-- **Node.js** >= 18
+- **Node.js** >= 22.12 (24 LTS recommended — see `.nvmrc`)
 - **pnpm** >= 8 (`npm install -g pnpm`)
 - **Docker** >= 24 with Compose v2
 
