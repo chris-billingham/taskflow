@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Plus, Calendar, Flag, Tag } from 'lucide-react';
+import { useProjectStore } from '@/stores/projectStore';
 
 interface QuickAddProps {
   projectId?: string;
@@ -19,7 +20,7 @@ interface ParsePreview {
   labels?: string[];
 }
 
-function parsePreview(text: string): ParsePreview {
+function parsePreview(text: string, projectNames: string[]): ParsePreview {
   const preview: ParsePreview = {};
 
   // Priority
@@ -31,9 +32,14 @@ function parsePreview(text: string): ParsePreview {
     if (excl) preview.priority = Math.max(1, 4 - excl[1].length);
   }
 
-  // Project
-  const projectMatch = text.match(/#(\S+)/);
-  if (projectMatch) preview.project = projectMatch[1];
+  // Project: like the server, a "#name" at a word start that exactly names a
+  // project (case-insensitive); any other "#tag" stays in the task text.
+  const projectMatch = text.match(/(?:^|\s)#(\S+)/);
+  if (projectMatch) {
+    const wanted = projectMatch[1].toLowerCase();
+    const name = projectNames.find((n) => n.toLowerCase() === wanted);
+    if (name) preview.project = name;
+  }
 
   // Labels
   const labelMatches = text.matchAll(/@(\S+)/g);
@@ -84,7 +90,10 @@ export function QuickAdd({
     }
   }, [isExpanded]);
 
-  const preview = text ? parsePreview(text) : null;
+  const projects = useProjectStore((s) => s.projects);
+  const preview = text
+    ? parsePreview(text, Array.from(projects.values(), (p) => p.name))
+    : null;
   const hasPreview = preview && (preview.priority || preview.dueDate || preview.project || preview.labels);
 
   const handleSubmit = async () => {

@@ -1,4 +1,5 @@
 import { prisma } from '../config/database.js';
+import { projectAccessSql } from './access.js';
 
 /**
  * Build a prefix-matching tsquery from raw user input. Terms are stripped of
@@ -128,18 +129,7 @@ export async function searchTasks(
     -- Expression matches tasks_content_search_idx exactly, so the GIN index applies
     WHERE to_tsvector('english', t.content || ' ' || COALESCE(t.description, ''))
       @@ to_tsquery('english', ${tsQuery})
-    AND (
-      t."assigneeId" = ${userId}
-      OR p."ownerId" = ${userId}
-      OR EXISTS (
-        SELECT 1 FROM project_members pm
-        WHERE pm."projectId" = t."projectId" AND pm."userId" = ${userId}
-      )
-      OR EXISTS (
-        SELECT 1 FROM workspace_members wm
-        WHERE wm."workspaceId" = p."workspaceId" AND wm."userId" = ${userId}
-      )
-    )
+    AND (t."assigneeId" = ${userId} OR ${projectAccessSql('p', userId)})
     ORDER BY rank DESC, t."createdAt" DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
@@ -182,17 +172,7 @@ export async function searchProjects(
     WHERE to_tsvector('english', p.name || ' ' || COALESCE(p.description, ''))
       @@ to_tsquery('english', ${tsQuery})
     AND p."isArchived" = false
-    AND (
-      p."ownerId" = ${userId}
-      OR EXISTS (
-        SELECT 1 FROM project_members pm
-        WHERE pm."projectId" = p.id AND pm."userId" = ${userId}
-      )
-      OR EXISTS (
-        SELECT 1 FROM workspace_members wm
-        WHERE wm."workspaceId" = p."workspaceId" AND wm."userId" = ${userId}
-      )
-    )
+    AND ${projectAccessSql('p', userId)}
     GROUP BY p.id, p.name, p.color, p.description
     ORDER BY rank DESC, p."createdAt" DESC
     LIMIT ${limit} OFFSET ${offset}
@@ -245,36 +225,19 @@ export async function searchComments(
     LEFT JOIN projects cp ON cp.id = c."projectId"
     WHERE to_tsvector('english', c.content) @@ to_tsquery('english', ${tsQuery})
     AND c."parentId" IS NULL
+    -- Authorship grants nothing: someone removed from a project no longer
+    -- finds its comments (or the task titles and project names beside them).
     AND (
-      c."authorId" = ${userId}
-      OR (
+      (
         c."taskId" IS NOT NULL
         AND (
           t."assigneeId" = ${userId}
-          OR tp."ownerId" = ${userId}
-          OR EXISTS (
-            SELECT 1 FROM project_members pm
-            WHERE pm."projectId" = t."projectId" AND pm."userId" = ${userId}
-          )
-          OR EXISTS (
-            SELECT 1 FROM workspace_members wm
-            WHERE wm."workspaceId" = tp."workspaceId" AND wm."userId" = ${userId}
-          )
+          OR ${projectAccessSql('tp', userId)}
         )
       )
       OR (
         c."projectId" IS NOT NULL
-        AND (
-          cp."ownerId" = ${userId}
-          OR EXISTS (
-            SELECT 1 FROM project_members pm
-            WHERE pm."projectId" = c."projectId" AND pm."userId" = ${userId}
-          )
-          OR EXISTS (
-            SELECT 1 FROM workspace_members wm
-            WHERE wm."workspaceId" = cp."workspaceId" AND wm."userId" = ${userId}
-          )
-        )
+        AND ${projectAccessSql('cp', userId)}
       )
     )
     ORDER BY rank DESC, c."createdAt" DESC

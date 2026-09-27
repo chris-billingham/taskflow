@@ -2,23 +2,26 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../../config/database.js', () => ({
   prisma: {
-    project: { findFirst: vi.fn() },
-    label: { findFirst: vi.fn() },
+    label: { findMany: vi.fn() },
     user: { findFirst: vi.fn(), findUnique: vi.fn() },
   },
 }));
 
+vi.mock('../../services/access.js', () => ({ findProjectByName: vi.fn() }));
+
 import { validateFilterQuery, parseFilterQuery } from '../../utils/filterParser.js';
+import { findProjectByName } from '../../services/access.js';
 import { prisma } from '../../config/database.js';
 
 const mockPrisma = prisma as unknown as {
-  project: { findFirst: ReturnType<typeof vi.fn> };
-  label: { findFirst: ReturnType<typeof vi.fn> };
+  label: { findMany: ReturnType<typeof vi.fn> };
   user: {
     findFirst: ReturnType<typeof vi.fn>;
     findUnique: ReturnType<typeof vi.fn>;
   };
 };
+
+const mockFindProject = vi.mocked(findProjectByName);
 
 const TEST_USER_ID = 'user-123';
 
@@ -99,8 +102,8 @@ describe('validateFilterQuery', () => {
 describe('parseFilterQuery', () => {
   beforeEach(() => {
   mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'UTC' });
-    mockPrisma.project.findFirst.mockResolvedValue(null);
-    mockPrisma.label.findFirst.mockResolvedValue(null);
+    mockFindProject.mockResolvedValue(null);
+    mockPrisma.label.findMany.mockResolvedValue([]);
     mockPrisma.user.findFirst.mockResolvedValue(null);
   });
 
@@ -196,36 +199,46 @@ describe('parseFilterQuery', () => {
   });
 
   it('resolves #ProjectName to projectId when project exists', async () => {
-    mockPrisma.project.findFirst.mockResolvedValue({ id: 'proj-456' });
+    mockFindProject.mockResolvedValue({ id: 'proj-456' } as never);
     const result = await parseFilterQuery('#Work', TEST_USER_ID);
     expect(result).toEqual({ projectId: 'proj-456' });
-    expect(mockPrisma.project.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ ownerId: TEST_USER_ID }),
-      }),
-    );
+    expect(mockFindProject).toHaveBeenCalledWith(TEST_USER_ID, 'Work');
   });
 
   it('matches nothing for an unknown project (not everything)', async () => {
-    mockPrisma.project.findFirst.mockResolvedValue(null);
+    mockFindProject.mockResolvedValue(null);
     const result = await parseFilterQuery('#NonExistent', TEST_USER_ID);
     expect(result).toEqual({ id: { in: [] } });
   });
 
   it('resolves !#ProjectName to not-projectId when project exists', async () => {
-    mockPrisma.project.findFirst.mockResolvedValue({ id: 'proj-789' });
+    mockFindProject.mockResolvedValue({ id: 'proj-789' } as never);
     const result = await parseFilterQuery('!#Work', TEST_USER_ID);
     expect(result).toEqual({ projectId: { not: 'proj-789' } });
   });
 
+  it('resolves ##Parent/Child through the hierarchy', async () => {
+    mockFindProject
+      .mockResolvedValueOnce({ id: 'proj-parent' } as never)
+      .mockResolvedValueOnce({ id: 'proj-child' } as never);
+    const result = await parseFilterQuery('##Work/Launch', TEST_USER_ID);
+    expect(result).toEqual({ projectId: 'proj-child' });
+    expect(mockFindProject).toHaveBeenLastCalledWith(TEST_USER_ID, 'Launch', { parentId: 'proj-parent' });
+  });
+
   it('resolves @labelname to taskLabels filter when label exists', async () => {
-    mockPrisma.label.findFirst.mockResolvedValue({ id: 'label-abc' });
+    mockPrisma.label.findMany.mockResolvedValue([{ id: 'label-abc', name: 'Urgent' }]);
     const result = await parseFilterQuery('@urgent', TEST_USER_ID);
     expect(result).toEqual({ taskLabels: { some: { labelId: 'label-abc' } } });
   });
 
+  it('treats "_" in a label name literally, not as a wildcard', async () => {
+    mockPrisma.label.findMany.mockResolvedValue([{ id: 'label-x', name: 'a b' }]);
+    expect(await parseFilterQuery('@a_b', TEST_USER_ID)).toEqual({ id: { in: [] } });
+  });
+
   it('matches nothing for an unknown label (not everything)', async () => {
-    mockPrisma.label.findFirst.mockResolvedValue(null);
+    mockPrisma.label.findMany.mockResolvedValue([]);
     const result = await parseFilterQuery('@unknown', TEST_USER_ID);
     expect(result).toEqual({ id: { in: [] } });
   });
@@ -233,7 +246,7 @@ describe('parseFilterQuery', () => {
   it('does not widen an OR when one side is an unknown project', async () => {
     // Regression for the OR-with-empty-clause bug: `#Nonexistent | p1` must
     // resolve to just the p1 branch plus a match-nothing branch, never {}.
-    mockPrisma.project.findFirst.mockResolvedValue(null);
+    mockFindProject.mockResolvedValue(null);
     const result = await parseFilterQuery('#Nonexistent | p1', TEST_USER_ID);
     const ors = result.OR as Array<Record<string, unknown>>;
     expect(ors).toBeDefined();
@@ -307,8 +320,8 @@ describe('parseFilterQuery', () => {
  */
 describe('parseFilterQuery — date window boundaries', () => {
   beforeEach(() => {
-    mockPrisma.project.findFirst.mockResolvedValue(null);
-    mockPrisma.label.findFirst.mockResolvedValue(null);
+    mockFindProject.mockResolvedValue(null);
+    mockPrisma.label.findMany.mockResolvedValue([]);
     mockPrisma.user.findFirst.mockResolvedValue(null);
     vi.useFakeTimers();
   });

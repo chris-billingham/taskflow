@@ -1,6 +1,7 @@
 import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
-import type { Prisma, ProjectRole, WorkspaceRole } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import type { ProjectRole, WorkspaceRole } from '@prisma/client';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The single source of truth for who may see or change what. Every service
@@ -80,6 +81,88 @@ export function taskAccessWhere(userId: string): Prisma.TaskWhereInput {
   return {
     OR: [{ assigneeId: userId }, { project: projectAccessWhere(userId) }],
   };
+}
+
+/**
+ * Prisma where-fragment: the people a user works with (themselves, fellow
+ * workspace members, and anyone on a project they can see). Name lookups on
+ * a user's behalf, such as the filter "assigned to: alex", search only these
+ * people, never the whole instance.
+ */
+export function collaboratorWhere(userId: string): Prisma.UserWhereInput {
+  return {
+    OR: [
+      { id: userId },
+      { workspaceMemberships: { some: { workspace: { members: { some: { userId } } } } } },
+      { ownedProjects: { some: projectAccessWhere(userId) } },
+      { projectMemberships: { some: { project: projectAccessWhere(userId) } } },
+    ],
+  };
+}
+
+/**
+ * Raw-SQL twin of projectAccessWhere, for the full-text search queries Prisma
+ * can't express. `projectAlias` must be a trusted identifier from the calling
+ * query (e.g. `p`), never user input.
+ */
+export function projectAccessSql(projectAlias: string, userId: string): Prisma.Sql {
+  if (!/^[a-z_][a-z0-9_]*$/i.test(projectAlias)) {
+    throw new Error(`Unsafe SQL alias: ${projectAlias}`);
+  }
+  const p = Prisma.raw(projectAlias);
+  return Prisma.sql`(
+    ${p}."ownerId" = ${userId}
+    OR EXISTS (
+      SELECT 1 FROM project_members pm
+      WHERE pm."projectId" = ${p}.id AND pm."userId" = ${userId}
+    )
+    OR EXISTS (
+      SELECT 1 FROM workspace_members wm
+      WHERE wm."workspaceId" = ${p}."workspaceId" AND wm."userId" = ${userId}
+    )
+  )`;
+}
+
+/**
+ * The project a user means by name ("#Work" in quick add and filters): an
+ * exact, case-insensitive match among projects they hold at least `minLevel`
+ * on. When several match, active beats archived, their own beats shared, then
+ * the oldest wins, so the same text always resolves the same way.
+ */
+export async function findProjectByName(
+  userId: string,
+  name: string,
+  options: { minLevel?: AccessLevel; parentId?: string } = {},
+) {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+
+  const candidates = await prisma.project.findMany({
+    where: {
+      name: { equals: trimmed, mode: 'insensitive' },
+      ...(options.parentId ? { parentId: options.parentId } : {}),
+      AND: [projectAccessWhere(userId)],
+    },
+    select: { id: true, name: true, ownerId: true, workspaceId: true, isArchived: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+    take: 50,
+  });
+  // Prisma compiles an insensitive `equals` to ILIKE without escaping, so "_"
+  // and "%" in the typed name act as wildcards; confirm the match here.
+  const wanted = trimmed.toLowerCase();
+  const exact = candidates.filter((c) => c.name.toLowerCase() === wanted);
+  if (exact.length === 0) return null;
+
+  const levels = await effectiveProjectLevels(exact, userId);
+  const allowed = exact.filter((c) =>
+    levelSatisfies(levels.get(c.id), options.minLevel ?? 'VIEW'),
+  );
+  allowed.sort(
+    (a, b) =>
+      Number(a.isArchived) - Number(b.isArchived) ||
+      Number(b.ownerId === userId) - Number(a.ownerId === userId),
+  );
+  return allowed[0] ?? null;
 }
 
 // ── Point checks ─────────────────────────────────────────────────────────────

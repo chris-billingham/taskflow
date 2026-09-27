@@ -73,6 +73,11 @@ describe('registration policy (invite-only)', () => {
     expect(await canRegister(`INVITEE${SUFFIX.toUpperCase()}`)).toBe(true);
   });
 
+  it('treats "_" in an address literally (no ILIKE wildcard)', async () => {
+    await invite(`bob${SUFFIX}`, 60_000);
+    expect(await canRegister(`b_b${SUFFIX}`)).toBe(false);
+  });
+
   it('does not honour an expired invite', async () => {
     await invite(`late${SUFFIX}`, -60_000);
     expect(await canRegister(`late${SUFFIX}`)).toBe(false);

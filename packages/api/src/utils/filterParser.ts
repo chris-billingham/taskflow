@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/database.js';
-import { projectAccessWhere } from '../services/access.js';
+import { collaboratorWhere, findProjectByName } from '../services/access.js';
 import { getUserTimezone, userDayBoundariesUTC } from './dates.js';
 
 interface ParseContext {
@@ -225,15 +225,10 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
   if (lower === 'p3' || lower === 'priority 3') return { priority: 3 };
   if (lower === 'p4' || lower === 'priority 4') return { priority: 4 };
 
-  // Project filters: #ProjectName or ##Parent/Child
+  // Project filters: #ProjectName or ##Parent/Child, resolved the same way as
+  // quick add's #project (any project the user can see).
   if (atom.startsWith('!#')) {
-    const projectName = atom.slice(2).trim();
-    const project = await prisma.project.findFirst({
-      where: {
-        name: { equals: projectName, mode: 'insensitive' },
-        AND: [projectAccessWhere(ctx.userId)],
-      },
-    });
+    const project = await findProjectByName(ctx.userId, atom.slice(2));
     if (project) {
       return { projectId: { not: project.id } };
     }
@@ -241,36 +236,19 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
   }
 
   if (atom.startsWith('##')) {
-    const path = atom.slice(2).trim();
-    const parts = path.split('/');
-    // Find parent/child project hierarchy
-    let currentProject = null;
-    for (const part of parts) {
-      const where: Prisma.ProjectWhereInput = {
-        name: { equals: part.trim(), mode: 'insensitive' },
-        // Any project the user can see, not just owned ones — team projects
-        // were unfindable by name in filters.
-        AND: [projectAccessWhere(ctx.userId)],
-      };
-      if (currentProject) {
-        where.parentId = currentProject.id;
-      }
-      currentProject = await prisma.project.findFirst({ where });
+    let current: { id: string } | null = null;
+    for (const part of atom.slice(2).split('/')) {
+      current = await findProjectByName(ctx.userId, part, current ? { parentId: current.id } : {});
+      if (!current) break;
     }
-    if (currentProject) {
-      return { projectId: currentProject.id };
+    if (current) {
+      return { projectId: current.id };
     }
     return MATCH_NONE;
   }
 
   if (atom.startsWith('#')) {
-    const projectName = atom.slice(1).trim();
-    const project = await prisma.project.findFirst({
-      where: {
-        name: { equals: projectName, mode: 'insensitive' },
-        ownerId: ctx.userId,
-      },
-    });
+    const project = await findProjectByName(ctx.userId, atom.slice(1));
     if (project) {
       return { projectId: project.id };
     }
@@ -280,12 +258,16 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
   // Label filter: @labelname
   if (atom.startsWith('@')) {
     const labelName = atom.slice(1).trim();
-    const label = await prisma.label.findFirst({
+    // Insensitive `equals` is an unescaped ILIKE ("_" and "%" are wildcards),
+    // so confirm the exact match in code.
+    const candidates = await prisma.label.findMany({
       where: {
         name: { equals: labelName, mode: 'insensitive' },
         userId: ctx.userId,
       },
+      select: { id: true, name: true },
     });
+    const label = candidates.find((l) => l.name.toLowerCase() === labelName.toLowerCase());
     if (label) {
       return {
         taskLabels: { some: { labelId: label.id } },
@@ -302,7 +284,8 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
       return { assigneeId: ctx.userId };
     }
     const user = await prisma.user.findFirst({
-      where: { name: { contains: name, mode: 'insensitive' } },
+      where: { name: { contains: name, mode: 'insensitive' }, AND: [collaboratorWhere(ctx.userId)] },
+      orderBy: { createdAt: 'asc' },
     });
     if (user) {
       return { assigneeId: user.id };
@@ -318,7 +301,8 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
       return { creatorId: ctx.userId, assigneeId: { not: null } };
     }
     const user = await prisma.user.findFirst({
-      where: { name: { contains: name, mode: 'insensitive' } },
+      where: { name: { contains: name, mode: 'insensitive' }, AND: [collaboratorWhere(ctx.userId)] },
+      orderBy: { createdAt: 'asc' },
     });
     if (user) {
       return { creatorId: user.id, assigneeId: { not: null } };

@@ -1,4 +1,5 @@
 import { prisma } from '../config/database.js';
+import { findProjectByName } from '../services/access.js';
 import { getUserTimezone, nowAsTzWallClock } from './dates.js';
 
 export interface ParsedTask {
@@ -33,24 +34,16 @@ export async function parseQuickAdd(text: string, userId: string): Promise<Parse
     }
   }
 
-  // Parse project: #ProjectName
-  const projectMatch = remaining.match(/#(\S+)/);
+  // Parse project: #ProjectName. An exact name match (so "#Work" no longer
+  // lands in "Homework") among projects the user can add tasks to, workspace
+  // projects included. An unmatched "#tag" stays in the task text.
+  const projectMatch = remaining.match(/(?:^|\s)#(\S+)/);
   if (projectMatch) {
-    const projectName = projectMatch[1];
-    const project = await prisma.project.findFirst({
-      where: {
-        name: { contains: projectName, mode: 'insensitive' },
-        OR: [
-          { ownerId: userId },
-          { members: { some: { userId } } },
-        ],
-      },
-      select: { id: true },
-    });
+    const project = await findProjectByName(userId, projectMatch[1], { minLevel: 'EDIT' });
     if (project) {
       result.projectId = project.id;
+      remaining = remaining.replace(projectMatch[0], ' ').trim();
     }
-    remaining = remaining.replace(projectMatch[0], '').trim();
   }
 
   // Parse labels: @labelname (can have multiple)

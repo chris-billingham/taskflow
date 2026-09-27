@@ -4,6 +4,8 @@ import {
   requireProjectAccess,
   requireWorkspaceRole,
   projectAccessWhere,
+  effectiveProjectLevels,
+  levelSatisfies,
 } from './access.js';
 import type { CreateProjectInput, UpdateProjectInput } from '@taskflow/contract';
 import { logActivity } from './activityService.js';
@@ -439,19 +441,19 @@ export async function duplicateProject(
 }
 
 export async function reorderProjects(projectIds: string[], userId: string) {
-  // Verify all projects belong to the user
+  // sortOrder is shared by everyone who sees the project, so reordering needs
+  // EDIT on each one (workspace MEMBERs can arrange the team's projects;
+  // GUESTs and project VIEWERs can't rearrange them for everybody).
   const projects = await prisma.project.findMany({
-    where: {
-      id: { in: projectIds },
-      OR: [
-        { ownerId: userId },
-        { members: { some: { userId } } },
-      ],
-    },
-    select: { id: true },
+    where: { id: { in: projectIds } },
+    select: { id: true, ownerId: true, workspaceId: true },
   });
+  const levels = await effectiveProjectLevels(projects, userId);
 
-  if (projects.length !== projectIds.length) {
+  if (
+    projects.length !== new Set(projectIds).size ||
+    !projects.every((p) => levelSatisfies(levels.get(p.id), 'EDIT'))
+  ) {
     throw new ForbiddenError('You do not have access to all specified projects');
   }
 

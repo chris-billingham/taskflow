@@ -45,12 +45,16 @@ export async function canRegister(email: string): Promise<boolean> {
   if (await isRegistrationOpen()) return true;
   if (isBootstrapAdminEmail(email)) return true;
 
-  const invite = await prisma.workspaceInvite.findFirst({
+  // Insensitive `equals` compiles to an unescaped ILIKE, where "_" matches any
+  // character: an invite for bob@corp.com would also admit b_b@corp.com. The
+  // query narrows the candidates; the exact comparison decides.
+  const wanted = email.trim().toLowerCase();
+  const invites = await prisma.workspaceInvite.findMany({
     where: {
       email: { equals: email.trim(), mode: 'insensitive' },
       expiresAt: { gt: new Date() },
     },
-    select: { id: true },
+    select: { email: true },
   });
-  return invite !== null;
+  return invites.some((invite) => invite.email.trim().toLowerCase() === wanted);
 }

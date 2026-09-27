@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QuickAdd } from '@/components/task/QuickAdd';
+import { useProjectStore } from '@/stores/projectStore';
+import type { Project } from '@/stores/projectStore';
 
 const defaultProps = {
   onSubmit: vi.fn().mockResolvedValue(undefined),
@@ -97,13 +99,24 @@ describe('QuickAdd - preview parsing', () => {
     expect(screen.getByText('P1')).toBeInTheDocument();
   });
 
-  it('shows project preview when #project is typed', async () => {
+  it('shows project preview when #project names an existing project', async () => {
+    useProjectStore.setState({
+      projects: new Map([['p1', { id: 'p1', name: 'Work' } as Project]]),
+    });
     render(<QuickAdd {...defaultProps} autoFocus={true} />);
 
     const input = screen.getByPlaceholderText(/add task/i);
-    await userEvent.type(input, 'Task #Work');
+    await userEvent.type(input, 'Task #work');
 
-    // Project preview renders as "#Work"
+    // The chip shows the project's own name, as the server will resolve it.
     expect(screen.getByText('#Work')).toBeInTheDocument();
+  });
+
+  it('shows no project chip for a #tag that names no project', async () => {
+    useProjectStore.setState({ projects: new Map() });
+    render(<QuickAdd {...defaultProps} autoFocus={true} />);
+
+    await userEvent.type(screen.getByPlaceholderText(/add task/i), 'Fix issue #42');
+    expect(screen.queryByText('#42')).not.toBeInTheDocument();
   });
 });

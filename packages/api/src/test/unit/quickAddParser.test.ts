@@ -2,20 +2,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../config/database.js', () => ({
   prisma: {
-    project: { findFirst: vi.fn() },
     label: { findMany: vi.fn() },
     user: { findUnique: vi.fn() },
   },
 }));
 
+vi.mock('../../services/access.js', () => ({ findProjectByName: vi.fn() }));
+
 import { parseQuickAdd } from '../../utils/quickAddParser.js';
+import { findProjectByName } from '../../services/access.js';
 import { prisma } from '../../config/database.js';
 
 const mockPrisma = prisma as unknown as {
-  project: { findFirst: ReturnType<typeof vi.fn> };
   label: { findMany: ReturnType<typeof vi.fn> };
   user: { findUnique: ReturnType<typeof vi.fn> };
 };
+
+const mockFindProject = vi.mocked(findProjectByName);
 
 const TEST_USER_ID = 'user-test';
 
@@ -25,7 +28,7 @@ const FIXED_DATE = new Date('2024-01-04T12:00:00.000Z');
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(FIXED_DATE);
-  mockPrisma.project.findFirst.mockResolvedValue(null);
+  mockFindProject.mockResolvedValue(null);
   mockPrisma.label.findMany.mockResolvedValue([]);
   mockPrisma.user.findUnique.mockResolvedValue({ timezone: 'UTC' });
 });
@@ -246,16 +249,25 @@ describe('parseQuickAdd - recurring parsing', () => {
 
 describe('parseQuickAdd - project parsing', () => {
   it('looks up project by name and sets projectId', async () => {
-    mockPrisma.project.findFirst.mockResolvedValue({ id: 'proj-work-123' });
+    mockFindProject.mockResolvedValue({ id: 'proj-work-123' } as never);
     const result = await parseQuickAdd('Task #Work', TEST_USER_ID);
     expect(result.projectId).toBe('proj-work-123');
     expect(result.content).toBe('Task');
+    expect(mockFindProject).toHaveBeenCalledWith(TEST_USER_ID, 'Work', { minLevel: 'EDIT' });
   });
 
   it('sets no projectId when project not found', async () => {
-    mockPrisma.project.findFirst.mockResolvedValue(null);
+    mockFindProject.mockResolvedValue(null);
     const result = await parseQuickAdd('Task #NonExistent', TEST_USER_ID);
     expect(result.projectId).toBeUndefined();
+    // An unmatched #tag is ordinary text, not silently deleted.
+    expect(result.content).toBe('Task #NonExistent');
+  });
+
+  it('ignores a # inside a word', async () => {
+    const result = await parseQuickAdd('Fix issue#42', TEST_USER_ID);
+    expect(mockFindProject).not.toHaveBeenCalled();
+    expect(result.content).toBe('Fix issue#42');
   });
 });
 
@@ -284,7 +296,7 @@ describe('parseQuickAdd - label parsing', () => {
 
 describe('parseQuickAdd - combined parsing', () => {
   it('parses a complex task string', async () => {
-    mockPrisma.project.findFirst.mockResolvedValue({ id: 'proj-1' });
+    mockFindProject.mockResolvedValue({ id: 'proj-1' } as never);
     mockPrisma.label.findMany.mockResolvedValue([{ id: 'label-1', name: 'important' }]);
 
     const result = await parseQuickAdd(
