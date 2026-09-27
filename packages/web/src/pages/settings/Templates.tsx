@@ -19,13 +19,13 @@ function EditTemplateInline({
   return (
     <div className="flex flex-col gap-2 flex-1">
       <input
-        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary-500"
         value={name}
         onChange={(e) => setName(e.target.value)}
         autoFocus
       />
       <input
-        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Description (optional)"
@@ -34,13 +34,13 @@ function EditTemplateInline({
         <button
           onClick={() => onSave(name.trim(), description.trim())}
           disabled={!name.trim()}
-          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600 disabled:opacity-40"
+          className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600 disabled:opacity-40"
         >
           <Check className="w-4 h-4" />
         </button>
         <button
           onClick={onCancel}
-          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
+          className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
         >
           <X className="w-4 h-4" />
         </button>
@@ -114,7 +114,7 @@ export default function Templates() {
             >
               {/* Color swatch */}
               <div
-                className="w-8 h-8 rounded-lg flex-shrink-0 mt-0.5"
+                className="w-8 h-8 rounded-lg shrink-0 mt-0.5"
                 style={{ backgroundColor: template.data.project.color + '30' }}
               >
                 <FileText
@@ -138,11 +138,11 @@ export default function Templates() {
                         {template.name}
                       </span>
                       {template.isPublic ? (
-                        <span title="Public"><Globe className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" /></span>
+                        <span title="Public"><Globe className="w-3.5 h-3.5 text-gray-400 shrink-0" /></span>
                       ) : template.workspaceId ? (
-                        <span title="Workspace"><Users className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" /></span>
+                        <span title="Workspace"><Users className="w-3.5 h-3.5 text-gray-400 shrink-0" /></span>
                       ) : (
-                        <span title="Personal"><Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" /></span>
+                        <span title="Personal"><Lock className="w-3.5 h-3.5 text-gray-400 shrink-0" /></span>
                       )}
                     </div>
                     {template.description && (
@@ -161,10 +161,10 @@ export default function Templates() {
 
               {/* Actions */}
               {editingId !== template.id && (
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => setEditingId(template.id)}
-                    className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="p-1.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     title="Edit"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -172,7 +172,7 @@ export default function Templates() {
                   <button
                     onClick={() => handleDelete(template.id)}
                     disabled={deletingId === template.id}
-                    className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 disabled:opacity-40"
+                    className="p-1.5 rounded-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 disabled:opacity-40"
                     title="Delete"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

@@ -67,7 +67,8 @@ The repo-root `.env.example` is the production template for `docker-compose.yml`
 ### Frontend (React)
 
 - Components live in `src/components/<feature>/`; pages live in `src/pages/`
-- Task data lives in TanStack Query (`src/queries/`); change tasks through `useTaskActions()`, which updates every cached copy. Other server state is still in Zustand stores (`src/stores/`) while it moves over; all API calls go through `src/services/api.ts`
+- Server data lives in TanStack Query (`src/queries/`): read through the hooks there and change data through their action hooks (tasks: `useTaskActions()`, which updates every cached copy). Zustand (`src/stores/`) is for client state only. All API calls go through `src/services/api.ts`.
+- Use the shared UI components in `src/components/ui/` (Modal, ConfirmDialog, Menu, Sheet, IconButton, Button) rather than hand-built overlays, and the `primary-*` colour classes rather than hex values. Icon-only buttons need an accessible name.
 - No prop drilling beyond 2 levels — lift to store or context
 - Wrap feature sections with `<ErrorBoundary>` for fault isolation
 - Use `Skeleton` components while data is loading

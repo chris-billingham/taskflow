@@ -76,7 +76,7 @@ export function AvatarUpload({ name, avatarUrl, onSave }: AvatarUploadProps) {
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             placeholder="https://example.com/avatar.jpg"
-            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             autoFocus
           />
           <div className="flex gap-2 mt-4">

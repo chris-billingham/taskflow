@@ -61,14 +61,14 @@ export default function Filter() {
       <div className="flex items-center gap-3 mb-2">
         {filter && (
           <span
-            className="w-4 h-4 rounded flex-shrink-0"
+            className="w-4 h-4 rounded-sm shrink-0"
             style={{ backgroundColor: filter.color }}
           />
         )}
         {editing ? (
           <div className="flex items-center gap-2 flex-1">
             <input
-              className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 focus:outline-none"
+              className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 focus:outline-hidden"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => {
@@ -94,7 +94,7 @@ export default function Filter() {
           <div className="flex items-center gap-2 flex-1">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{filter?.name}</h1>
             <button
-              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => {
                 if (filter) {
                   setEditName(filter.name);
@@ -106,7 +106,7 @@ export default function Filter() {
             </button>
             {filter && (
               <button
-                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => updateFilter(filter.id, { isFavorite: !filter.isFavorite })}
               >
                 {filter.isFavorite ? (

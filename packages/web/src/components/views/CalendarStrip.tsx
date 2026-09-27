@@ -48,7 +48,7 @@ export function CalendarStrip({
           <button
             key={dateStr}
             ref={today ? todayRef : undefined}
-            className={`flex-shrink-0 w-12 h-14 flex flex-col items-center justify-center rounded-lg text-xs transition-colors ${
+            className={`shrink-0 w-12 h-14 flex flex-col items-center justify-center rounded-lg text-xs transition-colors ${
               today
                 ? 'bg-primary-500 text-white'
                 : selected

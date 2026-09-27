@@ -138,7 +138,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
                 {formatReminder(reminder)}
               </span>
               <button
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => removeReminder(reminder.id)}
               >
                 <X className="w-3 h-3 text-gray-400 dark:text-gray-500" />
@@ -150,7 +150,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
 
       {/* Add reminder button */}
       <button
-        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-amber-600 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+        className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-amber-600 px-2 py-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
         onClick={() => setIsOpen(!isOpen)}
         type="button"
       >
@@ -180,20 +180,20 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
             <div className="px-3 py-2 space-y-2">
               <input
                 type="datetime-local"
-                className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1"
+                className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-sm px-2 py-1"
                 value={customDateTime}
                 onChange={(e) => setCustomDateTime(e.target.value)}
                 autoFocus
               />
               <div className="flex gap-2">
                 <button
-                  className="flex-1 px-2 py-1 text-xs bg-primary-500 text-white rounded hover:bg-primary-600"
+                  className="flex-1 px-2 py-1 text-xs bg-primary-500 text-white rounded-sm hover:bg-primary-600"
                   onClick={addCustom}
                 >
                   Add
                 </button>
                 <button
-                  className="flex-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  className="flex-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-sm"
                   onClick={() => setShowCustom(false)}
                 >
                   Cancel

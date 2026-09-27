@@ -94,7 +94,7 @@ export function FilterEditor() {
       {showCreate && (
         <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
           <input
-            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-primary-500 mb-2"
+            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-hidden focus:border-primary-500 mb-2"
             placeholder="Filter name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -176,7 +176,7 @@ export function FilterEditor() {
               {editingId === filter.id ? (
                 <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
                   <input
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-primary-500 mb-2"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-hidden focus:border-primary-500 mb-2"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     autoFocus
@@ -219,7 +219,7 @@ export function FilterEditor() {
               ) : (
                 <div className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
                   <span
-                    className="w-3 h-3 rounded flex-shrink-0"
+                    className="w-3 h-3 rounded-sm shrink-0"
                     style={{ backgroundColor: filter.color }}
                   />
                   <button

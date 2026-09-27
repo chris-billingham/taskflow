@@ -68,7 +68,7 @@ export function AdminUserRow({
       }`}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-sm font-medium text-white">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-500 text-sm font-medium text-white">
           {user.avatarUrl ? (
             <img src={user.avatarUrl} alt="" className="h-8 w-8 rounded-full" />
           ) : (
@@ -88,7 +88,7 @@ export function AdminUserRow({
         </div>
       </div>
 
-      <div className="flex flex-shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <span className="hidden text-xs text-gray-400 sm:inline">
           Last seen {formatDate(user.lastLoginAt)}
         </span>
@@ -119,7 +119,7 @@ export function AdminUserRow({
             onClick={() => setMenuOpen(!menuOpen)}
             disabled={busy}
             aria-label={`Actions for ${user.name}`}
-            className="rounded p-1 hover:bg-gray-200 disabled:opacity-40 dark:hover:bg-gray-600"
+            className="rounded-sm p-1 hover:bg-gray-200 disabled:opacity-40 dark:hover:bg-gray-600"
           >
             <MoreHorizontal className="h-4 w-4 text-gray-400" />
           </button>

@@ -55,14 +55,14 @@ export default function Label() {
       <div className="flex items-center gap-3 mb-6">
         {label && (
           <span
-            className="w-4 h-4 rounded-full flex-shrink-0"
+            className="w-4 h-4 rounded-full shrink-0"
             style={{ backgroundColor: label.color }}
           />
         )}
         {editing ? (
           <div className="flex items-center gap-2 flex-1">
             <input
-              className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 focus:outline-none"
+              className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 focus:outline-hidden"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => {
@@ -88,14 +88,14 @@ export default function Label() {
           <div className="flex items-center gap-2 flex-1">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{label?.name}</h1>
             <button
-              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={handleStartEdit}
             >
               <Pencil className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
             {label && (
               <button
-                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => updateLabel(label.id, { isFavorite: !label.isFavorite })}
               >
                 {label.isFavorite ? (

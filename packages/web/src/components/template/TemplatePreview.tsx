@@ -14,7 +14,7 @@ function TaskRow({ task }: { task: TemplateTask }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2 py-1">
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
           task.priority === 1 ? 'bg-red-500' :
           task.priority === 2 ? 'bg-orange-500' :
           task.priority === 3 ? 'bg-blue-500' : 'bg-gray-300'
@@ -28,7 +28,7 @@ function TaskRow({ task }: { task: TemplateTask }) {
       </div>
       {task.subtasks.map((st, i) => (
         <div key={i} className="flex items-center gap-2 py-0.5 pl-5">
-          <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
+          <ChevronRight className="w-3 h-3 text-gray-400 shrink-0" />
           <span className="text-xs text-gray-500 dark:text-gray-400">{st.content}</span>
         </div>
       ))}
@@ -61,7 +61,7 @@ export function TemplatePreview({ template, onUse, onClose }: TemplatePreviewPro
       <div className="flex items-start justify-between p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-xl flex-shrink-0"
+            className="w-10 h-10 rounded-xl shrink-0"
             style={{ backgroundColor: data.project.color }}
           />
           <div>

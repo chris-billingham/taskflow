@@ -67,7 +67,7 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
   return (
     <div className="relative" ref={ref}>
       <button
-        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+        className="flex items-center gap-1 px-2 py-1 rounded-sm text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
         onClick={() => setIsOpen(!isOpen)}
         type="button"
       >
@@ -82,7 +82,7 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <input
-                className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-primary-500"
+                className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-sm focus:outline-hidden focus:border-primary-500"
                 placeholder="Search or create label..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -112,7 +112,7 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
                       onClick={() => toggleLabel(label.id)}
                     >
                       <span
-                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        className="w-3 h-3 rounded-full shrink-0"
                         style={{ backgroundColor: label.color }}
                       />
                       <span className="text-gray-700 dark:text-gray-300 flex-1 text-left truncate">

@@ -105,14 +105,14 @@ export const TaskItem = memo(function TaskItem({
     // the row's own menu and date/priority pickers to the row.
     <div>
       <div
-        className={`group flex items-start gap-0 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 transition-colors ${
+        className={`group flex items-start gap-0 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors ${
           task.isCompleted ? 'opacity-60' : ''
         } ${!isSubtask ? `border-l-2 ${borderColor}` : ''}`}
       >
         {/* Drag handle — only for top-level tasks */}
         {dragHandleProps && !isSubtask && (
           <div
-            className="pt-3 pl-1 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+            className="pt-3 pl-1 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
             {...dragHandleProps}
           >
             <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600" />
@@ -122,7 +122,7 @@ export const TaskItem = memo(function TaskItem({
         {/* Expand/collapse chevron — only when task has subtasks */}
         {showSubtasks && hasSubtasks ? (
           <button
-            className="pt-3 px-1 flex-shrink-0"
+            className="pt-3 px-1 shrink-0"
             onClick={(e) => {
               e.stopPropagation();
               setExpanded(!expanded);
@@ -136,11 +136,11 @@ export const TaskItem = memo(function TaskItem({
           </button>
         ) : showSubtasks ? (
           /* Spacer to keep alignment when other tasks in the list have chevrons */
-          <div className="w-6 flex-shrink-0" />
+          <div className="w-6 shrink-0" />
         ) : null}
 
         {/* Checkbox */}
-        <div className="pt-3 pr-2 flex-shrink-0">
+        <div className="pt-3 pr-2 shrink-0">
           <TaskCheckbox
             checked={task.isCompleted}
             priority={task.priority}
@@ -150,7 +150,7 @@ export const TaskItem = memo(function TaskItem({
 
         {/* Content area */}
         <div
-          className="flex-1 min-w-0 py-2.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 rounded"
+          className="flex-1 min-w-0 py-2.5 cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500/40 rounded-sm"
           role="button"
           tabIndex={0}
           aria-label={`Open task: ${task.content}`}
@@ -168,7 +168,7 @@ export const TaskItem = memo(function TaskItem({
           {isEditing ? (
             <input
               ref={inputRef}
-              className="w-full text-sm bg-transparent border-b border-primary-500 outline-none py-0.5"
+              className="w-full text-sm bg-transparent border-b border-primary-500 outline-hidden py-0.5"
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
               onBlur={handleSubmitEdit}
@@ -239,7 +239,7 @@ export const TaskItem = memo(function TaskItem({
         </div>
 
         {/* Hover actions */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 pt-2 pr-1">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-2 pr-1">
           <DueDatePicker
             value={task.dueDate}
             time={task.dueTime}

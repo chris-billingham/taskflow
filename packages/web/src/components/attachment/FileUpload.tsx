@@ -106,7 +106,7 @@ export function FileUpload({ onFiles, uploading, progress, error, disabled }: Fi
 
       {displayError && (
         <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           <span>{displayError}</span>
           <button
             className="ml-auto"

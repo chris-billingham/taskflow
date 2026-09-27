@@ -67,7 +67,7 @@ export function CreateTemplateModal({
             Source project
           </label>
           <select
-            className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
           >
@@ -94,7 +94,7 @@ export function CreateTemplateModal({
             Description <span className="text-gray-400 font-normal">(optional)</span>
           </label>
           <textarea
-            className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+            className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
             rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -110,7 +110,7 @@ export function CreateTemplateModal({
                 type="checkbox"
                 checked={shareWithWorkspace}
                 onChange={(e) => setShareWithWorkspace(e.target.checked)}
-                className="rounded border-gray-300 text-primary-500 focus:ring-primary-500"
+                className="rounded-sm border-gray-300 text-primary-500 focus:ring-primary-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
                 Share with workspace

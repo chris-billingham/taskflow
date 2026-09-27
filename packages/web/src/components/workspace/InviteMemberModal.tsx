@@ -134,7 +134,7 @@ export function InviteMemberModal({
                 Role
               </label>
               <select
-                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 value={role}
                 onChange={(e) =>
                   setRole(e.target.value as 'ADMIN' | 'MEMBER' | 'GUEST')

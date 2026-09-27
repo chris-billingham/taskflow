@@ -297,7 +297,7 @@ function DroppableDateSection({
     <div
       ref={setNodeRef}
       className={`transition-colors rounded-lg ${
-        isOver ? 'ring-2 ring-primary-500 ring-opacity-50 bg-red-50/30' : ''
+        isOver ? 'ring-2 ring-primary-500/50 bg-red-50/30' : ''
       }`}
     >
       <DateSection date={date} tasks={tasks} onAddTask={onAddTask} externalDnd />

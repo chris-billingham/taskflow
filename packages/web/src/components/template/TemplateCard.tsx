@@ -21,7 +21,7 @@ export function TemplateCard({ template, onUse, onPreview }: TemplateCardProps) 
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
             style={{ backgroundColor: template.data.project.color + '20' }}
           >
             <FileText className="w-4 h-4" style={{ color: template.data.project.color }} />
@@ -38,7 +38,7 @@ export function TemplateCard({ template, onUse, onPreview }: TemplateCardProps) 
           </div>
         </div>
 
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           {template.isPublic ? (
             <Globe className="w-3.5 h-3.5 text-gray-400" />
           ) : template.workspaceId ? (

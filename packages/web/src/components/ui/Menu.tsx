@@ -176,9 +176,9 @@ export function Menu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        className={`focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 ${
+        className={`focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500/40 ${
           triggerVariant === 'icon'
-            ? 'inline-flex items-center justify-center rounded p-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
+            ? 'inline-flex items-center justify-center rounded-sm p-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
             : ''
         } ${triggerClassName}`}
         onClick={() => setOpen(!open)}
@@ -208,7 +208,7 @@ export function Menu({
                 left: position?.left ?? -9999,
                 width: position?.width,
               }}
-              className={`z-[60] min-w-[10rem] bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 ${menuClassName}`}
+              className={`z-60 min-w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 ${menuClassName}`}
             >
               {children}
             </div>
@@ -242,7 +242,7 @@ export function MenuItem({ onSelect, children, icon: Icon, tone = 'default', dis
       aria-checked={isRadio ? checked : undefined}
       tabIndex={-1}
       disabled={disabled}
-      className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left focus:outline-none disabled:opacity-50 ${
+      className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left focus:outline-hidden disabled:opacity-50 ${
         tone === 'danger'
           ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 focus:bg-red-50 dark:focus:bg-red-900/20'
           : checked

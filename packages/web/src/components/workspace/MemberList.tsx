@@ -108,7 +108,7 @@ function MemberRow({
   return (
     <div className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white text-sm font-medium shrink-0">
           {member.user.avatarUrl ? (
             <img
               src={member.user.avatarUrl}
@@ -141,7 +141,7 @@ function MemberRow({
         {canModify && (
           <div className="relative" ref={menuRef}>
             <button
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+              className="p-1 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
               onClick={() => setShowMenu(!showMenu)}
             >
               <MoreHorizontal className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -274,11 +274,11 @@ function InviteRow({
       </div>
       {inviteLink && (
         <div className="mt-2 ml-11 flex items-center gap-2">
-          <code className="flex-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded truncate">
+          <code className="flex-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-sm truncate">
             {inviteLink}
           </code>
           <button
-            className="flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+            className="shrink-0 p-1 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
             onClick={handleCopy}
             title="Copy invite link"
           >

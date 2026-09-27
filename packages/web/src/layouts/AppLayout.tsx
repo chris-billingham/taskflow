@@ -75,14 +75,14 @@ export function AppLayout() {
         {/* Mobile header bar */}
         <div className="md:hidden sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between">
           <button
-            className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="p-1.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
           <div className="flex items-center gap-1">
             <button
-              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="p-1.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => setSearchOpen(true)}
               title="Search (/)"
             >
@@ -90,7 +90,7 @@ export function AppLayout() {
             </button>
             <NotificationCenter />
             <button
-              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="p-1.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => setQuickAddOpen(true)}
             >
               <Plus className="w-5 h-5 text-primary-500" />
@@ -102,7 +102,7 @@ export function AppLayout() {
         <div className="hidden md:flex fixed top-4 right-20 z-30 items-center gap-3">
           <SyncStatus />
           <button
-            className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             onClick={() => setSearchOpen(true)}
             title="Search (/)"
           >

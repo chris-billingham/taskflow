@@ -173,7 +173,7 @@ export default function Admin() {
         </div>
         <button
           onClick={() => setCreateOpen(true)}
-          className="inline-flex flex-shrink-0 items-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600"
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600"
         >
           <UserPlus className="h-4 w-4" />
           Add user
@@ -224,7 +224,7 @@ export default function Admin() {
               }}
               placeholder="Search by name or email"
               aria-label="Search users"
-              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-transparent focus:outline-hidden focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
             />
           </div>
         </div>

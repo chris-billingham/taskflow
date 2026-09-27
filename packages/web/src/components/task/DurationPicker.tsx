@@ -66,7 +66,7 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
   return (
     <div className="relative" ref={ref}>
       <button
-        className="flex items-center gap-1.5 px-2 py-1 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+        className="flex items-center gap-1.5 px-2 py-1 text-sm rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
         onClick={() => setIsOpen(!isOpen)}
         type="button"
       >
@@ -101,7 +101,7 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
               <div className="flex items-center gap-1">
                 <input
                   ref={customHRef}
-                  className="w-12 text-sm border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-center focus:outline-none focus:border-primary-500"
+                  className="w-12 text-sm border border-gray-200 dark:border-gray-700 rounded-sm px-1.5 py-1 text-center focus:outline-hidden focus:border-primary-500"
                   type="number"
                   min="0"
                   max="23"
@@ -119,7 +119,7 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
                 />
                 <span className="text-xs text-gray-500 dark:text-gray-400">h</span>
                 <input
-                  className="w-12 text-sm border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 text-center focus:outline-none focus:border-primary-500"
+                  className="w-12 text-sm border border-gray-200 dark:border-gray-700 rounded-sm px-1.5 py-1 text-center focus:outline-hidden focus:border-primary-500"
                   type="number"
                   min="0"
                   max="59"
@@ -137,7 +137,7 @@ export function DurationPicker({ value, onChange }: DurationPickerProps) {
                 />
                 <span className="text-xs text-gray-500 dark:text-gray-400">m</span>
                 <button
-                  className="ml-1 px-2 py-1 text-xs font-medium text-white bg-primary-500 rounded hover:bg-primary-600"
+                  className="ml-1 px-2 py-1 text-xs font-medium text-white bg-primary-500 rounded-sm hover:bg-primary-600"
                   onClick={handleCustomSubmit}
                 >
                   Set

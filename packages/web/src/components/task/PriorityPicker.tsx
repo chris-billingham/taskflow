@@ -32,7 +32,7 @@ export function PriorityPicker({ value, onChange }: PriorityPickerProps) {
   return (
     <div className="relative" ref={ref}>
       <button
-        className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${current.color}`}
+        className={`p-1.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${current.color}`}
         onClick={() => setIsOpen(!isOpen)}
         title={current.label}
         type="button"

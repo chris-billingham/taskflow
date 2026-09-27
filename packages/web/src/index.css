@@ -1,45 +1,73 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  /* Brand colour scale as RGB channels (Tailwind's primary-* classes). */
-  --color-primary-50: 254 247 246;
-  --color-primary-100: 253 232 230;
-  --color-primary-200: 251 213 209;
-  --color-primary-300: 247 177 171;
-  --color-primary-400: 240 131 119;
-  --color-primary-500: 219 76 63;
-  --color-primary-600: 197 55 39;
-  --color-primary-700: 166 45 32;
-  --color-primary-800: 137 40 30;
-  --color-primary-900: 114 38 31;
+@plugin '@tailwindcss/typography';
 
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@custom-variant dark (&:is(.dark *));
 
-  color: #1a1a1a;
-  background-color: #fafafa;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/*
+ * The brand colour scale. Tailwind 4 emits these as CSS variables on :root,
+ * so the brand (or a theme) can be changed in one place; components use the
+ * primary-* utilities, never hex values.
+ */
+@theme {
+  --color-primary-50: #fef7f6;
+  --color-primary-100: #fde8e6;
+  --color-primary-200: #fbd5d1;
+  --color-primary-300: #f7b1ab;
+  --color-primary-400: #f08377;
+  --color-primary-500: #db4c3f;
+  --color-primary-600: #c53727;
+  --color-primary-700: #a62d20;
+  --color-primary-800: #89281e;
+  --color-primary-900: #72261f;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-}
+/*
+ * Base styles live in the base layer. In Tailwind 4 utilities are in a cascade
+ * layer and unlayered CSS beats them all, so a stray unlayered rule (the old
+ * global `* { margin: 0; padding: 0 }` reset) silently overrode every spacing
+ * utility. Preflight already provides that reset.
+ */
+@layer base {
+  :root {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
 
-#root {
-  width: 100%;
-  min-height: 100vh;
+    color: #1a1a1a;
+    background-color: #fafafa;
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100vh;
+  }
 }

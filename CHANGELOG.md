@@ -35,7 +35,13 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   Zod no longer loads up front.
 - **Smoother long lists.** Task rows are memoised and open tasks through a
   stable function, so navigating no longer re-renders every row.
+- **Web stack upgraded:** React 19, React Router 8 (clears the last
+  production advisories), Zustand 5 and Tailwind CSS 4. The brand scale now
+  lives in `@theme` in `src/index.css`. Base styles sit in the base cascade
+  layer: under Tailwind 4, an unlayered rule overrides every utility.
 - **Fixed:**
+  - The Overdue section and row hover had no dark-mode styles, which left
+    white text on a pale background.
   - Expanding a task's subtasks in a project list showed nothing unless that
     task had been loaded elsewhere.
   - The assignee pickers crashed for guests as soon as they typed a search.

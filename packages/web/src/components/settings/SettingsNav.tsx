@@ -42,7 +42,7 @@ export function SettingsNav({ onNavigate }: { onNavigate?: () => void }) {
             }`
           }
         >
-          <Icon className="w-4 h-4 flex-shrink-0" />
+          <Icon className="w-4 h-4 shrink-0" />
           {label}
         </NavLink>
       ))}

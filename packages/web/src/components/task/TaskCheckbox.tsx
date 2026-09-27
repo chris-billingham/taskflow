@@ -30,7 +30,7 @@ export function TaskCheckbox({ checked, priority, disabled, onChange }: TaskChec
 
   return (
     <button
-      className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+      className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
         checked
           ? `${colors.bg} border-transparent`
           : `${colors.border} hover:bg-gray-50 dark:hover:bg-gray-700`

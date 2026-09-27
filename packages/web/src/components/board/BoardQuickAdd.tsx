@@ -46,10 +46,10 @@ export function BoardQuickAdd({ onSubmit }: BoardQuickAddProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-2">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-xs p-2">
       <input
         ref={inputRef}
-        className="w-full text-sm bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500 py-1"
+        className="w-full text-sm bg-transparent outline-hidden placeholder-gray-400 dark:placeholder-gray-500 py-1"
         placeholder="Task name"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -63,13 +63,13 @@ export function BoardQuickAdd({ onSubmit }: BoardQuickAddProps) {
       />
       <div className="flex items-center justify-end gap-2 mt-1">
         <button
-          className="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+          className="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-sm"
           onClick={handleCancel}
         >
           Cancel
         </button>
         <button
-          className="px-2 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded disabled:opacity-50"
+          className="px-2 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-sm disabled:opacity-50"
           onClick={handleSubmit}
           disabled={!text.trim() || isSubmitting}
         >

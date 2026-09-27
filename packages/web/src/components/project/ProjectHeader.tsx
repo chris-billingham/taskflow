@@ -66,14 +66,14 @@ export function ProjectHeader({
     <div className="mb-6">
       <div className="flex items-center gap-3 mb-3">
         <span
-          className="w-3.5 h-3.5 rounded-full flex-shrink-0"
+          className="w-3.5 h-3.5 rounded-full shrink-0"
           style={{ backgroundColor: project.color }}
         />
 
         {isEditingName ? (
           <input
             ref={nameInputRef}
-            className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 outline-none flex-1"
+            className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 outline-hidden flex-1"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             onBlur={handleNameSubmit}
@@ -119,7 +119,7 @@ export function ProjectHeader({
 
         <div className="flex items-center gap-1">
           <button
-            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={onAddSection}
           >
             <Plus className="w-4 h-4" />

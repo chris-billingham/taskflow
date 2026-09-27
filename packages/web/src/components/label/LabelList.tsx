@@ -35,7 +35,7 @@ export function LabelList() {
             onClick={() => navigate(`/labels/${label.id}`)}
           >
             <span
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              className="w-2.5 h-2.5 rounded-full shrink-0"
               style={{ backgroundColor: label.color }}
             />
             <span className="truncate flex-1">{label.name}</span>
@@ -44,7 +44,7 @@ export function LabelList() {
             label={`Options for ${label.name}`}
             trigger={<MoreHorizontal className="w-3.5 h-3.5" />}
             triggerVariant="plain"
-            triggerClassName="p-0.5 inline-flex items-center justify-center rounded text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+            triggerClassName="p-0.5 inline-flex items-center justify-center rounded-sm text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
             menuClassName="w-44"
             open={menuFor === label.id}
             onOpenChange={(open) => setMenuFor(open ? label.id : null)}

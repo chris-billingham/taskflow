@@ -111,7 +111,7 @@ export function TaskDetail({
             {task.parent && onOpenSubtask && (
               <button
                 type="button"
-                className="text-xs text-gray-500 dark:text-gray-400 hover:underline truncate max-w-[10rem]"
+                className="text-xs text-gray-500 dark:text-gray-400 hover:underline truncate max-w-40"
                 onClick={() => onOpenSubtask(task.parent!.id)}
                 aria-label={`Open parent task: ${task.parent.content}`}
               >
@@ -140,7 +140,7 @@ export function TaskDetail({
           {editingContent ? (
             <input
               ref={contentRef}
-              className="w-full text-lg font-medium text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 outline-none pb-1 mb-3"
+              className="w-full text-lg font-medium text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 outline-hidden pb-1 mb-3"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onBlur={handleContentSubmit}
@@ -167,7 +167,7 @@ export function TaskDetail({
           {editingDescription ? (
             <textarea
               ref={descRef}
-              className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-3 outline-none focus:border-primary-500 resize-none mb-4"
+              className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-3 outline-hidden focus:border-primary-500 resize-none mb-4"
               rows={4}
               placeholder="Add a description..."
               value={description}
@@ -318,7 +318,7 @@ export function TaskDetail({
                 {subtasks.map((sub) => (
                   <div
                     key={sub.id}
-                    className="flex items-center gap-2 py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="flex items-center gap-2 py-1 px-2 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     <TaskCheckbox
                       checked={sub.isCompleted}
@@ -377,13 +377,13 @@ export function TaskDetail({
             <div className="flex items-center gap-2">
               <span className="text-xs text-red-600 dark:text-red-400">Delete this task?</span>
               <button
-                className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-sm"
                 onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancel
               </button>
               <button
-                className="px-2 py-1 text-xs text-white bg-red-600 hover:bg-red-700 rounded"
+                className="px-2 py-1 text-xs text-white bg-red-600 hover:bg-red-700 rounded-sm"
                 onClick={() => {
                   onDelete(task.id);
                   onClose();
@@ -394,7 +394,7 @@ export function TaskDetail({
             </div>
           ) : (
             <button
-              className="flex items-center gap-1 px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+              className="flex items-center gap-1 px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-sm"
               onClick={() => setShowDeleteConfirm(true)}
             >
               <Trash2 className="w-3.5 h-3.5" />

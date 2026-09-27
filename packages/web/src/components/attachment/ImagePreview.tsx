@@ -105,7 +105,7 @@ export function ImagePreview({ attachments, initialIndex, onClose }: ImagePrevie
             <img
               src={imageUrl}
               alt={current.filename}
-              className="max-w-[90vw] max-h-[85vh] object-contain rounded shadow-xl"
+              className="max-w-[90vw] max-h-[85vh] object-contain rounded-sm shadow-xl"
             />
           ) : (
             <Loader2 className="w-10 h-10 text-white/70 animate-spin" />

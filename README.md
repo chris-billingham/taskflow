@@ -47,9 +47,10 @@ app manifest), and **leaving a workspace or transferring ownership** from the UI
 | Auth | JWT (access + refresh tokens, httpOnly cookies) |
 | Email | Nodemailer |
 | Storage | S3-compatible (bundled Garage, or AWS S3 and others) |
-| Frontend | React 18, TypeScript, Vite |
-| Styling | Tailwind CSS |
-| State | Zustand |
+| Frontend | React 19, TypeScript, Vite |
+| Styling | Tailwind CSS 4 (brand tokens in `src/index.css`) |
+| Server data | TanStack Query |
+| Client state | Zustand |
 | Forms | React Hook Form + Zod |
 | Drag & Drop | dnd-kit |
 | Monorepo | pnpm workspaces + Turborepo |
@@ -210,7 +211,8 @@ taskflow/
 │   │       ├── layouts/        # Page layouts
 │   │       ├── pages/          # Route pages
 │   │       ├── services/       # API client
-│   │       └── stores/         # Zustand stores
+│   │       ├── queries/        # TanStack Query: server data and actions
+│   │       └── stores/         # Zustand: client state
 │   └── shared/                 # Shared TypeScript types
 ├── docs/                       # Documentation
 ├── scripts/                    # Install and maintenance scripts

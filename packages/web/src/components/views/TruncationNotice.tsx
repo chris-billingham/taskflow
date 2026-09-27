@@ -19,7 +19,7 @@ export function TruncationNotice({ returned, total }: TruncationNoticeProps) {
 
   return (
     <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
-      <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
       <p className="text-xs text-amber-800 dark:text-amber-200">
         Showing the first {returned.toLocaleString()} of {total.toLocaleString()} tasks.
         Narrow the view with a filter or label to see the rest.

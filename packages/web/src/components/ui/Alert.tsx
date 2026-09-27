@@ -43,11 +43,11 @@ export function Alert({
       className={`rounded-lg border p-4 flex items-start gap-3 ${styles[variant]} ${className}`}
     >
       <Icon
-        className={`w-5 h-5 flex-shrink-0 mt-0.5 ${iconStyles[variant]}`}
+        className={`w-5 h-5 shrink-0 mt-0.5 ${iconStyles[variant]}`}
       />
       <div className="flex-1 text-sm">{children}</div>
       {onClose && (
-        <button onClick={onClose} className="flex-shrink-0 hover:opacity-70">
+        <button onClick={onClose} className="shrink-0 hover:opacity-70">
           <X className="w-4 h-4" />
         </button>
       )}

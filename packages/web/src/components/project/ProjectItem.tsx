@@ -43,7 +43,7 @@ export function ProjectItem({
       >
         {/* Expand/collapse arrow */}
         <button
-          className={`w-5 h-5 flex items-center justify-center flex-shrink-0 ${
+          className={`w-5 h-5 flex items-center justify-center shrink-0 ${
             hasChildren ? 'visible' : 'invisible'
           }`}
           aria-label={isExpanded ? 'Collapse subprojects' : 'Expand subprojects'}
@@ -62,7 +62,7 @@ export function ProjectItem({
 
         {/* Color dot */}
         <span
-          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+          className="w-2.5 h-2.5 rounded-full shrink-0"
           style={{ backgroundColor: project.color }}
         />
 
@@ -71,17 +71,17 @@ export function ProjectItem({
 
         {/* Task count */}
         {taskCount > 0 && (
-          <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{taskCount}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{taskCount}</span>
         )}
 
         {/* More actions. Kept in the layout (not display:none) while hidden so
             keyboard users can still tab to it. */}
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <Menu
             label={`Options for ${project.name}`}
             trigger={<MoreHorizontal className="w-4 h-4" />}
             triggerVariant="plain"
-            triggerClassName="w-6 h-6 inline-flex items-center justify-center rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+            triggerClassName="w-6 h-6 inline-flex items-center justify-center rounded-sm text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
             menuClassName="w-48"
           >
             <MenuItem onSelect={() => onEdit(project)}>Edit project</MenuItem>

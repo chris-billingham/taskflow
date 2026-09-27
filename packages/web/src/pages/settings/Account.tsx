@@ -97,7 +97,7 @@ export default function Account() {
               type="password"
               value={value}
               onChange={(e) => set(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
         ))}
@@ -150,7 +150,7 @@ export default function Account() {
               value={deleteConfirm}
               onChange={(e) => setDeleteConfirm(e.target.value)}
               placeholder="DELETE"
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-red-500"
             />
             {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
             <div className="flex gap-2">

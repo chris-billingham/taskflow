@@ -94,9 +94,9 @@ export function WeekView({
   return (
     <div className="flex flex-col h-[calc(100vh-220px)]">
       {/* Day headers */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0">
         {/* Time label spacer */}
-        <div className="w-16 flex-shrink-0" />
+        <div className="w-16 shrink-0" />
         {days.map((day) => (
           <div
             key={day.dateStr}
@@ -124,8 +124,8 @@ export function WeekView({
 
       {/* Anytime row */}
       {days.some((d) => (anytimeByDay.get(d.dateStr) || []).length > 0) && (
-        <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <div className="w-16 flex-shrink-0 text-xs text-gray-400 dark:text-gray-500 text-right pr-2 pt-1">
+        <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="w-16 shrink-0 text-xs text-gray-400 dark:text-gray-500 text-right pr-2 pt-1">
             Anytime
           </div>
           {days.map((day) => {
@@ -153,7 +153,7 @@ export function WeekView({
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="flex relative">
           {/* Time labels column */}
-          <div className="w-16 flex-shrink-0">
+          <div className="w-16 shrink-0">
             {hours.map((hour) => (
               <div key={hour} className="h-12 relative">
                 <span className="absolute -top-2 right-2 text-xs text-gray-400 dark:text-gray-500">

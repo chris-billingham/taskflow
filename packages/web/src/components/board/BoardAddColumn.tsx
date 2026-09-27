@@ -36,7 +36,7 @@ export function BoardAddColumn({ onCreateSection }: BoardAddColumnProps) {
 
   if (!isExpanded) {
     return (
-      <div className="min-w-[280px] w-[280px] flex-shrink-0">
+      <div className="min-w-[280px] w-[280px] shrink-0">
         <button
           className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           onClick={() => setIsExpanded(true)}
@@ -49,11 +49,11 @@ export function BoardAddColumn({ onCreateSection }: BoardAddColumnProps) {
   }
 
   return (
-    <div className="min-w-[280px] w-[280px] flex-shrink-0">
+    <div className="min-w-[280px] w-[280px] shrink-0">
       <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
         <input
           ref={inputRef}
-          className="w-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:border-primary-500"
+          className="w-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-sm px-2 py-1.5 outline-hidden focus:border-primary-500"
           placeholder="Section name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -67,13 +67,13 @@ export function BoardAddColumn({ onCreateSection }: BoardAddColumnProps) {
         />
         <div className="flex items-center justify-end gap-2 mt-2">
           <button
-            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-sm"
             onClick={handleCancel}
           >
             Cancel
           </button>
           <button
-            className="px-3 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-sm disabled:opacity-50"
             onClick={handleSubmit}
             disabled={!name.trim() || isSubmitting}
           >

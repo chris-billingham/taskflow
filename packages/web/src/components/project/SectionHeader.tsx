@@ -44,7 +44,7 @@ export function SectionHeader({
   return (
     <div className="group flex items-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
       <button
-        className="w-5 h-5 flex items-center justify-center flex-shrink-0"
+        className="w-5 h-5 flex items-center justify-center shrink-0"
         onClick={onToggleCollapse}
       >
         <ChevronRight
@@ -57,7 +57,7 @@ export function SectionHeader({
       {isEditing ? (
         <input
           ref={inputRef}
-          className="text-sm font-semibold text-gray-900 dark:text-white bg-transparent border-b border-primary-500 outline-none flex-1"
+          className="text-sm font-semibold text-gray-900 dark:text-white bg-transparent border-b border-primary-500 outline-hidden flex-1"
           value={editName}
           onChange={(e) => setEditName(e.target.value)}
           onBlur={handleSubmit}
@@ -83,7 +83,7 @@ export function SectionHeader({
       )}
 
       <button
-        className="w-6 h-6 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 hidden group-hover:flex flex-shrink-0"
+        className="w-6 h-6 items-center justify-center rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600 hidden group-hover:flex shrink-0"
         onClick={onDelete}
       >
         <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />

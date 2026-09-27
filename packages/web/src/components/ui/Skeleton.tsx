@@ -8,7 +8,7 @@ interface SkeletonProps {
 export function Skeleton({ className = '', style }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700 ${className}`}
+      className={`animate-pulse rounded-sm bg-gray-200 dark:bg-gray-700 ${className}`}
       style={style}
     />
   );
@@ -19,7 +19,7 @@ export function TaskListSkeleton({ count = 5 }: { count?: number }) {
     <div className="space-y-2">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 p-2">
-          <Skeleton className="w-4 h-4 rounded-full flex-shrink-0" />
+          <Skeleton className="w-4 h-4 rounded-full shrink-0" />
           <Skeleton className="h-4 flex-1" style={{ width: `${60 + (i % 3) * 15}%` }} />
         </div>
       ))}
@@ -32,7 +32,7 @@ export function ProjectListSkeleton({ count = 4 }: { count?: number }) {
     <div className="space-y-1">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="flex items-center gap-2 px-3 py-2">
-          <Skeleton className="w-3 h-3 rounded-full flex-shrink-0" />
+          <Skeleton className="w-3 h-3 rounded-full shrink-0" />
           <Skeleton className="h-3" style={{ width: `${50 + (i % 4) * 12}%` }} />
         </div>
       ))}

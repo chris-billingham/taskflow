@@ -88,13 +88,13 @@ export function BoardColumn({
       style={sortableStyle}
       role="region"
       aria-label={`${title} column`}
-      className="group bg-gray-50 dark:bg-gray-700 rounded-lg min-w-[280px] w-[280px] flex flex-col max-h-[calc(100vh-200px)] flex-shrink-0"
+      className="group bg-gray-50 dark:bg-gray-700 rounded-lg min-w-[280px] w-[280px] flex flex-col max-h-[calc(100vh-200px)] shrink-0"
     >
       {/* Column header */}
       <div className="px-3 py-2 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
         {!isVirtual && (
           <div
-            className="cursor-grab flex-shrink-0 opacity-0 hover:opacity-100 transition-opacity"
+            className="cursor-grab shrink-0 opacity-0 hover:opacity-100 transition-opacity"
             {...sortableAttributes}
             {...sortableListeners}
           >
@@ -103,7 +103,7 @@ export function BoardColumn({
         )}
 
         <button
-          className="flex-shrink-0"
+          className="shrink-0"
           onClick={() => setCollapsed(!collapsed)}
           aria-label={collapsed ? `Expand ${title}` : `Collapse ${title}`}
           aria-expanded={!collapsed}
@@ -118,7 +118,7 @@ export function BoardColumn({
         {isEditing && !isVirtual ? (
           <input
             ref={inputRef}
-            className="flex-1 text-sm font-semibold bg-white dark:bg-gray-800 border border-primary-500 rounded px-1 py-0.5 outline-none"
+            className="flex-1 text-sm font-semibold bg-white dark:bg-gray-800 border border-primary-500 rounded-sm px-1 py-0.5 outline-hidden"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             onBlur={handleSubmitEdit}
@@ -141,13 +141,13 @@ export function BoardColumn({
           </span>
         )}
 
-        <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
           {tasks.length}
         </span>
 
         {!isVirtual && onDeleteSection && (
           <button
-            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity flex-shrink-0"
+            className="p-1 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
             onClick={() => setConfirmDelete(true)}
             title="Delete section"
             aria-label="Delete section"

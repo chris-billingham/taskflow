@@ -35,7 +35,7 @@ export function FilterList() {
             onClick={() => navigate(`/filters/${filter.id}`)}
           >
             <span
-              className="w-2.5 h-2.5 rounded flex-shrink-0"
+              className="w-2.5 h-2.5 rounded-sm shrink-0"
               style={{ backgroundColor: filter.color }}
             />
             <span className="truncate flex-1">{filter.name}</span>
@@ -44,7 +44,7 @@ export function FilterList() {
             label={`Options for ${filter.name}`}
             trigger={<MoreHorizontal className="w-3.5 h-3.5" />}
             triggerVariant="plain"
-            triggerClassName="p-0.5 inline-flex items-center justify-center rounded text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+            triggerClassName="p-0.5 inline-flex items-center justify-center rounded-sm text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
             menuClassName="w-44"
             open={menuFor === filter.id}
             onOpenChange={(open) => setMenuFor(open ? filter.id : null)}

@@ -131,7 +131,7 @@ export function QuickAdd({
       <div className="p-2">
         <input
           ref={inputRef}
-          className="w-full text-sm bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500 py-1"
+          className="w-full text-sm bg-transparent outline-hidden placeholder-gray-400 dark:placeholder-gray-500 py-1"
           placeholder={`${placeholder} (use #project, @label, p1-4, today, tomorrow...)`}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -148,26 +148,26 @@ export function QuickAdd({
         {hasPreview && (
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             {preview.dueDate && (
-              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
+              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded-sm">
                 <Calendar className="w-3 h-3" />
                 {preview.dueDate}
               </span>
             )}
             {preview.priority && (
-              <span className={`flex items-center gap-1 text-xs ${priorityColors[preview.priority]} bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 rounded`}>
+              <span className={`flex items-center gap-1 text-xs ${priorityColors[preview.priority]} bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 rounded-sm`}>
                 <Flag className="w-3 h-3" fill={preview.priority < 4 ? 'currentColor' : 'none'} />
                 P{preview.priority}
               </span>
             )}
             {preview.project && (
-              <span className="flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
+              <span className="flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-sm">
                 #{preview.project}
               </span>
             )}
             {preview.labels?.map((label) => (
               <span
                 key={label}
-                className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded"
+                className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-sm"
               >
                 <Tag className="w-3 h-3" />
                 {label}
@@ -184,13 +184,13 @@ export function QuickAdd({
         </div>
         <div className="flex items-center gap-2">
           <button
-            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-sm"
             onClick={handleCancel}
           >
             Cancel
           </button>
           <button
-            className="px-3 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-sm disabled:opacity-50"
             onClick={handleSubmit}
             disabled={!text.trim() || isSubmitting}
           >

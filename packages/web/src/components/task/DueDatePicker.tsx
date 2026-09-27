@@ -106,7 +106,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
   return (
     <div className="relative" ref={ref}>
       <button
-        className={`flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-gray-100 dark:hover:bg-gray-700 ${getDateColor(value)}`}
+        className={`flex items-center gap-1 px-2 py-1 rounded-sm text-xs hover:bg-gray-100 dark:hover:bg-gray-700 ${getDateColor(value)}`}
         onClick={() => setIsOpen(!isOpen)}
         type="button"
       >
@@ -122,7 +122,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
             {quickOptions.map((opt) => (
               <button
                 key={opt.label}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                 onClick={() => handleSelectDate(opt.date)}
               >
                 <opt.icon className={`w-4 h-4 ${opt.color}`} />
@@ -138,7 +138,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
           <div className="px-3 pt-2">
             <div className="flex items-center justify-between mb-2">
               <button
-                className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                className="p-0.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
                 onClick={() => setCalendarDate(new Date(year, month - 1, 1))}
               >
                 &lt;
@@ -147,7 +147,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
                 {calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </span>
               <button
-                className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                className="p-0.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
                 onClick={() => setCalendarDate(new Date(year, month + 1, 1))}
               >
                 &gt;
@@ -194,12 +194,12 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
                 <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <input
                   type="time"
-                  className="text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1 flex-1"
+                  className="text-sm border border-gray-200 dark:border-gray-700 rounded-sm px-2 py-1 flex-1"
                   value={timeValue}
                   onChange={(e) => setTimeValue(e.target.value)}
                 />
                 <button
-                  className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="p-0.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => {
                     setShowTime(false);
                     setTimeValue('');

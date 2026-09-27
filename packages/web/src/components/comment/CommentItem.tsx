@@ -62,10 +62,10 @@ export function CommentItem({
           <img
             src={comment.author.avatarUrl}
             alt={comment.author.name}
-            className="w-7 h-7 rounded-full flex-shrink-0"
+            className="w-7 h-7 rounded-full shrink-0"
           />
         ) : (
-          <div className="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-medium flex-shrink-0">
+          <div className="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-medium shrink-0">
             {initial}
           </div>
         )}
@@ -107,7 +107,7 @@ export function CommentItem({
         {isOwn && (
           <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => setShowMenu(!showMenu)}
               onBlur={() => setTimeout(() => setShowMenu(false), 150)}
             >

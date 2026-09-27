@@ -24,7 +24,7 @@ export function SettingsLayout() {
 
           {/* Mobile nav toggle */}
           <button
-            className="ml-auto md:hidden p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="ml-auto md:hidden p-1.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
           >
             {mobileNavOpen ? (
@@ -37,7 +37,7 @@ export function SettingsLayout() {
 
         <div className="flex gap-8">
           {/* Sidebar nav — desktop */}
-          <aside className="hidden md:block w-48 flex-shrink-0">
+          <aside className="hidden md:block w-48 shrink-0">
             <SettingsNav />
           </aside>
 

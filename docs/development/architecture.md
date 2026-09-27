@@ -7,7 +7,7 @@ Taskflow is a pnpm + Turborepo monorepo:
 ```
 packages/
 ├── api/     — Fastify REST API, Socket.IO server, BullMQ workers (TypeScript, Prisma)
-├── web/     — React 18 single-page app (Vite, TanStack Query, Zustand, Tailwind)
+├── web/     — React 19 single-page app (Vite, React Router 8, TanStack Query, Zustand, Tailwind 4)
 ├── e2e/     — Playwright end-to-end suite
 └── shared/  — Placeholder. Both api and web list it as a dependency, but nothing imports it.
 ```

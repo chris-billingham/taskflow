@@ -133,7 +133,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="text-lg font-bold text-gray-900 dark:text-white">Taskflow</span>
           </div>
           <button
-            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 md:hidden"
+            className="p-1 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600 md:hidden"
             onClick={onClose}
             aria-label="Close sidebar"
           >
@@ -202,7 +202,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     }}
                   >
                     <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: p.color }}
                     />
                     <span className="truncate">{p.name}</span>
@@ -247,7 +247,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     }}
                   >
                     <span
-                      className="w-2.5 h-2.5 rounded flex-shrink-0"
+                      className="w-2.5 h-2.5 rounded-sm shrink-0"
                       style={{ backgroundColor: f.color }}
                     />
                     <span className="truncate">{f.name}</span>
@@ -268,7 +268,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     }}
                   >
                     <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: l.color }}
                     />
                     <span className="truncate">{l.name}</span>
@@ -304,7 +304,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               />
             </button>
             <button
-              className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+              className="p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
               onClick={() => { setCreateForTeam(false); setShowCreateModal(true); }}
               title="Add project"
             >
@@ -347,7 +347,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </button>
               <div className="flex items-center gap-1">
                 <button
-                  className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
                   onClick={() => {
                     navigate('/workspace/settings');
                     onClose();
@@ -357,7 +357,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <Settings className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
                 </button>
                 <button
-                  className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
                   onClick={() => { setCreateForTeam(true); setShowCreateModal(true); }}
                   title="Add team project"
                 >
@@ -400,7 +400,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           trigger={
             <>
               <span
-                className="w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                className="w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-medium shrink-0"
                 aria-hidden="true"
               >
                 {user?.name?.charAt(0).toUpperCase()}
@@ -441,7 +441,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-          <div className="relative w-64 flex-shrink-0">{sidebarContent}</div>
+          <div className="relative w-64 shrink-0">{sidebarContent}</div>
         </div>
       )}
 

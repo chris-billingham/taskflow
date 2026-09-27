@@ -100,7 +100,7 @@ export function RecurrencePicker({
             onClick={() => apply(null)}
             title="Stop repeating"
             aria-label="Stop repeating"
-            className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="p-0.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             <X className="w-3.5 h-3.5 text-gray-400" />
           </button>
@@ -161,13 +161,13 @@ export function RecurrencePicker({
                     setInterval(Math.max(1, Math.min(365, Number(e.target.value) || 1)))
                   }
                   aria-label="Repeat interval"
-                  className="w-16 text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1"
+                  className="w-16 text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-sm px-2 py-1"
                 />
                 <select
                   value={freq}
                   onChange={(e) => setFreq(e.target.value as Frequency)}
                   aria-label="Repeat unit"
-                  className="flex-1 text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1"
+                  className="flex-1 text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-sm px-2 py-1"
                 >
                   {FREQ_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -208,14 +208,14 @@ export function RecurrencePicker({
                 <button
                   type="button"
                   onClick={() => apply(buildRecurrence({ freq, interval, byDay }))}
-                  className="flex-1 px-2 py-1 text-xs bg-primary-500 text-white rounded hover:bg-primary-600"
+                  className="flex-1 px-2 py-1 text-xs bg-primary-500 text-white rounded-sm hover:bg-primary-600"
                 >
                   Save
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCustom(false)}
-                  className="flex-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  className="flex-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-sm"
                 >
                   Cancel
                 </button>

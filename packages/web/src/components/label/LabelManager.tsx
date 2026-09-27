@@ -97,7 +97,7 @@ export function LabelManager() {
       {showCreate && (
         <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
           <input
-            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-primary-500 mb-2"
+            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-hidden focus:border-primary-500 mb-2"
             placeholder="Label name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -169,7 +169,7 @@ export function LabelManager() {
                     />
                   </div>
                   <input
-                    className="flex-1 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-primary-500"
+                    className="flex-1 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-sm focus:outline-hidden focus:border-primary-500"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     onKeyDown={(e) => {
@@ -188,7 +188,7 @@ export function LabelManager() {
               ) : (
                 <>
                   <span
-                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    className="w-3 h-3 rounded-full shrink-0"
                     style={{ backgroundColor: label.color }}
                   />
                   <button

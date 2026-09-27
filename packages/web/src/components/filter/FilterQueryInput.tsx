@@ -154,7 +154,7 @@ export function FilterQueryInput({ value, onChange, onValidation, placeholder }:
       <div className="relative">
         <input
           ref={inputRef}
-          className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none pr-8 font-mono ${
+          className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-hidden pr-8 font-mono ${
             validation && !validation.valid
               ? 'border-red-300 dark:border-red-800 focus:border-red-500'
               : 'border-gray-200 dark:border-gray-700 focus:border-primary-500'

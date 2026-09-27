@@ -14,10 +14,10 @@ export function OverdueSection({ tasks, onRescheduleAll }: OverdueSectionProps) 
   if (tasks.length === 0) return null;
 
   return (
-    <div className="mb-4 bg-red-50 border border-red-200 rounded-lg overflow-hidden">
+    <div className="mb-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2">
         <button
-          className="flex items-center gap-2 text-sm font-medium text-red-700"
+          className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400"
           onClick={() => setCollapsed(!collapsed)}
         >
           <ChevronDown
@@ -25,13 +25,13 @@ export function OverdueSection({ tasks, onRescheduleAll }: OverdueSectionProps) 
           />
           <Clock className="w-4 h-4" />
           Overdue
-          <span className="text-xs font-normal bg-red-200 text-red-800 px-1.5 py-0.5 rounded-full">
+          <span className="text-xs font-normal bg-red-200 dark:bg-red-900/60 text-red-800 dark:text-red-300 px-1.5 py-0.5 rounded-full">
             {tasks.length}
           </span>
         </button>
         {onRescheduleAll && (
           <button
-            className="text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-100 px-2 py-1 rounded"
+            className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 px-2 py-1 rounded-sm"
             onClick={onRescheduleAll}
           >
             Reschedule all

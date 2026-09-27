@@ -194,7 +194,7 @@ export default function Register() {
           <label className="flex items-start gap-2">
             <input
               type="checkbox"
-              className="rounded border-gray-300 dark:border-gray-600 text-primary-500 focus:ring-primary-500 mt-0.5"
+              className="rounded-sm border-gray-300 dark:border-gray-600 text-primary-500 focus:ring-primary-500 mt-0.5"
               {...register('acceptTerms')}
             />
             <span className="text-sm text-gray-600 dark:text-gray-400">

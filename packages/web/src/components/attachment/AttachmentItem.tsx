@@ -65,7 +65,7 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
     <div className="flex items-start gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 group">
       {/* Thumbnail or icon */}
       <div
-        className={`flex-shrink-0 w-10 h-10 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-700 overflow-hidden ${
+        className={`shrink-0 w-10 h-10 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-700 overflow-hidden ${
           isImage(attachment.mimeType) ? 'cursor-pointer' : ''
         }`}
         onClick={() => isImage(attachment.mimeType) && onImageClick?.(attachment)}
@@ -117,7 +117,7 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+          className="p-1 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
           onClick={handleDownload}
           disabled={downloading}
           title="Download"
@@ -130,7 +130,7 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
         </button>
         {isOwn && (
           <button
-            className="p-1 rounded hover:bg-red-100 disabled:opacity-50"
+            className="p-1 rounded-sm hover:bg-red-100 disabled:opacity-50"
             onClick={() => setConfirmDelete(true)}
             disabled={deleting}
             title="Delete"

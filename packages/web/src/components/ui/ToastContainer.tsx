@@ -23,11 +23,11 @@ function ToastItem({ toast }: { toast: Toast }) {
       role="alert"
       className={`flex items-start gap-2 px-4 py-3 rounded-lg border shadow-lg text-sm ${STYLES[toast.variant]}`}
     >
-      <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+      <Icon className="w-4 h-4 mt-0.5 shrink-0" />
       <span className="flex-1">{toast.message}</span>
       <button
         aria-label="Dismiss notification"
-        className="p-0.5 rounded hover:bg-black/5"
+        className="p-0.5 rounded-sm hover:bg-black/5"
         onClick={() => dismiss(toast.id)}
       >
         <X className="w-3.5 h-3.5" />
@@ -43,7 +43,7 @@ export function ToastContainer() {
   return createPortal(
     <div
       aria-live="polite"
-      className="fixed bottom-4 right-4 z-[200] flex flex-col gap-2 w-80 max-w-[calc(100vw-2rem)]"
+      className="fixed bottom-4 right-4 z-200 flex flex-col gap-2 w-80 max-w-[calc(100vw-2rem)]"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />

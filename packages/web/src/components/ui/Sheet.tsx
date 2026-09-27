@@ -31,7 +31,7 @@ export function Sheet({ onClose, label, children }: SheetProps) {
         aria-modal="true"
         aria-label={label}
         tabIndex={-1}
-        className="fixed top-0 right-0 h-full w-full max-w-lg bg-white dark:bg-gray-800 shadow-xl z-50 flex flex-col border-l border-gray-200 dark:border-gray-700 animate-in slide-in-from-right duration-200 focus:outline-none"
+        className="fixed top-0 right-0 h-full w-full max-w-lg bg-white dark:bg-gray-800 shadow-xl z-50 flex flex-col border-l border-gray-200 dark:border-gray-700 animate-in slide-in-from-right duration-200 focus:outline-hidden"
       >
         {children}
       </div>

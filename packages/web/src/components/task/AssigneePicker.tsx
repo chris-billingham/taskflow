@@ -39,7 +39,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
     <div className="relative" ref={ref}>
       <div className="flex items-center gap-1">
         <button
-          className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
           onClick={() => setIsOpen(!isOpen)}
           type="button"
         >
@@ -67,7 +67,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
         </button>
         {value && (
           <button
-            className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+            className="p-0.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             onClick={() => onChange(null)}
             title="Remove assignee"
             type="button"
@@ -84,7 +84,7 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <input
-                className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-primary-500"
+                className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-sm focus:outline-hidden focus:border-primary-500"
                 placeholder="Search members..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -131,10 +131,10 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
                         <img
                           src={member.avatarUrl}
                           alt={member.name}
-                          className="w-5 h-5 rounded-full flex-shrink-0"
+                          className="w-5 h-5 rounded-full shrink-0"
                         />
                       ) : (
-                        <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-[10px] font-medium flex-shrink-0">
+                        <div className="w-5 h-5 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-[10px] font-medium shrink-0">
                           {memberInitial}
                         </div>
                       )}

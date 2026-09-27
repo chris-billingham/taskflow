@@ -50,7 +50,7 @@ export function ActivityItemComponent({ activity }: ActivityItemProps) {
 
   return (
     <div className="flex gap-2 py-1.5">
-      <div className={`flex-shrink-0 mt-0.5 ${config.color}`}>
+      <div className={`shrink-0 mt-0.5 ${config.color}`}>
         <Icon className="w-3.5 h-3.5" />
       </div>
       <div className="flex-1 min-w-0">

@@ -31,7 +31,7 @@ export function CredentialReveal({
   return (
     <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
       <div className="flex items-start gap-3">
-        <KeyRound className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+        <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
             Temporary password for {email}
@@ -51,7 +51,7 @@ export function CredentialReveal({
             <button
               onClick={handleCopy}
               aria-label="Copy password"
-              className="flex-shrink-0 rounded-lg border border-amber-300 p-2 hover:bg-amber-100 dark:border-amber-800 dark:hover:bg-amber-900/40"
+              className="shrink-0 rounded-lg border border-amber-300 p-2 hover:bg-amber-100 dark:border-amber-800 dark:hover:bg-amber-900/40"
             >
               {copied ? (
                 <Check className="h-4 w-4 text-green-600" />

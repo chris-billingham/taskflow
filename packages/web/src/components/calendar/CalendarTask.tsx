@@ -122,14 +122,14 @@ export function CalendarTask({
         style={dragStyle}
         {...attributes}
         {...listeners}
-        className={`flex items-center gap-1 px-1 py-0.5 rounded text-xs border-l-2 ${borderColor} bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer truncate group/task`}
+        className={`flex items-center gap-1 px-1 py-0.5 rounded-sm text-xs border-l-2 ${borderColor} bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer truncate group/task`}
         onClick={(e) => {
           e.stopPropagation();
           onTaskClick(task);
         }}
       >
         <div
-          className="flex-shrink-0"
+          className="shrink-0"
           onClick={(e) => {
             e.stopPropagation();
           }}
@@ -145,7 +145,7 @@ export function CalendarTask({
         </div>
         <span className="truncate text-gray-900 dark:text-white">{task.content}</span>
         {task.dueTime && (
-          <span className="text-gray-400 dark:text-gray-500 flex-shrink-0 ml-auto">
+          <span className="text-gray-400 dark:text-gray-500 shrink-0 ml-auto">
             {formatUserTimeCompact(task.dueTime)}
           </span>
         )}
@@ -169,7 +169,7 @@ export function CalendarTask({
       style={dragStyle}
       {...attributes}
       {...listeners}
-      className={`absolute left-0.5 right-0.5 border-l-2 ${borderColor} ${bgColor} rounded px-1.5 py-1 cursor-pointer overflow-hidden group/task shadow-sm ring-1 ring-black/5 hover:shadow-md transition-shadow`}
+      className={`absolute left-0.5 right-0.5 border-l-2 ${borderColor} ${bgColor} rounded-sm px-1.5 py-1 cursor-pointer overflow-hidden group/task shadow-xs ring-1 ring-black/5 hover:shadow-md transition-shadow`}
       onClick={(e) => {
         e.stopPropagation();
         onTaskClick(task);
@@ -177,7 +177,7 @@ export function CalendarTask({
     >
       <div className="flex items-start gap-1">
         <div
-          className="flex-shrink-0 mt-0.5"
+          className="shrink-0 mt-0.5"
           onClick={(e) => {
             e.stopPropagation();
           }}
@@ -202,7 +202,7 @@ export function CalendarTask({
       </div>
       {/* Resize handle */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-2.5 cursor-s-resize opacity-0 group-hover/task:opacity-100 hover:!opacity-100 bg-gray-400/30 rounded-b"
+        className="absolute bottom-0 left-0 right-0 h-2.5 cursor-s-resize opacity-0 group-hover/task:opacity-100 hover:opacity-100! bg-gray-400/30 rounded-b"
         onPointerDown={handleResizePointerDown}
       />
     </div>

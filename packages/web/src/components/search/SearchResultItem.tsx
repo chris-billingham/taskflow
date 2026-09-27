@@ -12,7 +12,7 @@ function highlightMatch(text: string, query: string): JSX.Element {
     <>
       {parts.map((part, i) =>
         regex.test(part) ? (
-          <mark key={i} className="bg-yellow-100 text-yellow-800 rounded px-0.5">
+          <mark key={i} className="bg-yellow-100 text-yellow-800 rounded-sm px-0.5">
             {part}
           </mark>
         ) : (
@@ -39,7 +39,7 @@ export function TaskResultItem({ result, query, isSelected, onClick }: TaskItemP
       onClick={onClick}
     >
       <CheckSquare
-        className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+        className={`w-4 h-4 mt-0.5 shrink-0 ${
           result.isCompleted ? 'text-green-500' : 'text-gray-400 dark:text-gray-500'
         }`}
       />
@@ -53,7 +53,7 @@ export function TaskResultItem({ result, query, isSelected, onClick }: TaskItemP
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           <span
-            className="w-2 h-2 rounded-full flex-shrink-0"
+            className="w-2 h-2 rounded-full shrink-0"
             style={{ backgroundColor: result.projectColor }}
           />
           <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{result.projectName}</span>
@@ -88,7 +88,7 @@ export function ProjectResultItem({ result, query, isSelected, onClick }: Projec
       onClick={onClick}
     >
       <span
-        className="w-4 h-4 rounded-sm flex-shrink-0"
+        className="w-4 h-4 rounded-xs shrink-0"
         style={{ backgroundColor: result.color }}
       />
       <div className="flex-1 min-w-0">
@@ -97,7 +97,7 @@ export function ProjectResultItem({ result, query, isSelected, onClick }: Projec
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">{result.taskCount} active tasks</p>
       </div>
-      <FolderOpen className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+      <FolderOpen className="w-4 h-4 text-gray-300 dark:text-gray-600 shrink-0" />
     </button>
   );
 }
@@ -120,7 +120,7 @@ export function CommentResultItem({ result, query, isSelected, onClick }: Commen
       }`}
       onClick={onClick}
     >
-      <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+      <MessageSquare className="w-4 h-4 mt-0.5 shrink-0 text-gray-400 dark:text-gray-500" />
       <div className="flex-1 min-w-0">
         <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{highlightMatch(snippet, query)}</p>
         {(result.taskContent || result.projectName) && (

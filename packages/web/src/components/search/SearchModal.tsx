@@ -160,7 +160,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 onClick={() => setQuery(term)}
               >
-                <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
                 <span className="text-sm text-gray-700 dark:text-gray-300">{term}</span>
               </button>
             ))}

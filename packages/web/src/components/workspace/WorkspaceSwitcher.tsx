@@ -24,14 +24,14 @@ export function WorkspaceSwitcher({ onCreateWorkspace }: WorkspaceSwitcherProps)
       trigger={
         <>
           {currentWorkspace ? (
-            <span className="w-6 h-6 rounded bg-primary-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+            <span className="w-6 h-6 rounded-sm bg-primary-500 flex items-center justify-center text-white text-xs font-semibold shrink-0">
               {currentWorkspace.name.charAt(0).toUpperCase()}
             </span>
           ) : (
-            <User className="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+            <User className="w-5 h-5 text-gray-500 dark:text-gray-400 shrink-0" />
           )}
           <span className="truncate font-medium">{currentWorkspace?.name ?? 'Personal'}</span>
-          <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-auto flex-shrink-0" />
+          <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-auto shrink-0" />
         </>
       }
     >
@@ -44,13 +44,13 @@ export function WorkspaceSwitcher({ onCreateWorkspace }: WorkspaceSwitcherProps)
       {workspaces.map((ws) => (
         <MenuItem key={ws.id} checked={currentWorkspace?.id === ws.id} onSelect={() => switchWorkspace(ws.id)}>
           <span
-            className="w-5 h-5 rounded bg-primary-500/10 flex items-center justify-center text-primary-500 text-[10px] font-semibold flex-shrink-0"
+            className="w-5 h-5 rounded-sm bg-primary-500/10 flex items-center justify-center text-primary-500 text-[10px] font-semibold shrink-0"
             aria-hidden="true"
           >
             {ws.name.charAt(0).toUpperCase()}
           </span>
           <span className="truncate">{ws.name}</span>
-          <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto flex-shrink-0">
+          <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto shrink-0">
             {ws._count?.members ?? 0}
             <span className="sr-only"> members</span>
           </span>

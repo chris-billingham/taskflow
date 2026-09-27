@@ -3,7 +3,7 @@ import { Modal } from '@/components/ui/Modal';
 import type { SystemRole } from '@/stores/authStore';
 
 const INPUT_CLASS =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white';
+  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-hidden focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white';
 
 export interface CreateUserValues {
   email: string;
@@ -134,7 +134,7 @@ export function CreateUserModal({
               type="checkbox"
               checked={autoPassword}
               onChange={(e) => setAutoPassword(e.target.checked)}
-              className="rounded border-gray-300"
+              className="rounded-sm border-gray-300"
             />
             Generate a temporary password
           </label>
