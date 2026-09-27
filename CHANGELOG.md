@@ -67,6 +67,9 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   and `defineConfig`. Its new `no-useless-assignment` and
   `preserve-caught-error` rules found four spots, now fixed. The web app
   targets ES2022 and no longer uses `baseUrl`.
+- **TypeScript 6.0** in every package (7.0 waits for typescript-eslint
+  support). The unused shared package moved off the deprecated `node10`
+  module resolution.
 
 ### Fixed
 
