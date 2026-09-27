@@ -19,6 +19,34 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 - **Read notifications disappeared from the bell.** `?unreadOnly=false` was
   coerced to `true`, so the list only ever showed unread items. Activity
   endpoints now cap `limit` at 100 (it was unbounded).
+- **Shared rules live in the contract.** Recurrence rules and @mention handles
+  were implemented separately in the API and the web app; both now come from
+  `@taskflow/contract`. Task create/update reject unsupported recurrence
+  rules instead of storing them and quietly repeating daily.
+- **One access rule for every project lookup.** Quick add's `#project` now
+  needs an exact name (`#Work` no longer files into "Homework") and finds team
+  projects; an unmatched `#tag` stays in the task text. Filter `#project`
+  finds team projects too. Workspace members can reorder team projects.
+  Search no longer shows a comment to its author after they lose access to
+  the project, and filter `assigned to:` only matches people you work with.
+- **Case-insensitive name lookups treated `_` and `%` as wildcards.** This let
+  an invite for bob@corp.com admit b_b@corp.com on an invite-only instance.
+  Matches are now confirmed exactly.
+- **Email addresses are case-insensitive.** Alice@x.com and alice@x.com were
+  two possible accounts, and sign-in needed the original case.
+- **Consistent pagination.** Tasks, filter results, comments, activity and
+  notifications all take `limit` + `cursor` and return
+  `{ data, nextCursor }`. Filter and label pages were capped at 200 tasks and
+  now have **Load more tasks**.
+- **Structured logging.** Service, job and worker logs go through the same
+  pino logger as request logs, as JSON in production, and carry the reqId of
+  the request that triggered them.
+- **Fixed:** an admin could invite someone as an admin (making admins is
+  owner-only); transferring a workspace to yourself left it with no owner;
+  workspace members couldn't save team projects as templates, and guests could
+  apply templates into the workspace; malformed filter queries could be saved
+  and silently matched more than intended; "Urgent" and "urgent" could exist
+  as separate labels.
 
 ### Phase 1: safety net
 
