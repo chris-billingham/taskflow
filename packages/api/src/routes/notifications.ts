@@ -50,7 +50,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
       },
     },
     async (request) => {
-      const [data, unreadCount] = await Promise.all([
+      const [{ items, nextCursor }, unreadCount] = await Promise.all([
         notificationService.getUserNotifications(
           request.user.id,
           request.query.unreadOnly,
@@ -59,7 +59,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
         ),
         notificationService.getUnreadCount(request.user.id),
       ]);
-      return { success: true as const, data, unreadCount };
+      return { success: true as const, data: items, nextCursor, unreadCount };
     },
   );
 

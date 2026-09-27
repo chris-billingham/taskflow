@@ -11,6 +11,7 @@ import {
   filterValidationSchema,
   messageResponse,
   ok,
+  page,
 } from '@taskflow/contract';
 import { authenticate } from '../middleware/authenticate.js';
 import * as filterService from '../services/filterService.js';
@@ -73,15 +74,16 @@ export async function filterRoutes(fastify: FastifyInstance) {
     {
       schema: {
         tags,
-        summary: 'Run a filter query (first 200 matches)',
+        summary: 'Run a filter query (paged: pass nextCursor back as cursor)',
         body: filterQuerySchema,
-        response: { 200: ok(z.array(filterTaskSchema)) },
+        response: { 200: page(filterTaskSchema) },
       },
     },
-    async (request) => ({
-      success: true as const,
-      data: await filterService.executeFilter(request.body.query, request.user.id),
-    }),
+    async (request) => {
+      const { query, limit, cursor } = request.body;
+      const { items, nextCursor } = await filterService.executeFilter(query, request.user.id, limit, cursor);
+      return { success: true as const, data: items, nextCursor };
+    },
   );
 
   app.post(

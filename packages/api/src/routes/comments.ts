@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { z } from 'zod';
 import {
   createCommentSchema,
   updateCommentSchema,
@@ -10,6 +9,7 @@ import {
   commentSchema,
   messageResponse,
   ok,
+  page,
 } from '@taskflow/contract';
 import { authenticate } from '../middleware/authenticate.js';
 import * as commentService from '../services/commentService.js';
@@ -28,18 +28,18 @@ export async function commentRoutes(fastify: FastifyInstance) {
         summary: "A task's comments, newest first, with replies",
         params: taskIdParamsSchema,
         querystring: commentQuerySchema,
-        response: { 200: ok(z.array(commentSchema)) },
+        response: { 200: page(commentSchema) },
       },
     },
-    async (request) => ({
-      success: true as const,
-      data: await commentService.getTaskComments(
+    async (request) => {
+      const { items, nextCursor } = await commentService.getTaskComments(
         request.params.taskId,
         request.user.id,
         request.query.limit,
         request.query.cursor,
-      ),
-    }),
+      );
+      return { success: true as const, data: items, nextCursor };
+    },
   );
 
   app.post(

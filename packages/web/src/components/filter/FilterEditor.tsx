@@ -69,8 +69,8 @@ export function FilterEditor() {
     setPreviewQuery(query);
     setPreviewLoading(true);
     try {
-      const results = await executeFilter(query);
-      setPreviewResults(results);
+      const { tasks } = await executeFilter(query);
+      setPreviewResults(tasks);
     } catch {
       setPreviewResults([]);
     } finally {

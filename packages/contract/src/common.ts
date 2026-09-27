@@ -40,6 +40,18 @@ export function page<T extends z.ZodType>(item: T) {
   });
 }
 
+/**
+ * Query parameters for a cursor-paginated list. Pass the previous response's
+ * `nextCursor` as `cursor` to get the next page; a null `nextCursor` means
+ * there are no more.
+ */
+export function pageQuery(maxLimit = 100) {
+  return z.object({
+    limit: z.coerce.number().int().min(1).max(maxLimit).optional(),
+    cursor: z.string().min(1).optional(),
+  });
+}
+
 /** Endpoints that only confirm an action: `{ success: true, message }`. */
 export const messageResponse = z.object({
   success: z.literal(true),

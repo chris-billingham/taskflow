@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { pageQuery } from '../common.js';
 
 export const createFilterSchema = z.object({
   name: z.string().min(1, 'Filter name is required').max(200),
@@ -20,7 +21,8 @@ export const filterParamsSchema = z.object({
   id: z.string().min(1, 'Filter ID is required'),
 });
 
-export const filterQuerySchema = z.object({
+/** POST /filters/query: the query plus paging (in the body, like the query). */
+export const filterQuerySchema = pageQuery(200).extend({
   query: z.string().min(1, 'Query is required').max(1000),
 });
 

@@ -6,12 +6,17 @@ import type { Filter as ContractFilter } from '@taskflow/contract';
 /** A saved filter, exactly as the API sends it. */
 export type Filter = ContractFilter;
 
+/** One page of a filter's matching tasks. */
+export interface FilterResultPage {
+  tasks: Task[];
+  /** Pass back to executeFilter for the next page; null when there are no more. */
+  nextCursor: string | null;
+}
+
 interface FilterState {
   filters: Map<string, Filter>;
   loading: boolean;
   error: string | null;
-  filterResults: Task[];
-  filterLoading: boolean;
 
   // Actions
   fetchFilters: () => Promise<void>;
@@ -33,7 +38,7 @@ interface FilterState {
     }>,
   ) => Promise<Filter>;
   deleteFilter: (id: string) => Promise<void>;
-  executeFilter: (query: string) => Promise<Task[]>;
+  executeFilter: (query: string, cursor?: string) => Promise<FilterResultPage>;
   validateFilter: (query: string) => Promise<{ valid: boolean; error?: string }>;
 }
 
@@ -41,8 +46,6 @@ export const useFilterStore = create<FilterState>()((set, get) => ({
   filters: new Map(),
   loading: false,
   error: null,
-  filterResults: [],
-  filterLoading: false,
 
   fetchFilters: async () => {
     set({ loading: true, error: null });
@@ -125,17 +128,9 @@ export const useFilterStore = create<FilterState>()((set, get) => ({
     }
   },
 
-  executeFilter: async (query) => {
-    set({ filterLoading: true });
-    try {
-      const { data } = await api.post('/filters/query', { query });
-      const tasks = data.data as Task[];
-      set({ filterResults: tasks, filterLoading: false });
-      return tasks;
-    } catch (err: any) {
-      set({ filterLoading: false });
-      throw err;
-    }
+  executeFilter: async (query, cursor) => {
+    const { data } = await api.post('/filters/query', { query, ...(cursor ? { cursor } : {}) });
+    return { tasks: data.data as Task[], nextCursor: data.nextCursor ?? null };
   },
 
   validateFilter: async (query) => {

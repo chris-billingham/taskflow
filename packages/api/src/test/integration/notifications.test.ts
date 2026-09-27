@@ -4,7 +4,7 @@ import { buildTestApp } from './buildTestApp.js';
 import { generateAccessToken } from '../../utils/jwt.js';
 
 vi.mock('../../services/notificationService.js', () => ({
-  getUserNotifications: vi.fn(async () => []),
+  getUserNotifications: vi.fn(async () => ({ items: [], nextCursor: null })),
   getUnreadCount: vi.fn(async () => 0),
   markAsRead: vi.fn(),
   markAllAsRead: vi.fn(),

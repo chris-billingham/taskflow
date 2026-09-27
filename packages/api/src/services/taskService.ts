@@ -32,6 +32,7 @@ import {
   broadcastTaskDeleted,
 } from './syncService.js';
 import { notify } from './notificationService.js';
+import { cursorArgs, toPage } from '../utils/pagination.js';
 
 // Runs a post-mutation side effect (logging, broadcast) without blocking the
 // response. Errors are caught and warned so they don't silently swallow.
@@ -223,23 +224,16 @@ export async function getTasks(query: TaskQuery, userId: string) {
     }),
   };
 
-  const take = query.limit ?? 100;
-  const tasks = await prisma.task.findMany({
+  const limit = query.limit ?? 100;
+  const rows = await prisma.task.findMany({
     where,
     include: taskListInclude,
-    // The id tiebreak makes the sort total, so the cursor never skips or
-    // repeats rows that share a sortOrder.
     orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
-    take: take + 1,
-    ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+    ...cursorArgs(limit, query.cursor),
   });
 
-  const hasMore = tasks.length > take;
-  const page = hasMore ? tasks.slice(0, take) : tasks;
-  return {
-    tasks: page,
-    nextCursor: hasMore ? page[page.length - 1].id : null,
-  };
+  const { items, nextCursor } = toPage(rows, limit);
+  return { tasks: items, nextCursor };
 }
 
 export async function getTaskById(id: string, userId: string) {

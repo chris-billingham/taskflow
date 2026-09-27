@@ -13,10 +13,10 @@ export const defaultHandlers = [
   http.get(`${API}/workspaces`, () => HttpResponse.json(ok([]))),
   http.get(`${API}/projects`, () => HttpResponse.json(ok([]))),
   http.get(`${API}/projects/:id/members`, () => HttpResponse.json(ok([]))),
-  http.get(`${API}/tasks/:id/comments`, () => HttpResponse.json(ok([]))),
+  http.get(`${API}/tasks/:id/comments`, () => HttpResponse.json(ok([], { nextCursor: null }))),
   http.get(`${API}/tasks/:id/attachments`, () => HttpResponse.json(ok([]))),
   http.get(`${API}/tasks/:id/reminders`, () => HttpResponse.json(ok([]))),
-  http.get(`${API}/tasks/:id/activity`, () => HttpResponse.json(ok([]))),
+  http.get(`${API}/tasks/:id/activity`, () => HttpResponse.json(ok([], { nextCursor: null }))),
   http.get(`${API}/attachments/limits`, () =>
     HttpResponse.json(ok({ maxFileSizeMb: 25, allowedMimeTypes: [] })),
   ),

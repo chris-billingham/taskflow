@@ -1,11 +1,10 @@
 import { z } from 'zod';
+import { pageQuery } from '../common.js';
 
-export const notificationQuerySchema = z.object({
+export const notificationQuerySchema = pageQuery(100).extend({
   // stringbool, not coerce.boolean: coercion turned "false" into true, so
   // ?unreadOnly=false (what the bell sends) returned only unread items.
   unreadOnly: z.stringbool().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
-  cursor: z.string().optional(),
 });
 
 export const markReadSchema = z.object({

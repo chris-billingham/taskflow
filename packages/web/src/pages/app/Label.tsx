@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Pencil, Star, Calendar, List } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
@@ -6,9 +6,9 @@ import { TaskList } from '@/components/task/TaskList';
 import { TaskDetail } from '@/components/task/TaskDetail';
 import { CalendarView } from '@/components/views/CalendarView';
 import { useLabelStore } from '@/stores/labelStore';
-import { useFilterStore } from '@/stores/filterStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useTaskActions } from '@/hooks/useTasks';
+import { useFilterResults } from '@/hooks/useFilterResults';
 import type { Task, QuickAddDue } from '@/stores/taskStore';
 
 export default function Label() {
@@ -17,7 +17,6 @@ export default function Label() {
   const label = useLabelStore((s) => (id ? s.labels.get(id) : undefined));
   const fetchLabels = useLabelStore((s) => s.fetchLabels);
   const updateLabel = useLabelStore((s) => s.updateLabel);
-  const executeFilter = useFilterStore((s) => s.executeFilter);
 
   const taskMap = useTaskStore((s) => s.tasks);
   const {
@@ -31,25 +30,18 @@ export default function Label() {
     quickAddTask,
   } = useTaskActions();
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    tasks,
+    loading,
+    hasMore,
+    loadingMore,
+    loadMore,
+    refetch: fetchTasks,
+  } = useFilterResults(label ? `@${label.name}` : null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-
-  const fetchTasks = useCallback(async () => {
-    if (!label) return;
-    setLoading(true);
-    try {
-      const results = await executeFilter(`@${label.name}`);
-      setTasks(results);
-    } catch {
-      setTasks([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [label, executeFilter]);
 
   useEffect(() => {
     fetchLabels();
@@ -260,6 +252,18 @@ export default function Label() {
             onReorder={reorderTasks}
             emptyMessage="No tasks with this label"
           />
+
+          {hasMore && (
+            <div className="flex justify-center py-3">
+              <button
+                className="px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                onClick={() => loadMore()}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading…' : 'Load more tasks'}
+              </button>
+            </div>
+          )}
 
           {/* Task detail panel */}
           {currentSelectedTask && (

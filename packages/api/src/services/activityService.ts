@@ -1,6 +1,7 @@
 import { prisma } from '../config/database.js';
 import { requireTaskAccess, requireProjectAccess } from './access.js';
 import type { ActivityAction, EntityType, Prisma } from '@prisma/client';
+import { cursorArgs, toPage } from '../utils/pagination.js';
 
 const activityInclude = {
   user: {
@@ -36,25 +37,28 @@ export async function getTaskActivity(
   taskId: string,
   userId: string,
   limit = 50,
+  cursor?: string,
 ) {
   await requireTaskAccess(taskId, userId, 'VIEW');
 
-  return prisma.activityLog.findMany({
+  const rows = await prisma.activityLog.findMany({
     where: { taskId },
     include: activityInclude,
-    orderBy: { createdAt: 'desc' },
-    take: limit,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    ...cursorArgs(limit, cursor),
   });
+  return toPage(rows, limit);
 }
 
 export async function getProjectActivity(
   projectId: string,
   userId: string,
   limit = 50,
+  cursor?: string,
 ) {
   await requireProjectAccess(projectId, userId, 'VIEW');
 
-  return prisma.activityLog.findMany({
+  const rows = await prisma.activityLog.findMany({
     where: {
       OR: [
         { task: { projectId } },
@@ -62,16 +66,18 @@ export async function getProjectActivity(
       ],
     },
     include: activityInclude,
-    orderBy: { createdAt: 'desc' },
-    take: limit,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    ...cursorArgs(limit, cursor),
   });
+  return toPage(rows, limit);
 }
 
-export async function getUserActivity(userId: string, limit = 50) {
-  return prisma.activityLog.findMany({
+export async function getUserActivity(userId: string, limit = 50, cursor?: string) {
+  const rows = await prisma.activityLog.findMany({
     where: { userId },
     include: activityInclude,
-    orderBy: { createdAt: 'desc' },
-    take: limit,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    ...cursorArgs(limit, cursor),
   });
+  return toPage(rows, limit);
 }

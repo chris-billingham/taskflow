@@ -3,6 +3,7 @@ import { taskAccessWhere } from './access.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 import type { CreateFilterInput, UpdateFilterInput } from '@taskflow/contract';
 import { parseFilterQuery, validateFilterQuery } from '../utils/filterParser.js';
+import { cursorArgs, toPage } from '../utils/pagination.js';
 
 export async function getUserFilters(userId: string) {
   return prisma.filter.findMany({
@@ -46,7 +47,12 @@ export async function deleteFilter(id: string, userId: string) {
   return { message: 'Filter deleted successfully' };
 }
 
-export async function executeFilter(query: string, userId: string) {
+export async function executeFilter(
+  query: string,
+  userId: string,
+  limit = 100,
+  cursor?: string,
+) {
   const where = await parseFilterQuery(query, userId);
 
   const tasks = await prisma.task.findMany({
@@ -72,11 +78,12 @@ export async function executeFilter(query: string, userId: string) {
       { priority: 'asc' },
       { dueDate: 'asc' },
       { sortOrder: 'asc' },
+      { id: 'asc' },
     ],
-    take: 200,
+    ...cursorArgs(limit, cursor),
   });
 
-  return tasks;
+  return toPage(tasks, limit);
 }
 
 export { validateFilterQuery };

@@ -10,6 +10,7 @@ import {
 } from './syncService.js';
 import { notifyMany } from './notificationService.js';
 import { resolveMentions, type MentionCandidate } from '../utils/mentions.js';
+import { cursorArgs, toPage } from '../utils/pagination.js';
 
 const authorSelect = {
   id: true,
@@ -37,12 +38,11 @@ export async function getTaskComments(
         orderBy: { createdAt: 'asc' },
       },
     },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    ...cursorArgs(limit, cursor),
   });
 
-  return comments;
+  return toPage(comments, limit);
 }
 
 export async function createComment(

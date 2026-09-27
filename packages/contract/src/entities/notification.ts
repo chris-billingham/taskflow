@@ -31,6 +31,7 @@ export type Notification = Wire<typeof notificationSchema>;
 export const notificationListResponse = z.object({
   success: z.literal(true),
   data: z.array(notificationSchema),
+  nextCursor: z.string().nullable(),
   unreadCount: z.number().int(),
 });
 

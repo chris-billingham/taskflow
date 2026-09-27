@@ -64,6 +64,11 @@ let sectionId: string;
 let labelId: string;
 let taskId: string;
 
+/** A service Page as the route sends it: `{ data, nextCursor }`. */
+function pageBody<T>(p: { items: T[]; nextCursor: string | null }) {
+  return { data: p.items, nextCursor: p.nextCursor };
+}
+
 function conforms(schema: z.ZodType, data: unknown) {
   const result = z.safeEncode(schema, data);
   if (!result.success) {
@@ -170,9 +175,9 @@ describe('real service output matches the API contract', () => {
   it('filters: saved filter and query results', async () => {
     const filter = await filterService.createFilter({ name: 'Mine', query: 'p2' }, userId);
     conforms(ok(filterSchema), { success: true, data: filter });
-    const results = conforms(ok(z.array(filterTaskSchema)), {
+    const results = conforms(page(filterTaskSchema), {
       success: true,
-      data: await filterService.executeFilter('p2', userId),
+      ...pageBody(await filterService.executeFilter('p2', userId)),
     }) as { data: unknown[] };
     expect(results.data.length).toBeGreaterThan(0);
     await prisma.filter.delete({ where: { id: filter.id } });
@@ -181,9 +186,9 @@ describe('real service output matches the API contract', () => {
   it('comments with replies', async () => {
     const top = await commentService.createComment(taskId, { content: 'Top level' }, userId);
     await commentService.createComment(taskId, { content: 'A reply', parentId: top.id }, userId);
-    const list = conforms(ok(z.array(commentSchema)), {
+    const list = conforms(page(commentSchema), {
       success: true,
-      data: await commentService.getTaskComments(taskId, userId),
+      ...pageBody(await commentService.getTaskComments(taskId, userId)),
     }) as { data: Array<{ replies: unknown[] }> };
     expect(list.data.some((c) => c.replies.length === 1)).toBe(true);
   });
@@ -219,9 +224,9 @@ describe('real service output matches the API contract', () => {
   });
 
   it('activity, search and notifications', async () => {
-    conforms(ok(z.array(activitySchema)), {
+    conforms(page(activitySchema), {
       success: true,
-      data: await activityService.getTaskActivity(taskId, userId),
+      ...pageBody(await activityService.getTaskActivity(taskId, userId)),
     });
     const found = conforms(ok(searchResultsSchema), {
       success: true,
@@ -232,7 +237,7 @@ describe('real service output matches the API contract', () => {
     await notificationService.createNotification(userId, 'REMINDER', 'Reminder', 'Contract task is due', { taskId });
     conforms(notificationListResponse, {
       success: true,
-      data: await notificationService.getUserNotifications(userId, false, 10),
+      ...pageBody(await notificationService.getUserNotifications(userId, false, 10)),
       unreadCount: await notificationService.getUnreadCount(userId),
     });
   });

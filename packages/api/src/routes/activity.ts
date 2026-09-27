@@ -1,18 +1,17 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { z } from 'zod';
 import {
   activityQuerySchema,
   activitySchema,
   projectIdParamsSchema,
   taskIdParamsSchema,
-  ok,
+  page,
 } from '@taskflow/contract';
 import { authenticate } from '../middleware/authenticate.js';
 import * as activityService from '../services/activityService.js';
 
 const tags = ['Activity'];
-const activityList = { 200: ok(z.array(activitySchema)) };
+const activityList = { 200: page(activitySchema) };
 
 export async function activityRoutes(fastify: FastifyInstance) {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
@@ -29,10 +28,16 @@ export async function activityRoutes(fastify: FastifyInstance) {
         response: activityList,
       },
     },
-    async (request) => ({
-      success: true as const,
-      data: await activityService.getTaskActivity(request.params.taskId, request.user.id, request.query.limit),
-    }),
+    async (request) => {
+      const { limit, cursor } = request.query;
+      const { items, nextCursor } = await activityService.getTaskActivity(
+        request.params.taskId,
+        request.user.id,
+        limit,
+        cursor,
+      );
+      return { success: true as const, data: items, nextCursor };
+    },
   );
 
   app.get(
@@ -46,14 +51,16 @@ export async function activityRoutes(fastify: FastifyInstance) {
         response: activityList,
       },
     },
-    async (request) => ({
-      success: true as const,
-      data: await activityService.getProjectActivity(
+    async (request) => {
+      const { limit, cursor } = request.query;
+      const { items, nextCursor } = await activityService.getProjectActivity(
         request.params.projectId,
         request.user.id,
-        request.query.limit,
-      ),
-    }),
+        limit,
+        cursor,
+      );
+      return { success: true as const, data: items, nextCursor };
+    },
   );
 
   app.get(
@@ -61,9 +68,10 @@ export async function activityRoutes(fastify: FastifyInstance) {
     {
       schema: { tags, summary: 'Your own recent activity', querystring: activityQuerySchema, response: activityList },
     },
-    async (request) => ({
-      success: true as const,
-      data: await activityService.getUserActivity(request.user.id, request.query.limit),
-    }),
+    async (request) => {
+      const { limit, cursor } = request.query;
+      const { items, nextCursor } = await activityService.getUserActivity(request.user.id, limit, cursor);
+      return { success: true as const, data: items, nextCursor };
+    },
   );
 }

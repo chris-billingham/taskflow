@@ -4,6 +4,7 @@ import { env } from '../config/env.js';
 import { NotFoundError, ForbiddenError } from '../errors/index.js';
 import { isMailerReady, sendNotificationEmail } from './mailService.js';
 import type { NotificationType } from '@prisma/client';
+import { cursorArgs, toPage } from '../utils/pagination.js';
 
 // ─── Notification Preferences ────────────────────────────────────────────
 
@@ -139,15 +140,15 @@ export async function getUserNotifications(
   limit = 50,
   cursor?: string,
 ) {
-  return prisma.notification.findMany({
+  const rows = await prisma.notification.findMany({
     where: {
       userId,
       ...(unreadOnly ? { isRead: false } : {}),
     },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    ...cursorArgs(limit, cursor),
   });
+  return toPage(rows, limit);
 }
 
 export async function getUnreadCount(userId: string) {

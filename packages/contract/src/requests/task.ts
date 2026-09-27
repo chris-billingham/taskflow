@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isSupportedRecurrence } from '../logic/recurrence.js';
+import { pageQuery } from '../common.js';
 
 /** A recurrence rule the server can advance (see logic/recurrence.ts). */
 export const recurrenceRuleSchema = z
@@ -53,11 +54,9 @@ export const taskIdParamsSchema = z.object({
   taskId: z.string().min(1, 'Task ID is required'),
 });
 
-export const taskQuerySchema = z.object({
-  // Cursor pagination: unbounded task lists serialised tens of thousands of
-  // rows on mature accounts (multi-second responses, container OOM).
-  limit: z.coerce.number().int().min(1).max(200).optional(),
-  cursor: z.string().optional(),
+// Cursor pagination: unbounded task lists serialised tens of thousands of
+// rows on mature accounts (multi-second responses, container OOM).
+export const taskQuerySchema = pageQuery(200).extend({
   projectId: z.string().optional(),
   sectionId: z.string().optional(),
   parentId: z.string().optional(),

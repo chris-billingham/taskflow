@@ -1,9 +1,8 @@
 import { z } from 'zod';
+import { pageQuery } from '../common.js';
 
-export const activityQuerySchema = z.object({
-  /** Most recent first; capped so one request can't pull the whole log. */
-  limit: z.coerce.number().int().min(1).max(100).optional(),
-});
+/** Most recent first; capped so one request can't pull the whole log. */
+export const activityQuerySchema = pageQuery(100);
 
 export const projectIdParamsSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
