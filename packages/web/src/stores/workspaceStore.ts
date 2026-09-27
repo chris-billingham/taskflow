@@ -1,214 +1,25 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import api from '@/services/api';
-import type { WorkspaceInvite as ContractWorkspaceInvite, WorkspaceMember as ContractWorkspaceMember, WorkspaceRole, WorkspaceSummary } from '@taskflow/contract';
 
-export type { WorkspaceRole };
-
-/** Email is null when a guest is looking: guests see names, not addresses. */
-export type WorkspaceMember = ContractWorkspaceMember;
-
-export type WorkspaceInvite = ContractWorkspaceInvite;
-
-/** A workspace you belong to, with your role (counts where the endpoint includes them). */
-export type Workspace = Omit<WorkspaceSummary, '_count'> & { _count?: WorkspaceSummary['_count'] };
-
-interface WorkspaceState {
-  workspaces: Workspace[];
+/**
+ * Which workspace the switcher has selected: UI state, kept across reloads.
+ * The workspaces themselves, their members and invites are server data in
+ * queries/workspaces.ts.
+ */
+interface WorkspaceSelection {
   currentWorkspaceId: string | null;
-  members: WorkspaceMember[];
-  invites: WorkspaceInvite[];
-  loading: boolean;
-  error: string | null;
-
-  // Computed
-  currentWorkspace: () => Workspace | null;
-
-  // Actions
-  fetchWorkspaces: () => Promise<void>;
-  createWorkspace: (data: { name: string; description?: string }) => Promise<Workspace>;
-  updateWorkspace: (id: string, data: { name?: string; description?: string | null }) => Promise<void>;
-  deleteWorkspace: (id: string) => Promise<void>;
   switchWorkspace: (id: string | null) => void;
-  fetchMembers: (workspaceId: string) => Promise<void>;
-  inviteMember: (workspaceId: string, email: string, role: string) => Promise<WorkspaceInvite>;
-  fetchInvites: (workspaceId: string) => Promise<void>;
-  cancelInvite: (workspaceId: string, inviteId: string) => Promise<void>;
-  resendInvite: (workspaceId: string, inviteId: string) => Promise<WorkspaceInvite>;
-  acceptInvite: (token: string) => Promise<void>;
-  updateMemberRole: (workspaceId: string, userId: string, role: string) => Promise<void>;
-  removeMember: (workspaceId: string, userId: string) => Promise<void>;
-  leaveWorkspace: (workspaceId: string) => Promise<void>;
-  transferOwnership: (workspaceId: string, newOwnerId: string) => Promise<void>;
 }
 
-export const useWorkspaceStore = create<WorkspaceState>()(
+export const useWorkspaceStore = create<WorkspaceSelection>()(
   persist(
-    (set, get) => ({
-      workspaces: [],
+    (set) => ({
       currentWorkspaceId: null,
-      members: [],
-      invites: [],
-      loading: false,
-      error: null,
-
-      currentWorkspace: () => {
-        const { workspaces, currentWorkspaceId } = get();
-        if (!currentWorkspaceId) return null;
-        return workspaces.find((w) => w.id === currentWorkspaceId) ?? null;
-      },
-
-      fetchWorkspaces: async () => {
-        set({ loading: true, error: null });
-        try {
-          const { data } = await api.get('/workspaces');
-          set({ workspaces: data.data, loading: false });
-        } catch (err: any) {
-          set({
-            error: err.response?.data?.message || 'Failed to fetch workspaces',
-            loading: false,
-          });
-        }
-      },
-
-      createWorkspace: async (input) => {
-        const { data } = await api.post('/workspaces', input);
-        const workspace = data.data as Workspace;
-        set((state) => ({
-          workspaces: [...state.workspaces, workspace],
-        }));
-        return workspace;
-      },
-
-      updateWorkspace: async (id, input) => {
-        const { data } = await api.patch(`/workspaces/${id}`, input);
-        set((state) => ({
-          workspaces: state.workspaces.map((w) =>
-            w.id === id ? { ...w, ...data.data } : w,
-          ),
-        }));
-      },
-
-      deleteWorkspace: async (id) => {
-        await api.delete(`/workspaces/${id}`);
-        set((state) => ({
-          workspaces: state.workspaces.filter((w) => w.id !== id),
-          currentWorkspaceId:
-            state.currentWorkspaceId === id ? null : state.currentWorkspaceId,
-        }));
-      },
-
-      switchWorkspace: (id) => {
-        set({ currentWorkspaceId: id, members: [], invites: [] });
-      },
-
-      fetchMembers: async (workspaceId) => {
-        try {
-          const { data } = await api.get(`/workspaces/${workspaceId}/members`);
-          set({ members: data.data });
-        } catch (err: any) {
-          set({
-            error: err.response?.data?.message || 'Failed to fetch members',
-          });
-        }
-      },
-
-      inviteMember: async (workspaceId, email, role) => {
-        const { data } = await api.post(`/workspaces/${workspaceId}/invite`, {
-          email,
-          role,
-        });
-        const invite = data.data as WorkspaceInvite;
-        set((state) => ({
-          invites: [...state.invites, invite],
-        }));
-        return invite;
-      },
-
-      fetchInvites: async (workspaceId) => {
-        try {
-          const { data } = await api.get(`/workspaces/${workspaceId}/invites`);
-          set({ invites: data.data });
-        } catch {
-          // Invites may not be visible to non-admins
-        }
-      },
-
-      cancelInvite: async (workspaceId, inviteId) => {
-        await api.delete(`/workspaces/${workspaceId}/invites/${inviteId}`);
-        set((state) => ({
-          invites: state.invites.filter((i) => i.id !== inviteId),
-        }));
-      },
-
-      resendInvite: async (workspaceId, inviteId) => {
-        const { data } = await api.post(
-          `/workspaces/${workspaceId}/invites/${inviteId}/resend`,
-        );
-        const updated = data.data as WorkspaceInvite;
-        set((state) => ({
-          invites: state.invites.map((i) =>
-            i.id === inviteId ? updated : i,
-          ),
-        }));
-        return updated;
-      },
-
-      acceptInvite: async (token) => {
-        const { data } = await api.post('/workspaces/join', { token });
-        const workspace = data.data.workspace as Workspace;
-        set((state) => ({
-          workspaces: [...state.workspaces, workspace],
-        }));
-      },
-
-      updateMemberRole: async (workspaceId, userId, role) => {
-        const { data } = await api.patch(
-          `/workspaces/${workspaceId}/members/${userId}`,
-          { role },
-        );
-        set((state) => ({
-          members: state.members.map((m) =>
-            m.userId === userId ? { ...m, ...data.data } : m,
-          ),
-        }));
-      },
-
-      removeMember: async (workspaceId, userId) => {
-        await api.delete(`/workspaces/${workspaceId}/members/${userId}`);
-        set((state) => ({
-          members: state.members.filter((m) => m.userId !== userId),
-        }));
-      },
-
-      leaveWorkspace: async (workspaceId) => {
-        await api.post(`/workspaces/${workspaceId}/leave`);
-        set((state) => ({
-          workspaces: state.workspaces.filter((w) => w.id !== workspaceId),
-          currentWorkspaceId:
-            state.currentWorkspaceId === workspaceId
-              ? null
-              : state.currentWorkspaceId,
-        }));
-      },
-
-      transferOwnership: async (workspaceId, newOwnerId) => {
-        await api.post(`/workspaces/${workspaceId}/transfer`, { newOwnerId });
-        // Refetch to get updated roles
-        await get().fetchWorkspaces();
-        await get().fetchMembers(workspaceId);
-      },
+      switchWorkspace: (id) => set({ currentWorkspaceId: id }),
     }),
     {
       name: 'workspace-storage',
-      partialize: (state) => ({
-        currentWorkspaceId: state.currentWorkspaceId,
-      }),
+      partialize: (state) => ({ currentWorkspaceId: state.currentWorkspaceId }),
     },
   ),
 );
-
-export const selectCurrentWorkspace = (state: WorkspaceState) => {
-  if (!state.currentWorkspaceId) return null;
-  return state.workspaces.find((w) => w.id === state.currentWorkspaceId) ?? null;
-};

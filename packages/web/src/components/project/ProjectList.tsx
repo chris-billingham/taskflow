@@ -15,8 +15,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ProjectItem } from './ProjectItem';
-import type { ProjectTreeNode } from '@/stores/projectStore';
-import { useProjectStore } from '@/stores/projectStore';
+import type { ProjectTreeNode } from '@/types/project';
+import { useProjectActions } from '@/queries/projects';
 
 interface ProjectListProps {
   projects: ProjectTreeNode[];
@@ -62,11 +62,8 @@ function SortableProjectItem({
 }
 
 export function ProjectList({ projects, onEdit, onDelete }: ProjectListProps) {
-  const updateProject = useProjectStore((s) => s.updateProject);
-  const archiveProject = useProjectStore((s) => s.archiveProject);
-  const unarchiveProject = useProjectStore((s) => s.unarchiveProject);
-  const duplicateProject = useProjectStore((s) => s.duplicateProject);
-  const reorderProjects = useProjectStore((s) => s.reorderProjects);
+  const { updateProject, archiveProject, unarchiveProject, duplicateProject, reorderProjects } =
+    useProjectActions();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

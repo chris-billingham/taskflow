@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Send, Paperclip, X } from 'lucide-react';
 import { useUploadLimits, formatFileSize } from '@/hooks/useFileUpload';
-import api from '@/services/api';
+import { useProjectMembers } from '@/queries/taskExtras';
 import {
   filterMembers,
   findMentionQuery,
@@ -43,26 +43,9 @@ export function CommentEditor({
   // Mentions are resolved server-side against project/workspace members, and an
   // ambiguous handle notifies nobody. Without a picker a user had to guess a
   // handle that happened to match — the feature worked but was unfindable.
-  const [members, setMembers] = useState<MentionMember[]>([]);
+  const { members } = useProjectMembers(projectId);
   const [mention, setMention] = useState<MentionQuery | null>(null);
   const [highlighted, setHighlighted] = useState(0);
-
-  useEffect(() => {
-    if (!projectId) return;
-    let active = true;
-    api
-      .get(`/projects/${projectId}/members`)
-      .then(({ data }) => {
-        if (active) setMembers(data.data ?? []);
-      })
-      .catch(() => {
-        // Without the list the picker just never opens; typing a handle by
-        // hand still works exactly as before.
-      });
-    return () => {
-      active = false;
-    };
-  }, [projectId]);
 
   const matches = mention ? filterMembers(members, mention.term).slice(0, 6) : [];
 

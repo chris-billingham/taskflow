@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useWorkspaceActions } from '@/queries/workspaces';
 
 interface CreateWorkspaceModalProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ export function CreateWorkspaceModal({
   isOpen,
   onClose,
 }: CreateWorkspaceModalProps) {
-  const createWorkspace = useWorkspaceStore((s) => s.createWorkspace);
+  const { createWorkspace } = useWorkspaceActions();
   const switchWorkspace = useWorkspaceStore((s) => s.switchWorkspace);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');

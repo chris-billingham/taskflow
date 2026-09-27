@@ -6,7 +6,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Task } from '@/types/task';
 import { taskKeys } from '@/queries/taskKeys';
 import { mergeTask, patchTaskCaches } from '@/queries/taskCache';
-import { useProjectStore, type Project, type ProjectSection } from '@/stores/projectStore';
+import type { Project, ProjectSection } from '@/types/project';
+import { patchCachedProject, projectKeys } from '@/queries/projects';
 import { removeComment, updateCachedComments, upsertComment, type Comment } from '@/queries/comments';
 import { activityKeys } from '@/queries/activity';
 
@@ -61,45 +62,26 @@ export function useRealTimeSync(): void {
     };
 
     const onProjectUpdated = ({ project }: { project: Project }) => {
-      useProjectStore.getState().setProject(project);
+      patchCachedProject(qc, project.id, (cached) => ({ ...cached, ...project }));
+      // New projects have no event of their own; a refetch picks them up.
+      void qc.invalidateQueries({ queryKey: projectKeys.list() });
     };
 
     const onProjectDeleted = ({ projectId }: { projectId: string }) => {
-      useProjectStore.getState().removeProject(projectId);
+      patchCachedProject(qc, projectId, () => null);
+      scheduleRefresh();
     };
 
-    const onSectionCreated = ({ section }: { section: ProjectSection }) => {
-      const projectState = useProjectStore.getState();
-      const project = projectState.projects.get(section.projectId);
-      if (!project) return;
-      const sections = [...(project.sections ?? []), section].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      projectState.setProject({ ...project, sections });
+    // Sections live on the project payloads; re-read that project.
+    const onSectionChanged = ({ section }: { section: ProjectSection }) => {
+      void qc.invalidateQueries({ queryKey: projectKeys.detail(section.projectId) });
+      void qc.invalidateQueries({ queryKey: projectKeys.list() });
     };
 
-    const onSectionUpdated = ({ section }: { section: ProjectSection }) => {
-      const projectState = useProjectStore.getState();
-      const project = projectState.projects.get(section.projectId);
-      if (!project) return;
-      const sections = (project.sections ?? []).map((s) =>
-        s.id === section.id ? section : s,
-      );
-      projectState.setProject({ ...project, sections });
-    };
-
-    const onSectionDeleted = ({
-      sectionId,
-      projectId,
-    }: {
-      sectionId: string;
-      projectId: string;
-    }) => {
-      const projectState = useProjectStore.getState();
-      const project = projectState.projects.get(projectId);
-      if (!project) return;
-      const sections = (project.sections ?? []).filter((s) => s.id !== sectionId);
-      projectState.setProject({ ...project, sections });
+    const onSectionDeleted = ({ projectId }: { sectionId: string; projectId: string }) => {
+      void qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      void qc.invalidateQueries({ queryKey: projectKeys.list() });
+      scheduleRefresh();
     };
 
     // Comments for tasks nobody has open aren't cached, so these are no-ops
@@ -121,8 +103,8 @@ export function useRealTimeSync(): void {
     socket.on('task:completed', onTaskUpdated);
     socket.on('project:updated', onProjectUpdated);
     socket.on('project:deleted', onProjectDeleted);
-    socket.on('section:created', onSectionCreated);
-    socket.on('section:updated', onSectionUpdated);
+    socket.on('section:created', onSectionChanged);
+    socket.on('section:updated', onSectionChanged);
     socket.on('section:deleted', onSectionDeleted);
     socket.on('comment:created', onCommentChanged);
     socket.on('comment:updated', onCommentChanged);
@@ -136,8 +118,8 @@ export function useRealTimeSync(): void {
       socket.off('task:completed', onTaskUpdated);
       socket.off('project:updated', onProjectUpdated);
       socket.off('project:deleted', onProjectDeleted);
-      socket.off('section:created', onSectionCreated);
-      socket.off('section:updated', onSectionUpdated);
+      socket.off('section:created', onSectionChanged);
+      socket.off('section:updated', onSectionChanged);
       socket.off('section:deleted', onSectionDeleted);
       socket.off('comment:created', onCommentChanged);
       socket.off('comment:updated', onCommentChanged);

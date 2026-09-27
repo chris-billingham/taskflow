@@ -1,26 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Plus, User } from 'lucide-react';
-import {
-  useWorkspaceStore,
-  selectCurrentWorkspace,
-} from '@/stores/workspaceStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useCurrentWorkspace, useWorkspaces } from '@/queries/workspaces';
 
 interface WorkspaceSwitcherProps {
   onCreateWorkspace: () => void;
 }
 
 export function WorkspaceSwitcher({ onCreateWorkspace }: WorkspaceSwitcherProps) {
-  const workspaces = useWorkspaceStore((s) => s.workspaces);
-  const currentWorkspace = useWorkspaceStore(selectCurrentWorkspace);
+  const { workspaces } = useWorkspaces();
+  const currentWorkspace = useCurrentWorkspace();
   const switchWorkspace = useWorkspaceStore((s) => s.switchWorkspace);
-  const fetchWorkspaces = useWorkspaceStore((s) => s.fetchWorkspaces);
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    fetchWorkspaces();
-  }, [fetchWorkspaces]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

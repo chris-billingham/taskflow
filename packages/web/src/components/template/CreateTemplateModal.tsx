@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useTemplateActions } from '@/queries/templates';
-import { useProjectStore, selectActiveProjects } from '@/stores/projectStore';
+import { useProjects } from '@/queries/projects';
 
 interface CreateTemplateModalProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export function CreateTemplateModal({
   workspaceId,
 }: CreateTemplateModalProps) {
   const { createTemplate } = useTemplateActions();
-  const projects = useProjectStore(selectActiveProjects);
+  const { active: projects } = useProjects();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');

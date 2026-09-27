@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useFilterActions } from '@/queries/filters';
 import { useLabels } from '@/queries/labels';
-import { useProjectStore, selectProjectsArray } from '@/stores/projectStore';
+import { useProjects } from '@/queries/projects';
 
 interface FilterQueryInputProps {
   value: string;
@@ -43,7 +43,7 @@ export function FilterQueryInput({ value, onChange, onValidation, placeholder }:
 
   const { validateFilter } = useFilterActions();
   const { labels } = useLabels();
-  const projects = useProjectStore(selectProjectsArray);
+  const { projects } = useProjects();
 
   const debounceValidate = useCallback(
     (query: string) => {

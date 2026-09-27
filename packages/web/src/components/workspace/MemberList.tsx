@@ -1,6 +1,6 @@
 import { Shield, ShieldCheck, Crown, Eye, MoreHorizontal, UserMinus, ArrowUpDown, RefreshCw, Copy, Check } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import type { WorkspaceMember, WorkspaceInvite, WorkspaceRole } from '@/stores/workspaceStore';
+import type { WorkspaceMember, WorkspaceInvite, WorkspaceRole } from '@/queries/workspaces';
 
 const ROLE_CONFIG: Record<WorkspaceRole, { label: string; icon: typeof Crown; color: string }> = {
   OWNER: { label: 'Owner', icon: Crown, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20' },

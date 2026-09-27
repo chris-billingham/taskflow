@@ -6,7 +6,7 @@ import { server } from '../msw/server';
 import { API } from '../msw/handlers';
 import { makeProject, makeSection, makeTask, ok } from '../msw/fixtures';
 import { renderPage } from '../helpers/renderPage';
-import type { Project as ProjectType } from '@/stores/projectStore';
+import type { Project as ProjectType } from '@/types/project';
 import type { Task } from '@/types/task';
 import Project from '@/pages/app/Project';
 

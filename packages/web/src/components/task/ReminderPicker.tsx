@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Plus, X, Clock } from 'lucide-react';
-import api from '@/services/api';
+import { useReminderActions, useReminders } from '@/queries/taskExtras';
 import { formatUserDateTime } from '@/utils/dateFormat';
 import { getVapidPublicKey } from '@/services/notifications';
 import { toastError } from '@/stores/toastStore';
@@ -38,17 +38,14 @@ function formatReminder(reminder: Reminder): string {
 }
 
 export function ReminderPicker({ taskId }: ReminderPickerProps) {
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const reminders = useReminders(taskId);
+  const { addReminder, removeReminder: deleteReminder } = useReminderActions(taskId);
   const [isOpen, setIsOpen] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const [customDateTime, setCustomDateTime] = useState('');
   // null = not yet determined, so the notice doesn't flash on open.
   const [pushWorks, setPushWorks] = useState<boolean | null>(null);
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    fetchReminders();
-  }, [taskId]);
 
   // Every reminder created here is delivered by browser push: this picker sends
   // no `method`, so the schema default (PUSH) always applies and the EMAIL path
@@ -89,15 +86,6 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchReminders = async () => {
-    try {
-      const { data } = await api.get(`/tasks/${taskId}/reminders`);
-      setReminders(data.data);
-    } catch {
-      // Silently fail - reminders are optional
-    }
-  };
-
   /** The API's message when it has one — it explains what to do. */
   const reasonFrom = (err: unknown, fallback: string) =>
     (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -105,11 +93,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
 
   const addPreset = async (minutesBefore: number) => {
     try {
-      await api.post(`/tasks/${taskId}/reminders`, {
-        type: 'RELATIVE',
-        minutesBefore,
-      });
-      await fetchReminders();
+      await addReminder({ type: 'RELATIVE', minutesBefore });
       setIsOpen(false);
     } catch (err) {
       // A relative reminder needs a due date to be relative to, and the API
@@ -122,11 +106,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
   const addCustom = async () => {
     if (!customDateTime) return;
     try {
-      await api.post(`/tasks/${taskId}/reminders`, {
-        type: 'ABSOLUTE',
-        triggerAt: new Date(customDateTime).toISOString(),
-      });
-      await fetchReminders();
+      await addReminder({ type: 'ABSOLUTE', triggerAt: new Date(customDateTime).toISOString() });
       setShowCustom(false);
       setIsOpen(false);
       setCustomDateTime('');
@@ -137,8 +117,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
 
   const removeReminder = async (id: string) => {
     try {
-      await api.delete(`/reminders/${id}`);
-      setReminders((prev) => prev.filter((r) => r.id !== id));
+      await deleteReminder(id);
     } catch (err) {
       toastError(reasonFrom(err, 'Could not remove that reminder'));
     }

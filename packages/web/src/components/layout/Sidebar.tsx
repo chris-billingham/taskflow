@@ -16,21 +16,17 @@ import {
   Inbox,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { useProjects } from '@/hooks/useProjects';
-import { useProjectStore } from '@/stores/projectStore';
+import { useProjects, useProjectActions } from '@/queries/projects';
 import { useLabels } from '@/queries/labels';
 import { useFilters } from '@/queries/filters';
-import {
-  useWorkspaceStore,
-  selectCurrentWorkspace,
-} from '@/stores/workspaceStore';
+import { useCurrentWorkspace } from '@/queries/workspaces';
 import { ProjectList } from '@/components/project/ProjectList';
 import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 import { CreateWorkspaceModal } from '@/components/workspace/CreateWorkspaceModal';
-import type { ProjectTreeNode, Project } from '@/stores/projectStore';
+import type { ProjectTreeNode, Project } from '@/types/project';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -42,14 +38,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const { projects, favorites, tree, loading } = useProjects();
-  const updateProject = useProjectStore((s) => s.updateProject);
-  const deleteProject = useProjectStore((s) => s.deleteProject);
-  const archiveProject = useProjectStore((s) => s.archiveProject);
+  const { updateProject, deleteProject, archiveProject } = useProjectActions();
 
   const { favorites: favoriteLabels } = useLabels();
   const { favorites: favoriteFilters } = useFilters();
 
-  const currentWorkspace = useWorkspaceStore(selectCurrentWorkspace);
+  const currentWorkspace = useCurrentWorkspace();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForTeam, setCreateForTeam] = useState(false);
@@ -80,7 +74,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (!pendingDelete) return;
     const project = pendingDelete;
     setPendingDelete(null);
-    deleteProject(project.id);
+    void deleteProject(project.id);
     if (location.pathname === `/projects/${project.id}`) {
       navigate('/today');
     }

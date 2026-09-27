@@ -7,9 +7,8 @@ import { TaskList } from '@/components/task/TaskList';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { CalendarView } from '@/components/views/CalendarView';
 import { BoardView } from '@/components/views/BoardView';
-import { useProject, useProjectSections } from '@/hooks/useProjects';
+import { useProject, useProjectActions, useSectionActions } from '@/queries/projects';
 import { useProjectRoom } from '@/hooks/useProjectRoom';
-import { useProjectStore } from '@/stores/projectStore';
 import { useProjectTasks } from '@/queries/tasks';
 import { useTaskActions } from '@/queries/taskActions';
 import type { Task } from '@/types/task';
@@ -17,22 +16,13 @@ import type { Task } from '@/types/task';
 export default function Project() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { project, loading } = useProject(id);
+  const { project, sections, loading } = useProject(id);
   // Join the project's realtime room so remote task/section/comment changes
   // stream in while this view is open.
   useProjectRoom(id, project?.workspaceId);
-  const updateProject = useProjectStore((s) => s.updateProject);
-  const deleteProject = useProjectStore((s) => s.deleteProject);
-  const archiveProject = useProjectStore((s) => s.archiveProject);
-  const unarchiveProject = useProjectStore((s) => s.unarchiveProject);
-  const duplicateProject = useProjectStore((s) => s.duplicateProject);
-  const {
-    sections,
-    createSection,
-    updateSection,
-    deleteSection,
-    reorderSections,
-  } = useProjectSections(id);
+  const { updateProject, deleteProject, archiveProject, unarchiveProject, duplicateProject } =
+    useProjectActions();
+  const { createSection, updateSection, deleteSection, reorderSections } = useSectionActions(id);
 
   const { tasks, hasMore, loadingMore, loadMore } = useProjectTasks(id);
   const { createTask, quickAddTask } = useTaskActions();

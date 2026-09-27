@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Mail, Smartphone } from 'lucide-react';
 import {
   subscribeToPush,
@@ -70,25 +71,31 @@ export default function NotificationSettings() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [pushAvailable, setPushAvailable] = useState<boolean | null>(null);
-  const [prefs, setPrefs] = useState<Prefs | null>(null);
+  const qc = useQueryClient();
+  const prefsQuery = useQuery({
+    queryKey: ['settings', 'notifications'],
+    queryFn: async () => (await api.get('/settings/notifications')).data.data as Prefs,
+  });
+  const prefs = prefsQuery.data ?? null;
+
+  useEffect(() => {
+    if (prefsQuery.error) toastError('Failed to load notification preferences');
+  }, [prefsQuery.error]);
 
   useEffect(() => {
     isPushSubscribed().then(setPushEnabled);
     getVapidPublicKey().then((key) => setPushAvailable(!!key));
-    api
-      .get('/settings/notifications')
-      .then(({ data }) => setPrefs(data.data))
-      .catch(() => toastError('Failed to load notification preferences'));
   }, []);
 
   // Optimistic save: flip locally, persist, roll back + toast on failure.
   const savePrefs = async (next: Prefs) => {
-    const previous = prefs;
-    setPrefs(next);
+    const key = ['settings', 'notifications'];
+    const previous = qc.getQueryData<Prefs>(key);
+    qc.setQueryData(key, next);
     try {
       await api.put('/settings/notifications', next);
     } catch {
-      setPrefs(previous);
+      qc.setQueryData(key, previous);
       toastError('Failed to save notification preferences');
     }
   };

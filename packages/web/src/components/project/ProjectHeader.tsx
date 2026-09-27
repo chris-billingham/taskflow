@@ -9,7 +9,7 @@ import {
   Archive,
   Trash2,
 } from 'lucide-react';
-import type { Project } from '@/stores/projectStore';
+import type { Project } from '@/types/project';
 
 interface ProjectHeaderProps {
   project: Project;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useWorkspaceActions } from '@/queries/workspaces';
 
 interface InviteMemberModalProps {
   isOpen: boolean;
@@ -18,7 +18,7 @@ export function InviteMemberModal({
   workspaceId,
   canInviteAdmins = false,
 }: InviteMemberModalProps) {
-  const inviteMember = useWorkspaceStore((s) => s.inviteMember);
+  const { inviteMember } = useWorkspaceActions();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'ADMIN' | 'MEMBER' | 'GUEST'>('MEMBER');
   const [isSubmitting, setIsSubmitting] = useState(false);

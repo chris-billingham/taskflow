@@ -1,54 +1,28 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useState } from 'react';
 import { Paperclip, Loader2, AlertCircle } from 'lucide-react';
 import type { Attachment } from '@/hooks/useFileUpload';
 import { isImage, useFileUpload } from '@/hooks/useFileUpload';
 import { useAuthStore } from '@/stores/authStore';
 import { FileUpload } from './FileUpload';
 import { AttachmentItem } from './AttachmentItem';
+import { useAttachments } from '@/queries/taskExtras';
 import { ImagePreview } from './ImagePreview';
-import api from '@/services/api';
 
 interface AttachmentListProps {
   taskId: string;
 }
 
 export function AttachmentList({ taskId }: AttachmentListProps) {
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const { attachments, loading, error: fetchError, added, removed } = useAttachments(taskId);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const { uploading, progress, error: uploadError, upload } = useFileUpload();
   const user = useAuthStore((s) => s.user);
-
-  // Sequence guard: switching tasks quickly must not render the previous
-  // task's attachments when its slower response lands last.
-  const seqRef = useRef(0);
-
-  const fetchAttachments = useCallback(async () => {
-    const seq = ++seqRef.current;
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const { data } = await api.get(`/tasks/${taskId}/attachments`);
-      if (seq !== seqRef.current) return;
-      setAttachments(data.data);
-    } catch (err: any) {
-      if (seq !== seqRef.current) return;
-      setFetchError(err.response?.data?.message || 'Failed to load attachments');
-    } finally {
-      if (seq === seqRef.current) setLoading(false);
-    }
-  }, [taskId]);
-
-  useEffect(() => {
-    fetchAttachments();
-  }, [fetchAttachments]);
 
   const handleFiles = async (files: File[]) => {
     for (const file of files) {
       try {
         const attachment = await upload(file, `/tasks/${taskId}/attachments`);
-        setAttachments((prev) => [attachment, ...prev]);
+        added(attachment);
       } catch {
         // error already shown by FileUpload
       }
@@ -56,7 +30,7 @@ export function AttachmentList({ taskId }: AttachmentListProps) {
   };
 
   const handleDelete = (id: string) => {
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
+    removed(id);
   };
 
   const imageAttachments = attachments.filter((a) => isImage(a.mimeType));

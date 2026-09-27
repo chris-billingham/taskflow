@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronRight, Trash2 } from 'lucide-react';
-import type { ProjectSection } from '@/stores/projectStore';
+import type { ProjectSection } from '@/types/project';
 
 interface SectionHeaderProps {
   section: ProjectSection;

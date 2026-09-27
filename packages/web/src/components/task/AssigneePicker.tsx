@@ -1,13 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { User, Search, Check, X } from 'lucide-react';
-import api from '@/services/api';
-
-interface Member {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl: string | null;
-}
+import { useProjectMembers } from '@/queries/taskExtras';
 
 interface AssigneePickerProps {
   projectId: string;
@@ -18,9 +11,8 @@ interface AssigneePickerProps {
 
 export function AssigneePicker({ projectId, value, assignee, onChange }: AssigneePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [members, setMembers] = useState<Member[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { members, loading } = useProjectMembers(projectId, isOpen);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,28 +26,11 @@ export function AssigneePicker({ projectId, value, assignee, onChange }: Assigne
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchMembers = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.get(`/projects/${projectId}/members`);
-      setMembers(data.data || []);
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchMembers();
-    }
-  }, [isOpen, projectId]);
-
   const filteredMembers = members.filter(
     (m) =>
       m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.email.toLowerCase().includes(search.toLowerCase()),
+      // Guests see members without email addresses.
+      (m.email?.toLowerCase().includes(search.toLowerCase()) ?? false),
   );
 
   const initial = assignee?.name ? assignee.name.charAt(0).toUpperCase() : null;

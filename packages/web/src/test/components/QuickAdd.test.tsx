@@ -1,9 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { server } from '../msw/server';
+import { API } from '../msw/handlers';
+import { makeProject, ok } from '../msw/fixtures';
+import { renderPage } from '../helpers/renderPage';
 import userEvent from '@testing-library/user-event';
 import { QuickAdd } from '@/components/task/QuickAdd';
-import { useProjectStore } from '@/stores/projectStore';
-import type { Project } from '@/stores/projectStore';
 
 const defaultProps = {
   onSubmit: vi.fn().mockResolvedValue(undefined),
@@ -12,12 +15,12 @@ const defaultProps = {
 
 describe('QuickAdd - collapsed state', () => {
   it('shows a button with the placeholder text when inline and not autoFocused', () => {
-    render(<QuickAdd {...defaultProps} inline={true} />);
+    renderPage(<QuickAdd {...defaultProps} inline={true} />);
     expect(screen.getByRole('button', { name: /add task/i })).toBeInTheDocument();
   });
 
   it('expands when the "Add task" button is clicked', async () => {
-    render(<QuickAdd {...defaultProps} inline={true} />);
+    renderPage(<QuickAdd {...defaultProps} inline={true} />);
     await userEvent.click(screen.getByRole('button', { name: /add task/i }));
     expect(screen.getByPlaceholderText(/add task/i)).toBeInTheDocument();
   });
@@ -25,13 +28,13 @@ describe('QuickAdd - collapsed state', () => {
 
 describe('QuickAdd - expanded state', () => {
   it('shows input when autoFocus is true', () => {
-    render(<QuickAdd {...defaultProps} autoFocus={true} />);
+    renderPage(<QuickAdd {...defaultProps} autoFocus={true} />);
     expect(screen.getByPlaceholderText(/add task/i)).toBeInTheDocument();
   });
 
   it('calls onSubmit with trimmed text on Enter key', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    render(<QuickAdd {...defaultProps} onSubmit={onSubmit} autoFocus={true} />);
+    renderPage(<QuickAdd {...defaultProps} onSubmit={onSubmit} autoFocus={true} />);
 
     const input = screen.getByPlaceholderText(/add task/i);
     await userEvent.type(input, 'Buy milk{Enter}');
@@ -41,7 +44,7 @@ describe('QuickAdd - expanded state', () => {
 
   it('clears input after successful submit', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    render(<QuickAdd {...defaultProps} onSubmit={onSubmit} autoFocus={true} />);
+    renderPage(<QuickAdd {...defaultProps} onSubmit={onSubmit} autoFocus={true} />);
 
     const input = screen.getByPlaceholderText(/add task/i) as HTMLInputElement;
     await userEvent.type(input, 'Task{Enter}');
@@ -53,7 +56,7 @@ describe('QuickAdd - expanded state', () => {
 
   it('does not call onSubmit for empty text', async () => {
     const onSubmit = vi.fn();
-    render(<QuickAdd {...defaultProps} onSubmit={onSubmit} autoFocus={true} />);
+    renderPage(<QuickAdd {...defaultProps} onSubmit={onSubmit} autoFocus={true} />);
 
     const input = screen.getByPlaceholderText(/add task/i);
     await userEvent.type(input, '{Enter}');
@@ -63,7 +66,7 @@ describe('QuickAdd - expanded state', () => {
 
   it('does not call onSubmit for whitespace-only text', async () => {
     const onSubmit = vi.fn();
-    render(<QuickAdd {...defaultProps} onSubmit={onSubmit} autoFocus={true} />);
+    renderPage(<QuickAdd {...defaultProps} onSubmit={onSubmit} autoFocus={true} />);
 
     const input = screen.getByPlaceholderText(/add task/i);
     await userEvent.type(input, '   {Enter}');
@@ -73,7 +76,7 @@ describe('QuickAdd - expanded state', () => {
 
   it('calls onCancel and clears text on Escape', async () => {
     const onCancel = vi.fn();
-    render(<QuickAdd {...defaultProps} onCancel={onCancel} autoFocus={true} />);
+    renderPage(<QuickAdd {...defaultProps} onCancel={onCancel} autoFocus={true} />);
 
     const input = screen.getByPlaceholderText(/add task/i);
     await userEvent.type(input, 'Some text');
@@ -83,14 +86,14 @@ describe('QuickAdd - expanded state', () => {
   });
 
   it('shows cancel button when inline', () => {
-    render(<QuickAdd {...defaultProps} autoFocus={true} inline={true} />);
+    renderPage(<QuickAdd {...defaultProps} autoFocus={true} inline={true} />);
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
   });
 });
 
 describe('QuickAdd - preview parsing', () => {
   it('shows priority badge when p1 is typed', async () => {
-    render(<QuickAdd {...defaultProps} autoFocus={true} />);
+    renderPage(<QuickAdd {...defaultProps} autoFocus={true} />);
 
     const input = screen.getByPlaceholderText(/add task/i);
     await userEvent.type(input, 'Task p1');
@@ -100,21 +103,19 @@ describe('QuickAdd - preview parsing', () => {
   });
 
   it('shows project preview when #project names an existing project', async () => {
-    useProjectStore.setState({
-      projects: new Map([['p1', { id: 'p1', name: 'Work' } as Project]]),
-    });
-    render(<QuickAdd {...defaultProps} autoFocus={true} />);
+    server.use(http.get(`${API}/projects`, () => HttpResponse.json(ok([makeProject({ id: 'p1', name: 'Work' })]))));
+    renderPage(<QuickAdd {...defaultProps} autoFocus={true} />);
 
     const input = screen.getByPlaceholderText(/add task/i);
     await userEvent.type(input, 'Task #work');
+    await waitFor(() => expect(screen.getByText('#Work')).toBeInTheDocument());
 
     // The chip shows the project's own name, as the server will resolve it.
     expect(screen.getByText('#Work')).toBeInTheDocument();
   });
 
   it('shows no project chip for a #tag that names no project', async () => {
-    useProjectStore.setState({ projects: new Map() });
-    render(<QuickAdd {...defaultProps} autoFocus={true} />);
+    renderPage(<QuickAdd {...defaultProps} autoFocus={true} />);
 
     await userEvent.type(screen.getByPlaceholderText(/add task/i), 'Fix issue #42');
     expect(screen.queryByText('#42')).not.toBeInTheDocument();

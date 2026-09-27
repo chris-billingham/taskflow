@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Plus, Calendar, Flag, Tag } from 'lucide-react';
-import { useProjectStore } from '@/stores/projectStore';
+import { useProjects } from '@/queries/projects';
 
 interface QuickAddProps {
   projectId?: string;
@@ -90,10 +90,8 @@ export function QuickAdd({
     }
   }, [isExpanded]);
 
-  const projects = useProjectStore((s) => s.projects);
-  const preview = text
-    ? parsePreview(text, Array.from(projects.values(), (p) => p.name))
-    : null;
+  const { active: projects } = useProjects();
+  const preview = text ? parsePreview(text, projects.map((p) => p.name)) : null;
   const hasPreview = preview && (preview.priority || preview.dueDate || preview.project || preview.labels);
 
   const handleSubmit = async () => {

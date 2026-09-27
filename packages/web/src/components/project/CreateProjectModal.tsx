@@ -5,7 +5,7 @@ import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { X, LayoutTemplate } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useProjectStore, selectActiveProjects } from '@/stores/projectStore';
+import { useProjects, useProjectActions } from '@/queries/projects';
 import { TemplateGallery } from '@/components/template/TemplateGallery';
 
 const PRESET_COLORS = [
@@ -28,8 +28,8 @@ export function CreateProjectModal({
   parentId,
   workspaceId,
 }: CreateProjectModalProps) {
-  const createProject = useProjectStore((s) => s.createProject);
-  const projects = useProjectStore(selectActiveProjects);
+  const { createProject } = useProjectActions();
+  const { active: projects } = useProjects();
   const [name, setName] = useState('');
   const [color, setColor] = useState('#3B82F6');
   const [selectedParentId, setSelectedParentId] = useState(parentId ?? '');

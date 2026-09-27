@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 import type { SearchResults } from '@taskflow/contract';
 
@@ -21,37 +22,26 @@ function loadRecentSearches(): string[] {
 
 export function useSearch() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResults | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [debounced, setDebounced] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>(loadRecentSearches);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    clearTimeout(debounceRef.current);
-
-    if (!query.trim() || query.trim().length < 2) {
-      setResults(null);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const { data } = await api.get('/search', { params: { q: query.trim() } });
-        setResults(data.data);
-        setError(null);
-      } catch {
-        setError('Search failed');
-        setResults(null);
-      } finally {
-        setLoading(false);
-      }
-    }, DEBOUNCE_MS);
-
-    return () => clearTimeout(debounceRef.current);
+    const timer = setTimeout(() => setDebounced(query.trim()), DEBOUNCE_MS);
+    return () => clearTimeout(timer);
   }, [query]);
+
+  const term = query.trim().length >= 2 ? debounced : '';
+  const search = useQuery({
+    queryKey: ['search', term],
+    queryFn: async () => (await api.get('/search', { params: { q: term } })).data.data as SearchResults,
+    enabled: term.length >= 2,
+    staleTime: 10_000,
+    placeholderData: (previous) => previous,
+  });
+  const results = term.length >= 2 ? (search.data ?? null) : null;
+  // Typing ahead of the debounce counts as loading, so "no results" doesn't flash.
+  const loading = query.trim().length >= 2 && (query.trim() !== debounced || search.isFetching);
+  const error = search.error ? 'Search failed' : null;
 
   const saveRecentSearch = useCallback((term: string) => {
     const trimmed = term.trim();

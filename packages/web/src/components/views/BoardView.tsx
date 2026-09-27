@@ -21,7 +21,7 @@ import { BoardColumn } from '@/components/board/BoardColumn';
 import { BoardCardOverlay } from '@/components/board/BoardCard';
 import { BoardAddColumn } from '@/components/board/BoardAddColumn';
 import type { Task } from '@/types/task';
-import type { ProjectSection } from '@/stores/projectStore';
+import type { ProjectSection } from '@/types/project';
 import { useTaskActions } from '@/queries/taskActions';
 
 interface BoardViewProps {

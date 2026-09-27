@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createTestQueryClient } from '../helpers/renderPage';
 import userEvent from '@testing-library/user-event';
 
 const getMock = vi.hoisted(() => vi.fn());
@@ -13,6 +16,10 @@ vi.mock('@/hooks/useFileUpload', () => ({
 }));
 
 import { CommentEditor } from '@/components/comment/CommentEditor';
+
+// The member list comes from a query, so render inside a fresh cache.
+const render = (ui: ReactElement) =>
+  rtlRender(<QueryClientProvider client={createTestQueryClient()}>{ui}</QueryClientProvider>);
 
 const MEMBERS = [
   { id: 'u-ada', name: 'Ada Lovelace', email: 'ada@example.com' },

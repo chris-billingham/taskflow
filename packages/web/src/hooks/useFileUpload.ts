@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 import { ALLOWED_MIME_TYPES, type Attachment as ContractAttachment } from '@taskflow/contract';
 
@@ -18,53 +19,26 @@ export interface UploadLimits {
   allowedMimeTypes: Set<string>;
 }
 
-let cachedLimits: UploadLimits | null = null;
-let inFlight: Promise<UploadLimits> | null = null;
-
-async function fetchLimits(): Promise<UploadLimits> {
-  if (cachedLimits) return cachedLimits;
-  inFlight ??= api
-    .get('/attachments/limits')
-    .then(({ data }) => {
-      cachedLimits = {
-        maxFileSizeMb: data.data.maxFileSizeMb,
-        allowedMimeTypes: new Set<string>(data.data.allowedMimeTypes),
-      };
-      return cachedLimits;
-    })
-    .catch(() => {
-      // Server unreachable — fall back to the shipped defaults rather than
-      // blocking uploads entirely; the API re-validates regardless.
-      cachedLimits = {
-        maxFileSizeMb: DEFAULT_MAX_FILE_SIZE_MB,
-        allowedMimeTypes: ALLOWED_TYPES,
-      };
-      return cachedLimits;
-    })
-    .finally(() => {
-      inFlight = null;
-    });
-  return inFlight;
-}
-
 /** Upload limits as configured on the server, with the defaults until loaded. */
 export function useUploadLimits(): UploadLimits {
-  const [limits, setLimits] = useState<UploadLimits>({
-    maxFileSizeMb: cachedLimits?.maxFileSizeMb ?? DEFAULT_MAX_FILE_SIZE_MB,
-    allowedMimeTypes: cachedLimits?.allowedMimeTypes ?? ALLOWED_TYPES,
+  const query = useQuery({
+    queryKey: ['attachments', 'limits'],
+    queryFn: async (): Promise<UploadLimits> => {
+      try {
+        const { data } = await api.get('/attachments/limits');
+        return {
+          maxFileSizeMb: data.data.maxFileSizeMb,
+          allowedMimeTypes: new Set<string>(data.data.allowedMimeTypes),
+        };
+      } catch {
+        // Server unreachable: keep the shipped defaults rather than blocking
+        // uploads; the API re-validates regardless.
+        return { maxFileSizeMb: DEFAULT_MAX_FILE_SIZE_MB, allowedMimeTypes: ALLOWED_TYPES };
+      }
+    },
+    staleTime: Infinity,
   });
-
-  useEffect(() => {
-    let active = true;
-    void fetchLimits().then((l) => {
-      if (active) setLimits(l);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  return limits;
+  return query.data ?? { maxFileSizeMb: DEFAULT_MAX_FILE_SIZE_MB, allowedMimeTypes: ALLOWED_TYPES };
 }
 
 export function isImage(mimeType: string) {
@@ -82,9 +56,9 @@ export function useFileUpload() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const cancelRef = useRef<AbortController | null>(null);
+  const limits = useUploadLimits();
 
   const upload = async (file: File, endpoint: string): Promise<Attachment> => {
-    const limits = await fetchLimits();
 
     if (!limits.allowedMimeTypes.has(file.type)) {
       throw new Error(`File type "${file.type}" is not supported`);

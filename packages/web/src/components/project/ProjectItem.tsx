@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRight, MoreHorizontal } from 'lucide-react';
-import type { ProjectTreeNode } from '@/stores/projectStore';
+import type { ProjectTreeNode } from '@/types/project';
 
 interface ProjectItemProps {
   project: ProjectTreeNode;

@@ -19,7 +19,7 @@ import { Plus } from 'lucide-react';
 import { SectionHeader } from './SectionHeader';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import type { ProjectSection } from '@/stores/projectStore';
+import type { ProjectSection } from '@/types/project';
 import type { ReactNode } from 'react';
 
 interface SectionListProps {

@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import type { Template, TemplateData } from '@taskflow/contract';
-import type { Project } from '@/stores/projectStore';
-import { useProjectStore } from '@/stores/projectStore';
+import type { Project } from '@/types/project';
+import { projectKeys } from './projects';
 import { errorMessage } from './tasks';
 import { reportMutationError } from '@/utils/reportError';
 
@@ -69,7 +69,7 @@ export function useTemplateActions() {
       /** Create a project from a template; returns the new project. */
       applyTemplate: async (id: string, input: { name: string; workspaceId?: string }) => {
         const project = (await api.post(`/templates/${id}/apply`, input)).data.data as Project;
-        useProjectStore.getState().setProject(project);
+        void qc.invalidateQueries({ queryKey: projectKeys.all });
         return project;
       },
     };

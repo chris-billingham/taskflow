@@ -1,5 +1,5 @@
 import type { Task } from '@/types/task';
-import type { Project, ProjectSection } from '@/stores/projectStore';
+import type { Project, ProjectSection } from '@/types/project';
 
 // Factories for API-shaped data. Each call gets a unique id, and every field
 // has a realistic default so a test only states what it cares about.

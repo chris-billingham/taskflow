@@ -5,7 +5,8 @@ import { mockApi } from '../mocks/api';
 import VerifyEmail from '@/pages/auth/VerifyEmail';
 import { JoinWorkspace } from '@/components/workspace/JoinWorkspace';
 import { useAuthStore } from '@/stores/authStore';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createTestQueryClient } from '../helpers/renderPage';
 
 function openAt(url: string) {
   window.history.replaceState(null, '', url);
@@ -48,12 +49,14 @@ describe('JoinWorkspace', () => {
     useAuthStore.setState({ isAuthenticated: false, isLoading: false });
 
     render(
+      <QueryClientProvider client={createTestQueryClient()}>
       <MemoryRouter initialEntries={['/join']}>
         <Routes>
           <Route path="/join" element={<JoinWorkspace />} />
           <Route path="/login" element={<LoginProbe />} />
         </Routes>
       </MemoryRouter>,
+      </QueryClientProvider>,
     );
 
     const probe = await screen.findByText(/login page/);
@@ -64,17 +67,20 @@ describe('JoinWorkspace', () => {
 
   it('accepts the held invite after sign-in and forgets it', async () => {
     sessionStorage.setItem('taskflow.pendingInvite', 'invite-123');
-    const acceptInvite = vi.fn().mockResolvedValue(undefined);
-    useWorkspaceStore.setState({ acceptInvite });
+    mockApi.post.mockResolvedValue({ data: { success: true, data: { workspace: { id: 'ws-1' } } } });
     useAuthStore.setState({ isAuthenticated: true, isLoading: false });
 
     render(
+      <QueryClientProvider client={createTestQueryClient()}>
       <MemoryRouter initialEntries={['/join']}>
         <JoinWorkspace />
       </MemoryRouter>,
+      </QueryClientProvider>,
     );
 
-    await waitFor(() => expect(acceptInvite).toHaveBeenCalledWith('invite-123'));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/workspaces/join', { token: 'invite-123' }),
+    );
     expect(await screen.findByText("You're in!")).toBeInTheDocument();
     expect(sessionStorage.getItem('taskflow.pendingInvite')).toBeNull();
   });

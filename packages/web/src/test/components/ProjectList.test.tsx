@@ -28,15 +28,13 @@ vi.mock('@dnd-kit/utilities', () => ({
   CSS: { Transform: { toString: vi.fn(() => '') } },
 }));
 
-vi.mock('@/stores/projectStore', () => ({
-  useProjectStore: vi.fn((selector: (state: Record<string, unknown>) => unknown) => {
-    const state = {
-      reorderProjects: vi.fn(),
-      archiveProject: vi.fn(),
-      duplicateProject: vi.fn(),
-      toggleFavorite: vi.fn(),
-    };
-    return selector ? selector(state) : state;
+vi.mock('@/queries/projects', () => ({
+  useProjectActions: () => ({
+    reorderProjects: vi.fn(),
+    archiveProject: vi.fn(),
+    unarchiveProject: vi.fn(),
+    duplicateProject: vi.fn(),
+    updateProject: vi.fn(),
   }),
 }));
 
@@ -56,7 +54,7 @@ vi.mock('@/components/project/ProjectItem', () => ({
 
 import React from 'react';
 import { ProjectList } from '@/components/project/ProjectList';
-import type { ProjectTreeNode } from '@/stores/projectStore';
+import type { ProjectTreeNode } from '@/types/project';
 
 function buildProjectNode(overrides: Partial<ProjectTreeNode> = {}): ProjectTreeNode {
   return {

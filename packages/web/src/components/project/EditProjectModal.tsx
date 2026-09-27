@@ -5,7 +5,7 @@ import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import type { Project } from '@/stores/projectStore';
+import type { Project } from '@/types/project';
 
 const PRESET_COLORS = [
   '#DB4C3F', '#FF9933', '#FAD000', '#7ECC49',

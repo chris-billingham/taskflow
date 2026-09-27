@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useWorkspaceActions } from '@/queries/workspaces';
 import { useAuthStore } from '@/stores/authStore';
 import { useLinkToken } from '@/hooks/useLinkToken';
 import { readPendingInvite, setPendingInvite } from '@/utils/pendingInvite';
@@ -17,7 +17,7 @@ export function JoinWorkspace() {
   const token = linkToken ?? heldToken;
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
-  const acceptInvite = useWorkspaceStore((s) => s.acceptInvite);
+  const { acceptInvite } = useWorkspaceActions();
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');

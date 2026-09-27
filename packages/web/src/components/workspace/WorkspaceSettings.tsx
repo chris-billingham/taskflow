@@ -4,9 +4,11 @@ import { Settings, Users, FolderKanban, Trash2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import {
-  useWorkspaceStore,
-  selectCurrentWorkspace,
-} from '@/stores/workspaceStore';
+  useCurrentWorkspace,
+  useWorkspaceActions,
+  useWorkspaceInvites,
+  useWorkspaceMembers,
+} from '@/queries/workspaces';
 import { useAuthStore } from '@/stores/authStore';
 import { MemberList } from './MemberList';
 import { InviteMemberModal } from './InviteMemberModal';
@@ -15,19 +17,18 @@ type SettingsTab = 'general' | 'members' | 'projects' | 'danger';
 
 export function WorkspaceSettings() {
   const navigate = useNavigate();
-  const workspace = useWorkspaceStore(selectCurrentWorkspace);
+  const workspace = useCurrentWorkspace();
   const {
-    members,
-    invites,
-    fetchMembers,
-    fetchInvites,
     updateWorkspace,
     deleteWorkspace,
     updateMemberRole,
     removeMember,
     cancelInvite,
     resendInvite,
-  } = useWorkspaceStore();
+  } = useWorkspaceActions();
+  const isAdminRole = workspace?.role === 'OWNER' || workspace?.role === 'ADMIN';
+  const members = useWorkspaceMembers(workspace?.id);
+  const invites = useWorkspaceInvites(workspace?.id, isAdminRole);
   const user = useAuthStore((s) => s.user);
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -43,10 +44,10 @@ export function WorkspaceSettings() {
     if (workspace) {
       setName(workspace.name);
       setDescription(workspace.description ?? '');
-      fetchMembers(workspace.id);
-      fetchInvites(workspace.id);
     }
-  }, [workspace, fetchMembers, fetchInvites]);
+    // Reset the form when switching workspace, not on every refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace?.id]);
 
   if (!workspace) {
     return (

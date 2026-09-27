@@ -129,10 +129,13 @@ src/
 ├── components/    — feature folders: task/, project/, board/, calendar/, views/, comment/,
 │                    attachment/, filter/, label/, search/, workspace/, notification/,
 │                    template/, settings/, admin/, layout/ (Sidebar), ui/ (primitives)
-├── queries/       — TanStack Query: task queries, the shared task actions, cache helpers
-├── types/         — web-side types (the task shape the app handles)
-├── stores/        — Zustand stores: UI state, and server state not yet moved to queries/
-├── hooks/         — the task panel URL hook, data hooks over the stores, socket, focus-trap, theme
+├── queries/       — TanStack Query: all server data (tasks, projects, labels, filters,
+│                    comments, activity, workspaces, notifications, templates, …) and
+│                    the actions that change it
+├── types/         — web-side types (the task and project shapes the app handles)
+├── stores/        — Zustand, client state only: auth session, socket status, toasts,
+│                    UI, the selected workspace
+├── hooks/         — the task panel URL hook, realtime sync, socket, focus-trap, theme, search
 ├── services/      — api.ts (axios client), socket.ts, notifications.ts (push), attachments.ts, admin.ts
 └── utils/         — date formatting, recurrence, mentions, link tokens
 ```
@@ -166,7 +169,9 @@ resyncEpoch bump (reconnect) → invalidate every query
 
 Task rows, board cards and calendar entries call `useTaskActions()` and `useTaskPanel()` themselves, so pages only pass them tasks.
 
-The other server state (projects, labels, filters, comments, workspaces, notifications, templates) is still in Zustand stores in `src/stores/`, moving to queries during Phase 3. `authStore`, `socketStore`, `toastStore` and `uiStore` are client state and stay in Zustand.
+All other server data is in queries too, one module per area (`projects.ts` with sections, `labels.ts`, `filters.ts`, `comments.ts`, `activity.ts`, `workspaces.ts`, `notifications.ts`, `templates.ts`, `taskExtras.ts` for members, reminders and attachments). Each exports read hooks and an actions hook; list changes go through `optimistic.ts`, which rolls back and shows the error on failure. Socket events patch or invalidate the matching queries. The cache is cleared when the signed-in user changes (`App.tsx`).
+
+Zustand holds client state only: `authStore` (session), `socketStore` (connection status and the resync counter), `toastStore`, `uiStore` and `workspaceStore` (which workspace the switcher shows).
 
 `services/api.ts` is an axios instance with `withCredentials`. It attaches the in-memory access token. On a 401 it refreshes once through a shared promise (and a Web Locks mutex across tabs, because the refresh cookie is single-use), then retries the request.
 
