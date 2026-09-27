@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildTestApp } from './buildTestApp.js';
+import { projectRow } from './fixtures.js';
 import { generateAccessToken } from '../../utils/jwt.js';
 
 vi.mock('../../services/projectService.js', () => ({
@@ -22,21 +23,7 @@ import { NotFoundError, ForbiddenError } from '../../errors/index.js';
 const TEST_USER = { id: 'user-proj-test', email: 'proj@example.com', name: 'Project Tester' };
 const AUTH_TOKEN = generateAccessToken(TEST_USER);
 
-const SAMPLE_PROJECT = {
-  id: 'proj-1',
-  name: 'Work',
-  description: null,
-  color: '#6366f1',
-  icon: null,
-  ownerId: TEST_USER.id,
-  isInbox: false,
-  isArchived: false,
-  isFavorite: false,
-  viewStyle: 'LIST',
-  sortOrder: 1,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
+const SAMPLE_PROJECT = projectRow({ ownerId: TEST_USER.id });
 
 let app: FastifyInstance;
 

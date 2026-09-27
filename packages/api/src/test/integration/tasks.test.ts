@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildTestApp } from './buildTestApp.js';
+import { taskDetailRow, taskListRow, taskRow } from './fixtures.js';
 import { generateAccessToken } from '../../utils/jwt.js';
 
 vi.mock('../../services/taskService.js', () => ({
@@ -31,20 +32,7 @@ import { Prisma } from '@prisma/client';
 const TEST_USER = { id: 'user-test-1', email: 'test@example.com', name: 'Test User' };
 const AUTH_TOKEN = generateAccessToken(TEST_USER);
 
-const SAMPLE_TASK = {
-  id: 'task-1',
-  content: 'Sample task',
-  projectId: 'proj-1',
-  creatorId: TEST_USER.id,
-  isCompleted: false,
-  priority: 4,
-  taskLabels: [],
-  subtasks: [],
-  assignee: null,
-  _count: { subtasks: 0, comments: 0 },
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
+const SAMPLE_TASK = taskRow({ creatorId: TEST_USER.id });
 
 let app: FastifyInstance;
 
@@ -63,7 +51,7 @@ function authHeaders() {
 
 describe('GET /api/v1/tasks', () => {
   it('returns 200 with task list', async () => {
-    vi.mocked(taskService.getTasks).mockResolvedValue({ tasks: [SAMPLE_TASK], nextCursor: null } as never);
+    vi.mocked(taskService.getTasks).mockResolvedValue({ tasks: [taskListRow()], nextCursor: null } as never);
 
     const response = await app.inject({
       method: 'GET',
@@ -139,7 +127,7 @@ describe('POST /api/v1/tasks', () => {
 
 describe('GET /api/v1/tasks/:id', () => {
   it('returns 200 with task', async () => {
-    vi.mocked(taskService.getTaskById).mockResolvedValue(SAMPLE_TASK as never);
+    vi.mocked(taskService.getTaskById).mockResolvedValue(taskDetailRow() as never);
 
     const response = await app.inject({
       method: 'GET',

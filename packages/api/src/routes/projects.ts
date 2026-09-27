@@ -1,141 +1,191 @@
 import type { FastifyInstance } from 'fastify';
-import { authenticate } from '../middleware/authenticate.js';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import {
   createProjectSchema,
   updateProjectSchema,
   projectParamsSchema,
   reorderProjectsSchema,
   duplicateProjectSchema,
+  projectSchema,
+  projectFieldsSchema,
+  memberSummarySchema,
+  messageResponse,
+  ok,
 } from '@taskflow/contract';
+import { authenticate } from '../middleware/authenticate.js';
 import * as projectService from '../services/projectService.js';
-import { ValidationError } from '../errors/index.js';
 
-export async function projectRoutes(app: FastifyInstance) {
+const tags = ['Projects'];
+
+export async function projectRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
   app.addHook('preHandler', authenticate);
 
-  // GET /api/v1/projects - List user's projects
-  app.get('/', async (request, reply) => {
-    const data = await projectService.getUserProjects(request.user.id);
-    return reply.send({ success: true, data });
-  });
+  app.get(
+    '/',
+    {
+      schema: {
+        tags,
+        summary: 'List every project you can see',
+        response: { 200: ok(z.array(projectSchema)) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await projectService.getUserProjects(request.user.id),
+    }),
+  );
 
-  // POST /api/v1/projects - Create project
-  app.post('/', async (request, reply) => {
-    const result = createProjectSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
+  app.post(
+    '/',
+    {
+      schema: {
+        tags,
+        summary: 'Create a project',
+        body: createProjectSchema,
+        response: { 201: ok(projectSchema) },
+      },
+    },
+    async (request, reply) =>
+      reply.status(201).send({
+        success: true,
+        data: await projectService.createProject(request.body, request.user.id),
+      }),
+  );
 
-    const data = await projectService.createProject(result.data, request.user.id);
-    return reply.status(201).send({ success: true, data });
-  });
+  app.get(
+    '/:id',
+    {
+      schema: {
+        tags,
+        summary: 'Get a project',
+        params: projectParamsSchema,
+        response: { 200: ok(projectSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await projectService.getProjectById(request.params.id, request.user.id),
+    }),
+  );
 
-  // GET /api/v1/projects/:id - Get project details
-  app.get('/:id', async (request, reply) => {
-    const params = projectParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
+  app.patch(
+    '/:id',
+    {
+      schema: {
+        tags,
+        summary: 'Update a project',
+        params: projectParamsSchema,
+        body: updateProjectSchema,
+        response: { 200: ok(projectSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await projectService.updateProject(request.params.id, request.body, request.user.id),
+    }),
+  );
 
-    const data = await projectService.getProjectById(params.data.id, request.user.id);
-    return reply.send({ success: true, data });
-  });
+  app.delete(
+    '/:id',
+    {
+      schema: {
+        tags,
+        summary: 'Delete a project and all its tasks',
+        params: projectParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await projectService.deleteProject(request.params.id, request.user.id)),
+    }),
+  );
 
-  // PATCH /api/v1/projects/:id - Update project
-  app.patch('/:id', async (request, reply) => {
-    const params = projectParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
+  app.get(
+    '/:id/members',
+    {
+      schema: {
+        tags,
+        summary: 'People who can be assigned or mentioned in a project',
+        params: projectParamsSchema,
+        response: { 200: ok(z.array(memberSummarySchema)) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await projectService.getProjectMembers(request.params.id, request.user.id),
+    }),
+  );
 
-    const body = updateProjectSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
+  app.post(
+    '/:id/archive',
+    {
+      schema: {
+        tags,
+        summary: 'Archive a project',
+        params: projectParamsSchema,
+        response: { 200: ok(projectFieldsSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await projectService.archiveProject(request.params.id, request.user.id),
+    }),
+  );
 
-    const data = await projectService.updateProject(
-      params.data.id,
-      body.data,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
+  app.post(
+    '/:id/unarchive',
+    {
+      schema: {
+        tags,
+        summary: 'Restore an archived project',
+        params: projectParamsSchema,
+        response: { 200: ok(projectFieldsSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await projectService.unarchiveProject(request.params.id, request.user.id),
+    }),
+  );
 
-  // DELETE /api/v1/projects/:id - Delete project
-  app.delete('/:id', async (request, reply) => {
-    const params = projectParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
+  app.post(
+    '/:id/duplicate',
+    {
+      schema: {
+        tags,
+        summary: 'Duplicate a project with its sections and open tasks',
+        params: projectParamsSchema,
+        body: duplicateProjectSchema.optional(),
+        response: { 201: ok(projectSchema) },
+      },
+    },
+    async (request, reply) =>
+      reply.status(201).send({
+        success: true,
+        data: await projectService.duplicateProject(
+          request.params.id,
+          request.user.id,
+          request.body?.name,
+        ),
+      }),
+  );
 
-    const data = await projectService.deleteProject(params.data.id, request.user.id);
-    return reply.send({ success: true, ...data });
-  });
-
-  // GET /api/v1/projects/:id/members - List project members
-  app.get('/:id/members', async (request, reply) => {
-    const params = projectParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const data = await projectService.getProjectMembers(params.data.id, request.user.id);
-    return reply.send({ success: true, data });
-  });
-
-  // POST /api/v1/projects/:id/archive - Archive project
-  app.post('/:id/archive', async (request, reply) => {
-    const params = projectParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const data = await projectService.archiveProject(params.data.id, request.user.id);
-    return reply.send({ success: true, data });
-  });
-
-  // POST /api/v1/projects/:id/unarchive - Unarchive project
-  app.post('/:id/unarchive', async (request, reply) => {
-    const params = projectParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const data = await projectService.unarchiveProject(params.data.id, request.user.id);
-    return reply.send({ success: true, data });
-  });
-
-  // POST /api/v1/projects/:id/duplicate - Duplicate project
-  app.post('/:id/duplicate', async (request, reply) => {
-    const params = projectParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const body = duplicateProjectSchema.safeParse(request.body ?? {});
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await projectService.duplicateProject(
-      params.data.id,
-      request.user.id,
-      body.data.name,
-    );
-    return reply.status(201).send({ success: true, data });
-  });
-
-  // PUT /api/v1/projects/reorder - Reorder projects
-  app.put('/reorder', async (request, reply) => {
-    const result = reorderProjectsSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-
-    const data = await projectService.reorderProjects(
-      result.data.projectIds,
-      request.user.id,
-    );
-    return reply.send({ success: true, ...data });
-  });
+  app.put(
+    '/reorder',
+    {
+      schema: {
+        tags,
+        summary: 'Reorder projects',
+        body: reorderProjectsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await projectService.reorderProjects(request.body.projectIds, request.user.id)),
+    }),
+  );
 }

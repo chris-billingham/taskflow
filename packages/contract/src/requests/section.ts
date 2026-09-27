@@ -6,6 +6,13 @@ export const createSectionSchema = z.object({
   sortOrder: z.number().int().optional(),
 });
 
+/** POST /projects/:projectId/sections: the project comes from the URL. */
+export const createSectionBodySchema = createSectionSchema.omit({ projectId: true });
+
+export const projectSectionsParamsSchema = z.object({
+  projectId: z.string().min(1, 'Project ID is required'),
+});
+
 export const updateSectionSchema = z.object({
   name: z.string().min(1, 'Section name is required').max(200).optional(),
   sortOrder: z.number().int().optional(),

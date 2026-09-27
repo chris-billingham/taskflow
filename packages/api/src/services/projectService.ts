@@ -426,7 +426,7 @@ export async function duplicateProject(
     return created;
   }, { timeout: 30_000 });
 
-  return prisma.project.findUnique({
+  return prisma.project.findUniqueOrThrow({
     where: { id: duplicate.id },
     include: {
       sections: { orderBy: { sortOrder: 'asc' } },
