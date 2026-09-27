@@ -15,6 +15,7 @@ import {
   Building2,
   Inbox,
   Trash2,
+  Archive,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProjects, useProjectActions } from '@/queries/projects';
@@ -39,7 +40,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { projects, favorites, tree, loading } = useProjects();
+  const { projects, favorites, archived, tree, loading } = useProjects();
   const { updateProject, deleteProject, archiveProject } = useProjectActions();
 
   const { favorites: favoriteLabels } = useLabels();
@@ -386,6 +387,24 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
             )}
           </div>
+        )}
+
+        {archived.length > 0 && (
+          <button
+            className={`mt-4 w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
+              location.pathname === '/archived'
+                ? 'bg-primary-500/10 text-primary-500 font-medium'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            onClick={() => {
+              navigate('/archived');
+              onClose();
+            }}
+          >
+            <Archive className="w-4 h-4" aria-hidden="true" />
+            Archived projects
+            <span className="ml-auto text-xs tabular-nums">{archived.length}</span>
+          </button>
         )}
       </div>
 

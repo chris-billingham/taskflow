@@ -95,6 +95,25 @@ export function ProjectHeader({
         )}
       </div>
 
+      {project.description && (
+        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line mb-3 max-w-prose">
+          {project.description}
+        </p>
+      )}
+
+      {project.isArchived && (
+        <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-300">
+          <span>This project is archived and hidden from the sidebar.</span>
+          <button
+            type="button"
+            className="shrink-0 font-medium text-primary-600 dark:text-primary-400 hover:underline"
+            onClick={onArchive}
+          >
+            Unarchive
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           {/* View style switcher */}

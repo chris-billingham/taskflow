@@ -1,5 +1,5 @@
 import { prisma } from '../config/database.js';
-import { ForbiddenError, NotFoundError } from '../errors/index.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import {
   requireProjectAccess,
   requireWorkspaceRole,
@@ -71,10 +71,36 @@ export async function getProjectById(id: string, userId: string) {
   return project;
 }
 
+/**
+ * A parent must be a project you can edit, in the same workspace (or both
+ * personal), never the Inbox, and never the project itself or one of its own
+ * descendants (that would make a loop the sidebar can't draw).
+ */
+async function assertValidParent(
+  parentId: string,
+  userId: string,
+  child: { id?: string; workspaceId: string | null },
+) {
+  const parent = await requireProjectAccess(parentId, userId, 'EDIT');
+  if (parent.isInbox) throw new ValidationError('Projects cannot be nested under the Inbox');
+  if ((parent.workspaceId ?? null) !== (child.workspaceId ?? null)) {
+    throw new ValidationError('A project can only be nested under a project in the same workspace');
+  }
+  if (!child.id) return;
+  let cursor: string | null = parent.id;
+  for (let depth = 0; cursor && depth < 100; depth++) {
+    if (cursor === child.id) throw new ValidationError('A project cannot be nested under itself or its sub-projects');
+    const next: { parentId: string | null } | null = await prisma.project.findUnique({
+      where: { id: cursor },
+      select: { parentId: true },
+    });
+    cursor = next?.parentId ?? null;
+  }
+}
+
 export async function createProject(data: CreateProjectInput, userId: string) {
-  // If parentId provided, verify access to parent
   if (data.parentId) {
-    await requireProjectAccess(data.parentId, userId, 'EDIT');
+    await assertValidParent(data.parentId, userId, { workspaceId: data.workspaceId ?? null });
   }
 
   // If a workspace is targeted, the caller must be at least a MEMBER of it —
@@ -97,6 +123,7 @@ export async function createProject(data: CreateProjectInput, userId: string) {
       ownerId: userId,
       workspaceId: data.workspaceId,
       parentId: data.parentId,
+      description: data.description,
       viewStyle: data.viewStyle ?? 'LIST',
       sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
     },
@@ -130,6 +157,10 @@ export async function updateProject(
   userId: string,
 ) {
   const oldProject = await requireProjectAccess(id, userId, 'ADMIN');
+  if (data.parentId !== undefined && data.parentId !== oldProject.parentId) {
+    if (oldProject.isInbox) throw new ValidationError('The Inbox cannot be nested');
+    if (data.parentId) await assertValidParent(data.parentId, userId, oldProject);
+  }
 
   const project = await prisma.project.update({
     where: { id },

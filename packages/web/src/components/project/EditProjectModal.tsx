@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
+import { useProjects } from '@/queries/projects';
 import type { Project } from '@/types/project';
 
 const PRESET_COLORS = [
@@ -32,6 +33,9 @@ export function EditProjectModal({
   const [name, setName] = useState(project.name);
   const [color, setColor] = useState(project.color);
   const [viewStyle, setViewStyle] = useState(project.viewStyle);
+  const [description, setDescription] = useState(project.description ?? '');
+  const [parentId, setParentId] = useState(project.parentId ?? '');
+  const { projects } = useProjects();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
@@ -40,7 +44,32 @@ export function EditProjectModal({
     setName(project.name);
     setColor(project.color);
     setViewStyle(project.viewStyle);
+    setDescription(project.description ?? '');
+    setParentId(project.parentId ?? '');
   }, [project]);
+
+  // A project can sit under another active project in the same space, but not
+  // under itself or one of its own sub-projects.
+  const parentOptions = useMemo(() => {
+    const descendants = new Set([project.id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const p of projects) {
+        if (p.parentId && descendants.has(p.parentId) && !descendants.has(p.id)) {
+          descendants.add(p.id);
+          grew = true;
+        }
+      }
+    }
+    return projects.filter(
+      (p) =>
+        !p.isInbox &&
+        (!p.isArchived || p.id === project.parentId) &&
+        !descendants.has(p.id) &&
+        (p.workspaceId ?? null) === (project.workspaceId ?? null),
+    );
+  }, [projects, project]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +85,8 @@ export function EditProjectModal({
         name: name.trim(),
         color,
         viewStyle,
+        description: description.trim() || null,
+        ...(parentId !== (project.parentId ?? '') && { parentId: parentId || null }),
       });
       onClose();
     } catch (err: any) {
@@ -96,6 +127,48 @@ export function EditProjectModal({
           error={error}
           autoFocus
         />
+
+        <div>
+          <label
+            htmlFor="project-description"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
+            Description
+          </label>
+          <textarea
+            id="project-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={2000}
+            rows={3}
+            placeholder="What this project is for"
+            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500"
+          />
+        </div>
+
+        {!project.isInbox && (
+          <div>
+            <label
+              htmlFor="project-parent"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              Parent project
+            </label>
+            <select
+              id="project-parent"
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              <option value="">None (top level)</option>
+              {parentOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Color picker */}
         <div>

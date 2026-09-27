@@ -3,12 +3,19 @@
 ## Creating a Project
 
 1. Click the **+** next to **My Projects** in the sidebar. For a shared project, select a workspace in the switcher first and use the **+** next to **Team Projects**.
-2. Enter a name and choose a color. Optionally pick a parent project (one level of nesting) and a default view.
+2. Enter a name and choose a color. Optionally pick a parent project and a default view.
 3. Click **Add**.
 
 To start from a template instead, click **Start from template** in the same dialog. Templates create a whole project with its sections and tasks. Manage them under **Settings → Templates**.
 
-Projects have a name and a color. There are no project icons.
+Projects have a name, a color and an optional description. There are no project icons.
+
+## Editing a Project
+
+Open **Edit** from the project's **⋯** menu in the sidebar to change its name, description, color, default view or parent project.
+
+- The description shows under the project name at the top of the project.
+- **Parent project** moves the project, and its own sub-projects, under another project. Choose **None (top level)** to move it back out. A parent must be in the same space (personal or the same workspace). A project can't go under itself, one of its own sub-projects, or the Inbox.
 
 ## Views
 
@@ -47,7 +54,7 @@ Use **Duplicate project** in the project's **⋯** menu, or **Duplicate** in the
 
 Use **Archive** in the project's **⋯** menu (in the project header, the sidebar, or the Edit project dialog).
 
-Archived projects disappear from the sidebar and from project search results. There's no archived-projects list yet. To get back to one, open its URL, or open one of its tasks from search. Then choose **Unarchive** from the project's **⋯** menu.
+Archived projects disappear from the sidebar and from project search results. When you have any, **Archived projects** appears at the bottom of the sidebar. It lists them, with **Unarchive** and **Delete** buttons for each. An archived project's own page also has an **Unarchive** button at the top.
 
 Tasks in an archived project still appear in Today, Upcoming, task search and filters.
 

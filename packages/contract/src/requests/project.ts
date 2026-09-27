@@ -5,11 +5,15 @@ export const createProjectSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional(),
   workspaceId: z.string().optional(),
   parentId: z.string().optional(),
+  description: z.string().max(2000).optional(),
   viewStyle: z.enum(['LIST', 'BOARD', 'CALENDAR']).optional(),
 });
 
 export const updateProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required').max(200).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  /** Nest under another project in the same workspace, or null for top level. */
+  parentId: z.string().nullable().optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional(),
   viewStyle: z.enum(['LIST', 'BOARD', 'CALENDAR']).optional(),
   isFavorite: z.boolean().optional(),

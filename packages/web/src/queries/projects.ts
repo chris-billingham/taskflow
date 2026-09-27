@@ -15,6 +15,8 @@ export const projectKeys = {
 
 type ProjectFieldsInput = Partial<{
   name: string;
+  description: string | null;
+  parentId: string | null;
   color: string;
   viewStyle: string;
   isFavorite: boolean;
