@@ -32,9 +32,14 @@ export interface QuickAddDue {
   dueTime?: string; // HH:mm
 }
 
-/** Where a quick-add box sits: an exact due date/time and/or a section. */
+/**
+ * Where a quick-add box sits. The defaults apply only when the text names no
+ * date or time; dueDate/dueTime (QuickAddDue) override the text.
+ */
 export interface QuickAddContext extends QuickAddDue {
   sectionId?: string;
+  defaultDueDate?: string;
+  defaultDueTime?: string;
 }
 
 export interface CreateTaskInput {

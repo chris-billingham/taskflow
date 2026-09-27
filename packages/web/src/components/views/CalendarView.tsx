@@ -98,12 +98,13 @@ export function CalendarView({
   const handleQuickAddSubmit = useCallback(
     async (text: string) => {
       const { dateStr, time } = quickAddState;
-      // Send the cell's date (and a clicked week-view slot's time) as exact
-      // values. Writing them into the text for the parser put past and same-day
-      // dates a year out ("Sep 27" < now) and left a bare "14:00" in the name.
+      // Send the cell's date (and a clicked week-view slot's time) as values,
+      // used unless the text names its own. Writing them into the text for the
+      // parser put past and same-day dates a year out ("Sep 27" < now) and
+      // left a bare "14:00" in the name.
       await quickAddTask(text, defaultProjectId, {
-        dueDate: dateStr,
-        dueTime: time !== '09:00' ? time : undefined,
+        defaultDueDate: dateStr,
+        defaultDueTime: time !== '09:00' ? time : undefined,
       });
       setQuickAddState({ isOpen: false, dateStr: '', time: '' });
     },

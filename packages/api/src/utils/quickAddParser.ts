@@ -1,5 +1,6 @@
+import { parseQuickAddText, textWithoutTokens } from '@taskflow/contract';
 import { prisma } from '../config/database.js';
-import { findProjectByName } from '../services/access.js';
+import { findProjectByName, projectAccessWhere } from '../services/access.js';
 import { getUserTimezone, nowAsTzWallClock } from './dates.js';
 
 export interface ParsedTask {
@@ -14,178 +15,61 @@ export interface ParsedTask {
   isRecurring?: boolean;
 }
 
+/**
+ * Turn Quick Add text into a task. The shorthand is recognised by the shared
+ * parser (@taskflow/contract, also used by the web app to highlight it); this
+ * resolves #project and @label against what the user can use. A #word or
+ * @word that doesn't name one of theirs stays in the task's text rather than
+ * vanishing ("Fix issue #42", "email @support").
+ */
 export async function parseQuickAdd(text: string, userId: string): Promise<ParsedTask> {
-  let remaining = text;
-  const result: ParsedTask = { content: '' };
+  // Calendar words ("today", "Friday") mean the USER's calendar day.
+  const today = nowAsTzWallClock(await getUserTimezone(userId));
+  // Known names let multi-word ones ("#Home Renovation") parse as one token.
+  const [projects, userLabels] = await Promise.all([
+    prisma.project.findMany({ where: { AND: [projectAccessWhere(userId)], isArchived: false }, select: { name: true } }),
+    prisma.label.findMany({ where: { userId }, select: { id: true, name: true } }),
+  ]);
+  const parsed = parseQuickAddText(text, today, {
+    projects: projects.map((p) => p.name),
+    labels: userLabels.map((l) => l.name),
+  });
+  const result: ParsedTask = {
+    content: '',
+    priority: parsed.priority,
+    duration: parsed.duration,
+    dueTime: parsed.dueTime,
+    dueDate: parsed.dueDate,
+    recurrenceRule: parsed.recurrenceRule,
+    isRecurring: parsed.recurrenceRule ? true : undefined,
+  };
 
-  // Parse priority: p1, p2, p3, p4 or !, !!, !!!
-  const priorityMatch = remaining.match(/\b[pP]([1-4])\b/);
-  if (priorityMatch) {
-    result.priority = parseInt(priorityMatch[1], 10);
-    remaining = remaining.replace(priorityMatch[0], '').trim();
-  } else {
-    // Sigils must stand alone ("call mum !!"), otherwise ordinary
-    // punctuation ("Ship it!") silently mutated both priority and content.
-    const exclamationMatch = remaining.match(/(?:^|\s)(!{1,3})(?=\s|$)/);
-    if (exclamationMatch) {
-      const count = exclamationMatch[1].length;
-      result.priority = Math.max(1, 4 - count); // !!! = p1, !! = p2, ! = p3
-      remaining = remaining.replace(exclamationMatch[0], ' ').trim();
-    }
-  }
+  const consumed = parsed.tokens.filter((t) => t.type !== 'project' && t.type !== 'label');
 
-  // Parse project: #ProjectName. An exact name match (so "#Work" no longer
-  // lands in "Homework") among projects the user can add tasks to, workspace
-  // projects included. An unmatched "#tag" stays in the task text.
-  const projectMatch = remaining.match(/(?:^|\s)#(\S+)/);
-  if (projectMatch) {
-    const project = await findProjectByName(userId, projectMatch[1], { minLevel: 'EDIT' });
+  const projectToken = parsed.tokens.find((t) => t.type === 'project');
+  if (projectToken?.name) {
+    // An exact name among projects the user can add to, team projects included.
+    const project = await findProjectByName(userId, projectToken.name, { minLevel: 'EDIT' });
     if (project) {
       result.projectId = project.id;
-      remaining = remaining.replace(projectMatch[0], ' ').trim();
+      consumed.push(projectToken);
     }
   }
 
-  // Parse labels: @labelname (can have multiple)
-  const labelMatches = remaining.matchAll(/@(\S+)/g);
-  const labelNames: string[] = [];
-  for (const match of labelMatches) {
-    labelNames.push(match[1]);
-    remaining = remaining.replace(match[0], '').trim();
-  }
-  if (labelNames.length > 0) {
-    // `mode: 'insensitive'` has no effect on `in` filters (it compiles to a
-    // case-sensitive SQL IN), so match in code instead.
-    const userLabels = await prisma.label.findMany({
-      where: { userId },
-      select: { id: true, name: true },
-    });
-    const wanted = new Set(labelNames.map((n) => n.toLowerCase()));
-    const matched = userLabels.filter((l) => wanted.has(l.name.toLowerCase()));
-    if (matched.length > 0) {
-      result.labelIds = matched.map((l) => l.id);
+  const labelTokens = parsed.tokens.filter((t) => t.type === 'label');
+  if (labelTokens.length > 0) {
+    // Matched in code: `mode: 'insensitive'` has no effect on `in` filters.
+    const byName = new Map(userLabels.map((l) => [l.name.toLowerCase(), l.id]));
+    const labelIds = new Set<string>();
+    for (const token of labelTokens) {
+      const id = byName.get(token.name!.toLowerCase());
+      if (!id) continue;
+      labelIds.add(id);
+      consumed.push(token);
     }
+    if (labelIds.size > 0) result.labelIds = [...labelIds];
   }
 
-  // Parse duration: "for 2h", "for 30m", "for 1h30m"
-  const durationMatch = remaining.match(/\bfor\s+(?:(\d+)h)?(?:(\d+)m)?\b/i);
-  if (durationMatch && (durationMatch[1] || durationMatch[2])) {
-    const hours = parseInt(durationMatch[1] || '0', 10);
-    const minutes = parseInt(durationMatch[2] || '0', 10);
-    result.duration = hours * 60 + minutes;
-    remaining = remaining.replace(durationMatch[0], '').trim();
-  }
-
-  // Parse recurring: "every day", "every Monday", "every 2 weeks", etc.
-  const recurringMatch = remaining.match(
-    /\bevery\s+(?:(\d+)\s+)?(day|week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\b/i,
-  );
-  if (recurringMatch) {
-    result.isRecurring = true;
-    const interval = parseInt(recurringMatch[1] || '1', 10);
-    const unit = recurringMatch[2].toLowerCase();
-
-    const dayMap: Record<string, string> = {
-      monday: 'MO', tuesday: 'TU', wednesday: 'WE', thursday: 'TH',
-      friday: 'FR', saturday: 'SA', sunday: 'SU',
-    };
-
-    if (dayMap[unit]) {
-      result.recurrenceRule = `FREQ=WEEKLY;INTERVAL=1;BYDAY=${dayMap[unit]}`;
-    } else {
-      const freqMap: Record<string, string> = {
-        day: 'DAILY', week: 'WEEKLY', month: 'MONTHLY', year: 'YEARLY',
-      };
-      result.recurrenceRule = `FREQ=${freqMap[unit]};INTERVAL=${interval}`;
-    }
-    remaining = remaining.replace(recurringMatch[0], '').trim();
-  }
-
-  // Parse time: "at 3pm", "at 15:00", "at 3:30pm"
-  const timeMatch = remaining.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i);
-  if (timeMatch) {
-    let hours = parseInt(timeMatch[1], 10);
-    const minutes = parseInt(timeMatch[2] || '0', 10);
-    const ampm = timeMatch[3]?.toLowerCase();
-
-    if (ampm === 'pm' && hours < 12) hours += 12;
-    if (ampm === 'am' && hours === 12) hours = 0;
-
-    result.dueTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    remaining = remaining.replace(timeMatch[0], '').trim();
-  }
-
-  // Parse date: "today", "tomorrow", day names, "Jan 15", "next week", "in 3 days"
-  // All calendar arithmetic runs on the USER's wall clock — the server's
-  // timezone is irrelevant to what "today" means for them.
-  const now = nowAsTzWallClock(await getUserTimezone(userId));
-  const datePatterns: [RegExp, () => Date | null][] = [
-    [/\btoday\b/i, () => now],
-    [/\btomorrow\b/i, () => {
-      const d = new Date(now);
-      d.setDate(d.getDate() + 1);
-      return d;
-    }],
-    [/\bnext\s+week\b/i, () => {
-      const d = new Date(now);
-      // Days until the next Monday, strictly in the future (Sun -> +1, Mon -> +7).
-      d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7));
-      return d;
-    }],
-    [/\bin\s+(\d+)\s+days?\b/i, () => {
-      const m = remaining.match(/\bin\s+(\d+)\s+days?\b/i);
-      if (!m) return null;
-      const d = new Date(now);
-      d.setDate(d.getDate() + parseInt(m[1], 10));
-      return d;
-    }],
-    [/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i, () => {
-      const m = remaining.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
-      if (!m) return null;
-      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const targetDay = days.indexOf(m[1].toLowerCase());
-      const d = new Date(now);
-      const currentDay = d.getDay();
-      let daysToAdd = targetDay - currentDay;
-      if (daysToAdd <= 0) daysToAdd += 7;
-      d.setDate(d.getDate() + daysToAdd);
-      return d;
-    }],
-    [/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})\b/i, () => {
-      const m = remaining.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})\b/i);
-      if (!m) return null;
-      const months: Record<string, number> = {
-        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-        jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-      };
-      const month = months[m[1].toLowerCase().slice(0, 3)];
-      const day = parseInt(m[2], 10);
-      const d = new Date(now.getFullYear(), month, day);
-      // Compare with the start of today, not this instant: "Sep 27" typed on
-      // Sep 27 means today, not a year from now.
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      if (d < startOfToday) d.setFullYear(d.getFullYear() + 1);
-      return d;
-    }],
-  ];
-
-  for (const [pattern, getDate] of datePatterns) {
-    const match = remaining.match(pattern);
-    if (match) {
-      const date = getDate();
-      if (date) {
-        // Serialize using LOCAL calendar components. toISOString() converts to
-        // UTC first, so any evening east of UTC turned "today" into yesterday
-        // (the task was born overdue).
-        result.dueDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        remaining = remaining.replace(match[0], '').trim();
-        break;
-      }
-    }
-  }
-
-  // Clean up remaining text as content
-  result.content = remaining.replace(/\s+/g, ' ').trim();
-
+  result.content = textWithoutTokens(text, consumed);
   return result;
 }

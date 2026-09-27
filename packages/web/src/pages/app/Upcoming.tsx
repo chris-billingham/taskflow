@@ -80,9 +80,9 @@ export default function Upcoming() {
 
   const handleQuickAddForDate = useCallback(
     (date: string) => async (text: string) => {
-      // The section's date, sent exactly: as "MMM d" text, today's section
-      // parsed as a year from now.
-      await quickAddTask(text, undefined, { dueDate: date });
+      // The section's date, sent as a value (as "MMM d" text, today's section
+      // parsed as a year from now), used unless the text names another date.
+      await quickAddTask(text, undefined, { defaultDueDate: date });
     },
     [quickAddTask],
   );

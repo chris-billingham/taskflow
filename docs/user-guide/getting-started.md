@@ -57,21 +57,23 @@ Write report in 3 days for 2h #Work
 
 Quick Add understands:
 
-- **Dates**: `today`, `tomorrow`, `next week` (next Monday), `in 3 days`, a weekday name such as `monday` (the next one), or a month and day such as `May 10`
+- **Dates**: `today`, `tomorrow`, `next week` (next Monday), `in 3 days`, a weekday such as `friday` (the coming one), `next friday` (Friday of next week), a month and day such as `May 10`, or an ISO date such as `2027-05-10`
 - **Time**: `at 3pm`, `at 15:00`, `at 3:30pm`
 - **Priority**: `p1` (highest) to `p4` (none), or `!!!`, `!!`, `!`
-- **Project**: `#ProjectName`: the exact name (any case) of a project you can add tasks to, team projects included. Names with spaces can't be typed this way; pick the project in the task instead.
-- **Labels**: `@labelname` (must be one of your existing labels)
+- **Project**: `#Project name`: the exact name (any case) of a project you can add tasks to, team projects included. Names with spaces work.
+- **Labels**: `@label name`, one of your labels
 - **Duration**: `for 30m`, `for 2h`, `for 1h30m`
-- **Repeat**: `every day`, `every 2 weeks`, `every month`, `every year`, `every Monday`
+- **Repeat**: `every day`, `every 2 weeks`, `every month`, `every year`, `every Monday`, `every weekday`
+
+As you type, the parts Quick Add has recognised are highlighted, and a row underneath shows what the task will get. Typing `#` or `@` lists matching projects or labels. Use ↑/↓ and Enter (or click) to pick one. For a label that doesn't exist yet, the list offers **Create label**.
+
+A `#word` or `@word` that isn't one of your projects or labels stays in the task's name and isn't highlighted, so `Fix issue #42` and `email @support` are left alone. An email address is never read as a label.
+
+Quick Add boxes in **Today**, in an **Upcoming** day, and in a calendar cell give the task that day (and a clicked time slot's time) unless you type a different date. The **Add task** box under a section files the task in that section.
 
 Things it doesn't understand yet:
 
-- Numeric dates such as `2025-05-10` or `10/05`. Set these with the date picker instead.
-- Words around a date. In `next Monday` the date is set, but the word "next" stays in the task name. Write just `monday`.
-- An unmatched `@label` word is removed from the name and otherwise ignored. An unmatched `#word` stays in the name, so `Fix issue #42` is left alone.
-
-**+ Add task** under a section in a project adds the text as-is, without parsing.
+- Day-first or month-first numeric dates such as `10/05`. Use `May 10` or `2027-05-10`.
 
 ## Your First Project
 

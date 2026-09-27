@@ -3,11 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../config/database.js', () => ({
   prisma: {
     label: { findMany: vi.fn() },
+    project: { findMany: vi.fn(async () => []) },
     user: { findUnique: vi.fn() },
   },
 }));
 
-vi.mock('../../services/access.js', () => ({ findProjectByName: vi.fn() }));
+vi.mock('../../services/access.js', () => ({ findProjectByName: vi.fn(), projectAccessWhere: vi.fn(() => ({})) }));
 
 import { parseQuickAdd } from '../../utils/quickAddParser.js';
 import { findProjectByName } from '../../services/access.js';
@@ -272,6 +273,13 @@ describe('parseQuickAdd - project parsing', () => {
 });
 
 describe('parseQuickAdd - label parsing', () => {
+  it('keeps an unknown @label in the task text instead of dropping it', async () => {
+    mockPrisma.label.findMany.mockResolvedValue([{ id: 'l1', name: 'phone' }]);
+    const result = await parseQuickAdd('Call @phone about @unknownthing', TEST_USER_ID);
+    expect(result.labelIds).toEqual(['l1']);
+    expect(result.content).toBe('Call about @unknownthing');
+  });
+
   it('extracts label names and resolves to IDs', async () => {
     mockPrisma.label.findMany.mockResolvedValue([
       { id: 'label-1', name: 'urgent' },

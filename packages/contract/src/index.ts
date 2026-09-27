@@ -21,6 +21,7 @@ export * from './entities/view.js';
 export * from './entities/workspace.js';
 export * from './logic/attachments.js';
 export * from './logic/mentions.js';
+export * from './logic/quickAdd.js';
 export * from './logic/recurrence.js';
 export * from './requests/account.js';
 export * from './requests/activity.js';

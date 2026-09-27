@@ -105,6 +105,13 @@ export const quickAddSchema = z.object({
   // never has to round-trip a date through words.
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dueDate must be YYYY-MM-DD').optional(),
   dueTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'dueTime must be HH:mm').optional(),
+  /**
+   * Where the box sits (Today, an Upcoming day, a calendar cell): used only
+   * when the text itself names no date or time, so typing "tomorrow" in
+   * Today's box still means tomorrow.
+   */
+  defaultDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'defaultDueDate must be YYYY-MM-DD').optional(),
+  defaultDueTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'defaultDueTime must be HH:mm').optional(),
   /** The section the box was in; ignored if the text names another project. */
   sectionId: z.string().optional(),
 });

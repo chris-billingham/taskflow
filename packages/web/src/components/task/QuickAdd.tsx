@@ -1,65 +1,20 @@
-import { useState, useRef, useEffect } from 'react';
-import { Plus, Calendar, Flag, Tag } from 'lucide-react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, type KeyboardEvent } from 'react';
+import { Plus, Calendar, Clock, Flag, Hash, Repeat, Tag, Timer } from 'lucide-react';
+import { parseQuickAddText, type QuickAddToken } from '@taskflow/contract';
 import { useProjects } from '@/queries/projects';
+import { useLabels, useLabelActions } from '@/queries/labels';
+import { describeRecurrence } from '@/utils/recurrence';
+import { formatUserDate, formatUserTime } from '@/utils/dateFormat';
 
 interface QuickAddProps {
   projectId?: string;
-  sectionId?: string;  // reserved for future section-scoped add
-  parentId?: string;   // reserved for future subtask add
+  sectionId?: string; // reserved for future section-scoped add
+  parentId?: string; // reserved for future subtask add
   onSubmit: (text: string) => Promise<void>;
   placeholder?: string;
   autoFocus?: boolean;
   onCancel?: () => void;
   inline?: boolean;
-}
-
-interface ParsePreview {
-  priority?: number;
-  dueDate?: string;
-  project?: string;
-  labels?: string[];
-}
-
-function parsePreview(text: string, projectNames: string[]): ParsePreview {
-  const preview: ParsePreview = {};
-
-  // Priority
-  const priorityMatch = text.match(/\b[pP]([1-4])\b/);
-  if (priorityMatch) {
-    preview.priority = parseInt(priorityMatch[1], 10);
-  } else {
-    const excl = text.match(/(!{1,3})(?!\w)/);
-    if (excl) preview.priority = Math.max(1, 4 - excl[1].length);
-  }
-
-  // Project: like the server, a "#name" at a word start that exactly names a
-  // project (case-insensitive); any other "#tag" stays in the task text.
-  const projectMatch = text.match(/(?:^|\s)#(\S+)/);
-  if (projectMatch) {
-    const wanted = projectMatch[1].toLowerCase();
-    const name = projectNames.find((n) => n.toLowerCase() === wanted);
-    if (name) preview.project = name;
-  }
-
-  // Labels
-  const labelMatches = text.matchAll(/@(\S+)/g);
-  const labels: string[] = [];
-  for (const m of labelMatches) labels.push(m[1]);
-  if (labels.length > 0) preview.labels = labels;
-
-  // Due date keywords
-  const datePatterns = ['today', 'tomorrow', 'next week', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  for (const pattern of datePatterns) {
-    if (text.toLowerCase().includes(pattern)) {
-      preview.dueDate = pattern.charAt(0).toUpperCase() + pattern.slice(1);
-      break;
-    }
-  }
-  // "in X days"
-  const inDaysMatch = text.match(/\bin\s+(\d+)\s+days?\b/i);
-  if (inDaysMatch) preview.dueDate = `In ${inDaysMatch[1]} days`;
-
-  return preview;
 }
 
 const priorityColors: Record<number, string> = {
@@ -69,10 +24,55 @@ const priorityColors: Record<number, string> = {
   4: 'text-gray-400 dark:text-gray-500',
 };
 
+// Background colours only (never weight or size): the highlight layer must
+// keep exactly the input's glyph widths or the caret drifts.
+const TOKEN_STYLES: Record<QuickAddToken['type'], string> = {
+  date: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  time: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  recurrence: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
+  duration: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  priority: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+  project: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+  label: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+};
+
+interface Suggestion {
+  key: string;
+  label: string;
+  insert: string;
+  color?: string;
+  create?: boolean;
+}
+
+/** The #project or @label being typed just before the caret, if any. */
+function activeTag(text: string, caret: number): { kind: 'project' | 'label'; start: number; term: string } | null {
+  let i = caret - 1;
+  while (i >= 0 && !/\s/.test(text[i]) && text[i] !== '#' && text[i] !== '@') i--;
+  if (i < 0 || (text[i] !== '#' && text[i] !== '@')) return null;
+  if (i > 0 && !/\s/.test(text[i - 1])) return null;
+  return { kind: text[i] === '#' ? 'project' : 'label', start: i, term: text.slice(i + 1, caret) };
+}
+
+/** 90 → "1h 30m", 45 → "45m", 120 → "2h". */
+const formatDuration = (minutes: number) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return [h ? `${h}h` : '', m ? `${m}m` : ''].filter(Boolean).join(' ');
+};
+
+const localYmd = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+function dateLabel(ymd: string): string {
+  const today = new Date();
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  if (ymd === localYmd(today)) return 'Today';
+  if (ymd === localYmd(tomorrow)) return 'Tomorrow';
+  const [y, m, d] = ymd.split('-').map(Number);
+  return formatUserDate(new Date(y, m - 1, d));
+}
+
 export function QuickAdd({
-  projectId: _projectId,
-  sectionId: _sectionId,
-  parentId: _parentId,
   onSubmit,
   placeholder = 'Add task',
   autoFocus,
@@ -81,18 +81,82 @@ export function QuickAdd({
 }: QuickAddProps) {
   const [isExpanded, setIsExpanded] = useState(autoFocus || false);
   const [text, setText] = useState('');
+  const [caret, setCaret] = useState(0);
+  const [highlighted, setHighlighted] = useState(0);
+  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isExpanded && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isExpanded]);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  // Where to put the caret once new text renders (after inserting a
+  // suggestion). Applied before the next event, so fast typing lands after it.
+  const pendingCaret = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    if (pendingCaret.current === null || !input) return;
+    input.focus();
+    input.setSelectionRange(pendingCaret.current, pendingCaret.current);
+    setCaret(pendingCaret.current);
+    pendingCaret.current = null;
+  }, [text]);
 
   const { active: projects } = useProjects();
-  const preview = text ? parsePreview(text, projects.map((p) => p.name)) : null;
-  const hasPreview = preview && (preview.priority || preview.dueDate || preview.project || preview.labels);
+  const { labels } = useLabels();
+  const { createLabel } = useLabelActions();
+
+  useEffect(() => {
+    if (isExpanded && inputRef.current) inputRef.current.focus();
+  }, [isExpanded]);
+
+  const projectNames = useMemo(() => projects.map((p) => p.name), [projects]);
+  const labelNames = useMemo(() => labels.map((l) => l.name), [labels]);
+  // The same parser the server runs, so what's highlighted is what happens.
+  const parsed = useMemo(
+    () => parseQuickAddText(text, new Date(), { projects: projectNames, labels: labelNames }),
+    [text, projectNames, labelNames],
+  );
+  const isKnown = (token: QuickAddToken) => {
+    if (token.type !== 'project' && token.type !== 'label') return true;
+    const names = token.type === 'project' ? projectNames : labelNames;
+    return names.some((n) => n.toLowerCase() === token.name!.toLowerCase());
+  };
+
+  // Autocomplete for the #project / @label under the caret.
+  const tag = dismissedAt === caret ? null : activeTag(text, caret);
+  const suggestions = useMemo<Suggestion[]>(() => {
+    if (!tag) return [];
+    const term = tag.term.toLowerCase();
+    if (tag.kind === 'project') {
+      return projects
+        .filter((p) => p.name.toLowerCase().includes(term))
+        .slice(0, 6)
+        .map((p) => ({ key: p.id, label: p.name, insert: `#${p.name}`, color: p.color }));
+    }
+    const matches = labels
+      .filter((l) => l.name.toLowerCase().includes(term))
+      .slice(0, 6)
+      .map((l) => ({ key: l.id, label: l.name, insert: `@${l.name}`, color: l.color }));
+    const exact = labels.some((l) => l.name.toLowerCase() === term);
+    return term && !exact
+      ? [...matches, { key: 'create', label: `Create label “${tag.term}”`, insert: `@${tag.term}`, create: true }]
+      : matches;
+  }, [tag, projects, labels]);
+  const showSuggestions = suggestions.length > 0;
+
+  const choose = async (s: Suggestion) => {
+    if (!tag) return;
+    if (s.create) {
+      try {
+        await createLabel({ name: tag.term });
+      } catch {
+        return; // already reported
+      }
+    }
+    const before = text.slice(0, tag.start) + s.insert + ' ';
+    const next = before + text.slice(caret).replace(/^\s+/, '');
+    pendingCaret.current = before.length;
+    setText(next);
+    setHighlighted(0);
+  };
 
   const handleSubmit = async () => {
     if (!text.trim() || isSubmitting) return;
@@ -100,9 +164,7 @@ export function QuickAdd({
     try {
       await onSubmit(text.trim());
       setText('');
-      if (!inline) {
-        // Keep expanded for inline usage, close for modal
-      }
+      setCaret(0);
     } finally {
       setIsSubmitting(false);
     }
@@ -112,6 +174,44 @@ export function QuickAdd({
     setText('');
     setIsExpanded(false);
     onCancel?.();
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (showSuggestions) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHighlighted((i) => (i + 1) % suggestions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlighted((i) => (i - 1 + suggestions.length) % suggestions.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        void choose(suggestions[Math.min(highlighted, suggestions.length - 1)]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        // Close the suggestions, not the whole box.
+        e.preventDefault();
+        setDismissedAt(caret);
+        return;
+      }
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void handleSubmit();
+    }
+    if (e.key === 'Escape') handleCancel();
+  };
+
+  const syncCaret = () => {
+    const input = inputRef.current;
+    if (!input) return;
+    setCaret(input.selectionStart ?? input.value.length);
+    if (overlayRef.current) overlayRef.current.scrollLeft = input.scrollLeft;
   };
 
   if (!isExpanded && inline) {
@@ -126,77 +226,165 @@ export function QuickAdd({
     );
   }
 
+  // The text split into plain runs and highlighted tokens.
+  const segments: Array<{ text: string; token?: QuickAddToken }> = [];
+  let at = 0;
+  for (const token of parsed.tokens) {
+    if (token.start > at) segments.push({ text: text.slice(at, token.start) });
+    segments.push({ text: text.slice(token.start, token.end), token });
+    at = token.end;
+  }
+  if (at < text.length) segments.push({ text: text.slice(at) });
+
+  const knownProject = parsed.tokens.find((t) => t.type === 'project' && isKnown(t))?.name;
+  const knownLabels = parsed.tokens.filter((t) => t.type === 'label' && isKnown(t)).map((t) => t.name!);
+  const repeat = describeRecurrence(parsed.recurrenceRule);
+  const hasPreview =
+    parsed.dueDate || parsed.dueTime || parsed.priority || knownProject || knownLabels.length || repeat || parsed.duration;
+
   return (
     <div className={`${inline ? 'border border-gray-200 dark:border-gray-700 rounded-lg' : ''}`}>
       <div className="p-2">
-        <input
-          ref={inputRef}
-          className="w-full text-sm bg-transparent outline-hidden placeholder-gray-400 dark:placeholder-gray-500 py-1"
-          placeholder={`${placeholder} (use #project, @label, p1-4, today, tomorrow...)`}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit();
-            }
-            if (e.key === 'Escape') handleCancel();
-          }}
-        />
+        <div className="relative">
+          <div
+            ref={overlayRef}
+            aria-hidden="true"
+            className="absolute inset-0 overflow-hidden whitespace-pre text-sm py-1 text-gray-900 dark:text-white pointer-events-none"
+          >
+            {segments.map((s, i) =>
+              s.token ? (
+                <mark
+                  key={i}
+                  className={`rounded-sm ${isKnown(s.token) ? TOKEN_STYLES[s.token.type] : 'bg-transparent text-gray-400 dark:text-gray-500'}`}
+                >
+                  {s.text}
+                </mark>
+              ) : (
+                <span key={i}>{s.text}</span>
+              ),
+            )}
+          </div>
+          <input
+            ref={inputRef}
+            className="relative w-full text-sm bg-transparent outline-hidden placeholder-gray-400 dark:placeholder-gray-500 py-1 text-transparent caret-gray-900 dark:caret-white"
+            placeholder={`${placeholder} (use #project, @label, p1-4, today, tomorrow...)`}
+            aria-label={placeholder}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={showSuggestions}
+            aria-controls={showSuggestions ? 'quick-add-suggestions' : undefined}
+            aria-activedescendant={showSuggestions ? `quick-add-${suggestions[Math.min(highlighted, suggestions.length - 1)].key}` : undefined}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              setHighlighted(0);
+              setDismissedAt(null);
+              syncCaret();
+            }}
+            onSelect={syncCaret}
+            onKeyUp={syncCaret}
+            onScroll={syncCaret}
+            onKeyDown={onKeyDown}
+          />
+          {showSuggestions && (
+            <ul
+              id="quick-add-suggestions"
+              role="listbox"
+              aria-label={tag?.kind === 'project' ? 'Projects' : 'Labels'}
+              className="absolute left-0 top-full mt-1 z-30 w-64 max-h-60 overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1"
+            >
+              {suggestions.map((s, i) => (
+                <li
+                  key={s.key}
+                  id={`quick-add-${s.key}`}
+                  role="option"
+                  aria-selected={i === highlighted}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    void choose(s);
+                  }}
+                  onMouseEnter={() => setHighlighted(i)}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer ${
+                    i === highlighted ? 'bg-gray-100 dark:bg-gray-700' : ''
+                  } ${s.create ? 'text-primary-600 dark:text-primary-400' : 'text-gray-700 dark:text-gray-200'}`}
+                >
+                  {s.create ? (
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  ) : tag?.kind === 'project' ? (
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} aria-hidden="true" />
+                  ) : (
+                    <Tag className="w-3.5 h-3.5 shrink-0" style={{ color: s.color }} aria-hidden="true" />
+                  )}
+                  <span className="truncate">{s.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-        {/* Parsed preview */}
+        {/* What the task will get */}
         {hasPreview && (
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            {preview.dueDate && (
+          <div role="group" aria-label="Task details from the text" className="flex items-center gap-2 mt-1 flex-wrap">
+            {parsed.dueDate && (
               <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded-sm">
-                <Calendar className="w-3 h-3" />
-                {preview.dueDate}
+                <Calendar className="w-3 h-3" aria-hidden="true" />
+                {dateLabel(parsed.dueDate)}
               </span>
             )}
-            {preview.priority && (
-              <span className={`flex items-center gap-1 text-xs ${priorityColors[preview.priority]} bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 rounded-sm`}>
-                <Flag className="w-3 h-3" fill={preview.priority < 4 ? 'currentColor' : 'none'} />
-                P{preview.priority}
+            {parsed.dueTime && (
+              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded-sm">
+                <Clock className="w-3 h-3" aria-hidden="true" />
+                {formatUserTime(parsed.dueTime)}
               </span>
             )}
-            {preview.project && (
-              <span className="flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-sm">
-                #{preview.project}
+            {parsed.priority && (
+              <span className={`flex items-center gap-1 text-xs ${priorityColors[parsed.priority]} bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 rounded-sm`}>
+                <Flag className="w-3 h-3" fill={parsed.priority < 4 ? 'currentColor' : 'none'} aria-hidden="true" />
+                P{parsed.priority}
               </span>
             )}
-            {preview.labels?.map((label) => (
-              <span
-                key={label}
-                className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-sm"
-              >
-                <Tag className="w-3 h-3" />
+            {knownProject && (
+              <span className="flex items-center gap-1 text-xs text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded-sm">
+                <Hash className="w-3 h-3" aria-hidden="true" />#{projectNames.find((n) => n.toLowerCase() === knownProject.toLowerCase())}
+              </span>
+            )}
+            {knownLabels.map((label) => (
+              <span key={label} className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-sm">
+                <Tag className="w-3 h-3" aria-hidden="true" />
                 {label}
               </span>
             ))}
+            {repeat && (
+              <span className="flex items-center gap-1 text-xs text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 px-1.5 py-0.5 rounded-sm">
+                <Repeat className="w-3 h-3" aria-hidden="true" />
+                {repeat}
+              </span>
+            )}
+            {parsed.duration ? (
+              <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-sm">
+                <Timer className="w-3 h-3" aria-hidden="true" />
+                {formatDuration(parsed.duration)}
+              </span>
+            ) : null}
           </div>
         )}
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between px-2 py-1.5 border-t border-gray-100 dark:border-gray-700">
-        <div className="flex items-center gap-1">
-          {/* Additional action buttons could go here */}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-sm"
-            onClick={handleCancel}
-          >
-            Cancel
-          </button>
-          <button
-            className="px-3 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-sm disabled:opacity-50"
-            onClick={handleSubmit}
-            disabled={!text.trim() || isSubmitting}
-          >
-            {isSubmitting ? 'Adding...' : 'Add task'}
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-2 px-2 py-1.5 border-t border-gray-100 dark:border-gray-700">
+        <button
+          className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-sm"
+          onClick={handleCancel}
+        >
+          Cancel
+        </button>
+        <button
+          className="px-3 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-sm disabled:opacity-50"
+          onClick={() => void handleSubmit()}
+          disabled={!text.trim() || isSubmitting}
+        >
+          {isSubmitting ? 'Adding...' : 'Add task'}
+        </button>
       </div>
     </div>
   );

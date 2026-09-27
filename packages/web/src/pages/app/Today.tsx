@@ -55,8 +55,9 @@ export default function Today() {
     ];
   }, [todayView]);
 
+  // Added here, a task is due today unless the text names another date.
   const handleQuickAdd = async (text: string) => {
-    await quickAddTask(text);
+    await quickAddTask(text, undefined, { defaultDueDate: todayStr });
   };
 
   const handleRescheduleAll = async () => {

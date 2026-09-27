@@ -73,6 +73,8 @@ export async function taskRoutes(fastify: FastifyInstance) {
           dueDate: request.body.dueDate,
           dueTime: request.body.dueTime,
           sectionId: request.body.sectionId,
+          defaultDueDate: request.body.defaultDueDate,
+          defaultDueTime: request.body.defaultDueTime,
         }),
       }),
   );

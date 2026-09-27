@@ -65,7 +65,7 @@ describe('Upcoming page', () => {
     expect(screen.queryByText('Someday: learn Rust')).not.toBeInTheDocument();
   });
 
-  it("adds a task under a day with that day's exact date", async () => {
+  it("adds a task under a day with that day's date (unless the text names one)", async () => {
     serveUpcoming(upcomingView());
     let body: Record<string, unknown> | undefined;
     server.use(
@@ -79,8 +79,8 @@ describe('Upcoming page', () => {
     await screen.findByText('Nothing upcoming');
     const section = container.querySelector(`#date-section-${tomorrow}`) as HTMLElement;
     await user.click(within(section).getByRole('button', { name: /Add task/ }));
-    await user.type(within(section).getByRole('textbox'), 'Call the printer{Enter}');
+    await user.type(within(section).getByRole('combobox'), 'Call the printer{Enter}');
 
-    await waitFor(() => expect(body).toEqual({ text: 'Call the printer', dueDate: tomorrow }));
+    await waitFor(() => expect(body).toEqual({ text: 'Call the printer', defaultDueDate: tomorrow }));
   });
 });

@@ -112,7 +112,7 @@ describe('Today page', () => {
     if (addButton) await user.click(addButton);
     await user.type(screen.getByPlaceholderText(/^Add task \(use/), 'Call the printer today{Enter}');
 
-    await waitFor(() => expect(submitted).toMatchObject({ text: 'Call the printer today' }));
+    await waitFor(() => expect(submitted).toMatchObject({ text: 'Call the printer today', defaultDueDate: localDateString() }));
   });
 
   it('opens the task panel when a task is clicked', async () => {
