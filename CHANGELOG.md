@@ -4,6 +4,51 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Phase 4: everyday UX
+
+- **Trash and Undo.** Deleting a task moves it and its subtasks to a Trash
+  page for 30 days, then the daily maintenance job deletes it for good.
+  Completing, deleting and moving a task offer Undo. Undoing a repeating
+  task's completion also removes the next occurrence it created. New
+  endpoints: `GET /tasks/trash`, `POST /tasks/:id/restore` and
+  `DELETE /tasks/:id/permanent`. Trashed tasks never appear in reads,
+  counts or search, and their reminders don't fire.
+- **Move tasks** between projects and sections from "Move to…" in the row
+  menu, from the project name in the task panel, or by dragging between
+  sections in a project's list view. A section's "Add task" box now reads
+  Quick Add shorthand and files the task in that section.
+- **Multi-select.** Ctrl/⌘/Shift-click rows, or choose "Select" in a row's
+  menu. A toolbar then completes, dates, prioritises, moves, labels or
+  deletes the selected tasks together, with Undo where it applies.
+- **Keyboard control.** J/K move between tasks. On the focused task, E
+  renames, C completes, T sets the date, 1–4 set the priority, X selects and
+  D deletes. ⌘K / Ctrl+K opens a command palette, and ? lists every
+  shortcut.
+- **Better Quick Add.** One parser in `@taskflow/contract` both highlights
+  the shorthand as you type and creates the task. It adds ISO dates, "next
+  Friday", "every weekday" and multi-word project and label names. `#` and
+  `@` autocomplete, with "Create label" for new ones. Unknown `@labels` now
+  stay in the task text instead of vanishing. Today's Quick Add dates tasks
+  today.
+- **Deadlines you can see.** Task rows and board cards show deadlines.
+  Filters can use them (`deadline`, `no deadline`, `deadline passed`,
+  `deadline before:` and `deadline after:`), and you're notified the
+  morning before a deadline and again once it passes.
+- **Projects.** An Archived projects page appears in the sidebar when any
+  project is archived. Projects can have a description, and can move under
+  another parent from the Edit project dialog. The API checks the new
+  parent: you need edit access, it must be in the same space and not the
+  Inbox, and the move can't create a loop.
+- **Sign-up defaults.** New accounts take their timezone, week start and
+  date and time formats from the browser.
+- **Markdown descriptions.** Task descriptions render as GitHub-flavoured
+  Markdown, and checklist boxes can be ticked without opening the editor.
+  Comments use the same renderer.
+- **Board grouping.** Project boards can be grouped by section, priority,
+  assignee or due date, and dragging a card to another column changes that
+  field. Filter and label pages gain a board view, groupable by priority,
+  due date, assignee or project.
+
 ### Phase 3: frontend architecture
 
 - **Every task has a URL.** `?task=<id>` on any page opens the task panel,
