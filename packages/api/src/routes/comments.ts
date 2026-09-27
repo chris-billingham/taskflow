@@ -1,89 +1,90 @@
 import type { FastifyInstance } from 'fastify';
-import { authenticate } from '../middleware/authenticate.js';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import {
   createCommentSchema,
   updateCommentSchema,
   commentParamsSchema,
   commentQuerySchema,
+  taskIdParamsSchema,
+  commentSchema,
+  messageResponse,
+  ok,
 } from '@taskflow/contract';
+import { authenticate } from '../middleware/authenticate.js';
 import * as commentService from '../services/commentService.js';
-import { ValidationError } from '../errors/index.js';
 
-export async function commentRoutes(app: FastifyInstance) {
+const tags = ['Comments'];
+
+export async function commentRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
   app.addHook('preHandler', authenticate);
 
-  // GET /api/v1/tasks/:taskId/comments - List comments for a task
-  app.get('/tasks/:taskId/comments', async (request, reply) => {
-    const { taskId } = request.params as { taskId: string };
-    if (!taskId) {
-      throw new ValidationError('Task ID is required');
-    }
+  app.get(
+    '/tasks/:taskId/comments',
+    {
+      schema: {
+        tags,
+        summary: "A task's comments, newest first, with replies",
+        params: taskIdParamsSchema,
+        querystring: commentQuerySchema,
+        response: { 200: ok(z.array(commentSchema)) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await commentService.getTaskComments(
+        request.params.taskId,
+        request.user.id,
+        request.query.limit,
+        request.query.cursor,
+      ),
+    }),
+  );
 
-    const query = commentQuerySchema.safeParse(request.query);
-    if (!query.success) {
-      throw new ValidationError(query.error.issues[0].message);
-    }
+  app.post(
+    '/tasks/:taskId/comments',
+    {
+      schema: {
+        tags,
+        summary: 'Comment on a task (or reply with parentId)',
+        params: taskIdParamsSchema,
+        body: createCommentSchema,
+        response: { 201: ok(commentSchema) },
+      },
+    },
+    async (request, reply) =>
+      reply.status(201).send({
+        success: true,
+        data: await commentService.createComment(request.params.taskId, request.body, request.user.id),
+      }),
+  );
 
-    const data = await commentService.getTaskComments(
-      taskId,
-      request.user.id,
-      query.data.limit,
-      query.data.cursor,
-    );
-    return reply.send({ success: true, data });
-  });
+  app.patch(
+    '/comments/:id',
+    {
+      schema: {
+        tags,
+        summary: 'Edit your comment',
+        params: commentParamsSchema,
+        body: updateCommentSchema,
+        response: { 200: ok(commentSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await commentService.updateComment(request.params.id, request.body, request.user.id),
+    }),
+  );
 
-  // POST /api/v1/tasks/:taskId/comments - Create a comment
-  app.post('/tasks/:taskId/comments', async (request, reply) => {
-    const { taskId } = request.params as { taskId: string };
-    if (!taskId) {
-      throw new ValidationError('Task ID is required');
-    }
-
-    const body = createCommentSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await commentService.createComment(
-      taskId,
-      body.data,
-      request.user.id,
-    );
-    return reply.status(201).send({ success: true, data });
-  });
-
-  // PATCH /api/v1/comments/:id - Update a comment
-  app.patch('/comments/:id', async (request, reply) => {
-    const params = commentParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const body = updateCommentSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await commentService.updateComment(
-      params.data.id,
-      body.data,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
-
-  // DELETE /api/v1/comments/:id - Delete a comment
-  app.delete('/comments/:id', async (request, reply) => {
-    const params = commentParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const data = await commentService.deleteComment(
-      params.data.id,
-      request.user.id,
-    );
-    return reply.send({ success: true, ...data });
-  });
+  app.delete(
+    '/comments/:id',
+    {
+      schema: { tags, summary: 'Delete a comment', params: commentParamsSchema, response: { 200: messageResponse } },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await commentService.deleteComment(request.params.id, request.user.id)),
+    }),
+  );
 }

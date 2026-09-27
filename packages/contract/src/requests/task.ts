@@ -38,6 +38,11 @@ export const taskParamsSchema = z.object({
   id: z.string().min(1, 'Task ID is required'),
 });
 
+/** Nested task routes: /tasks/:taskId/comments, /reminders, /attachments. */
+export const taskIdParamsSchema = z.object({
+  taskId: z.string().min(1, 'Task ID is required'),
+});
+
 export const taskQuerySchema = z.object({
   // Cursor pagination: unbounded task lists serialised tens of thousands of
   // rows on mature accounts (multi-second responses, container OOM).

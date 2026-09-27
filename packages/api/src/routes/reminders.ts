@@ -1,60 +1,68 @@
 import type { FastifyInstance } from 'fastify';
-import { authenticate } from '../middleware/authenticate.js';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import {
-  createReminderSchema,
+  createReminderBodySchema,
   reminderParamsSchema,
-  reminderTaskParamsSchema,
+  taskIdParamsSchema,
+  reminderSchema,
+  messageResponse,
+  ok,
 } from '@taskflow/contract';
+import { authenticate } from '../middleware/authenticate.js';
 import * as reminderService from '../services/reminderService.js';
-import { ValidationError } from '../errors/index.js';
 
-export async function reminderRoutes(app: FastifyInstance) {
+const tags = ['Reminders'];
+
+export async function reminderRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
   app.addHook('preHandler', authenticate);
 
-  // GET /api/v1/tasks/:taskId/reminders - List reminders for a task
-  app.get('/tasks/:taskId/reminders', async (request, reply) => {
-    const params = reminderTaskParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
+  app.get(
+    '/tasks/:taskId/reminders',
+    {
+      schema: {
+        tags,
+        summary: 'Your reminders on a task',
+        params: taskIdParamsSchema,
+        response: { 200: ok(z.array(reminderSchema)) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await reminderService.getTaskReminders(request.params.taskId, request.user.id),
+    }),
+  );
 
-    const data = await reminderService.getTaskReminders(
-      params.data.taskId,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
+  app.post(
+    '/tasks/:taskId/reminders',
+    {
+      schema: {
+        tags,
+        summary: 'Add a reminder: at a time (ABSOLUTE) or before the due time (RELATIVE)',
+        params: taskIdParamsSchema,
+        body: createReminderBodySchema,
+        response: { 201: ok(reminderSchema) },
+      },
+    },
+    async (request, reply) =>
+      reply.status(201).send({
+        success: true,
+        data: await reminderService.createReminder(
+          { ...request.body, taskId: request.params.taskId },
+          request.user.id,
+        ),
+      }),
+  );
 
-  // POST /api/v1/tasks/:taskId/reminders - Create a reminder
-  app.post('/tasks/:taskId/reminders', async (request, reply) => {
-    const params = reminderTaskParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const body = createReminderSchema.safeParse({
-      ...(request.body as Record<string, unknown>),
-      taskId: params.data.taskId,
-    });
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await reminderService.createReminder(body.data, request.user.id);
-    return reply.status(201).send({ success: true, data });
-  });
-
-  // DELETE /api/v1/reminders/:id - Delete a reminder
-  app.delete('/reminders/:id', async (request, reply) => {
-    const params = reminderParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const data = await reminderService.deleteReminder(
-      params.data.id,
-      request.user.id,
-    );
-    return reply.send({ success: true, ...data });
-  });
+  app.delete(
+    '/reminders/:id',
+    {
+      schema: { tags, summary: 'Delete a reminder', params: reminderParamsSchema, response: { 200: messageResponse } },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await reminderService.deleteReminder(request.params.id, request.user.id)),
+    }),
+  );
 }

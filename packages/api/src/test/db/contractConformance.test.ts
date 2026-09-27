@@ -2,8 +2,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
+  commentSchema,
+  filterSchema,
+  filterTaskSchema,
   labelSchema,
   memberSummarySchema,
+  reminderSchema,
+  todayViewSchema,
+  upcomingViewSchema,
   ok,
   page,
   projectFieldsSchema,
@@ -18,6 +24,10 @@ import * as labelService from '../../services/labelService.js';
 import * as projectService from '../../services/projectService.js';
 import * as sectionService from '../../services/sectionService.js';
 import * as taskService from '../../services/taskService.js';
+import * as viewService from '../../services/viewService.js';
+import * as filterService from '../../services/filterService.js';
+import * as commentService from '../../services/commentService.js';
+import * as reminderService from '../../services/reminderService.js';
 
 // Route suites mock the services, so only this file checks the contract
 // against what Prisma really returns: nulls, Dates, nested includes. Each
@@ -122,5 +132,47 @@ describe('real service output matches the API contract', () => {
     conforms(ok(taskSchema), { success: true, data: await taskService.completeTask(taskId, userId) });
     conforms(ok(taskSchema), { success: true, data: await taskService.uncompleteTask(taskId, userId) });
     conforms(ok(taskSchema), { success: true, data: await taskService.duplicateTask(taskId, userId) });
+  });
+
+  it('views: today and upcoming', async () => {
+    conforms(ok(todayViewSchema), { success: true, data: await viewService.getTodayTasks(userId) });
+    const upcoming = conforms(ok(upcomingViewSchema), {
+      success: true,
+      data: await viewService.getUpcomingTasks(userId, 30, true),
+    }) as { data: { byDate: Record<string, unknown[]> } };
+    expect(Object.keys(upcoming.data.byDate).length).toBeGreaterThan(0);
+  });
+
+  it('filters: saved filter and query results', async () => {
+    const filter = await filterService.createFilter({ name: 'Mine', query: 'p2' }, userId);
+    conforms(ok(filterSchema), { success: true, data: filter });
+    const results = conforms(ok(z.array(filterTaskSchema)), {
+      success: true,
+      data: await filterService.executeFilter('p2', userId),
+    }) as { data: unknown[] };
+    expect(results.data.length).toBeGreaterThan(0);
+    await prisma.filter.delete({ where: { id: filter.id } });
+  });
+
+  it('comments with replies', async () => {
+    const top = await commentService.createComment(taskId, { content: 'Top level' }, userId);
+    await commentService.createComment(taskId, { content: 'A reply', parentId: top.id }, userId);
+    const list = conforms(ok(z.array(commentSchema)), {
+      success: true,
+      data: await commentService.getTaskComments(taskId, userId),
+    }) as { data: Array<{ replies: unknown[] }> };
+    expect(list.data.some((c) => c.replies.length === 1)).toBe(true);
+  });
+
+  it('reminders', async () => {
+    const reminder = await reminderService.createReminder(
+      { taskId, type: 'RELATIVE', minutesBefore: 30 },
+      userId,
+    );
+    conforms(ok(reminderSchema), { success: true, data: reminder });
+    conforms(ok(z.array(reminderSchema)), {
+      success: true,
+      data: await reminderService.getTaskReminders(taskId, userId),
+    });
   });
 });

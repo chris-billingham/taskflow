@@ -1,10 +1,14 @@
 // The Taskflow API contract. Request schemas validate what clients send;
 // entity and response schemas describe exactly what goes over the wire.
 export * from './common.js';
+export * from './entities/comment.js';
+export * from './entities/filter.js';
 export * from './entities/label.js';
 export * from './entities/project.js';
+export * from './entities/reminder.js';
 export * from './entities/task.js';
 export * from './entities/user.js';
+export * from './entities/view.js';
 export * from './requests/admin.js';
 export * from './requests/attachment.js';
 export * from './requests/auth.js';

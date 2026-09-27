@@ -1,44 +1,70 @@
 import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import {
+  upcomingQuerySchema,
+  rescheduleOverdueSchema,
+  todayViewSchema,
+  upcomingViewSchema,
+  rescheduleResultSchema,
+  ok,
+} from '@taskflow/contract';
 import { authenticate } from '../middleware/authenticate.js';
-import { upcomingQuerySchema, rescheduleOverdueSchema } from '@taskflow/contract';
 import * as viewService from '../services/viewService.js';
-import { ValidationError } from '../errors/index.js';
 
-export async function viewRoutes(app: FastifyInstance) {
+const tags = ['Views'];
+
+export async function viewRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
   app.addHook('preHandler', authenticate);
 
-  // GET /api/v1/views/today
-  app.get('/today', async (request, reply) => {
-    const data = await viewService.getTodayTasks(request.user.id);
-    return reply.send({ success: true, data });
-  });
+  app.get(
+    '/today',
+    {
+      schema: {
+        tags,
+        summary: "Overdue and today's tasks, in your timezone",
+        response: { 200: ok(todayViewSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await viewService.getTodayTasks(request.user.id),
+    }),
+  );
 
-  // GET /api/v1/views/upcoming
-  app.get('/upcoming', async (request, reply) => {
-    const query = upcomingQuerySchema.safeParse(request.query);
-    if (!query.success) {
-      throw new ValidationError(query.error.issues[0].message);
-    }
+  app.get(
+    '/upcoming',
+    {
+      schema: {
+        tags,
+        summary: 'Tasks for the coming days, keyed by date',
+        querystring: upcomingQuerySchema,
+        response: { 200: ok(upcomingViewSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await viewService.getUpcomingTasks(
+        request.user.id,
+        request.query.days,
+        request.query.includeNoDate === 'true',
+      ),
+    }),
+  );
 
-    const data = await viewService.getUpcomingTasks(
-      request.user.id,
-      query.data.days,
-      query.data.includeNoDate === 'true',
-    );
-    return reply.send({ success: true, data });
-  });
-
-  // POST /api/v1/views/reschedule-overdue
-  app.post('/reschedule-overdue', async (request, reply) => {
-    const body = rescheduleOverdueSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await viewService.rescheduleOverdue(
-      request.user.id,
-      body.data.targetDate,
-    );
-    return reply.send({ success: true, ...data });
-  });
+  app.post(
+    '/reschedule-overdue',
+    {
+      schema: {
+        tags,
+        summary: 'Move every overdue task you can edit to a date',
+        body: rescheduleOverdueSchema,
+        response: { 200: rescheduleResultSchema },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await viewService.rescheduleOverdue(request.user.id, request.body.targetDate)),
+    }),
+  );
 }
