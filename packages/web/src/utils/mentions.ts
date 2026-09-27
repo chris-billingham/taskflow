@@ -1,40 +1,18 @@
 /**
  * Choosing the @handle to insert for a picked member.
  *
- * Keep the handle rules in sync with `resolveMentions` in
- * packages/api/src/utils/mentions.ts — that is the authority on which handles
- * resolve to whom. The server deliberately notifies NOBODY for an ambiguous
+ * The handle rules come from @taskflow/contract, shared with the server's
+ * resolveMentions. The server deliberately notifies NOBODY for an ambiguous
  * handle rather than guessing, so the picker's job is to insert one that is
  * unambiguous among the people who can see the task. Otherwise a user would
  * select a colleague from a list and silently not notify them.
  */
 
-export interface MentionMember {
-  id: string;
-  name: string;
-  email: string | null;
-}
+import { mentionHandles, type MentionCandidate } from '@taskflow/contract';
 
-/** Every handle the server would accept for this member, shortest-first. */
-function candidateHandles(member: MentionMember): string[] {
-  const handles: string[] = [];
-  const name = member.name?.trim().toLowerCase() ?? '';
+export type MentionMember = MentionCandidate;
 
-  if (name) {
-    for (const word of name.split(/\s+/)) {
-      if (word) handles.push(word);
-    }
-    const joined = name.replace(/\s+/g, '');
-    if (joined && !handles.includes(joined)) handles.push(joined);
-  }
-
-  const localPart = member.email?.split('@')[0]?.trim().toLowerCase();
-  if (localPart && !handles.includes(localPart)) handles.push(localPart);
-
-  // Shortest first: "@chris" reads better than "@chris.billingham" when it's
-  // unambiguous, and the server accepts both.
-  return handles.sort((a, b) => a.length - b.length);
-}
+const candidateHandles = mentionHandles;
 
 /**
  * The shortest handle that identifies `member` and nobody else in `all`.

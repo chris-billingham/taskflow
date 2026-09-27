@@ -10,8 +10,19 @@
  * file can build is a rule getNextOccurrence() can advance.
  */
 
-export const WEEKDAY_CODES = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] as const;
-export type WeekdayCode = (typeof WEEKDAY_CODES)[number];
+import {
+  WEEKDAY_CODES,
+  buildRecurrence,
+  parseRecurrence,
+  type Frequency,
+  type ParsedRecurrence,
+  type WeekdayCode,
+} from '@taskflow/contract';
+
+// The rule format itself (parse/build) lives in the contract, shared with the
+// API; this file keeps the display side: names, summaries, presets.
+export { WEEKDAY_CODES, buildRecurrence, parseRecurrence };
+export type { Frequency, ParsedRecurrence, WeekdayCode };
 
 const WEEKDAY_NAMES: Record<WeekdayCode, string> = {
   MO: 'Monday',
@@ -22,70 +33,6 @@ const WEEKDAY_NAMES: Record<WeekdayCode, string> = {
   SA: 'Saturday',
   SU: 'Sunday',
 };
-
-export type Frequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
-
-export interface ParsedRecurrence {
-  freq: Frequency;
-  interval: number;
-  byDay: WeekdayCode[];
-  count: number | null;
-  until: string | null;
-}
-
-function parseParts(rule: string): Map<string, string> {
-  const parts = new Map<string, string>();
-  for (const chunk of rule.split(';')) {
-    const [key, value] = chunk.split('=');
-    if (key && value !== undefined) parts.set(key.toUpperCase(), value);
-  }
-  return parts;
-}
-
-export function parseRecurrence(rule: string | null | undefined): ParsedRecurrence | null {
-  if (!rule?.trim()) return null;
-
-  const parts = parseParts(rule);
-  const rawFreq = parts.get('FREQ');
-  const freq: Frequency =
-    rawFreq === 'WEEKLY' || rawFreq === 'MONTHLY' || rawFreq === 'YEARLY'
-      ? rawFreq
-      : 'DAILY';
-
-  const interval = Math.max(1, parseInt(parts.get('INTERVAL') ?? '1', 10) || 1);
-
-  const byDay = (parts.get('BYDAY')?.split(',') ?? [])
-    .map((d) => d.trim().toUpperCase())
-    .filter((d): d is WeekdayCode => (WEEKDAY_CODES as readonly string[]).includes(d));
-
-  const rawCount = parts.get('COUNT');
-  const count = rawCount ? parseInt(rawCount, 10) : null;
-
-  return {
-    freq,
-    interval,
-    byDay,
-    count: Number.isFinite(count) ? count : null,
-    until: parts.get('UNTIL') ?? null,
-  };
-}
-
-export function buildRecurrence(options: {
-  freq: Frequency;
-  interval?: number;
-  byDay?: WeekdayCode[];
-}): string {
-  const interval = Math.max(1, options.interval ?? 1);
-  const segments = [`FREQ=${options.freq}`, `INTERVAL=${interval}`];
-
-  // BYDAY only means anything to a weekly rule in the server's implementation.
-  if (options.freq === 'WEEKLY' && options.byDay?.length) {
-    const ordered = WEEKDAY_CODES.filter((code) => options.byDay!.includes(code));
-    segments.push(`BYDAY=${ordered.join(',')}`);
-  }
-
-  return segments.join(';');
-}
 
 function listWeekdays(days: WeekdayCode[]): string {
   const names = WEEKDAY_CODES.filter((c) => days.includes(c)).map((c) => WEEKDAY_NAMES[c]);

@@ -1,3 +1,11 @@
+import { parseRecurrence } from '@taskflow/contract';
+
+// Stay inside the contract's INTERVAL range (1-999): "every 0 days" or
+// "every 5000 days" would otherwise store a rule the API itself rejects.
+function clampInterval(raw: string | undefined): number {
+  return Math.min(Math.max(parseInt(raw || '1', 10) || 1, 1), 999);
+}
+
 export function parseRecurrenceText(text: string): string {
   const lower = text.toLowerCase().trim();
 
@@ -9,28 +17,28 @@ export function parseRecurrenceText(text: string): string {
   // "every day", "every 2 days"
   const dailyMatch = lower.match(/^every\s+(?:(\d+)\s+)?days?$/);
   if (dailyMatch) {
-    const interval = parseInt(dailyMatch[1] || '1', 10);
+    const interval = clampInterval(dailyMatch[1]);
     return `FREQ=DAILY;INTERVAL=${interval}`;
   }
 
   // "every week", "every 2 weeks"
   const weeklyMatch = lower.match(/^every\s+(?:(\d+)\s+)?weeks?$/);
   if (weeklyMatch) {
-    const interval = parseInt(weeklyMatch[1] || '1', 10);
+    const interval = clampInterval(weeklyMatch[1]);
     return `FREQ=WEEKLY;INTERVAL=${interval}`;
   }
 
   // "every month", "every 3 months"
   const monthlyMatch = lower.match(/^every\s+(?:(\d+)\s+)?months?$/);
   if (monthlyMatch) {
-    const interval = parseInt(monthlyMatch[1] || '1', 10);
+    const interval = clampInterval(monthlyMatch[1]);
     return `FREQ=MONTHLY;INTERVAL=${interval}`;
   }
 
   // "every year", "every 2 years"
   const yearlyMatch = lower.match(/^every\s+(?:(\d+)\s+)?years?$/);
   if (yearlyMatch) {
-    const interval = parseInt(yearlyMatch[1] || '1', 10);
+    const interval = clampInterval(yearlyMatch[1]);
     return `FREQ=YEARLY;INTERVAL=${interval}`;
   }
 
@@ -48,15 +56,6 @@ export function parseRecurrenceText(text: string): string {
 
   // Default: daily
   return 'FREQ=DAILY;INTERVAL=1';
-}
-
-function parseRule(rrule: string): Map<string, string> {
-  const parts = new Map<string, string>();
-  for (const part of rrule.split(';')) {
-    const [key, value] = part.split('=');
-    if (key && value !== undefined) parts.set(key.toUpperCase(), value);
-  }
-  return parts;
 }
 
 /** Parse UNTIL=YYYYMMDD / YYYYMMDDTHHMMSSZ / ISO date into a Date, or null. */
@@ -79,16 +78,18 @@ function parseUntil(value: string | undefined): Date | null {
  * decremented via advanceRecurrenceRule() each time an occurrence is spawned).
  */
 export function getNextOccurrence(rrule: string, fromDate: Date): Date | null {
-  const parts = parseRule(rrule);
+  // The shared parser (contract) clamps INTERVAL to >= 1 and drops unknown
+  // BYDAY codes, which the old local parser passed through as NaN/undefined.
+  const parsed = parseRecurrence(rrule);
+  if (!parsed) return null;
 
-  const count = parts.has('COUNT') ? parseInt(parts.get('COUNT')!, 10) : null;
+  const count = parsed.count;
   // COUNT=N means N occurrences in total; the one being completed was the
   // last when N <= 1.
   if (count !== null && count <= 1) return null;
 
-  const freq = parts.get('FREQ') || 'DAILY';
-  const interval = parseInt(parts.get('INTERVAL') || '1', 10);
-  const byDay = parts.get('BYDAY')?.split(',');
+  const { freq, interval } = parsed;
+  const byDay = parsed.byDay.length > 0 ? parsed.byDay : undefined;
 
   const next = new Date(fromDate);
 
@@ -164,7 +165,7 @@ export function getNextOccurrence(rrule: string, fromDate: Date): Date | null {
     }
   }
 
-  const until = parseUntil(parts.get('UNTIL'));
+  const until = parseUntil(parsed.until ?? undefined);
   if (until && next > until) return null;
 
   return next;
@@ -176,8 +177,7 @@ export function getNextOccurrence(rrule: string, fromDate: Date): Date | null {
  * passes through unchanged.
  */
 export function advanceRecurrenceRule(rrule: string): string {
-  const parts = parseRule(rrule);
-  if (!parts.has('COUNT')) return rrule;
-  const count = parseInt(parts.get('COUNT')!, 10);
+  const count = parseRecurrence(rrule)?.count ?? null;
+  if (count === null) return rrule;
   return rrule.replace(/COUNT=\d+/i, `COUNT=${Math.max(count - 1, 0)}`);
 }

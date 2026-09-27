@@ -1,5 +1,6 @@
 // The Taskflow API contract. Request schemas validate what clients send;
-// entity and response schemas describe exactly what goes over the wire.
+// entity and response schemas describe exactly what goes over the wire;
+// logic/ holds the rules both sides must agree on.
 export * from './common.js';
 export * from './entities/account.js';
 export * from './entities/activity.js';
@@ -18,6 +19,8 @@ export * from './entities/template.js';
 export * from './entities/user.js';
 export * from './entities/view.js';
 export * from './entities/workspace.js';
+export * from './logic/mentions.js';
+export * from './logic/recurrence.js';
 export * from './requests/account.js';
 export * from './requests/activity.js';
 export * from './requests/admin.js';

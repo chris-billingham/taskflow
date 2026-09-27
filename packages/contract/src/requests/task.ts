@@ -1,4 +1,14 @@
 import { z } from 'zod';
+import { isSupportedRecurrence } from '../logic/recurrence.js';
+
+/** A recurrence rule the server can advance (see logic/recurrence.ts). */
+export const recurrenceRuleSchema = z
+  .string()
+  .max(200)
+  .refine(
+    isSupportedRecurrence,
+    'Unsupported recurrence rule: use FREQ=DAILY|WEEKLY|MONTHLY|YEARLY with optional INTERVAL, BYDAY, COUNT and UNTIL',
+  );
 
 export const createTaskSchema = z.object({
   content: z.string().min(1, 'Task content is required').max(500),
@@ -14,7 +24,7 @@ export const createTaskSchema = z.object({
   assigneeId: z.string().optional(),
   labelIds: z.array(z.string()).optional(),
   isRecurring: z.boolean().optional(),
-  recurrenceRule: z.string().optional(),
+  recurrenceRule: recurrenceRuleSchema.optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -30,7 +40,7 @@ export const updateTaskSchema = z.object({
   assigneeId: z.string().nullable().optional(),
   labelIds: z.array(z.string()).optional(),
   isRecurring: z.boolean().optional(),
-  recurrenceRule: z.string().nullable().optional(),
+  recurrenceRule: recurrenceRuleSchema.nullable().optional(),
   sortOrder: z.number().int().optional(),
 });
 
