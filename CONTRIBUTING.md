@@ -27,22 +27,25 @@ Open an issue tagged `enhancement` describing:
 1. Fork the repository
 2. Create a feature branch from `main`: `git checkout -b feat/my-feature`
 3. Make your changes (see standards below)
-4. Run the test suite and linting
+4. Run linting, type checks and tests (see [Testing](#testing))
 5. Open a PR against `main`
 
 ## Development Setup
 
 See [docs/development/setup.md](docs/development/setup.md) for the full local development guide.
 
-Short version:
+Short version (Node 24 from `.nvmrc`, pnpm 10, Docker with Compose v2):
 
 ```bash
+corepack enable                                  # provides the pnpm version pinned in package.json
 pnpm install
-cp .env.example .env
-docker-compose -f docker-compose.dev.yml up -d
+cp packages/api/.env.example packages/api/.env   # dev config; defaults match docker-compose.dev.yml
+docker compose -f docker-compose.dev.yml up -d   # Postgres, Redis, Garage
 pnpm --filter @taskflow/api db:migrate
-pnpm dev
+pnpm dev                                         # web on :31779, API on :3001
 ```
+
+The repo-root `.env.example` is the production template for `docker-compose.yml`. Don't use it for development.
 
 ## Coding Standards
 
@@ -64,7 +67,7 @@ pnpm dev
 ### Frontend (React)
 
 - Components live in `src/components/<feature>/`; pages live in `src/pages/`
-- Use Zustand stores for global state; TanStack Query for server state
+- Server state and shared UI state live in Zustand stores (`src/stores/`); store actions call the API through `src/services/api.ts`
 - No prop drilling beyond 2 levels — lift to store or context
 - Wrap feature sections with `<ErrorBoundary>` for fault isolation
 - Use `Skeleton` components while data is loading
@@ -77,27 +80,32 @@ pnpm dev
 
 ## Testing
 
+There is no root `pnpm test`. Use these instead:
+
 ```bash
-# All tests
-pnpm test
+pnpm lint          # ESLint across the workspace
+pnpm typecheck     # tsc --noEmit across the workspace
+pnpm test:unit     # API unit tests + web tests
+pnpm test:ci       # test:unit plus API integration tests
 
-# API unit tests
+# API, individually
 pnpm --filter @taskflow/api test:unit
+pnpm --filter @taskflow/api test:integration   # routes via Fastify inject, services mocked; no infrastructure needed
+pnpm --filter @taskflow/api test:db            # real Postgres (the dev compose database)
 
-# API integration tests (requires running DB + Redis)
-pnpm --filter @taskflow/api test:integration
-
-# Frontend tests
+# Web (Vitest: components, hooks, stores and MSW-backed page tests)
 pnpm --filter @taskflow/web test
 
-# E2E tests
+# E2E (Playwright; needs the dev compose stack plus API and web dev servers running)
 pnpm --filter @taskflow/e2e test
 ```
+
+[docs/development/setup.md](docs/development/setup.md) explains how to write page tests (`packages/web/src/test/pages`) and how to run the E2E suite locally, including against the production stack.
 
 New features should include:
 - Unit tests for service-layer functions
 - Integration tests for new API routes
-- Component tests for non-trivial UI components
+- Component or page tests for non-trivial UI
 
 ## Commit Message Format
 

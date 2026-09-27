@@ -1,29 +1,47 @@
 # Calendar View
 
-The calendar view displays tasks by their due date on a monthly calendar.
+The calendar shows tasks by due date. It has a **Week** view (the default) and a **Month** view.
 
 ## Opening Calendar View
 
-Open any project and click the **Calendar** icon in the view switcher toolbar.
+Open a project and click the **Calendar** icon in the view switcher at the top right. The choice is saved on the project.
+
+Label and filter pages also have a calendar view.
 
 ## Navigating
 
-- **← →** arrows to move between months
-- **Today** button to jump to the current month
-- Click any day to see that day's tasks in a popover
+- **← →** move back or forward a week or a month
+- **Today** jumps back to the current week or month
+- **Week** / **Month** switch between the two views
+- In Month view, click a date number (or **+N more**) to open that week in Week view
+
+## Week View
+
+- Tasks with a due time sit in hourly slots. Tasks with a date but no time appear in an **Anytime** row at the top.
+- A task's height reflects its duration. Drag the bottom edge of a task to change its duration.
+- A line marks the current time.
 
 ## Adding Tasks from the Calendar
 
-Click on a date to open a quick-add popover. The due date is pre-filled with the date you clicked.
+- In Month view, click an empty part of a day to add a task due that day.
+- In Week view, click a time slot to add a task on that day.
+
+The dialog is a Quick Add box, so `p1`, `@label` and the other Quick Add words work there too.
+
+Known issues:
+- A task added on **today's** date from the calendar is currently given the same date **next year**.
+- A Week-view slot doesn't set a due time yet. The slot's time (for example `14:00`) ends up in the task name.
+
+Until these are fixed, add the task another way (or drag it afterwards) and set the date and time in the task panel.
 
 ## Rescheduling Tasks
 
-Drag a task from one date to another to update its due date.
+Drag a task to another day to change its due date. In Week view, dropping a task on a time slot also sets its due time. Dropping it in the Anytime row keeps its time unchanged.
 
 ## Tasks Without Due Dates
 
-Tasks without due dates appear in an **Unscheduled** list at the bottom of the calendar. Drag them onto a date to schedule them.
+The calendar only shows tasks that have a due date. To find tasks without one, use the **No date** section in **Upcoming**, or a filter with `no date`.
 
 ## Overdue Tasks
 
-Overdue tasks appear on their original due date with a red indicator. They also appear in your **Today** view.
+Overdue tasks stay on their original date in the calendar, with no special marking. Task colors show priority, not status. Overdue tasks also appear at the top of **Today** and **Upcoming**, where **Reschedule all** moves them to today.

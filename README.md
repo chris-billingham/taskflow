@@ -4,30 +4,37 @@ A self-hosted, open-source task management application — a Todoist-style workf
 
 ## Features
 
-- **Tasks** — create, complete, prioritize, set due dates, add descriptions and sub-tasks
-- **Projects** — organize tasks into color-coded projects with sections
-- **Labels & Filters** — tag tasks and save complex filters for later
-- **Board / Calendar views** — switch between list, Kanban board, and calendar
-- **Real-time updates** — task, project and comment changes broadcast live over WebSockets
-- **Comments & Activity** — per-task discussion and audit log
+- **Tasks** — due dates and times, deadlines, priorities, durations, descriptions, sub-tasks and reminders
+- **Projects** — color-coded projects with sections, one level of sub-projects, favorites and archiving
+- **Labels & Filters** — personal labels, and saved filters written in a text query language (`today & p1 & @work`)
+- **List / Board / Calendar views** — list, Kanban board, and week or month calendar
+- **Workspaces** — share team projects with invited members, with Owner, Admin, Member and Guest roles
+- **Real-time updates** — task, section, project and comment changes broadcast live over WebSockets
+- **Comments & Activity** — per-task discussion with Markdown and @mentions, plus an audit log
 - **File Attachments** — drag-and-drop uploads stored in the bundled Garage server or any S3-compatible bucket
 - **Reminders** — time-based notifications delivered via browser push (email delivery is stored but not yet selectable in the UI)
-- **Templates** — create and apply task templates for repeatable workflows
+- **Notifications** — in-app, browser push, and email (immediately or as a daily/weekly digest)
+- **Project templates** — start a project from a built-in template or save your own
 - **Global Search** — full-text search across tasks, projects, and comments
 - **Quick Add** — natural language input ("Buy milk tomorrow p1 #work")
-- **Recurring Tasks** — daily, weekly and monthly rules, from the task detail panel or Quick Add ("every Monday")
-- **Dark Mode** — full dark-mode support
-- **Keyboard Shortcuts** — keyboard navigation for the main task views
-- **Mobile Responsive** — works on all screen sizes
+- **Recurring Tasks** — daily, weekly, monthly, yearly and custom rules, from the task panel or Quick Add ("every Monday")
+- **Dark Mode** — light, dark, or follow the system
+- **Keyboard Shortcuts** — `Q` for Quick Add and `/` for search (more are planned)
+- **Mobile Responsive** — responsive layout with a drawer sidebar on phones
+- **Admin console** — invite-only sign-up by default, user management, suspension and password resets
 
 ### Not yet implemented
 
 Listed so the settings screens don't overpromise: **presence and typing
 indicators** are built but not surfaced in the UI, **reminder delivery method**
 is always browser push (the email path exists server-side but isn't
-selectable), **two-factor auth** and **integrations** (Calendar, Slack, GitHub)
-are placeholders, and there is **no email-change flow** and **no Todoist
-import**.
+selectable), **two-factor auth** and **integrations** (Google Calendar, Outlook,
+Slack, GitHub) are placeholders, and there is **no email-change flow** and
+**no Todoist import**. Also missing: **keyboard navigation** of task lists,
+**bulk actions** on several tasks, **moving a task to another project** (the
+API supports it; the UI doesn't), **per-project sharing** (workspaces are the
+only sharing unit), a list of **archived projects**, a **PWA install** (no web
+app manifest), and **leaving a workspace or transferring ownership** from the UI.
 
 ## Tech Stack
 
@@ -148,9 +155,10 @@ pnpm clean        # Remove build artifacts
 ```bash
 pnpm dev              # Watch mode
 pnpm build            # Compile TypeScript
-pnpm test             # Run all tests
+pnpm test             # Unit + integration tests
 pnpm test:unit        # Unit tests only
-pnpm test:integration # Integration tests (requires running DB + Redis)
+pnpm test:integration # Route tests (services mocked; no DB or Redis needed)
+pnpm test:db          # Service tests against a real Postgres (dev compose DB)
 pnpm db:migrate       # Run migrations
 pnpm db:studio        # Open Prisma Studio
 pnpm db:seed          # Seed sample data

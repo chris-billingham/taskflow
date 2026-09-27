@@ -2,45 +2,78 @@
 
 ## Workspaces
 
-All users belong to a workspace. Everything within a workspace (projects, tasks, labels) is shared among workspace members.
+Workspaces are how you share work in Taskflow. Every project under **Team Projects** belongs to a workspace, and every member of that workspace can see it. Projects under **My Projects** are private to you.
+
+- Use the workspace switcher at the top of the sidebar to pick a workspace, or choose **Create workspace**.
+- **Team Projects** appears in the sidebar when a workspace is selected.
+- You can't share a single project with someone outside the workspace yet.
+
+## Roles
+
+| Role | What they can do |
+|------|------------------|
+| **Owner** | Everything an Admin can do, plus delete the workspace. There is one owner. |
+| **Admin** | Full control of every team project. Invite and remove members, change roles, edit workspace settings. |
+| **Member** | View and edit every team project, and create new team projects. |
+| **Guest** | View **every** team project in the workspace and comment on tasks. Guests can't edit tasks (except tasks assigned to them) or create projects. |
+
+The invite dialog describes Guest as "access specific shared projects only". That isn't how it works today: a guest can read every team project in the workspace.
 
 ## Inviting Members
 
-1. Go to **Workspace Settings** (gear icon at the bottom of the sidebar)
-2. Click **Members** tab
-3. Click **Invite member**
-4. Enter an email address and choose a role:
-   - **Member** — can view and edit projects and tasks
-   - **Admin** — can also manage members and workspace settings
+Owners and admins can invite people:
 
-The invited user receives an email with a join link. If they don't have an account yet, the link takes them to registration.
+1. Select the workspace, then open **Workspace settings** (the gear next to **Team Projects**, or the menu under your name).
+2. Open the **Members** tab and click **Invite**.
+3. Enter an email address and choose a role (Member, Admin or Guest).
+
+The dialog shows an invite link you can copy and send yourself. The invite expires after 7 days. If the server has email set up, the link is also emailed. People who already have an account also get an in-app notification. Pending invites appear in the Members tab, where you can resend, cancel or copy them.
+
+When someone opens the link, they sign in, or sign up if they don't have an account yet, and join the workspace. New installs are invite-only, but a valid invite lets that email address create an account. See [user management](../admin-guide/user-management.md#who-can-sign-up).
+
+In the Members tab, admins can change a member's role (**Make admin**, **Make member**, **Make guest**) or **Remove** them. Leaving a workspace and transferring ownership exist in the API but have no button in the app yet.
 
 ## Task Assignment
 
-Open any task and click the **Assignee** field to assign it to a workspace member. Assignees see assigned tasks highlighted in their views.
+Open a task and click the **Assignee** field to pick a workspace member. They get a notification, and their avatar shows on the task in lists. An assignee can always edit their own task, even as a Guest.
+
+Today and Upcoming show every task you can see, including team tasks assigned to other people.
+
+## Labels in Shared Projects
+
+Labels are personal: you can only apply your own. Labels other members put on a task are visible to everyone who can see the task.
+
+Changing a task's labels currently replaces **all** of its labels, including ones other members added.
 
 ## Comments
 
-Open a task to see the comment thread. Comments support markdown formatting:
+Open a task to see its comments. Comments support Markdown:
 
 ```
 **Bold**, _italic_, `code`, [links](https://example.com)
 ```
 
-All workspace members receive a notification when a comment is added to a task they're assigned to or watching.
+Type `@` to mention a project member. Mentioned people get a notification. Comments can have attachments and replies. Press `Cmd/Ctrl+Enter` to send.
 
-## Real-time Presence
+You get a comment notification when someone comments on a task you created, are assigned to, or have replied to. There's no way to "watch" other tasks.
 
-When multiple people are active in the same project, you'll see their avatars in the top bar with a coloured dot indicating they are online.
+## Live Updates
 
-If someone is editing the same task you have open, a typing indicator appears at the bottom of the task detail.
+Changes to tasks, sections, comments and projects appear for everyone else viewing them, without a reload. If your connection drops, the app catches up when it reconnects.
+
+Taskflow doesn't show who else is online or viewing a project, and there are no typing indicators.
 
 ## Activity Log
 
-Every task has an **Activity** tab showing a full audit log: who changed what and when.
+The task panel has an **Activity** section showing who changed what and when.
 
 ## Notifications
 
-Notifications are delivered in-app (the bell icon in the top bar) and optionally by email or browser push.
+In-app notifications appear under the bell icon (top right on desktop, in the header on a phone). The list checks for new notifications every 30 seconds.
 
-Manage notification preferences at **Settings → Notifications**.
+At **Settings → Notifications** you can:
+- Turn on **browser push notifications** (your administrator must have configured push for this to work)
+- Turn on **email notifications**, sent immediately or as a daily or weekly digest (needs email set up on the server)
+- Choose which types you want: task assigned, due soon, overdue, comments, @mentions and workspace invites
+
+Task reminders are always delivered as browser push.

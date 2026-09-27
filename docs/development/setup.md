@@ -57,7 +57,8 @@ pnpm clean         # Remove dist/ and node_modules
 pnpm --filter @taskflow/api dev              # Watch mode with tsx
 pnpm --filter @taskflow/api test             # All tests
 pnpm --filter @taskflow/api test:unit        # Unit tests
-pnpm --filter @taskflow/api test:integration # Integration (needs DB + Redis)
+pnpm --filter @taskflow/api test:integration # Route tests (services mocked; no DB or Redis)
+pnpm --filter @taskflow/api test:db          # Service tests against the dev-compose Postgres
 pnpm --filter @taskflow/api test:coverage    # Coverage report
 pnpm --filter @taskflow/api db:migrate       # Apply migrations
 pnpm --filter @taskflow/api db:seed          # Seed sample data
@@ -79,9 +80,6 @@ pnpm --filter @taskflow/api add <package>
 
 # Web dependency
 pnpm --filter @taskflow/web add <package>
-
-# Shared type (workspace)
-pnpm --filter @taskflow/shared add <package>
 
 # Root dev dependency
 pnpm add -Dw <package>

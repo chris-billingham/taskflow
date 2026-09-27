@@ -1,47 +1,45 @@
 # Keyboard Shortcuts
 
+Taskflow has a small set of shortcuts today. More, such as moving between tasks with the arrow keys and single-key task actions, are planned.
+
 ## Global
+
+These work anywhere in the main app, as long as you're not typing in a text field.
 
 | Shortcut | Action |
 |----------|--------|
 | `Q` | Open Quick Add |
-| `?` | Show this help |
-| `G` then `T` | Go to Today |
-| `G` then `U` | Go to Upcoming |
-| `G` then `F` | Go to Filters & Labels |
+| `/` | Open search |
 
-## Navigation
+## Search
 
 | Shortcut | Action |
 |----------|--------|
-| `↑` / `↓` | Move focus between tasks |
-| `Enter` | Open focused task |
-| `Escape` | Close task detail / modal |
+| `↑` / `↓` | Move through results |
+| `Enter` | Open the selected result |
+| `Escape` | Close search |
 
-## Task Actions (when a task is focused or detail is open)
-
-| Shortcut | Action |
-|----------|--------|
-| `E` | Edit task name |
-| `C` | Complete / uncomplete task |
-| `D` | Set due date |
-| `1` | Set priority 1 (urgent) |
-| `2` | Set priority 2 (high) |
-| `3` | Set priority 3 (medium) |
-| `4` | Set priority 4 (no priority) |
-| `Delete` / `Backspace` | Delete task (with confirmation) |
-
-## List View
+## Task Lists
 
 | Shortcut | Action |
 |----------|--------|
-| `A` | Add task at bottom |
-| `Shift+Enter` | Add task below focused task |
+| `Tab` | Move focus between tasks and controls |
+| `Enter` / `Space` | Open the focused task |
 
 ## Text Fields
 
 | Shortcut | Action |
 |----------|--------|
-| `Enter` | Submit / save |
-| `Escape` | Cancel |
-| `Cmd/Ctrl+Enter` | Submit multi-line fields |
+| `Enter` | Add the task (Quick Add), or save a task name, project name, section name or label |
+| `Escape` | Cancel the edit, or close Quick Add |
+| `Cmd/Ctrl+Enter` | Send a comment |
+| `↑` / `↓`, then `Enter` or `Tab` | Pick a person from the `@mention` list in a comment |
+
+## Dialogs and Previews
+
+| Shortcut | Action |
+|----------|--------|
+| `Escape` | Close a dialog (such as Quick Add) or the image preview |
+| `←` / `→` | Previous / next image in the image preview |
+
+`Escape` doesn't close the task panel. Use the **×** button or click outside the panel.

@@ -2,167 +2,193 @@
 
 ## Overview
 
-Taskflow is a monorepo containing three packages:
+Taskflow is a pnpm + Turborepo monorepo:
 
 ```
 packages/
-├── api/     — Fastify REST API + WebSocket server
-├── web/     — React single-page app
-└── shared/  — Shared TypeScript types
+├── api/     — Fastify REST API, Socket.IO server, BullMQ workers (TypeScript, Prisma)
+├── web/     — React 18 single-page app (Vite, Zustand, Tailwind)
+├── e2e/     — Playwright end-to-end suite
+└── shared/  — Placeholder. Both api and web list it as a dependency, but nothing imports it.
 ```
 
-## API Architecture
+## Infrastructure
+
+Production runs from `docker-compose.yml`:
+
+| Service | Role |
+|---------|------|
+| `traefik` | Edge proxy. Terminates TLS (Let's Encrypt) and routes by path: `/api`, `/health` and `/socket.io` go to `api`; everything else goes to `web`. |
+| `web` | nginx serving the built React app. It also has `/api` and `/socket.io` proxy blocks, but Traefik sends those paths straight to `api`. |
+| `api` | Fastify HTTP API and Socket.IO on port 3001. |
+| `worker` | Same image as `api`, started with `node dist/worker-entry.js`. Runs the BullMQ workers. |
+| `migrate` | One-shot `prisma migrate deploy`. `api` and `worker` wait for it to exit successfully. |
+| `postgres` | PostgreSQL 16. |
+| `redis` | Redis 7. BullMQ queues, rate-limit counters and password-reset tokens. |
+| `garage` | Garage, S3-compatible object storage for attachments. It replaced MinIO. Not exposed through Traefik. |
+| `rclone` | Only started on demand (`tools` profile) by `scripts/backup.sh` / `scripts/restore.sh`. |
+
+In development, `docker-compose.dev.yml` starts only Postgres, Redis and Garage. The API runs with `tsx watch` on port 3001. The Vite dev server runs on port 31779 and proxies `/api` and `/socket.io` to the API.
+
+## API
 
 ### Request lifecycle
 
 ```
-HTTP Request
-  → Fastify router
-    → authenticate middleware (validates JWT)
-      → route handler (parses + validates input with Zod)
-        → service layer (business logic, Prisma queries)
-          → response
+HTTP request
+  → Fastify plugins: CORS, helmet, cookie, rate limit (Redis-backed), multipart
+  → onRequest hook: request ID stored in AsyncLocalStorage (utils/requestContext.ts)
+  → route plugin preHandler: authenticate (Bearer access JWT), plus requireAdmin on /admin
+  → route handler: validates params/body/query with a Zod schema from src/schemas/
+  → service: authorization via services/access.ts, then Prisma queries
+  → side effects in-process: activity log, Socket.IO broadcast, notifications
+  → response: { success: true, data }
 ```
+
+Errors go through one global handler in `server.ts`. `AppError` subclasses (`src/errors/`) become their 4xx status with `{ success: false, error, message }`. Some Prisma errors are mapped too: P2025 → 404, P2002 → 409, P2003 → 400. Anything else becomes a 500, and in production the message is hidden.
+
+All routes live under `/api/v1`. `/health` and `/api/health` are public. OpenAPI docs are at `/api/docs`, but only in development or when `ENABLE_API_DOCS` is set.
 
 ### Layers
 
 | Layer | Directory | Responsibility |
 |-------|-----------|----------------|
-| Routes | `src/routes/` | HTTP handlers, input parsing, Zod validation |
-| Services | `src/services/` | Business logic, database operations |
-| Schemas | `src/schemas/` | Zod schemas shared between validation and types |
-| Middleware | `src/middleware/` | Auth, authorization |
-| Config | `src/config/` | Env, Prisma, Redis, S3 clients |
-| Jobs | `src/jobs/` | BullMQ background job processors |
-| WebSocket | `src/websocket/` | Real-time event broadcasting |
-| Errors | `src/errors/` | AppError hierarchy |
+| Routes | `src/routes/` | HTTP handlers. Parse and validate input, call a service. |
+| Schemas | `src/schemas/` | Zod schemas for request validation. |
+| Services | `src/services/` | Business logic, authorization and database access. |
+| Middleware | `src/middleware/` | `authenticate`, `requireAdmin`. |
+| Utils | `src/utils/` | JWT, Quick Add parser, filter query parser, recurrence, dates. |
+| Config | `src/config/` | Env validation, Prisma, Redis, S3 client, rate limits. |
+| Jobs | `src/jobs/` | BullMQ queues and processors. |
+| WebSocket | `src/websocket/` | Socket.IO server, room handling, event names. |
+| Errors | `src/errors/` | `AppError` hierarchy. |
 
 ### Authentication
 
-- Login returns an **access token** (15min TTL) and a **refresh token** (7 day TTL)
-- Access token is sent as `Authorization: Bearer <token>`
-- Refresh token is stored in an httpOnly cookie
-- `/api/v1/auth/refresh` issues a new access token using the cookie
+- Login (and registration) returns a **15-minute access JWT** in the response body. The client keeps it in memory and sends it as `Authorization: Bearer <token>`.
+- It also sets a **30-day refresh JWT** in an httpOnly cookie scoped to `/api/v1/auth`. Refresh tokens are stored as SHA-256 hashes in the `RefreshToken` table.
+- `POST /api/v1/auth/refresh` **rotates** the token: the old row is deleted and a new pair is issued in one transaction. If a refresh token comes in that is valid but not in the table (already used or expired), that counts as **reuse**. All of the user's refresh tokens are revoked and their live sockets are disconnected.
+- Password change or reset, suspension and reuse detection all revoke sessions. `requireAdmin` re-reads the user's role and active status from the database on every admin request.
+- When SMTP is configured and verified at boot, new accounts start unverified. Password login is refused until the email link is used.
+
+### Authorization
+
+`src/services/access.ts` is the single source of truth. Every service calls it.
+
+- A project is visible to its owner, its direct `ProjectMember`s, and every member of its workspace.
+- Access levels are ordered `VIEW < COMMENT < EDIT < ADMIN`.
+- Workspace roles grant a baseline on every project in the workspace: `GUEST → COMMENT`, `MEMBER → EDIT`, `ADMIN`/`OWNER → ADMIN`. Project roles map as `VIEWER → VIEW`, `COMMENTER → COMMENT`, `MEMBER → EDIT`, `ADMIN → ADMIN`. The project owner is always `ADMIN`. The highest grant wins.
+- A task's assignee always has at least `EDIT` on that task.
+- `projectAccessWhere` / `taskAccessWhere` are the Prisma fragments list endpoints use. `requireProjectAccess`, `requireTaskAccess` and `requireWorkspaceRole` are the throwing point checks.
+
+`ProjectMember` exists in the schema and is honoured by these checks, but there is no API for adding project members. In practice, workspaces are the only way to share.
 
 ### Real-time
 
-The WebSocket server runs alongside the Fastify HTTP server on the same port. It handles:
+Socket.IO shares the API's HTTP server (path `/socket.io`).
 
-- Task create / update / delete / complete events
-- Comment events
-- Presence (who is online, who is viewing a project)
-- Typing indicators
+- **Handshake:** the client sends its access token in `auth.token`. The server disconnects the socket when that token expires. The client then reconnects with a fresh token.
+- **Rooms:** each socket joins `user:<id>`, plus `project:<id>` and `workspace:<id>` for every project and workspace it can read. These are looked up at connect time. `subscribe:project` (sent by `useProjectRoom` when a project view mounts) covers projects shared after connecting. The server acks whether the join was allowed.
+- **Events:** task, section and comment changes are emitted to the `project:<id>` room from `services/syncService.ts`. `project:updated` / `project:deleted` also go to the workspace room. The `user:<id>` room is only used to disconnect a user's sockets.
+- **Resync:** joining rooms is asynchronous, so the server emits `rooms:ready` once the joins land. The client (`services/socket.ts`) turns `rooms:ready` and each subscribe ack into a coalesced bump of `resyncEpoch` in `socketStore`. Hooks that load views (`useTasks`, `useTodayView`, `useUpcomingView`, `useProjects`) refetch when it changes. That closes the gap for anything broadcast while the socket was disconnected or not yet joined.
+- **Presence and typing:** the server handles `presence:update` and `typing:start`/`typing:stop`, and the web app sends presence updates. `PresenceIndicator` and `TypingIndicator` exist but are never mounted, so neither is visible to users.
+- **Notifications** are not pushed over the socket. The bell polls `/api/v1/notifications` every 30 seconds.
 
-Events are scoped to **workspaceId** — clients only receive events for their workspace.
+### Background jobs (BullMQ)
 
-### Background Jobs (BullMQ)
+Queues are defined in `src/jobs/` and started by `initializeWorkers()` in `src/worker.ts`:
 
-Jobs run in a separate worker process (`src/worker.ts`). Current job types:
+| Queue | Schedule | Purpose |
+|-------|----------|---------|
+| `reminder-check` | every 60 s | Claims due reminders and sends them (browser push; email when a reminder's method is email) |
+| `due-task-check` | hourly | Due-soon and overdue notifications, gated on each user's local time |
+| `notification-digest` | hourly | Daily and weekly email digests of unread notifications, sent at the user's local time |
+| `maintenance` | 03:30 UTC daily | Deletes expired refresh tokens and workspace invites |
 
-| Queue | Purpose |
-|-------|---------|
-| `notifications` | Send email / push notifications |
-| `reminders` | Deliver task reminders at the scheduled time |
-| `activity` | Write activity log entries asynchronously |
+The process entry point is `src/worker-entry.ts`. In production it runs in the separate `worker` container. In development the API runs the same workers in-process. `RUN_WORKERS_IN_API` controls this: it defaults to on when `NODE_ENV` isn't `production`, and you can set it to `true` for a deployment without a worker container.
 
-## Frontend Architecture
+Activity logging does not use a queue. Services write `ActivityLog` rows in-process right after the change. Immediate notifications (push and "immediate" email) are also sent in-process by `notificationService`.
 
-### Data flow
+### Storage
 
-```
-User interaction
-  → Component (React)
-    → Zustand action (optimistic update)
-      → TanStack Query mutation (API call)
-        → Zustand store update (settled state)
-          → Component re-render
-```
+Attachments go to the S3-compatible bucket configured in `src/config/storage.ts` (the bundled Garage, or any S3 endpoint). Uploads are multipart requests to the API. Downloads are streamed **through the API** (`GET /api/v1/attachments/:id/download`) after an access check, with `Content-Disposition: attachment` and `nosniff`. `?inline=1` is honoured only for images. The browser never talks to the bucket directly.
 
-### State management
+## Frontend
 
-| Store | Purpose |
-|-------|---------|
-| `authStore` | Current user, authentication state |
-| `workspaceStore` | Current workspace and members |
-| `projectStore` | Project list |
-| `taskStore` | Task list, optimistic updates |
-| `notificationStore` | Notification list and unread count |
-| `uiStore` | Modal state, sidebar open/closed |
-
-TanStack Query manages caching and background refetching. Zustand stores hold UI-local and optimistic state.
-
-### Routing
-
-React Router v6. All routes under `AppLayout` require authentication (via `ProtectedRoute`).
+### Structure
 
 ```
-/login              — Login page
-/register           — Registration
-/today              — Today view
-/upcoming           — Upcoming view
-/projects/:id       — Project view (list, board, calendar)
-/labels/:id         — Label view
-/filters/:id        — Filter view
-/filters-labels     — Labels & filters management
-/settings/*         — Settings pages
+src/
+├── App.tsx        — Routes (React Router v6); non-core pages are lazy-loaded
+├── layouts/       — AppLayout (sidebar, mobile header, global q and / keys, Quick Add and search modals),
+│                    SettingsLayout, AuthLayout
+├── pages/         — app/ (Today, Upcoming, Project, Label, Filter, FiltersLabels),
+│                    auth/ (Login, Register, ForgotPassword, ResetPassword, VerifyEmail),
+│                    settings/ (Profile, Account, Preferences, Notifications, Templates,
+│                               Integrations, DataExport, Admin, Workspace)
+├── components/    — feature folders: task/, project/, board/, calendar/, views/, comment/,
+│                    attachment/, filter/, label/, search/, workspace/, notification/,
+│                    template/, settings/, admin/, layout/ (Sidebar), ui/ (primitives)
+├── stores/        — Zustand stores (server state and UI state)
+├── hooks/         — data hooks over the stores, plus socket, focus-trap and theme hooks
+├── services/      — api.ts (axios client), socket.ts, notifications.ts (push), attachments.ts, admin.ts
+└── utils/         — date formatting, recurrence, mentions, link tokens
 ```
 
-### Component structure
+### Routes
 
 ```
-components/
-├── ui/          — Design system primitives (Button, Input, Modal, Skeleton, ...)
-├── task/        — TaskItem, TaskDetail, TaskForm, ...
-├── project/     — ProjectList, ProjectItem, AddProjectModal, ...
-├── board/       — BoardView, BoardColumn, BoardCard
-├── calendar/    — CalendarView, CalendarDay
-├── layout/      — Sidebar, Topbar
-└── ...
+/login, /register, /forgot-password, /reset-password, /verify-email, /join   — public
+/today, /upcoming, /projects/:id, /labels/:id, /filters/:id,
+/filters-labels, /workspace/settings                                        — AppLayout, signed in
+/settings/{profile,account,preferences,notifications,templates,
+           integrations,export,admin}                                        — SettingsLayout, signed in
 ```
 
-## Database Schema
+`/projects/:id?task=<id>` opens a task's detail panel. Notification, push and search links use this.
 
-Key models and relationships:
+### State and data flow
 
-```
-Workspace
-  └─ has many Members (User)
-  └─ has many Projects
-
-Project
-  └─ belongs to Workspace
-  └─ has many Sections
-  └─ has many Tasks
-
-Task
-  └─ belongs to Project
-  └─ belongs to Section (optional)
-  └─ has parent Task (optional — subtasks)
-  └─ has many Labels (M2M)
-  └─ has many Comments
-  └─ has many Attachments
-  └─ has many Reminders
-  └─ has many ActivityLog entries
-
-User
-  └─ has many Labels
-  └─ has many SavedFilters
-  └─ has Settings
-  └─ has many Notifications
-```
-
-## Infrastructure
+There is no TanStack Query. Server state lives in Zustand stores in `src/stores/`: `authStore`, `workspaceStore`, `projectStore`, `taskStore`, `labelStore`, `filterStore`, `commentStore`, `notificationStore`, `templateStore`, `socketStore`, `toastStore` and `uiStore`. Store actions call the API directly.
 
 ```
-Internet
-  → Nginx (reverse proxy, TLS termination)
-    → API container (Fastify, port 3001)
-    → Web container (Nginx serving built React app)
-
-API container
-  → PostgreSQL container
-  → Redis container
-  → Garage container (S3-compatible object storage)
+Component → hook (useTasks, useProjects, …) → store action
+  → optimistic update in the store (most mutations)
+  → api.ts request
+  → store reconciled with the response, or rolled back with an error toast
+Socket events (useRealTimeSync) → store updates
+resyncEpoch bump → hooks refetch their views
 ```
 
-The `docker-compose.yml` defines all services. In production, each service runs in its own container with Docker named volumes for persistence.
+`services/api.ts` is an axios instance with `withCredentials`. It attaches the in-memory access token. On a 401 it refreshes once through a shared promise (and a Web Locks mutex across tabs, because the refresh cookie is single-use), then retries the request.
+
+## Data model
+
+Key Prisma models (`packages/api/prisma/schema.prisma`):
+
+```
+User ── RefreshToken, NotificationPreference, PushSubscription, Notification
+     ── Label (personal), Filter (personal, text query)
+Workspace ── WorkspaceMember (OWNER/ADMIN/MEMBER/GUEST), WorkspaceInvite
+Project ── belongs to a Workspace (team project) or has no workspace (personal)
+        ── optional parent Project, ProjectMember (no API yet), Section, Task
+Task ── Section?, parent Task? (subtasks), TaskLabel → Label, Comment, Attachment,
+        Reminder, ActivityLog, assignee User?
+Template (project templates), InstanceSetting (e.g. sign-up mode)
+```
+
+Each user gets a "Personal" workspace and an Inbox project at registration. `WorkspaceLabel` exists in the schema but is unused.
+
+## Testing
+
+| Tier | Location | Command | Needs |
+|------|----------|---------|-------|
+| API unit | `packages/api/src/test/unit` | `pnpm --filter @taskflow/api test:unit` | nothing |
+| API integration | `packages/api/src/test/integration` | `pnpm --filter @taskflow/api test:integration` | nothing. Routes run via Fastify `inject` with services mocked. |
+| API DB | `packages/api/src/test/db` | `pnpm --filter @taskflow/api test:db` | a real Postgres (dev compose, or `TEST_DATABASE_URL`) |
+| Web | `packages/web/src/test` | `pnpm --filter @taskflow/web test` | nothing. Vitest; hooks, stores and components, plus MSW-backed page tests in `src/test/pages`. |
+| E2E | `packages/e2e/tests` | `pnpm --filter @taskflow/e2e test` | running API and web servers plus the dev compose stack |
+
+CI (`.github/workflows/test.yml`) runs lint and typecheck; the API suites with coverage and the DB tier against a Postgres service; web tests with coverage; `pnpm audit`; Playwright against dev servers; and a **production-stack** job. That job builds and boots the real `docker-compose.yml` (Traefik, migrate, Garage, api, worker, web) with `scripts/ci/prod-stack.sh` and runs the E2E suite against it over HTTPS.
+
+See [setup.md](setup.md) for running page tests and E2E locally.
