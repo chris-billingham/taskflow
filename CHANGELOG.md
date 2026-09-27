@@ -33,6 +33,11 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   `POST` with a JSON body). Signed-out invitees keep the token in session
   storage during sign-in instead of in the login redirect URL. Links already
   sent with `?token=` still work.
+- **Page-level frontend tests.** A Mock Service Worker harness drives the real
+  stores, hooks and API client, with tests for Today, Upcoming, Project (list,
+  pagination, deep links, not-found) and the board. Web statement coverage
+  went from 13% to 28%, and the thresholds moved up with it. Board columns now
+  have accessible names and a labelled collapse button.
 
 ### Fixed
 

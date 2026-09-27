@@ -31,10 +31,10 @@ export default defineConfig({
       // and counts files no test loads, so branch/function figures are not
       // comparable with the Vitest 1 ones. Ratchet up from here, never down.
       thresholds: {
-        statements: 13,
-        branches: 12,
-        functions: 12,
-        lines: 13,
+        statements: 28,
+        branches: 24,
+        functions: 24,
+        lines: 28,
       },
     },
   },

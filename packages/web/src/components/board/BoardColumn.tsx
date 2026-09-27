@@ -93,6 +93,8 @@ export function BoardColumn({
     <div
       ref={setSortableRef}
       style={sortableStyle}
+      role="region"
+      aria-label={`${title} column`}
       className="group bg-gray-50 dark:bg-gray-700 rounded-lg min-w-[280px] w-[280px] flex flex-col max-h-[calc(100vh-200px)] flex-shrink-0"
     >
       {/* Column header */}
@@ -110,6 +112,8 @@ export function BoardColumn({
         <button
           className="flex-shrink-0"
           onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? `Expand ${title}` : `Collapse ${title}`}
+          aria-expanded={!collapsed}
         >
           <ChevronDown
             className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${

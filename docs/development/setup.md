@@ -101,6 +101,23 @@ docker compose -f docker-compose.dev.yml up -d
 pnpm --filter @taskflow/api db:migrate
 ```
 
+## Frontend page tests
+
+Page tests render a real page (Today, Upcoming, Project, the board) with the
+real stores, hooks and API client; only the network is mocked, with
+[MSW](https://mswjs.io/). The pieces live in `packages/web/src/test/`:
+
+- `helpers/renderPage.tsx` resets every store, signs in a test user and mounts
+  the page under its route pattern.
+- `msw/fixtures.ts` has `makeTask`, `makeProject`, `makeSection` and `ok()`
+  (the API's success envelope).
+- `msw/handlers.ts` answers the ambient requests panels make on their own.
+  Each test serves the data it is about with `server.use(...)`.
+- Import `../mocks/socket` first in a page test so no real socket opens.
+
+Unhandled requests fail the test, so a page that starts calling a new endpoint
+gets noticed. `src/test/pages/Project.test.tsx` is a good example to copy.
+
 ## Running the E2E suite locally
 
 Playwright drives a real browser against real servers, so both dev servers must
