@@ -1,3 +1,4 @@
+import { defineConfig } from 'eslint/config';
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
@@ -5,7 +6,7 @@ import globals from 'globals';
 
 // Workspace-wide flat config. Deliberately NOT type-checked linting (kept
 // fast for CI); tsc --noEmit runs as its own CI step and owns type errors.
-export default tseslint.config(
+export default defineConfig(
   {
     ignores: [
       '**/dist/**',
@@ -20,7 +21,7 @@ export default tseslint.config(
     ],
   },
   eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+  tseslint.configs.recommended,
   {
     languageOptions: {
       globals: { ...globals.node },
@@ -44,8 +45,12 @@ export default tseslint.config(
     languageOptions: {
       globals: { ...globals.browser },
     },
+    // The two classic hook rules only. react-hooks 7's recommended set adds
+    // the React Compiler rules, which are worth adopting deliberately with
+    // the Phase 3 frontend work rather than as a side effect of an upgrade.
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
 );

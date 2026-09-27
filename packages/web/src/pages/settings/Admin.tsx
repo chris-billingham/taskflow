@@ -158,7 +158,7 @@ export default function Admin() {
       await load({ search, page: 1 });
     } catch (err) {
       // Rethrown so the modal shows it inline and keeps the typed values.
-      throw new Error(adminApi.adminErrorMessage(err, 'Failed to create user'));
+      throw new Error(adminApi.adminErrorMessage(err, 'Failed to create user'), { cause: err });
     }
   };
 

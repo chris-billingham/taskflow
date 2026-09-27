@@ -190,7 +190,7 @@ export function BoardView({
 
       // Determine source and target columns
       const sourceColumn = findColumnForTask(activeTaskId);
-      let targetColumn: string | null = null;
+      let targetColumn: string | null;
 
       // If dropped over a column droppable
       if (overId.startsWith('column-')) {
@@ -239,12 +239,9 @@ export function BoardView({
       const overId = over.id as string;
 
       // Determine which column the card ended in
-      let targetColumn: string | null = null;
-      if (overId.startsWith('column-')) {
-        targetColumn = overId.replace('column-', '');
-      } else {
-        targetColumn = findColumnForTask(overId);
-      }
+      const targetColumn = overId.startsWith('column-')
+        ? overId.replace('column-', '')
+        : findColumnForTask(overId);
 
       if (!targetColumn) return;
 

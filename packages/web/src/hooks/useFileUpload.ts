@@ -139,7 +139,7 @@ export function useFileUpload() {
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Upload failed';
       setError(msg);
-      throw new Error(msg);
+      throw new Error(msg, { cause: err });
     } finally {
       setUploading(false);
     }

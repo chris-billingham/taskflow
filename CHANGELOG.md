@@ -62,6 +62,11 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   `@prisma/config>deepmerge-ts: 8.0.2`, removes it; `prisma generate`,
   `validate` and `migrate deploy` were checked against it. Drop the override
   when Prisma ships a fixed version.
+- **ESLint 10** with `eslint-plugin-react-hooks` 7 (only the two classic hook
+  rules for now; the React Compiler rules wait for the Phase 3 frontend work)
+  and `defineConfig`. Its new `no-useless-assignment` and
+  `preserve-caught-error` rules found four spots, now fixed. The web app
+  targets ES2022 and no longer uses `baseUrl`.
 
 ### Fixed
 
