@@ -1,5 +1,5 @@
 # Build stage
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 # Pin the exact pnpm from package.json's packageManager field (matches CI/dev, pnpm 8).
