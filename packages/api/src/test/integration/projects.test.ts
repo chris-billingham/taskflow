@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
-import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import { buildTestApp } from './buildTestApp.js';
 import { generateAccessToken } from '../../utils/jwt.js';
 
 vi.mock('../../services/projectService.js', () => ({
@@ -17,7 +17,6 @@ vi.mock('../../services/projectService.js', () => ({
 }));
 
 import * as projectService from '../../services/projectService.js';
-import { projectRoutes } from '../../routes/projects.js';
 import { NotFoundError, ForbiddenError } from '../../errors/index.js';
 
 const TEST_USER = { id: 'user-proj-test', email: 'proj@example.com', name: 'Project Tester' };
@@ -42,24 +41,7 @@ const SAMPLE_PROJECT = {
 let app: FastifyInstance;
 
 beforeAll(async () => {
-  app = Fastify({ logger: false });
-
-  app.setErrorHandler((error: Error & { statusCode?: number; code?: string; validation?: unknown }, _request, reply) => {
-    if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
-      return reply.status(error.statusCode).send({
-        success: false,
-        error: error.code ?? 'ERROR',
-        message: error.message,
-      });
-    }
-    return reply.status(500).send({
-      success: false,
-      error: 'INTERNAL_SERVER_ERROR',
-      message: error.message,
-    });
-  });
-
-  await app.register(projectRoutes, { prefix: '/api/v1/projects' });
+  app = await buildTestApp();
   await app.ready();
 });
 

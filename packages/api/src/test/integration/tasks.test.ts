@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
-import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import { buildTestApp } from './buildTestApp.js';
 import { generateAccessToken } from '../../utils/jwt.js';
 
 vi.mock('../../services/taskService.js', () => ({
@@ -25,8 +25,8 @@ vi.mock('../../services/syncService.js', () => ({
 }));
 
 import * as taskService from '../../services/taskService.js';
-import { taskRoutes } from '../../routes/tasks.js';
 import { NotFoundError, ForbiddenError } from '../../errors/index.js';
+import { Prisma } from '@prisma/client';
 
 const TEST_USER = { id: 'user-test-1', email: 'test@example.com', name: 'Test User' };
 const AUTH_TOKEN = generateAccessToken(TEST_USER);
@@ -49,24 +49,7 @@ const SAMPLE_TASK = {
 let app: FastifyInstance;
 
 beforeAll(async () => {
-  app = Fastify({ logger: false });
-
-  app.setErrorHandler((error: Error & { statusCode?: number; code?: string; validation?: unknown }, _request, reply) => {
-    if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
-      return reply.status(error.statusCode).send({
-        success: false,
-        error: error.code ?? 'ERROR',
-        message: error.message,
-      });
-    }
-    return reply.status(500).send({
-      success: false,
-      error: 'INTERNAL_SERVER_ERROR',
-      message: error.message,
-    });
-  });
-
-  await app.register(taskRoutes, { prefix: '/api/v1/tasks' });
+  app = await buildTestApp();
   await app.ready();
 });
 
@@ -298,5 +281,25 @@ describe('POST /api/v1/tasks/quick-add', () => {
       });
       expect(response.statusCode).toBe(400);
     }
+  });
+});
+
+describe('global error handling (real app)', () => {
+  it('maps a Prisma "record not found" race to 404, not 500', async () => {
+    vi.mocked(taskService.getTaskById).mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Record to update not found.', {
+        code: 'P2025',
+        clientVersion: '6',
+      }),
+    );
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/tasks/task-gone',
+      headers: authHeaders(),
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ success: false, error: 'NOT_FOUND' });
   });
 });

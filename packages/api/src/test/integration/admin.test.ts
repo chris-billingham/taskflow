@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
-import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import { buildTestApp } from './buildTestApp.js';
 import { generateAccessToken } from '../../utils/jwt.js';
 
 // requireAdmin re-reads the caller's role from the database on every request,
@@ -27,7 +27,6 @@ vi.mock('../../services/instanceSettingsService.js', () => ({
 import { prisma } from '../../config/database.js';
 import * as instanceSettings from '../../services/instanceSettingsService.js';
 import * as adminService from '../../services/adminService.js';
-import { adminRoutes } from '../../routes/admin.js';
 import { ConflictError, ValidationError } from '../../errors/index.js';
 
 const mockUserFindUnique = (prisma as unknown as {
@@ -65,30 +64,7 @@ const authed = (
   });
 
 beforeAll(async () => {
-  app = Fastify({ logger: false });
-
-  app.setErrorHandler(
-    (
-      error: Error & { statusCode?: number; code?: string; validation?: unknown },
-      _request,
-      reply,
-    ) => {
-      if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
-        return reply.status(error.statusCode).send({
-          success: false,
-          error: error.code ?? 'ERROR',
-          message: error.message,
-        });
-      }
-      return reply.status(500).send({
-        success: false,
-        error: 'INTERNAL_SERVER_ERROR',
-        message: error.message,
-      });
-    },
-  );
-
-  await app.register(adminRoutes, { prefix: '/api/v1/admin' });
+  app = await buildTestApp();
   await app.ready();
 });
 

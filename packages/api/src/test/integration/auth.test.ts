@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
-import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
-import cookie from '@fastify/cookie';
+import { buildTestApp } from './buildTestApp.js';
 
 vi.mock('../../services/authService.js', () => ({
   register: vi.fn(),
@@ -21,33 +20,12 @@ vi.mock('../../services/instanceSettingsService.js', () => ({
 
 import * as authService from '../../services/authService.js';
 import * as instanceSettings from '../../services/instanceSettingsService.js';
-import { authRoutes } from '../../routes/auth.js';
 import { ConflictError, UnauthorizedError } from '../../errors/index.js';
 
 let app: FastifyInstance;
 
 beforeAll(async () => {
-  app = Fastify({ logger: false });
-
-  app.setErrorHandler((error: Error & { statusCode?: number; code?: string; validation?: unknown }, _request, reply) => {
-    if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
-      return reply.status(error.statusCode).send({
-        success: false,
-        error: error.code ?? 'ERROR',
-        message: error.message,
-      });
-    }
-    return reply.status(500).send({
-      success: false,
-      error: 'INTERNAL_SERVER_ERROR',
-      message: error.message,
-    });
-  });
-
-  // Cookie plugin must be registered before authRoutes since the routes call
-  // reply.setCookie / request.cookies
-  await app.register(cookie);
-  await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  app = await buildTestApp();
   await app.ready();
 });
 
