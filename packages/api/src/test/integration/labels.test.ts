@@ -105,9 +105,8 @@ describe('generated OpenAPI', () => {
   it('documents converted routes from their schemas', async () => {
     const docsApp = await buildApp({ logger: false, rateLimitRedis: false, docs: true });
     await docsApp.ready();
-    const spec = docsApp.swagger() as {
-      paths: Record<string, Record<string, { responses: Record<string, any> }>>;
-    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const spec = docsApp.swagger() as unknown as { paths: Record<string, Record<string, any>> };
     await docsApp.close();
 
     const list = spec.paths['/api/v1/labels/'].get;
