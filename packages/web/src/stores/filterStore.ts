@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import api from '@/services/api';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 import type { Filter as ContractFilter } from '@taskflow/contract';
 
 /** A saved filter, exactly as the API sends it. */

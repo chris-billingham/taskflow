@@ -24,7 +24,7 @@ import { QuickAdd } from './QuickAdd';
 import { CommentList } from '@/components/comment/CommentList';
 import { ActivityLog } from '@/components/activity/ActivityLog';
 import { AttachmentList } from '@/components/attachment/AttachmentList';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 
 interface TaskDetailProps {
   task: Task;
@@ -35,6 +35,8 @@ interface TaskDetailProps {
   onDelete: (id: string) => void;
   onAddSubtask: (text: string) => Promise<void>;
   subtasks?: Task[];
+  /** Open a subtask in the panel (it becomes the task shown). */
+  onOpenSubtask?: (id: string) => void;
 }
 
 export function TaskDetail({
@@ -46,6 +48,7 @@ export function TaskDetail({
   onDelete,
   onAddSubtask,
   subtasks,
+  onOpenSubtask,
 }: TaskDetailProps) {
   const [editingContent, setEditingContent] = useState(false);
   const [content, setContent] = useState(task.content);
@@ -108,6 +111,16 @@ export function TaskDetail({
                 else onUncomplete(task.id);
               }}
             />
+            {task.parent && onOpenSubtask && (
+              <button
+                type="button"
+                className="text-xs text-gray-500 dark:text-gray-400 hover:underline truncate max-w-[10rem]"
+                onClick={() => onOpenSubtask(task.parent!.id)}
+                aria-label={`Open parent task: ${task.parent.content}`}
+              >
+                ↑ {task.parent.content}
+              </button>
+            )}
             {task.project && (
               <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                 <span
@@ -322,13 +335,16 @@ export function TaskDetail({
                         else onUncomplete(sub.id);
                       }}
                     />
-                    <span
-                      className={`text-sm flex-1 ${
+                    <button
+                      type="button"
+                      className={`text-sm flex-1 text-left hover:underline ${
                         sub.isCompleted ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'
                       }`}
+                      onClick={() => onOpenSubtask?.(sub.id)}
+                      aria-label={`Open subtask: ${sub.content}`}
                     >
                       {sub.content}
-                    </span>
+                    </button>
                   </div>
                 ))}
               </div>

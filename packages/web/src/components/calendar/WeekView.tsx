@@ -5,14 +5,11 @@ import { useDroppable } from '@dnd-kit/core';
 import { CalendarTask } from './CalendarTask';
 import { TimeSlot } from './TimeSlot';
 import type { CalendarDay } from '@/hooks/useCalendar';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 
 interface WeekViewProps {
   days: CalendarDay[];
   hours: number[];
-  onTaskClick: (task: Task) => void;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
   onSlotClick: (dateStr: string, time: string) => void;
   onResizeDuration: (taskId: string, duration: number) => void;
 }
@@ -45,9 +42,6 @@ function AnytimeDropZone({ dateStr }: { dateStr: string }) {
 export function WeekView({
   days,
   hours,
-  onTaskClick,
-  onComplete,
-  onUncomplete,
   onSlotClick,
   onResizeDuration,
 }: WeekViewProps) {
@@ -147,9 +141,6 @@ export function WeekView({
                     key={task.id}
                     task={task}
                     variant="month"
-                    onTaskClick={onTaskClick}
-                    onComplete={onComplete}
-                    onUncomplete={onUncomplete}
                   />
                 ))}
               </div>
@@ -206,9 +197,6 @@ export function WeekView({
                       task={task}
                       variant="week"
                       style={{ top: `${top}px`, height: `${Math.max(height, 20)}px` }}
-                      onTaskClick={onTaskClick}
-                      onComplete={onComplete}
-                      onUncomplete={onUncomplete}
                       onResizeDuration={onResizeDuration}
                     />
                   );

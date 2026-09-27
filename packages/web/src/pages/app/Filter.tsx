@@ -3,13 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Pencil, Star, Calendar, List } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { TaskList } from '@/components/task/TaskList';
-import { TaskDetail } from '@/components/task/TaskDetail';
 import { CalendarView } from '@/components/views/CalendarView';
 import { useFilterStore } from '@/stores/filterStore';
-import { useTaskStore } from '@/stores/taskStore';
-import { useTaskActions } from '@/hooks/useTasks';
-import { useFilterResults } from '@/hooks/useFilterResults';
-import type { Task, QuickAddDue } from '@/stores/taskStore';
+import { useFilterTasks } from '@/queries/tasks';
 
 export default function Filter() {
   const { id } = useParams<{ id: string }>();
@@ -18,27 +14,7 @@ export default function Filter() {
   const fetchFilters = useFilterStore((s) => s.fetchFilters);
   const updateFilter = useFilterStore((s) => s.updateFilter);
 
-  const taskMap = useTaskStore((s) => s.tasks);
-  const {
-    createTask,
-    updateTask,
-    deleteTask,
-    completeTask,
-    uncompleteTask,
-    duplicateTask,
-    reorderTasks,
-    quickAddTask,
-  } = useTaskActions();
-
-  const {
-    tasks,
-    loading,
-    hasMore,
-    loadingMore,
-    loadMore,
-    refetch: fetchTasks,
-  } = useFilterResults(filter ? filter.query : null);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const { tasks, loading, hasMore, loadingMore, loadMore } = useFilterTasks(filter ? filter.query : null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
 
@@ -58,12 +34,6 @@ export default function Filter() {
   useEffect(() => {
     fetchFilters();
   }, [fetchFilters]);
-
-  useEffect(() => {
-    if (filter) {
-      fetchTasks();
-    }
-  }, [filter, fetchTasks]);
 
   if (!filter && !loading) {
     return (
@@ -87,55 +57,6 @@ export default function Filter() {
     await updateFilter(filter.id, { name: editName.trim() });
     setEditing(false);
   };
-
-  const handleComplete = async (taskId: string) => {
-    await completeTask(taskId);
-    fetchTasks();
-  };
-
-  const handleUncomplete = async (taskId: string) => {
-    await uncompleteTask(taskId);
-    fetchTasks();
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    await deleteTask(taskId);
-    if (selectedTask?.id === taskId) setSelectedTask(null);
-    fetchTasks();
-  };
-
-  const handleDuplicate = async (taskId: string) => {
-    await duplicateTask(taskId);
-    fetchTasks();
-  };
-
-  const handleAddSubtask = async (text: string) => {
-    if (!selectedTask) return;
-    await createTask({
-      content: text,
-      projectId: selectedTask.projectId,
-      parentId: selectedTask.id,
-    });
-    fetchTasks();
-  };
-
-  // A saved filter is an arbitrary query, so there's no way to guarantee a new
-  // task matches it — create it normally and refetch. It appears here if the
-  // query happens to select it, exactly as it would after a manual reload.
-  const handleQuickAdd = async (text: string, due?: QuickAddDue) => {
-    await quickAddTask(text, undefined, due);
-    fetchTasks();
-  };
-
-  const selectedTaskSubtasks = selectedTask
-    ? Array.from(taskMap.values())
-        .filter((t) => t.parentId === selectedTask.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-    : [];
-
-  const currentSelectedTask = selectedTask
-    ? taskMap.get(selectedTask.id) || selectedTask
-    : null;
 
   return (
     <div>
@@ -237,36 +158,10 @@ export default function Filter() {
           <Spinner size="lg" />
         </div>
       ) : viewMode === 'calendar' ? (
-        <CalendarView
-          tasks={tasks.filter((t) => !t.parentId)}
-          allTasks={taskMap}
-          onUpdateTask={async (id, data) => {
-            await updateTask(id, data);
-            fetchTasks();
-          }}
-          onCompleteTask={handleComplete}
-          onUncompleteTask={handleUncomplete}
-          onDeleteTask={handleDeleteTask}
-          onAddSubtask={handleAddSubtask}
-          onQuickAdd={handleQuickAdd}
-        />
+        <CalendarView tasks={tasks.filter((t) => !t.parentId)} />
       ) : (
         <>
-          <TaskList
-            tasks={tasks}
-            allTasks={taskMap}
-            onComplete={handleComplete}
-            onUncomplete={handleUncomplete}
-            onTaskClick={setSelectedTask}
-            onUpdate={async (id, data) => {
-              await updateTask(id, data);
-              fetchTasks();
-            }}
-            onDelete={handleDeleteTask}
-            onDuplicate={handleDuplicate}
-            onReorder={reorderTasks}
-            emptyMessage="No tasks match this filter"
-          />
+          <TaskList tasks={tasks} emptyMessage="No tasks match this filter" />
 
           {hasMore && (
             <div className="flex justify-center py-3">
@@ -280,22 +175,6 @@ export default function Filter() {
             </div>
           )}
 
-          {/* Task detail panel */}
-          {currentSelectedTask && (
-            <TaskDetail
-              task={currentSelectedTask}
-              onClose={() => setSelectedTask(null)}
-              onUpdate={async (id: string, data: Record<string, any>) => {
-                await updateTask(id, data);
-                fetchTasks();
-              }}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onDelete={handleDeleteTask}
-              onAddSubtask={handleAddSubtask}
-              subtasks={selectedTaskSubtasks}
-            />
-          )}
         </>
       )}
     </div>

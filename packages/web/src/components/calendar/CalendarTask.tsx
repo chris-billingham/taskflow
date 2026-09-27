@@ -2,15 +2,14 @@ import { useRef, useState, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { TaskCheckbox } from '@/components/task/TaskCheckbox';
 import { formatUserTimeCompact } from '@/utils/dateFormat';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
+import { useTaskActions } from '@/queries/taskActions';
+import { useTaskPanel } from '@/hooks/useTaskPanel';
 
 interface CalendarTaskProps {
   task: Task;
   variant: 'week' | 'month';
   style?: React.CSSProperties;
-  onTaskClick: (task: Task) => void;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
   onResizeDuration?: (taskId: string, duration: number) => void;
 }
 
@@ -43,9 +42,6 @@ export function CalendarTask({
   task,
   variant,
   style,
-  onTaskClick,
-  onComplete,
-  onUncomplete,
   onResizeDuration,
 }: CalendarTaskProps) {
   const {
@@ -55,6 +51,11 @@ export function CalendarTask({
     transform,
     isDragging,
   } = useDraggable({ id: task.id });
+  const { completeTask, uncompleteTask } = useTaskActions();
+  const { openTask } = useTaskPanel();
+  const onTaskClick = (t: Task) => openTask(t.id);
+  const onComplete = (id: string) => void completeTask(id);
+  const onUncomplete = (id: string) => void uncompleteTask(id);
 
   const [resizeHeightOverride, setResizeHeightOverride] = useState<number | null>(null);
   const resizingRef = useRef(false);

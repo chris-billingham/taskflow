@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react';
 import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TaskPanel } from '@/components/task/TaskPanel';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { useAuthStore } from '@/stores/authStore';
 import { useCommentStore } from '@/stores/commentStore';
@@ -10,7 +12,6 @@ import { useLabelStore } from '@/stores/labelStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useSocketStore } from '@/stores/socketStore';
-import { useTaskStore } from '@/stores/taskStore';
 import { useTemplateStore } from '@/stores/templateStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -27,7 +28,6 @@ const stores = [
   useNotificationStore,
   useProjectStore,
   useSocketStore,
-  useTaskStore,
   useTemplateStore,
   useToastStore,
   useUIStore,
@@ -49,9 +49,23 @@ interface RenderPageOptions {
   user?: typeof TEST_USER | null;
 }
 
+/** Renders the current URL, so tests can assert on navigation. */
+function CurrentUrl() {
+  const location = useLocation();
+  return <output data-testid="current-url">{location.pathname + location.search}</output>;
+}
+
+/** A fresh cache per test, without retries, so failures surface at once. */
+export function createTestQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+}
+
 /**
- * Render a page the way the app does: signed in, inside the router, with the
- * toast host mounted, talking to the MSW-mocked API through the real client.
+ * Render a page the way the app does: signed in, inside the router and the
+ * query cache, with the task panel and toast host mounted (as AppLayout
+ * mounts them), talking to the MSW-mocked API through the real client.
  */
 export function renderPage(ui: ReactElement, options: RenderPageOptions = {}) {
   const { route = '/', path = '/', user = TEST_USER } = options;
@@ -61,14 +75,19 @@ export function renderPage(ui: ReactElement, options: RenderPageOptions = {}) {
     isAuthenticated: user !== null,
     isLoading: false,
   });
+  const queryClient = createTestQueryClient();
 
   const utils = render(
-    <MemoryRouter initialEntries={[route]}>
-      <Routes>
-        <Route path={path} element={ui} />
-      </Routes>
-      <ToastContainer />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[route]}>
+        <Routes>
+          <Route path={path} element={ui} />
+        </Routes>
+        <TaskPanel />
+        <CurrentUrl />
+        <ToastContainer />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
-  return { ...utils, user: userEvent.setup() };
+  return { ...utils, user: userEvent.setup(), queryClient };
 }

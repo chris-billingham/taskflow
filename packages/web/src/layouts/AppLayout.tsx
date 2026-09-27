@@ -7,7 +7,8 @@ import { Modal } from '@/components/ui/Modal';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { SyncStatus } from '@/components/ui/SyncStatus';
 import { SearchModal } from '@/components/search/SearchModal';
-import { useTaskStore } from '@/stores/taskStore';
+import { TaskPanel } from '@/components/task/TaskPanel';
+import { useTaskActions } from '@/queries/taskActions';
 import { useSocket } from '@/hooks/useSocket';
 import { useRealTimeSync } from '@/hooks/useRealTimeSync';
 
@@ -15,7 +16,7 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const quickAddTask = useTaskStore((s) => s.quickAddTask);
+  const { quickAddTask } = useTaskActions();
 
   useSocket();
   useRealTimeSync();
@@ -117,6 +118,9 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* The open task (?task= in the URL), over whichever page is showing */}
+      <TaskPanel />
 
       {/* Global Search Modal */}
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />

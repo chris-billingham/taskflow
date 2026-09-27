@@ -2,19 +2,11 @@ import { isToday, isTomorrow, parseISO } from 'date-fns';
 import { formatUserDate, formatUserDateWithWeekday } from '@/utils/dateFormat';
 import { TaskList } from '@/components/task/TaskList';
 import { QuickAdd } from '@/components/task/QuickAdd';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 
 interface DateSectionProps {
   date: string; // YYYY-MM-DD
   tasks: Task[];
-  allTasks: Map<string, Task>;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
-  onTaskClick: (task: Task) => void;
-  onUpdate: (id: string, data: Record<string, any>) => void;
-  onDelete: (id: string) => void;
-  onDuplicate: (id: string) => void;
-  onReorder: (taskIds: string[]) => void;
   onAddTask?: (text: string) => Promise<void>;
   externalDnd?: boolean;
 }
@@ -37,14 +29,6 @@ function formatDateSub(dateStr: string): string {
 export function DateSection({
   date,
   tasks,
-  allTasks,
-  onComplete,
-  onUncomplete,
-  onTaskClick,
-  onUpdate,
-  onDelete,
-  onDuplicate,
-  onReorder,
   onAddTask,
   externalDnd = false,
 }: DateSectionProps) {
@@ -71,19 +55,7 @@ export function DateSection({
           </span>
         )}
       </div>
-      <TaskList
-        tasks={tasks}
-        allTasks={allTasks}
-        onComplete={onComplete}
-        onUncomplete={onUncomplete}
-        onTaskClick={onTaskClick}
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        onDuplicate={onDuplicate}
-        onReorder={onReorder}
-        emptyMessage="No tasks"
-        externalDnd={externalDnd}
-      />
+      <TaskList tasks={tasks} emptyMessage="No tasks" externalDnd={externalDnd} />
       {onAddTask && (
         <div className="mt-1">
           <QuickAdd onSubmit={onAddTask} placeholder="Add task" />

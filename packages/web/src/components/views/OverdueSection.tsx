@@ -1,32 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, Clock } from 'lucide-react';
 import { TaskItem } from '@/components/task/TaskItem';
-import type { Task } from '@/stores/taskStore';
-import { getSubtasks } from '@/utils/subtaskIndex';
+import type { Task } from '@/types/task';
 
 interface OverdueSectionProps {
   tasks: Task[];
-  allTasks: Map<string, Task>;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
-  onTaskClick: (task: Task) => void;
-  onUpdate: (id: string, data: Record<string, any>) => void;
-  onDelete: (id: string) => void;
-  onDuplicate: (id: string) => void;
   onRescheduleAll?: () => void;
 }
 
-export function OverdueSection({
-  tasks,
-  allTasks,
-  onComplete,
-  onUncomplete,
-  onTaskClick,
-  onUpdate,
-  onDelete,
-  onDuplicate,
-  onRescheduleAll,
-}: OverdueSectionProps) {
+export function OverdueSection({ tasks, onRescheduleAll }: OverdueSectionProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   if (tasks.length === 0) return null;
@@ -58,23 +40,9 @@ export function OverdueSection({
       </div>
       {!collapsed && (
         <div className="px-1 pb-1">
-          {tasks.map((task) => {
-            const subtasks = getSubtasks(allTasks, task.id);
-            return (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onComplete={onComplete}
-                onUncomplete={onUncomplete}
-                onClick={onTaskClick}
-                onUpdate={onUpdate}
-                onDelete={onDelete}
-                onDuplicate={onDuplicate}
-                showSubtasks
-                subtasks={subtasks}
-              />
-            );
-          })}
+          {tasks.map((task) => (
+            <TaskItem key={task.id} task={task} showSubtasks />
+          ))}
         </div>
       )}
     </div>

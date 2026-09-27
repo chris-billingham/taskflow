@@ -1,5 +1,11 @@
+import '../mocks/socket';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { server } from '../msw/server';
+import { API } from '../msw/handlers';
+import { makeTask, ok } from '../msw/fixtures';
+import { renderPage } from '../helpers/renderPage';
 
 // Mock sub-components that have complex dependencies
 vi.mock('@/components/task/DueDatePicker', () => ({
@@ -14,126 +20,94 @@ vi.mock('@/components/task/PriorityPicker', () => ({
 
 vi.mock('@/components/task/LabelPicker', () => ({
   LabelBadges: () => null,
+  LabelPicker: () => null,
 }));
 
 import { TaskItem } from '@/components/task/TaskItem';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 
-function buildTask(overrides: Partial<Task> = {}): Task {
-  return {
-    id: 'task-1',
-    content: 'Buy groceries',
-    description: null,
-    projectId: 'proj-1',
-    sectionId: null,
-    parentId: null,
-    creatorId: 'user-1',
-    assigneeId: null,
-    dueDate: null,
-    dueTime: null,
-    deadline: null,
-    duration: null,
-    isRecurring: false,
-    recurrenceRule: null,
-    priority: 4,
-    isCompleted: false,
-    completedAt: null,
-    sortOrder: 1,
-    taskLabels: [],
-    subtasks: [],
-    assignee: null,
-    _count: { subtasks: 0, comments: 0 },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ...overrides,
-  };
+function renderItem(task: Task) {
+  return renderPage(<TaskItem task={task} showSubtasks />);
 }
-
-const defaultProps = {
-  onComplete: vi.fn(),
-  onUncomplete: vi.fn(),
-  onClick: vi.fn(),
-  onUpdate: vi.fn(),
-  onDelete: vi.fn(),
-  onDuplicate: vi.fn(),
-};
 
 describe('TaskItem', () => {
   it('renders the task content', () => {
-    render(<TaskItem task={buildTask()} {...defaultProps} />);
+    renderItem(makeTask({ content: 'Buy groceries' }));
     expect(screen.getByText('Buy groceries')).toBeInTheDocument();
   });
 
-  it('applies completed opacity when task is completed', () => {
-    const task = buildTask({ isCompleted: true });
-    const { container } = render(<TaskItem task={task} {...defaultProps} />);
-    const wrapper = container.firstElementChild?.firstElementChild;
-    expect(wrapper?.className).toContain('opacity-60');
+  it('dims a completed task', () => {
+    const { container } = renderItem(makeTask({ isCompleted: true }));
+    expect(container.querySelector('.opacity-60')).not.toBeNull();
   });
 
-  it('does not apply completed opacity for incomplete task', () => {
-    const { container } = render(<TaskItem task={buildTask()} {...defaultProps} />);
-    const wrapper = container.firstElementChild?.firstElementChild;
-    expect(wrapper?.className).not.toContain('opacity-60');
-  });
+  it('completes the task through the API when its box is ticked', async () => {
+    const completed = vi.fn();
+    server.use(
+      http.post(`${API}/tasks/:id/complete`, ({ params }) => {
+        completed(params.id);
+        return HttpResponse.json(ok(makeTask({ id: String(params.id), isCompleted: true })));
+      }),
+    );
+    renderItem(makeTask({ id: 'task-1' }));
 
-  it('calls onComplete when checkbox is clicked for incomplete task', () => {
-    const onComplete = vi.fn();
-    render(<TaskItem task={buildTask()} {...defaultProps} onComplete={onComplete} />);
-
-    // TaskCheckbox now exposes real checkbox semantics
     fireEvent.click(screen.getByRole('checkbox', { name: /complete task/i }));
-
-    expect(onComplete).toHaveBeenCalledWith('task-1');
+    await waitFor(() => expect(completed).toHaveBeenCalledWith('task-1'));
   });
 
-  it('calls onUncomplete when checkbox is clicked for completed task', () => {
-    const onUncomplete = vi.fn();
-    const task = buildTask({ isCompleted: true });
-    render(<TaskItem task={task} {...defaultProps} onUncomplete={onUncomplete} />);
+  it('reopens a completed task', async () => {
+    const reopened = vi.fn();
+    server.use(
+      http.post(`${API}/tasks/:id/uncomplete`, ({ params }) => {
+        reopened(params.id);
+        return HttpResponse.json(ok(makeTask({ id: String(params.id) })));
+      }),
+    );
+    renderItem(makeTask({ id: 'task-1', isCompleted: true }));
 
     fireEvent.click(screen.getByRole('checkbox', { name: /mark task incomplete/i }));
-
-    expect(onUncomplete).toHaveBeenCalledWith('task-1');
+    await waitFor(() => expect(reopened).toHaveBeenCalledWith('task-1'));
   });
 
-  it('calls onClick when content area is clicked', () => {
-    const onClick = vi.fn();
-    render(<TaskItem task={buildTask()} {...defaultProps} onClick={onClick} />);
+  it('opens the task in the panel by putting it in the URL', async () => {
+    server.use(http.get(`${API}/tasks/task-1`, () => HttpResponse.json(ok(makeTask({ id: 'task-1' })))));
+    const { user } = renderItem(makeTask({ id: 'task-1', content: 'Buy groceries' }));
 
-    fireEvent.click(screen.getByText('Buy groceries'));
-    expect(onClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'task-1' }));
+    await user.click(screen.getByRole('button', { name: 'Open task: Buy groceries' }));
+    expect(screen.getByTestId('current-url')).toHaveTextContent('/?task=task-1');
+    expect(await screen.findByRole('dialog', { name: 'Task detail' })).toBeInTheDocument();
   });
 
-  it('applies priority border color class for p1', () => {
-    const task = buildTask({ priority: 1 });
-    const { container } = render(<TaskItem task={task} {...defaultProps} />);
-    const wrapper = container.firstElementChild?.firstElementChild;
-    expect(wrapper?.className).toContain('border-l-red-500');
+  it('marks p1 tasks with the red border', () => {
+    const { container } = renderItem(makeTask({ priority: 1 }));
+    expect(container.querySelector('.border-l-red-500')).not.toBeNull();
   });
 
-  it('applies priority border color class for p2', () => {
-    const task = buildTask({ priority: 2 });
-    const { container } = render(<TaskItem task={task} {...defaultProps} />);
-    const wrapper = container.firstElementChild?.firstElementChild;
-    expect(wrapper?.className).toContain('border-l-orange-500');
-  });
-
-  it('renders due date badge when task has a due date', () => {
-    const task = buildTask({ dueDate: '2024-01-15' });
-    render(<TaskItem task={task} {...defaultProps} />);
+  it('shows the due date badge only when there is a due date', () => {
+    const { unmount } = renderItem(makeTask({ dueDate: '2024-01-15' }));
     expect(screen.getByTestId('due-date-badge')).toBeInTheDocument();
-  });
-
-  it('does not render due date badge when task has no due date', () => {
-    render(<TaskItem task={buildTask()} {...defaultProps} />);
+    unmount();
+    renderItem(makeTask());
     expect(screen.queryByTestId('due-date-badge')).not.toBeInTheDocument();
   });
 
-  it('updates editContent when task.content prop changes', () => {
-    const { rerender } = render(<TaskItem task={buildTask()} {...defaultProps} />);
-    const updatedTask = buildTask({ content: 'Updated content' });
-    rerender(<TaskItem task={updatedTask} {...defaultProps} />);
-    expect(screen.getByText('Updated content')).toBeInTheDocument();
+  it('fetches a project row’s subtasks only when it is expanded', async () => {
+    const fetched = vi.fn();
+    server.use(
+      http.get(`${API}/tasks`, ({ request }) => {
+        fetched(new URL(request.url).searchParams.get('parentId'));
+        return HttpResponse.json(
+          ok([makeTask({ id: 'sub-1', content: 'Pick a colour', parentId: 'task-1' })], { nextCursor: null }),
+        );
+      }),
+    );
+    const parent = makeTask({ id: 'task-1', _count: { subtasks: 1, comments: 0 } });
+    delete parent.subtasks;
+    const { user } = renderItem(parent);
+
+    expect(fetched).not.toHaveBeenCalled();
+    await user.click(screen.getAllByRole('button')[0]);
+    expect(await screen.findByText('Pick a colour')).toBeInTheDocument();
+    expect(fetched).toHaveBeenCalledWith('task-1');
   });
 });

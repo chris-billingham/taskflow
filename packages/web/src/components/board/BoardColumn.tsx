@@ -9,18 +9,13 @@ import { CSS } from '@dnd-kit/utilities';
 import { ChevronDown, GripVertical, Trash2 } from 'lucide-react';
 import { BoardCard } from './BoardCard';
 import { BoardQuickAdd } from './BoardQuickAdd';
-import type { Task } from '@/stores/taskStore';
-import { getSubtasks } from '@/utils/subtaskIndex';
+import type { Task } from '@/types/task';
 
 interface BoardColumnProps {
   columnId: string;
   title: string;
   tasks: Task[];
-  allTasks: Map<string, Task>;
   isVirtual?: boolean;
-  onTaskClick: (task: Task) => void;
-  onCompleteTask: (id: string) => void;
-  onUncompleteTask: (id: string) => void;
   onCreateTask: (content: string) => Promise<void>;
   onUpdateSection?: (id: string, data: { name?: string }) => void;
   onDeleteSection?: (id: string) => void;
@@ -30,11 +25,7 @@ export function BoardColumn({
   columnId,
   title,
   tasks,
-  allTasks,
   isVirtual,
-  onTaskClick,
-  onCompleteTask,
-  onUncompleteTask,
   onCreateTask,
   onUpdateSection,
   onDeleteSection,
@@ -180,19 +171,9 @@ export function BoardColumn({
             items={taskIds}
             strategy={verticalListSortingStrategy}
           >
-            {tasks.map((task) => {
-              const subtasks = getSubtasks(allTasks, task.id);
-              return (
-                <BoardCard
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks}
-                  onClick={onTaskClick}
-                  onComplete={onCompleteTask}
-                  onUncomplete={onUncompleteTask}
-                />
-              );
-            })}
+            {tasks.map((task) => (
+              <BoardCard key={task.id} task={task} />
+            ))}
           </SortableContext>
 
           {tasks.length === 0 && (

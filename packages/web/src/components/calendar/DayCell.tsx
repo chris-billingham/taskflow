@@ -1,13 +1,9 @@
 import { useDroppable } from '@dnd-kit/core';
 import { CalendarTask } from './CalendarTask';
 import type { CalendarDay } from '@/hooks/useCalendar';
-import type { Task } from '@/stores/taskStore';
 
 interface DayCellProps {
   day: CalendarDay;
-  onTaskClick: (task: Task) => void;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
   onDayClick: (dateStr: string) => void;
   onSlotClick: (dateStr: string, time: string) => void;
 }
@@ -16,9 +12,6 @@ const MAX_VISIBLE_TASKS = 3;
 
 export function DayCell({
   day,
-  onTaskClick,
-  onComplete,
-  onUncomplete,
   onDayClick,
   onSlotClick,
 }: DayCellProps) {
@@ -61,9 +54,6 @@ export function DayCell({
             key={task.id}
             task={task}
             variant="month"
-            onTaskClick={onTaskClick}
-            onComplete={onComplete}
-            onUncomplete={onUncomplete}
           />
         ))}
         {extraCount > 0 && (

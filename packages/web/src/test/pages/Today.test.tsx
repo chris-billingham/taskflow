@@ -6,7 +6,7 @@ import { server } from '../msw/server';
 import { API } from '../msw/handlers';
 import { apiDate, localDateString, makeTask, ok } from '../msw/fixtures';
 import { renderPage } from '../helpers/renderPage';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 import Today from '@/pages/app/Today';
 
 type Buckets = Partial<Record<'overdue' | 'morning' | 'afternoon' | 'evening' | 'noTime', Task[]>>;
@@ -35,6 +35,16 @@ function serveTodayViews(...views: ReturnType<typeof todayView>[]) {
     http.get(`${API}/views/today`, () =>
       HttpResponse.json(ok(views[Math.min(call++, views.length - 1)])),
     ),
+    // The task panel loads a task's full detail when it opens.
+    http.get(`${API}/tasks/:id`, ({ params }) => {
+      const view = views[views.length - 1];
+      const task = [...view.overdue, ...view.morning, ...view.afternoon, ...view.evening, ...view.noTime].find(
+        (t) => t.id === params.id,
+      );
+      return task
+        ? HttpResponse.json(ok(task))
+        : HttpResponse.json({ success: false, error: 'NOT_FOUND', message: 'Task not found' }, { status: 404 });
+    }),
   );
 }
 

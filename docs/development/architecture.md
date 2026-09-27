@@ -7,7 +7,7 @@ Taskflow is a pnpm + Turborepo monorepo:
 ```
 packages/
 ├── api/     — Fastify REST API, Socket.IO server, BullMQ workers (TypeScript, Prisma)
-├── web/     — React 18 single-page app (Vite, Zustand, Tailwind)
+├── web/     — React 18 single-page app (Vite, TanStack Query, Zustand, Tailwind)
 ├── e2e/     — Playwright end-to-end suite
 └── shared/  — Placeholder. Both api and web list it as a dependency, but nothing imports it.
 ```
@@ -90,7 +90,7 @@ Socket.IO shares the API's HTTP server (path `/socket.io`).
 - **Handshake:** the client sends its access token in `auth.token`. The server disconnects the socket when that token expires. The client then reconnects with a fresh token.
 - **Rooms:** each socket joins `user:<id>`, plus `project:<id>` and `workspace:<id>` for every project and workspace it can read. These are looked up at connect time. `subscribe:project` (sent by `useProjectRoom` when a project view mounts) covers projects shared after connecting. The server acks whether the join was allowed.
 - **Events:** task, section and comment changes are emitted to the `project:<id>` room from `services/syncService.ts`. `project:updated` / `project:deleted` also go to the workspace room. The `user:<id>` room is only used to disconnect a user's sockets.
-- **Resync:** joining rooms is asynchronous, so the server emits `rooms:ready` once the joins land. The client (`services/socket.ts`) turns `rooms:ready` and each subscribe ack into a coalesced bump of `resyncEpoch` in `socketStore`. Hooks that load views (`useTasks`, `useTodayView`, `useUpcomingView`, `useProjects`) refetch when it changes. That closes the gap for anything broadcast while the socket was disconnected or not yet joined.
+- **Resync:** joining rooms is asynchronous, so the server emits `rooms:ready` once the joins land. The client (`services/socket.ts`) turns `rooms:ready` and each subscribe ack into a coalesced bump of `resyncEpoch` in `socketStore`. `useRealTimeSync` then invalidates every query (active ones refetch at once), and store-backed hooks such as `useProjects` refetch too. That closes the gap for anything broadcast while the socket was disconnected or not yet joined.
 - **Presence and typing:** the server handles `presence:update` and `typing:start`/`typing:stop`, and the web app sends presence updates. `PresenceIndicator` and `TypingIndicator` exist but are never mounted, so neither is visible to users.
 - **Notifications** are not pushed over the socket. The bell polls `/api/v1/notifications` every 30 seconds.
 
@@ -129,8 +129,10 @@ src/
 ├── components/    — feature folders: task/, project/, board/, calendar/, views/, comment/,
 │                    attachment/, filter/, label/, search/, workspace/, notification/,
 │                    template/, settings/, admin/, layout/ (Sidebar), ui/ (primitives)
-├── stores/        — Zustand stores (server state and UI state)
-├── hooks/         — data hooks over the stores, plus socket, focus-trap and theme hooks
+├── queries/       — TanStack Query: task queries, the shared task actions, cache helpers
+├── types/         — web-side types (the task shape the app handles)
+├── stores/        — Zustand stores: UI state, and server state not yet moved to queries/
+├── hooks/         — the task panel URL hook, data hooks over the stores, socket, focus-trap, theme
 ├── services/      — api.ts (axios client), socket.ts, notifications.ts (push), attachments.ts, admin.ts
 └── utils/         — date formatting, recurrence, mentions, link tokens
 ```
@@ -139,26 +141,32 @@ src/
 
 ```
 /login, /register, /forgot-password, /reset-password, /verify-email, /join   — public
-/today, /upcoming, /projects/:id, /labels/:id, /filters/:id,
+/today, /upcoming, /projects/:id, /labels/:id, /filters/:id, /tasks/:id,
 /filters-labels, /workspace/settings                                        — AppLayout, signed in
 /settings/{profile,account,preferences,notifications,templates,
            integrations,export,admin}                                        — SettingsLayout, signed in
 ```
 
-`/projects/:id?task=<id>` opens a task's detail panel. Notification, push and search links use this.
+The open task lives in the URL: `?task=<id>` on any AppLayout page opens it in the one task panel (`components/task/TaskPanel.tsx`, mounted by AppLayout), over whatever page is showing. Back closes it, or steps from a subtask back to its parent. `/tasks/:id` is a stable link that redirects to the task's project with the panel open. Notification, push and search links use `/projects/:id?task=<id>`.
 
 ### State and data flow
 
-There is no TanStack Query. Server state lives in Zustand stores in `src/stores/`: `authStore`, `workspaceStore`, `projectStore`, `taskStore`, `labelStore`, `filterStore`, `commentStore`, `notificationStore`, `templateStore`, `socketStore`, `toastStore` and `uiStore`. Store actions call the API directly.
+Tasks are server state in **TanStack Query** (`src/queries/`). Every task query is keyed under `['tasks', kind, …]` (`taskKeys.ts`): paged project lists, Today, Upcoming, paged filter results, a task's subtasks, and task detail.
 
 ```
-Component → hook (useTasks, useProjects, …) → store action
-  → optimistic update in the store (most mutations)
+Component → useTaskActions() (queries/taskActions.ts)
+  → the change applied to every cached copy of the task at once (taskCache.ts)
   → api.ts request
-  → store reconciled with the response, or rolled back with an error toast
-Socket events (useRealTimeSync) → store updates
-resyncEpoch bump → hooks refetch their views
+  → cached copies reconciled with the response, or rolled back with an error toast
+  → when the last in-flight task change settles, task queries refetch
+    (so membership is right: a new due date moves a task out of Today)
+Socket events (useRealTimeSync) → patch the cached copies, then a debounced refetch
+resyncEpoch bump (reconnect) → invalidate every query
 ```
+
+Task rows, board cards and calendar entries call `useTaskActions()` and `useTaskPanel()` themselves, so pages only pass them tasks.
+
+The other server state (projects, labels, filters, comments, workspaces, notifications, templates) is still in Zustand stores in `src/stores/`, moving to queries during Phase 3. `authStore`, `socketStore`, `toastStore` and `uiStore` are client state and stay in Zustand.
 
 `services/api.ts` is an axios instance with `withCredentials`. It attaches the in-memory access token. On a 401 it refreshes once through a shared promise (and a Web Locks mutex across tabs, because the refresh cookie is single-use), then retries the request.
 

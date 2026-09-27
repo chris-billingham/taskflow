@@ -20,32 +20,14 @@ import {
 import { BoardColumn } from '@/components/board/BoardColumn';
 import { BoardCardOverlay } from '@/components/board/BoardCard';
 import { BoardAddColumn } from '@/components/board/BoardAddColumn';
-import { TaskDetail } from '@/components/task/TaskDetail';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 import type { ProjectSection } from '@/stores/projectStore';
-import { getSubtasks } from '@/utils/subtaskIndex';
+import { useTaskActions } from '@/queries/taskActions';
 
 interface BoardViewProps {
   tasks: Task[];
-  allTasks: Map<string, Task>;
   sections: ProjectSection[];
   projectId: string;
-  onUpdateTask: (id: string, data: Record<string, any>) => Promise<void>;
-  onCompleteTask: (id: string) => Promise<void>;
-  onUncompleteTask: (id: string) => Promise<void>;
-  onDeleteTask: (id: string) => Promise<void>;
-  onDuplicateTask: (id: string) => Promise<void>;
-  onAddSubtask: (text: string) => Promise<void>;
-  onCreateTask: (data: {
-    content: string;
-    projectId: string;
-    sectionId?: string;
-  }) => Promise<Task>;
-  onReorderTasks: (taskIds: string[]) => Promise<void>;
-  onMoveTask: (
-    id: string,
-    data: { projectId?: string; sectionId?: string | null; parentId?: string | null },
-  ) => Promise<Task>;
   onCreateSection: (name: string) => Promise<unknown>;
   onUpdateSection: (
     id: string,
@@ -59,24 +41,18 @@ const UNSECTIONED_ID = '__unsectioned__';
 
 export function BoardView({
   tasks,
-  allTasks,
   sections,
   projectId,
-  onUpdateTask,
-  onCompleteTask,
-  onUncompleteTask,
-  onDeleteTask,
-  onDuplicateTask: _onDuplicateTask,
-  onAddSubtask,
-  onCreateTask,
-  onReorderTasks,
-  onMoveTask,
   onCreateSection,
   onUpdateSection,
   onDeleteSection,
   onReorderSections,
 }: BoardViewProps) {
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const {
+    createTask: onCreateTask,
+    reorderTasks: onReorderTasks,
+    moveTask: onMoveTask,
+  } = useTaskActions();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<'card' | 'column' | null>(null);
 
@@ -280,24 +256,8 @@ export function BoardView({
   );
 
   // Get active task for drag overlay
-  const activeTask = activeId && activeType === 'card' ? allTasks.get(activeId) : null;
-
-  // TaskDetail support
-  const currentSelectedTask = selectedTask
-    ? allTasks.get(selectedTask.id) || selectedTask
-    : null;
-
-  const selectedTaskSubtasks = selectedTask
-    ? getSubtasks(allTasks, selectedTask.id)
-    : [];
-
-  const handleAddSubtask = useCallback(
-    async (text: string) => {
-      if (!selectedTask) return;
-      await onAddSubtask(text);
-    },
-    [selectedTask, onAddSubtask],
-  );
+  const activeTask =
+    activeId && activeType === 'card' ? tasks.find((t) => t.id === activeId) : null;
 
   return (
     <div>
@@ -328,11 +288,7 @@ export function BoardView({
                   columnId={columnId}
                   title={columnTitle}
                   tasks={columnTasks}
-                  allTasks={allTasks}
                   isVirtual={columnId === UNSECTIONED_ID}
-                  onTaskClick={setSelectedTask}
-                  onCompleteTask={onCompleteTask}
-                  onUncompleteTask={onUncompleteTask}
                   onCreateTask={(content) =>
                     handleCreateTaskInColumn(columnId, content)
                   }
@@ -351,19 +307,6 @@ export function BoardView({
         </DragOverlay>
       </DndContext>
 
-      {/* Task detail panel */}
-      {currentSelectedTask && (
-        <TaskDetail
-          task={currentSelectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={onUpdateTask}
-          onComplete={onCompleteTask}
-          onUncomplete={onUncompleteTask}
-          onDelete={onDeleteTask}
-          onAddSubtask={handleAddSubtask}
-          subtasks={selectedTaskSubtasks}
-        />
-      )}
     </div>
   );
 }

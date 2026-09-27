@@ -6,7 +6,7 @@ import { server } from '../msw/server';
 import { API } from '../msw/handlers';
 import { makeTask, ok } from '../msw/fixtures';
 import { renderPage } from '../helpers/renderPage';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 import Filter from '@/pages/app/Filter';
 
 const savedFilter = {

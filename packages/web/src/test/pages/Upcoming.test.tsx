@@ -6,7 +6,7 @@ import { server } from '../msw/server';
 import { API } from '../msw/handlers';
 import { apiDate, localDateString, makeTask, ok } from '../msw/fixtures';
 import { renderPage } from '../helpers/renderPage';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 import Upcoming from '@/pages/app/Upcoming';
 
 function upcomingView(byDate: Record<string, Task[]> = {}, noDate: Task[] = [], overdue: Task[] = []) {

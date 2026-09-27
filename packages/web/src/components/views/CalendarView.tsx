@@ -12,40 +12,32 @@ import type { CalendarMode } from '@/hooks/useCalendar';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { WeekView } from '@/components/calendar/WeekView';
 import { MonthView } from '@/components/calendar/MonthView';
-import { TaskDetail } from '@/components/task/TaskDetail';
 import { Modal } from '@/components/ui/Modal';
 import { QuickAdd } from '@/components/task/QuickAdd';
-import type { Task, QuickAddDue } from '@/stores/taskStore';
-import { getSubtasks } from '@/utils/subtaskIndex';
+import type { Task } from '@/types/task';
+import { useTaskActions } from '@/queries/taskActions';
 import { formatUserDateWithWeekday } from '@/utils/dateFormat';
 
 interface CalendarViewProps {
   tasks: Task[];
-  allTasks: Map<string, Task>;
-  onUpdateTask: (id: string, data: Record<string, any>) => Promise<void>;
-  onCompleteTask: (id: string) => Promise<void>;
-  onUncompleteTask: (id: string) => Promise<void>;
-  onDeleteTask: (id: string) => Promise<void>;
-  onAddSubtask: (text: string) => Promise<void>;
-  onQuickAdd: (text: string, due: QuickAddDue) => Promise<void>;
+  /** Tasks added from a calendar cell go here; otherwise quick-add decides. */
   defaultProjectId?: string;
   initialMode?: CalendarMode;
 }
 
 export function CalendarView({
   tasks,
-  allTasks,
-  onUpdateTask,
-  onCompleteTask,
-  onUncompleteTask,
-  onDeleteTask,
-  onAddSubtask,
-  onQuickAdd,
-  defaultProjectId: _defaultProjectId,
+  defaultProjectId,
   initialMode = 'week',
 }: CalendarViewProps) {
   const calendar = useCalendar(tasks, initialMode);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const { updateTask, quickAddTask } = useTaskActions();
+  const onUpdateTask = useCallback(
+    async (id: string, data: Record<string, unknown>) => {
+      await updateTask(id, data);
+    },
+    [updateTask],
+  );
   const [quickAddState, setQuickAddState] = useState<{
     isOpen: boolean;
     dateStr: string;
@@ -67,7 +59,7 @@ export function CalendarView({
       if (droppableId.startsWith('day-')) {
         // Dropped on a day cell (month view or anytime row)
         const targetDate = droppableId.replace('day-', '');
-        const task = allTasks.get(taskId);
+        const task = tasks.find((t) => t.id === taskId);
         if (!task) return;
         const currentDate = task.dueDate?.split('T')[0] ?? null;
         if (currentDate === targetDate) return;
@@ -81,7 +73,7 @@ export function CalendarView({
         await onUpdateTask(taskId, { dueDate: dateStr, dueTime: timeStr });
       }
     },
-    [allTasks, onUpdateTask],
+    [tasks, onUpdateTask],
   );
 
   const handleSlotClick = useCallback((dateStr: string, time: string) => {
@@ -94,13 +86,6 @@ export function CalendarView({
       calendar.goToDate(new Date(dateStr + 'T12:00:00'));
     },
     [calendar],
-  );
-
-  const handleTaskClick = useCallback(
-    (task: Task) => {
-      setSelectedTask(task);
-    },
-    [],
   );
 
   const handleResizeDuration = useCallback(
@@ -116,23 +101,14 @@ export function CalendarView({
       // Send the cell's date (and a clicked week-view slot's time) as exact
       // values. Writing them into the text for the parser put past and same-day
       // dates a year out ("Sep 27" < now) and left a bare "14:00" in the name.
-      await onQuickAdd(text, {
+      await quickAddTask(text, defaultProjectId, {
         dueDate: dateStr,
         dueTime: time !== '09:00' ? time : undefined,
       });
       setQuickAddState({ isOpen: false, dateStr: '', time: '' });
     },
-    [quickAddState, onQuickAdd],
+    [quickAddState, quickAddTask, defaultProjectId],
   );
-
-  // Get selected task data fresh from allTasks
-  const currentSelectedTask = selectedTask
-    ? allTasks.get(selectedTask.id) || selectedTask
-    : null;
-
-  const selectedTaskSubtasks = selectedTask
-    ? getSubtasks(allTasks, selectedTask.id)
-    : [];
 
   // Format the date/time for modal title
   const quickAddTitle = quickAddState.isOpen
@@ -165,18 +141,12 @@ export function CalendarView({
           <WeekView
             days={calendar.days}
             hours={calendar.hours}
-            onTaskClick={handleTaskClick}
-            onComplete={onCompleteTask}
-            onUncomplete={onUncompleteTask}
             onSlotClick={handleSlotClick}
             onResizeDuration={handleResizeDuration}
           />
         ) : (
           <MonthView
             days={calendar.days}
-            onTaskClick={handleTaskClick}
-            onComplete={onCompleteTask}
-            onUncomplete={onUncompleteTask}
             onDayClick={handleDayClick}
             onSlotClick={handleSlotClick}
           />
@@ -202,20 +172,6 @@ export function CalendarView({
           />
         </div>
       </Modal>
-
-      {/* Task detail panel */}
-      {currentSelectedTask && (
-        <TaskDetail
-          task={currentSelectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={onUpdateTask}
-          onComplete={onCompleteTask}
-          onUncomplete={onUncompleteTask}
-          onDelete={onDeleteTask}
-          onAddSubtask={onAddSubtask}
-          subtasks={selectedTaskSubtasks}
-        />
-      )}
     </div>
   );
 }

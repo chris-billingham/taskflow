@@ -1,4 +1,6 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createQueryClient } from '@/queries/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -20,6 +22,7 @@ const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/pages/auth/ResetPassword'));
 const VerifyEmail = lazy(() => import('@/pages/auth/VerifyEmail'));
 const Label = lazy(() => import('@/pages/app/Label'));
+const TaskLink = lazy(() => import('@/pages/app/TaskLink'));
 const Filter = lazy(() => import('@/pages/app/Filter'));
 const FiltersLabels = lazy(() => import('@/pages/app/FiltersLabels'));
 const WorkspaceSettingsPage = lazy(() => import('@/pages/settings/Workspace'));
@@ -47,6 +50,7 @@ function RouteFallback() {
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
+  const [queryClient] = useState(createQueryClient);
 
   // At the app root, not in AppLayout. Mounted only there, the theme was never
   // applied on any route AppLayout doesn't wrap — so loading or refreshing any
@@ -60,6 +64,7 @@ function App() {
   }, [initialize]);
 
   return (
+    <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <Suspense fallback={<RouteFallback />}>
       <Routes>
@@ -85,6 +90,7 @@ function App() {
           <Route path="/labels/:id" element={<Label />} />
           <Route path="/filters/:id" element={<Filter />} />
           <Route path="/projects/:id" element={<Project />} />
+          <Route path="/tasks/:id" element={<TaskLink />} />
           <Route path="/workspace/settings" element={<WorkspaceSettingsPage />} />
         </Route>
 
@@ -116,6 +122,7 @@ function App() {
       </Suspense>
       <ToastContainer />
     </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 

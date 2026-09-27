@@ -1,4 +1,4 @@
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 import type { Project, ProjectSection } from '@/stores/projectStore';
 
 // Factories for API-shaped data. Each call gets a unique id, and every field

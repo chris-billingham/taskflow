@@ -18,49 +18,34 @@ import { DateSection } from '@/components/views/DateSection';
 import { CalendarStrip } from '@/components/views/CalendarStrip';
 import { TruncationNotice } from '@/components/views/TruncationNotice';
 import { QuickAdd } from '@/components/task/QuickAdd';
-import { TaskDetail } from '@/components/task/TaskDetail';
 import { TaskItem } from '@/components/task/TaskItem';
 import { Spinner } from '@/components/ui/Spinner';
-import { useUpcomingView, useTaskActions } from '@/hooks/useTasks';
-import { useTaskStore } from '@/stores/taskStore';
-import type { Task, QuickAddDue } from '@/stores/taskStore';
-import { getSubtasks } from '@/utils/subtaskIndex';
+import { useUpcomingView } from '@/queries/tasks';
+import { useTaskActions } from '@/queries/taskActions';
+import type { Task } from '@/types/task';
 
 const UPCOMING_DAYS = 14;
 
 export default function Upcoming() {
   const { upcomingView: upcomingViewRaw, loading, error, refetch } = useUpcomingView(UPCOMING_DAYS, true);
-  const taskMap = useTaskStore((s) => s.tasks);
+  const { updateTask, quickAddTask, rescheduleOverdue } = useTaskActions();
 
-  // Render through the live store map (see Today.tsx for rationale).
+  // Completed tasks leave the view at once (see Today.tsx).
   const upcomingView = useMemo(() => {
     if (!upcomingViewRaw) return null;
-    const live = (list: Task[]) =>
-      list.map((t) => taskMap.get(t.id) ?? t).filter((t) => !t.isCompleted);
+    const open = (list: Task[]) => list.filter((t) => !t.isCompleted);
     const byDate: Record<string, Task[]> = {};
     for (const [date, tasks] of Object.entries(upcomingViewRaw.byDate)) {
-      byDate[date] = live(tasks);
+      byDate[date] = open(tasks as Task[]);
     }
     return {
       ...upcomingViewRaw,
-      overdue: live(upcomingViewRaw.overdue),
+      overdue: open(upcomingViewRaw.overdue as Task[]),
       byDate,
-      noDate: live(upcomingViewRaw.noDate),
+      noDate: open(upcomingViewRaw.noDate as Task[]),
     };
-  }, [upcomingViewRaw, taskMap]);
-  const rescheduleOverdue = useTaskStore((s) => s.rescheduleOverdue);
-  const {
-    createTask,
-    updateTask,
-    deleteTask,
-    completeTask,
-    uncompleteTask,
-    duplicateTask: duplicateTaskAction,
-    quickAddTask,
-    reorderTasks,
-  } = useTaskActions();
+  }, [upcomingViewRaw]);
 
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [noDateCollapsed, setNoDateCollapsed] = useState(false);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -93,65 +78,22 @@ export default function Upcoming() {
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleComplete = async (taskId: string) => {
-    await completeTask(taskId);
-    refetch();
-  };
-
-  const handleUncomplete = async (taskId: string) => {
-    await uncompleteTask(taskId);
-    refetch();
-  };
-
-  const handleUpdateTask = async (taskId: string, data: Record<string, any>) => {
-    await updateTask(taskId, data);
-    refetch();
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    await deleteTask(taskId);
-    if (selectedTask?.id === taskId) setSelectedTask(null);
-    refetch();
-  };
-
-  const handleDuplicate = async (taskId: string) => {
-    await duplicateTaskAction(taskId);
-    refetch();
-  };
-
-  const handleReorder = async (taskIds: string[]) => {
-    await reorderTasks(taskIds);
-  };
-
-  const handleQuickAdd = async (text: string, due?: QuickAddDue) => {
-    await quickAddTask(text, undefined, due);
-    refetch();
-  };
-
   const handleQuickAddForDate = useCallback(
     (date: string) => async (text: string) => {
       // The section's date, sent exactly: as "MMM d" text, today's section
       // parsed as a year from now.
       await quickAddTask(text, undefined, { dueDate: date });
-      refetch();
     },
-    [quickAddTask, refetch],
+    [quickAddTask],
   );
 
   const handleRescheduleAll = async () => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     await rescheduleOverdue(todayStr);
-    refetch();
   };
 
-  const handleAddSubtask = async (text: string) => {
-    if (!selectedTask) return;
-    await createTask({
-      content: text,
-      projectId: selectedTask.projectId,
-      parentId: selectedTask.id,
-    });
-    refetch();
+  const handleQuickAdd = async (text: string) => {
+    await quickAddTask(text);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -173,14 +115,13 @@ export default function Upcoming() {
     if (!droppableId.startsWith('droppable-')) return;
 
     const newDate = droppableId.replace('droppable-', '');
-    const task = taskMap.get(taskId);
+    const task = allUpcomingTasks.find((t) => t.id === taskId);
     if (!task) return;
 
     const currentDate = task.dueDate ? task.dueDate.split('T')[0] : null;
     if (currentDate === newDate) return;
 
     await updateTask(taskId, { dueDate: newDate });
-    refetch();
   };
 
   // Flatten all upcoming tasks for calendar view (must be before early return to satisfy rules of hooks)
@@ -200,16 +141,6 @@ export default function Upcoming() {
       </div>
     );
   }
-
-  const selectedTaskSubtasks = selectedTask
-    ? Array.from(taskMap.values())
-        .filter((t) => t.parentId === selectedTask.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-    : [];
-
-  const currentSelectedTask = selectedTask
-    ? taskMap.get(selectedTask.id) || selectedTask
-    : null;
 
   const totalCount = upcomingView?.counts.total ?? 0;
   const isEmpty =
@@ -245,16 +176,7 @@ export default function Upcoming() {
       </ViewHeader>
 
       {viewMode === 'calendar' ? (
-        <CalendarView
-          tasks={allUpcomingTasks.filter((t) => !t.parentId)}
-          allTasks={taskMap}
-          onUpdateTask={handleUpdateTask}
-          onCompleteTask={handleComplete}
-          onUncompleteTask={handleUncomplete}
-          onDeleteTask={handleDeleteTask}
-          onAddSubtask={handleAddSubtask}
-          onQuickAdd={handleQuickAdd}
-        />
+        <CalendarView tasks={allUpcomingTasks.filter((t) => !t.parentId)} />
       ) : (
         <>
           <CalendarStrip
@@ -266,13 +188,6 @@ export default function Upcoming() {
           {upcomingView && upcomingView.overdue.length > 0 && (
             <OverdueSection
               tasks={upcomingView.overdue}
-              allTasks={taskMap}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onTaskClick={setSelectedTask}
-              onUpdate={handleUpdateTask}
-              onDelete={handleDeleteTask}
-              onDuplicate={handleDuplicate}
               onRescheduleAll={handleRescheduleAll}
             />
           )}
@@ -317,15 +232,7 @@ export default function Upcoming() {
                   key={date}
                   date={date}
                   tasks={tasks}
-                  allTasks={taskMap}
                   isOver={dragOverDate === date}
-                  onComplete={handleComplete}
-                  onUncomplete={handleUncomplete}
-                  onTaskClick={setSelectedTask}
-                  onUpdate={handleUpdateTask}
-                  onDelete={handleDeleteTask}
-                  onDuplicate={handleDuplicate}
-                  onReorder={handleReorder}
                   onAddTask={handleQuickAddForDate(date)}
                 />
               );
@@ -348,23 +255,9 @@ export default function Upcoming() {
               </button>
               {!noDateCollapsed && (
                 <div className="space-y-0.5">
-                  {upcomingView.noDate.map((task) => {
-                    const subtasks = getSubtasks(taskMap, task.id);
-                    return (
-                      <TaskItem
-                        key={task.id}
-                        task={task}
-                        onComplete={handleComplete}
-                        onUncomplete={handleUncomplete}
-                        onClick={setSelectedTask}
-                        onUpdate={handleUpdateTask}
-                        onDelete={handleDeleteTask}
-                        onDuplicate={handleDuplicate}
-                        showSubtasks
-                        subtasks={subtasks}
-                      />
-                    );
-                  })}
+                  {upcomingView.noDate.map((task) => (
+                    <TaskItem key={task.id} task={task} showSubtasks />
+                  ))}
                 </div>
               )}
             </div>
@@ -381,18 +274,6 @@ export default function Upcoming() {
             <QuickAdd onSubmit={handleQuickAdd} placeholder="Add task" />
           </div>
 
-          {currentSelectedTask && (
-            <TaskDetail
-              task={currentSelectedTask}
-              onClose={() => setSelectedTask(null)}
-              onUpdate={handleUpdateTask}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onDelete={handleDeleteTask}
-              onAddSubtask={handleAddSubtask}
-              subtasks={selectedTaskSubtasks}
-            />
-          )}
         </>
       )}
     </div>
@@ -402,28 +283,12 @@ export default function Upcoming() {
 function DroppableDateSection({
   date,
   tasks,
-  allTasks,
   isOver,
-  onComplete,
-  onUncomplete,
-  onTaskClick,
-  onUpdate,
-  onDelete,
-  onDuplicate,
-  onReorder,
   onAddTask,
 }: {
   date: string;
   tasks: Task[];
-  allTasks: Map<string, Task>;
   isOver: boolean;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
-  onTaskClick: (task: Task) => void;
-  onUpdate: (id: string, data: Record<string, any>) => void;
-  onDelete: (id: string) => void;
-  onDuplicate: (id: string) => void;
-  onReorder: (taskIds: string[]) => void;
   onAddTask: (text: string) => Promise<void>;
 }) {
   const { setNodeRef } = useDroppable({ id: `droppable-${date}` });
@@ -435,20 +300,7 @@ function DroppableDateSection({
         isOver ? 'ring-2 ring-[#db4c3f] ring-opacity-50 bg-red-50/30' : ''
       }`}
     >
-      <DateSection
-        date={date}
-        tasks={tasks}
-        allTasks={allTasks}
-        onComplete={onComplete}
-        onUncomplete={onUncomplete}
-        onTaskClick={onTaskClick}
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        onDuplicate={onDuplicate}
-        onReorder={onReorder}
-        onAddTask={onAddTask}
-        externalDnd
-      />
+      <DateSection date={date} tasks={tasks} onAddTask={onAddTask} externalDnd />
     </div>
   );
 }

@@ -1,21 +1,18 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Spinner } from '@/components/ui/Spinner';
 import { ProjectHeader } from '@/components/project/ProjectHeader';
 import { SectionList } from '@/components/project/SectionList';
 import { TaskList } from '@/components/task/TaskList';
 import { QuickAdd } from '@/components/task/QuickAdd';
-import { TaskDetail } from '@/components/task/TaskDetail';
 import { CalendarView } from '@/components/views/CalendarView';
 import { BoardView } from '@/components/views/BoardView';
 import { useProject, useProjectSections } from '@/hooks/useProjects';
 import { useProjectRoom } from '@/hooks/useProjectRoom';
 import { useProjectStore } from '@/stores/projectStore';
-import { useTasks, useTaskActions } from '@/hooks/useTasks';
-import { useTaskStore } from '@/stores/taskStore';
-import type { Task, QuickAddDue } from '@/stores/taskStore';
-import api from '@/services/api';
-import { toastError } from '@/stores/toastStore';
+import { useProjectTasks } from '@/queries/tasks';
+import { useTaskActions } from '@/queries/taskActions';
+import type { Task } from '@/types/task';
 
 export default function Project() {
   const { id } = useParams<{ id: string }>();
@@ -37,78 +34,30 @@ export default function Project() {
     reorderSections,
   } = useProjectSections(id);
 
-  const queryObj = useMemo(() => (id ? { projectId: id } : undefined), [id]);
-  const { tasks, refetch: refetchTasks, hasMore, loadingMore, loadMore } = useTasks(queryObj);
-  const taskMap = useTaskStore((s) => s.tasks);
-  const {
-    createTask,
-    updateTask,
-    deleteTask,
-    completeTask,
-    uncompleteTask,
-    moveTask,
-    quickAddTask,
-    reorderTasks,
-    duplicateTask: duplicateTaskAction,
-  } = useTaskActions();
+  const { tasks, hasMore, loadingMore, loadMore } = useProjectTasks(id);
+  const { createTask, quickAddTask } = useTaskActions();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const deepLinkTaskId = searchParams.get('task');
 
-  // Open the task named by ?task= — notification, push and comment-search
-  // links all land here. It may not be in the store (a subtask, a completed
-  // task, or one beyond the first page), so fall back to fetching it.
-  useEffect(() => {
-    if (!deepLinkTaskId) return;
-    const known = useTaskStore.getState().tasks.get(deepLinkTaskId);
-    if (known) {
-      setSelectedTask(known);
-      return;
-    }
-    let cancelled = false;
-    api
-      .get(`/tasks/${deepLinkTaskId}`)
-      .then(({ data }) => {
-        if (cancelled) return;
-        const task = data.data as Task;
-        // Completed tasks stay out of the Map so they don't join the open list.
-        if (!task.isCompleted) useTaskStore.getState().setTask(task);
-        setSelectedTask(task);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        toastError('That task no longer exists or you no longer have access');
-        setSearchParams({}, { replace: true });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [deepLinkTaskId, setSearchParams]);
-
-  const closeTaskDetail = () => {
-    setSelectedTask(null);
-    if (deepLinkTaskId) setSearchParams({}, { replace: true });
-  };
-
-  // Split tasks into unsectioned and by section
-  const unsectionedTasks = useMemo(
-    () => tasks.filter((t) => !t.sectionId && !t.parentId),
+  // Top-level tasks in their saved order (a drag reorders them optimistically
+  // by sortOrder, ahead of the server's response).
+  const ordered = useMemo(
+    () => tasks.filter((t) => !t.parentId).sort((a, b) => a.sortOrder - b.sortOrder),
     [tasks],
   );
 
+  const unsectionedTasks = useMemo(() => ordered.filter((t) => !t.sectionId), [ordered]);
+
   const tasksBySection = useMemo(() => {
     const map = new Map<string, Task[]>();
-    for (const t of tasks) {
-      if (t.sectionId && !t.parentId) {
-        const list = map.get(t.sectionId) || [];
-        list.push(t);
-        map.set(t.sectionId, list);
-      }
+    for (const t of ordered) {
+      if (!t.sectionId) continue;
+      const list = map.get(t.sectionId) || [];
+      list.push(t);
+      map.set(t.sectionId, list);
     }
     return map;
-  }, [tasks]);
+  }, [ordered]);
 
   if (loading && !project) {
     return (
@@ -150,64 +99,9 @@ export default function Project() {
     }
   };
 
-  const handleQuickAdd = async (text: string, due?: QuickAddDue) => {
-    await quickAddTask(text, project.id, due);
-    refetchTasks();
+  const handleQuickAdd = async (text: string) => {
+    await quickAddTask(text, project.id);
   };
-
-  const handleComplete = async (taskId: string) => {
-    await completeTask(taskId);
-  };
-
-  const handleUncomplete = async (taskId: string) => {
-    await uncompleteTask(taskId);
-  };
-
-  const handleUpdateTask = async (taskId: string, data: Record<string, any>) => {
-    await updateTask(taskId, data);
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    await deleteTask(taskId);
-    if (selectedTask?.id === taskId) {
-      closeTaskDetail();
-    }
-  };
-
-  const handleDuplicate = async (taskId: string) => {
-    await duplicateTaskAction(taskId);
-    refetchTasks();
-  };
-
-  const handleReorder = async (taskIds: string[]) => {
-    await reorderTasks(taskIds);
-  };
-
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
-  };
-
-  const handleAddSubtask = async (text: string) => {
-    if (!selectedTask) return;
-    await createTask({
-      content: text,
-      projectId: selectedTask.projectId,
-      parentId: selectedTask.id,
-    });
-    refetchTasks();
-  };
-
-  // Get subtasks for selected task
-  const selectedTaskSubtasks = selectedTask
-    ? Array.from(taskMap.values())
-        .filter((t) => t.parentId === selectedTask.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-    : [];
-
-  // Get the full task data for the selected task (may have been updated)
-  const currentSelectedTask = selectedTask
-    ? taskMap.get(selectedTask.id) || selectedTask
-    : null;
 
   return (
     <div>
@@ -224,32 +118,12 @@ export default function Project() {
       />
 
       {project.viewStyle === 'CALENDAR' ? (
-        <CalendarView
-          tasks={tasks.filter((t) => !t.parentId)}
-          allTasks={taskMap}
-          onUpdateTask={handleUpdateTask}
-          onCompleteTask={handleComplete}
-          onUncompleteTask={handleUncomplete}
-          onDeleteTask={handleDeleteTask}
-          onAddSubtask={handleAddSubtask}
-          onQuickAdd={handleQuickAdd}
-          defaultProjectId={project.id}
-        />
+        <CalendarView tasks={ordered} defaultProjectId={project.id} />
       ) : project.viewStyle === 'BOARD' ? (
         <BoardView
-          tasks={tasks}
-          allTasks={taskMap}
+          tasks={ordered}
           sections={sections}
           projectId={project.id}
-          onUpdateTask={handleUpdateTask}
-          onCompleteTask={handleComplete}
-          onUncompleteTask={handleUncomplete}
-          onDeleteTask={handleDeleteTask}
-          onDuplicateTask={handleDuplicate}
-          onAddSubtask={handleAddSubtask}
-          onCreateTask={createTask}
-          onReorderTasks={handleReorder}
-          onMoveTask={moveTask}
           onCreateSection={createSection}
           onUpdateSection={updateSection}
           onDeleteSection={deleteSection}
@@ -259,18 +133,7 @@ export default function Project() {
         <>
           {/* Unsectioned tasks */}
           <div className="mb-4">
-            <TaskList
-              tasks={unsectionedTasks}
-              allTasks={taskMap}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onTaskClick={handleTaskClick}
-              onUpdate={handleUpdateTask}
-              onDelete={handleDeleteTask}
-              onDuplicate={handleDuplicate}
-              onReorder={handleReorder}
-              emptyMessage="No tasks yet. Add one below!"
-            />
+            <TaskList tasks={unsectionedTasks} emptyMessage="No tasks yet. Add one below!" />
             <div className="mt-2">
               <QuickAdd
                 projectId={project.id}
@@ -291,18 +154,7 @@ export default function Project() {
               const sectionTasks = tasksBySection.get(section.id) || [];
               return (
                 <div className="pl-7 py-1">
-                  <TaskList
-                    tasks={sectionTasks}
-                    allTasks={taskMap}
-                    onComplete={handleComplete}
-                    onUncomplete={handleUncomplete}
-                    onTaskClick={handleTaskClick}
-                    onUpdate={handleUpdateTask}
-                    onDelete={handleDeleteTask}
-                    onDuplicate={handleDuplicate}
-                    onReorder={handleReorder}
-                    emptyMessage="No tasks in this section"
-                  />
+                  <TaskList tasks={sectionTasks} emptyMessage="No tasks in this section" />
                   <div className="mt-1">
                     <QuickAdd
                       projectId={project.id}
@@ -313,7 +165,6 @@ export default function Project() {
                           projectId: project.id,
                           sectionId: section.id,
                         });
-                        refetchTasks();
                       }}
                       placeholder="Add task"
                     />
@@ -335,19 +186,6 @@ export default function Project() {
             </div>
           )}
 
-          {/* Task detail panel */}
-          {currentSelectedTask && (
-            <TaskDetail
-              task={currentSelectedTask}
-              onClose={closeTaskDetail}
-              onUpdate={handleUpdateTask}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onDelete={handleDeleteTask}
-              onAddSubtask={handleAddSubtask}
-              subtasks={selectedTaskSubtasks}
-            />
-          )}
         </>
       )}
 

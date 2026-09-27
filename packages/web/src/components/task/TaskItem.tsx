@@ -15,19 +15,16 @@ import { DueDateBadge } from './DueDatePicker';
 import { DueDatePicker } from './DueDatePicker';
 import { PriorityPicker } from './PriorityPicker';
 import { LabelBadges } from './LabelPicker';
-import type { Task } from '@/stores/taskStore';
+import { useTaskActions } from '@/queries/taskActions';
+import { useSubtasks } from '@/queries/tasks';
+import { useTaskPanel } from '@/hooks/useTaskPanel';
+import type { Task } from '@/types/task';
 
 interface TaskItemProps {
   task: Task;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
-  onClick: (task: Task) => void;
-  onUpdate: (id: string, data: Record<string, any>) => void;
-  onDelete: (id: string) => void;
-  onDuplicate: (id: string) => void;
   dragHandleProps?: Record<string, any>;
+  /** Show an expandable list of the task's subtasks under it. */
   showSubtasks?: boolean;
-  subtasks?: Task[];
   isSubtask?: boolean;
 }
 
@@ -38,23 +35,21 @@ const priorityBorderColors: Record<number, string> = {
   4: 'border-l-transparent',
 };
 
-export function TaskItem({
-  task,
-  onComplete,
-  onUncomplete,
-  onClick,
-  onUpdate,
-  onDelete,
-  onDuplicate,
-  dragHandleProps,
-  showSubtasks,
-  subtasks,
-  isSubtask,
-}: TaskItemProps) {
+/**
+ * A task row. It acts on the task itself (shared task actions) and opens it in
+ * the task panel, so lists only need to hand it the task.
+ */
+export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: TaskItemProps) {
+  const { updateTask, completeTask, uncompleteTask, deleteTask, duplicateTask } = useTaskActions();
+  const { openTask } = useTaskPanel();
+  const onUpdate = (id: string, data: Record<string, unknown>) => void updateTask(id, data);
+  const onClick = (t: Task) => openTask(t.id);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(task.content);
   const [showMenu, setShowMenu] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  // Rows whose subtasks came embedded start open; count-only rows (project
+  // lists) start closed, so a long list doesn't fetch every row's subtasks.
+  const [expanded, setExpanded] = useState(() => task.subtasks !== undefined);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -93,12 +88,21 @@ export function TaskItem({
 
   const handleCheckboxChange = (checked: boolean) => {
     if (checked) {
-      onComplete(task.id);
+      void completeTask(task.id);
     } else {
-      onUncomplete(task.id);
+      void uncompleteTask(task.id);
     }
   };
 
+  // Views embed subtasks; project lists only send a count, so fetch them when
+  // the row is expanded.
+  const embedded = task.subtasks as Task[] | undefined;
+  const countOnly = task._count?.subtasks ?? 0;
+  const { data: fetched } = useSubtasks(
+    task.id,
+    Boolean(showSubtasks && expanded && !embedded && countOnly > 0),
+  );
+  const subtasks = embedded ?? fetched;
   const subtaskCount = task._count?.subtasks ?? subtasks?.length ?? 0;
   const completedSubtasks = subtasks?.filter((s) => s.isCompleted).length ?? 0;
   const hasSubtasks = subtaskCount > 0;
@@ -281,7 +285,7 @@ export function TaskItem({
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDuplicate(task.id);
+                    void duplicateTask(task.id);
                     setShowMenu(false);
                   }}
                 >
@@ -293,7 +297,7 @@ export function TaskItem({
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(task.id);
+                    void deleteTask(task.id);
                     setShowMenu(false);
                   }}
                 >
@@ -310,17 +314,7 @@ export function TaskItem({
       {showSubtasks && hasSubtasks && expanded && subtasks && (
         <div className="ml-16 border-l border-gray-200 dark:border-gray-700">
           {subtasks.map((sub) => (
-            <TaskItem
-              key={sub.id}
-              task={sub}
-              onComplete={onComplete}
-              onUncomplete={onUncomplete}
-              onClick={onClick}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              onDuplicate={onDuplicate}
-              isSubtask
-            />
+            <TaskItem key={sub.id} task={sub} isSubtask />
           ))}
         </div>
       )}

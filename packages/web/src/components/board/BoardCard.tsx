@@ -4,14 +4,12 @@ import { User, GitBranch, MessageSquare } from 'lucide-react';
 import { TaskCheckbox } from '@/components/task/TaskCheckbox';
 import { DueDateBadge } from '@/components/task/DueDatePicker';
 import { LabelBadges } from '@/components/task/LabelPicker';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
+import { useTaskActions } from '@/queries/taskActions';
+import { useTaskPanel } from '@/hooks/useTaskPanel';
 
 interface BoardCardProps {
   task: Task;
-  subtasks?: Task[];
-  onClick: (task: Task) => void;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
 }
 
 const priorityBorderColors: Record<number, string> = {
@@ -21,13 +19,11 @@ const priorityBorderColors: Record<number, string> = {
   4: 'border-l-transparent',
 };
 
-export function BoardCard({
-  task,
-  subtasks,
-  onClick,
-  onComplete,
-  onUncomplete,
-}: BoardCardProps) {
+export function BoardCard({ task }: BoardCardProps) {
+  const { completeTask, uncompleteTask } = useTaskActions();
+  const { openTask } = useTaskPanel();
+  const onClick = (t: Task) => openTask(t.id);
+  const subtasks = task.subtasks as Task[] | undefined;
   const {
     attributes,
     listeners,
@@ -50,9 +46,9 @@ export function BoardCard({
 
   const handleCheckbox = (checked: boolean) => {
     if (checked) {
-      onComplete(task.id);
+      void completeTask(task.id);
     } else {
-      onUncomplete(task.id);
+      void uncompleteTask(task.id);
     }
   };
 

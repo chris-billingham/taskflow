@@ -13,7 +13,7 @@ import {
   isSameDay,
   startOfDay,
 } from 'date-fns';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 import { useAuthStore } from '@/stores/authStore';
 
 export type CalendarMode = 'week' | 'month';

@@ -57,4 +57,25 @@ test.describe('Task deep links', () => {
     await expect(detail).not.toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/projects/${inboxId}$`));
   });
+
+  test('/tasks/:id opens the task over its project; back steps out of subtasks', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel(/email/i).fill(TEST_USER.email);
+    await page.getByLabel(/password/i).fill(TEST_USER.password);
+    await page.getByRole('button', { name: /sign in|log in/i }).click();
+    await expect(page).toHaveURL(/\/today/);
+
+    // A full page load of the stable link.
+    await page.goto(`/tasks/${parentId}`);
+    await expect(page).toHaveURL(new RegExp(`/projects/${inboxId}\\?task=${parentId}$`));
+    const detail = page.getByRole('dialog', { name: 'Task detail' });
+    await expect(detail).toBeVisible();
+
+    // Open the subtask from the parent; back returns to the parent.
+    await detail.getByRole('button', { name: `Open subtask: ${subtaskContent}` }).click();
+    await expect(detail.getByRole('heading', { name: subtaskContent })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`\\?task=${parentId}$`));
+    await expect(detail.getByRole('heading', { name: subtaskContent })).not.toBeVisible();
+  });
 });

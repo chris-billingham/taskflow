@@ -7,7 +7,7 @@ import { API } from '../msw/handlers';
 import { makeProject, makeSection, makeTask, ok } from '../msw/fixtures';
 import { renderPage } from '../helpers/renderPage';
 import type { Project as ProjectType } from '@/stores/projectStore';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '@/types/task';
 import Project from '@/pages/app/Project';
 
 /** Serve a project and its task pages. Each page is [tasks, nextCursor]. */

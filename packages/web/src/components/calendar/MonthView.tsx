@@ -1,12 +1,8 @@
 import { DayCell } from './DayCell';
 import type { CalendarDay } from '@/hooks/useCalendar';
-import type { Task } from '@/stores/taskStore';
 
 interface MonthViewProps {
   days: CalendarDay[];
-  onTaskClick: (task: Task) => void;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
   onDayClick: (dateStr: string) => void;
   onSlotClick: (dateStr: string, time: string) => void;
 }
@@ -15,9 +11,6 @@ const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function MonthView({
   days,
-  onTaskClick,
-  onComplete,
-  onUncomplete,
   onDayClick,
   onSlotClick,
 }: MonthViewProps) {
@@ -41,9 +34,6 @@ export function MonthView({
           <DayCell
             key={day.dateStr}
             day={day}
-            onTaskClick={onTaskClick}
-            onComplete={onComplete}
-            onUncomplete={onUncomplete}
             onDayClick={onDayClick}
             onSlotClick={onSlotClick}
           />

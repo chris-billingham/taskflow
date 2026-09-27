@@ -3,13 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Pencil, Star, Calendar, List } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { TaskList } from '@/components/task/TaskList';
-import { TaskDetail } from '@/components/task/TaskDetail';
 import { CalendarView } from '@/components/views/CalendarView';
 import { useLabelStore } from '@/stores/labelStore';
-import { useTaskStore } from '@/stores/taskStore';
-import { useTaskActions } from '@/hooks/useTasks';
-import { useFilterResults } from '@/hooks/useFilterResults';
-import type { Task, QuickAddDue } from '@/stores/taskStore';
+import { useFilterTasks } from '@/queries/tasks';
 
 export default function Label() {
   const { id } = useParams<{ id: string }>();
@@ -18,27 +14,7 @@ export default function Label() {
   const fetchLabels = useLabelStore((s) => s.fetchLabels);
   const updateLabel = useLabelStore((s) => s.updateLabel);
 
-  const taskMap = useTaskStore((s) => s.tasks);
-  const {
-    createTask,
-    updateTask,
-    deleteTask,
-    completeTask,
-    uncompleteTask,
-    duplicateTask,
-    reorderTasks,
-    quickAddTask,
-  } = useTaskActions();
-
-  const {
-    tasks,
-    loading,
-    hasMore,
-    loadingMore,
-    loadMore,
-    refetch: fetchTasks,
-  } = useFilterResults(label ? `@${label.name}` : null);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const { tasks, loading, hasMore, loadingMore, loadMore } = useFilterTasks(label ? `@${label.name}` : null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -46,12 +22,6 @@ export default function Label() {
   useEffect(() => {
     fetchLabels();
   }, [fetchLabels]);
-
-  useEffect(() => {
-    if (label) {
-      fetchTasks();
-    }
-  }, [label, fetchTasks]);
 
   if (!label && !loading) {
     return (
@@ -80,57 +50,7 @@ export default function Label() {
     if (!label || !editName.trim()) return;
     await updateLabel(label.id, { name: editName.trim() });
     setEditing(false);
-    fetchTasks();
   };
-
-  const handleComplete = async (taskId: string) => {
-    await completeTask(taskId);
-    fetchTasks();
-  };
-
-  const handleUncomplete = async (taskId: string) => {
-    await uncompleteTask(taskId);
-    fetchTasks();
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    await deleteTask(taskId);
-    if (selectedTask?.id === taskId) setSelectedTask(null);
-    fetchTasks();
-  };
-
-  const handleDuplicate = async (taskId: string) => {
-    await duplicateTask(taskId);
-    fetchTasks();
-  };
-
-  const handleAddSubtask = async (text: string) => {
-    if (!selectedTask) return;
-    await createTask({
-      content: text,
-      projectId: selectedTask.projectId,
-      parentId: selectedTask.id,
-    });
-    fetchTasks();
-  };
-
-  // Tag the new task with this label so it lands in the view the user is
-  // looking at, rather than being created and immediately filtered out.
-  const handleQuickAdd = async (text: string, due?: QuickAddDue) => {
-    if (!label) return;
-    await quickAddTask(`${text} @${label.name}`, undefined, due);
-    fetchTasks();
-  };
-
-  const selectedTaskSubtasks = selectedTask
-    ? Array.from(taskMap.values())
-        .filter((t) => t.parentId === selectedTask.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-    : [];
-
-  const currentSelectedTask = selectedTask
-    ? taskMap.get(selectedTask.id) || selectedTask
-    : null;
 
   return (
     <div>
@@ -222,36 +142,10 @@ export default function Label() {
           <Spinner size="lg" />
         </div>
       ) : viewMode === 'calendar' ? (
-        <CalendarView
-          tasks={tasks.filter((t) => !t.parentId)}
-          allTasks={taskMap}
-          onUpdateTask={async (id, data) => {
-            await updateTask(id, data);
-            fetchTasks();
-          }}
-          onCompleteTask={handleComplete}
-          onUncompleteTask={handleUncomplete}
-          onDeleteTask={handleDeleteTask}
-          onAddSubtask={handleAddSubtask}
-          onQuickAdd={handleQuickAdd}
-        />
+        <CalendarView tasks={tasks.filter((t) => !t.parentId)} />
       ) : (
         <>
-          <TaskList
-            tasks={tasks}
-            allTasks={taskMap}
-            onComplete={handleComplete}
-            onUncomplete={handleUncomplete}
-            onTaskClick={setSelectedTask}
-            onUpdate={async (id, data) => {
-              await updateTask(id, data);
-              fetchTasks();
-            }}
-            onDelete={handleDeleteTask}
-            onDuplicate={handleDuplicate}
-            onReorder={reorderTasks}
-            emptyMessage="No tasks with this label"
-          />
+          <TaskList tasks={tasks} emptyMessage="No tasks with this label" />
 
           {hasMore && (
             <div className="flex justify-center py-3">
@@ -265,22 +159,6 @@ export default function Label() {
             </div>
           )}
 
-          {/* Task detail panel */}
-          {currentSelectedTask && (
-            <TaskDetail
-              task={currentSelectedTask}
-              onClose={() => setSelectedTask(null)}
-              onUpdate={async (id: string, data: Record<string, any>) => {
-                await updateTask(id, data);
-                fetchTasks();
-              }}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onDelete={handleDeleteTask}
-              onAddSubtask={handleAddSubtask}
-              subtasks={selectedTaskSubtasks}
-            />
-          )}
         </>
       )}
     </div>

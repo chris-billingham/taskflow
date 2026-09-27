@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { CalendarDays } from 'lucide-react';
 import { ViewHeader } from '@/components/views/ViewHeader';
@@ -6,47 +6,32 @@ import { OverdueSection } from '@/components/views/OverdueSection';
 import { DateSection } from '@/components/views/DateSection';
 import { TruncationNotice } from '@/components/views/TruncationNotice';
 import { QuickAdd } from '@/components/task/QuickAdd';
-import { TaskDetail } from '@/components/task/TaskDetail';
 import { TaskItem } from '@/components/task/TaskItem';
 import { Spinner } from '@/components/ui/Spinner';
-import { useTodayView, useTaskActions } from '@/hooks/useTasks';
-import { useTaskStore } from '@/stores/taskStore';
-import type { Task } from '@/stores/taskStore';
-import { getSubtasks } from '@/utils/subtaskIndex';
+import { useTodayView } from '@/queries/tasks';
+import { useTaskActions } from '@/queries/taskActions';
+import type { Task, TodayViewData } from '@/types/task';
 import { formatUserDateWithWeekday } from '@/utils/dateFormat';
 
 export default function Today() {
-  const { todayView: todayViewRaw, loading, error, refetch, rescheduleOverdue } = useTodayView();
-  const taskMap = useTaskStore((s) => s.tasks);
+  const { todayView: todayViewRaw, loading, error, refetch } = useTodayView();
+  const { quickAddTask, rescheduleOverdue } = useTaskActions();
 
-  // Render every task THROUGH the live store map: optimistic updates and
-  // websocket events show instantly instead of waiting for a refetch round
-  // trip, and optimistically-completed tasks leave the view immediately.
+  // A task completed here leaves the view at once (the cache is patched
+  // optimistically; the refetch that follows drops it for good).
   const todayView = useMemo(() => {
     if (!todayViewRaw) return null;
-    const live = (list: Task[]) =>
-      list.map((t) => taskMap.get(t.id) ?? t).filter((t) => !t.isCompleted);
+    const open = (list: TodayViewData['overdue']) =>
+      (list as Task[]).filter((t) => !t.isCompleted);
     return {
       ...todayViewRaw,
-      overdue: live(todayViewRaw.overdue),
-      morning: live(todayViewRaw.morning),
-      afternoon: live(todayViewRaw.afternoon),
-      evening: live(todayViewRaw.evening),
-      noTime: live(todayViewRaw.noTime),
+      overdue: open(todayViewRaw.overdue),
+      morning: open(todayViewRaw.morning),
+      afternoon: open(todayViewRaw.afternoon),
+      evening: open(todayViewRaw.evening),
+      noTime: open(todayViewRaw.noTime),
     };
-  }, [todayViewRaw, taskMap]);
-  const {
-    createTask,
-    updateTask,
-    deleteTask,
-    completeTask,
-    uncompleteTask,
-    duplicateTask: duplicateTaskAction,
-    quickAddTask,
-    reorderTasks,
-  } = useTaskActions();
-
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  }, [todayViewRaw]);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const formattedDate = formatUserDateWithWeekday(new Date());
@@ -70,54 +55,12 @@ export default function Today() {
     ];
   }, [todayView]);
 
-  const handleComplete = async (taskId: string) => {
-    await completeTask(taskId);
-    refetch();
-  };
-
-  const handleUncomplete = async (taskId: string) => {
-    await uncompleteTask(taskId);
-    refetch();
-  };
-
-  const handleUpdateTask = async (taskId: string, data: Record<string, any>) => {
-    await updateTask(taskId, data);
-    refetch();
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    await deleteTask(taskId);
-    if (selectedTask?.id === taskId) setSelectedTask(null);
-    refetch();
-  };
-
-  const handleDuplicate = async (taskId: string) => {
-    await duplicateTaskAction(taskId);
-    refetch();
-  };
-
-  const handleReorder = async (taskIds: string[]) => {
-    await reorderTasks(taskIds);
-  };
-
   const handleQuickAdd = async (text: string) => {
     await quickAddTask(text);
-    refetch();
   };
 
   const handleRescheduleAll = async () => {
     await rescheduleOverdue(todayStr);
-    refetch();
-  };
-
-  const handleAddSubtask = async (text: string) => {
-    if (!selectedTask) return;
-    await createTask({
-      content: text,
-      projectId: selectedTask.projectId,
-      parentId: selectedTask.id,
-    });
-    refetch();
   };
 
   if (loading && !todayView) {
@@ -127,16 +70,6 @@ export default function Today() {
       </div>
     );
   }
-
-  const selectedTaskSubtasks = selectedTask
-    ? Array.from(taskMap.values())
-        .filter((t) => t.parentId === selectedTask.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-    : [];
-
-  const currentSelectedTask = selectedTask
-    ? taskMap.get(selectedTask.id) || selectedTask
-    : null;
 
   const totalCount =
     todayView?.counts.total ?? 0;
@@ -157,13 +90,6 @@ export default function Today() {
       {todayView && todayView.overdue.length > 0 && (
         <OverdueSection
           tasks={todayView.overdue}
-          allTasks={taskMap}
-          onComplete={handleComplete}
-          onUncomplete={handleUncomplete}
-          onTaskClick={setSelectedTask}
-          onUpdate={handleUpdateTask}
-          onDelete={handleDeleteTask}
-          onDuplicate={handleDuplicate}
           onRescheduleAll={handleRescheduleAll}
         />
       )}
@@ -174,52 +100,24 @@ export default function Today() {
             <TimeSection
               label="Morning"
               tasks={todayView.morning}
-              allTasks={taskMap}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onTaskClick={setSelectedTask}
-              onUpdate={handleUpdateTask}
-              onDelete={handleDeleteTask}
-              onDuplicate={handleDuplicate}
             />
           )}
           {todayView.afternoon.length > 0 && (
             <TimeSection
               label="Afternoon"
               tasks={todayView.afternoon}
-              allTasks={taskMap}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onTaskClick={setSelectedTask}
-              onUpdate={handleUpdateTask}
-              onDelete={handleDeleteTask}
-              onDuplicate={handleDuplicate}
             />
           )}
           {todayView.evening.length > 0 && (
             <TimeSection
               label="Evening"
               tasks={todayView.evening}
-              allTasks={taskMap}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onTaskClick={setSelectedTask}
-              onUpdate={handleUpdateTask}
-              onDelete={handleDeleteTask}
-              onDuplicate={handleDuplicate}
             />
           )}
           {todayView.noTime.length > 0 && (
             <TimeSection
               label="No time"
               tasks={todayView.noTime}
-              allTasks={taskMap}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onTaskClick={setSelectedTask}
-              onUpdate={handleUpdateTask}
-              onDelete={handleDeleteTask}
-              onDuplicate={handleDuplicate}
             />
           )}
         </>
@@ -229,14 +127,6 @@ export default function Today() {
         <DateSection
           date={todayStr}
           tasks={allTodayTasks}
-          allTasks={taskMap}
-          onComplete={handleComplete}
-          onUncomplete={handleUncomplete}
-          onTaskClick={setSelectedTask}
-          onUpdate={handleUpdateTask}
-          onDelete={handleDeleteTask}
-          onDuplicate={handleDuplicate}
-          onReorder={handleReorder}
           onAddTask={handleQuickAdd}
         />
       )}
@@ -281,43 +171,11 @@ export default function Today() {
         </div>
       )}
 
-      {currentSelectedTask && (
-        <TaskDetail
-          task={currentSelectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={handleUpdateTask}
-          onComplete={handleComplete}
-          onUncomplete={handleUncomplete}
-          onDelete={handleDeleteTask}
-          onAddSubtask={handleAddSubtask}
-          subtasks={selectedTaskSubtasks}
-        />
-      )}
     </div>
   );
 }
 
-function TimeSection({
-  label,
-  tasks,
-  allTasks,
-  onComplete,
-  onUncomplete,
-  onTaskClick,
-  onUpdate,
-  onDelete,
-  onDuplicate,
-}: {
-  label: string;
-  tasks: Task[];
-  allTasks: Map<string, Task>;
-  onComplete: (id: string) => void;
-  onUncomplete: (id: string) => void;
-  onTaskClick: (task: Task) => void;
-  onUpdate: (id: string, data: Record<string, any>) => void;
-  onDelete: (id: string) => void;
-  onDuplicate: (id: string) => void;
-}) {
+function TimeSection({ label, tasks }: { label: string; tasks: Task[] }) {
   return (
     <div className="mb-4">
       <div className="flex items-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
@@ -327,23 +185,9 @@ function TimeSection({
         </span>
       </div>
       <div className="space-y-0.5">
-        {tasks.map((task) => {
-          const subtasks = getSubtasks(allTasks, task.id);
-          return (
-            <TaskItem
-              key={task.id}
-              task={task}
-              onComplete={onComplete}
-              onUncomplete={onUncomplete}
-              onClick={onTaskClick}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              onDuplicate={onDuplicate}
-              showSubtasks
-              subtasks={subtasks}
-            />
-          );
-        })}
+        {tasks.map((task) => (
+          <TaskItem key={task.id} task={task} showSubtasks />
+        ))}
       </div>
     </div>
   );
