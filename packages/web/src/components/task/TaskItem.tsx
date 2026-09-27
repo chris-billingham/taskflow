@@ -64,6 +64,23 @@ export const TaskItem = memo(function TaskItem({
     else onClick(task);
   };
   const [moving, setMoving] = useState(false);
+  const [dateRequest, setDateRequest] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Shortcuts on the focused row that need this row's own UI: `e` edits the
+  // name in place, `t` opens the date picker.
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const edit = () => setIsEditing(true);
+    const date = () => setDateRequest((n) => n + 1);
+    el.addEventListener('taskflow:edit', edit);
+    el.addEventListener('taskflow:date', date);
+    return () => {
+      el.removeEventListener('taskflow:edit', edit);
+      el.removeEventListener('taskflow:date', date);
+    };
+  }, []);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(task.content);
   // Rows whose subtasks came embedded start open; count-only rows (project
@@ -170,6 +187,11 @@ export const TaskItem = memo(function TaskItem({
           className="flex-1 min-w-0 py-2.5 cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500/40 rounded-sm"
           role="button"
           tabIndex={0}
+          ref={contentRef}
+          // For the keyboard shortcuts (hooks/useKeyboardShortcuts.ts).
+          data-task-row=""
+          data-task-id={task.id}
+          data-completed={task.isCompleted ? 'true' : 'false'}
           aria-label={selecting ? `Select task: ${task.content}` : `Open task: ${task.content}`}
           aria-pressed={selecting ? selected : undefined}
           onClick={(e) => {
@@ -256,9 +278,10 @@ export const TaskItem = memo(function TaskItem({
           </div>
         </div>
 
-        {/* Hover actions */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-2 pr-1">
+        {/* Hover actions: also shown while the row has keyboard focus */}
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shrink-0 pt-2 pr-1">
           <DueDatePicker
+            openRequest={dateRequest}
             value={task.dueDate}
             time={task.dueTime}
             onChange={(date, time) => onUpdate(task.id, { dueDate: date, dueTime: time })}

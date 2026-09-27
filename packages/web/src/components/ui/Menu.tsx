@@ -4,13 +4,13 @@ import {
   useContext,
   useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { anchoredStyle, useAnchoredPosition } from './useAnchoredPosition';
 import type { LucideIcon } from 'lucide-react';
 
 const MenuContext = createContext<{ close: () => void } | null>(null);
@@ -72,41 +72,8 @@ export function Menu({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
-  const [position, setPosition] = useState<{ top: number; left: number; width?: number } | null>(null);
-
-  // The list renders into <body> at fixed coordinates beside the trigger:
-  // inside a row it was trapped in that row's stacking context (sortable rows
-  // are transformed) and drawn underneath whatever came after it. It flips to
-  // the other side when there isn't room, and follows the trigger on scroll.
-  useLayoutEffect(() => {
-    if (!open) {
-      setPosition(null);
-      return;
-    }
-    const place = () => {
-      const trigger = triggerRef.current;
-      const menu = menuRef.current;
-      if (!trigger || !menu) return;
-      const t = trigger.getBoundingClientRect();
-      const menuHeight = menu.offsetHeight;
-      const menuWidth = fullWidth ? t.width : menu.offsetWidth;
-      const gap = 4;
-      const fitsBelow = t.bottom + gap + menuHeight <= window.innerHeight - 8;
-      const fitsAbove = t.top - gap - menuHeight >= 8;
-      const openUp = side === 'top' ? fitsAbove || !fitsBelow : !fitsBelow && fitsAbove;
-      const top = openUp ? t.top - gap - menuHeight : t.bottom + gap;
-      const rawLeft = align === 'right' ? t.right - menuWidth : t.left;
-      const left = Math.min(Math.max(8, rawLeft), window.innerWidth - menuWidth - 8);
-      setPosition({ top, left, width: fullWidth ? t.width : undefined });
-    };
-    place();
-    window.addEventListener('scroll', place, true);
-    window.addEventListener('resize', place);
-    return () => {
-      window.removeEventListener('scroll', place, true);
-      window.removeEventListener('resize', place);
-    };
-  }, [open, side, align, fullWidth]);
+  // Rendered into <body> beside the trigger; see useAnchoredPosition.
+  const position = useAnchoredPosition(open, triggerRef, menuRef, { side, align, matchWidth: fullWidth });
 
   const close = useCallback(() => {
     setOpen(false);
@@ -202,12 +169,7 @@ export function Menu({
               onKeyDown={onMenuKeyDown}
               // Above dialogs and the task panel (z-50). Off screen until placed:
               // not visibility:hidden, which would stop the first item taking focus.
-              style={{
-                position: 'fixed',
-                top: position?.top ?? -9999,
-                left: position?.left ?? -9999,
-                width: position?.width,
-              }}
+              style={anchoredStyle(position)}
               className={`z-60 min-w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 ${menuClassName}`}
             >
               {children}

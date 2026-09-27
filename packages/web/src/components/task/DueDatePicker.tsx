@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { formatUserDate, formatUserTime } from '@/utils/dateFormat';
+import { Popover } from '@/components/ui/Popover';
 import { Calendar, Sun, ArrowRight, X, Clock } from 'lucide-react';
 
 interface DueDatePickerProps {
   value: string | null;
   time?: string | null;
   onChange: (date: string | null, time?: string | null) => void;
+  /** Bump to open the picker from outside (the `t` shortcut on a task row). */
+  openRequest?: number;
 }
 
 // Normalize any date string (full ISO or YYYY-MM-DD) to YYYY-MM-DD
@@ -47,27 +50,19 @@ function getDateColor(dateStr: string | null): string {
   return 'text-purple-600';
 }
 
-export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
+export function DueDatePicker({ value, time, onChange, openRequest }: DueDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (openRequest) setIsOpen(true);
+  }, [openRequest]);
   const [showTime, setShowTime] = useState(!!time);
   const [timeValue, setTimeValue] = useState(time || '');
   const [calendarDate, setCalendarDate] = useState(() => {
     if (value) return parseLocalDate(value);
     return new Date();
   });
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Listen only while open — these mount once per task row.
-    if (!isOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -104,19 +99,21 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <button
+        ref={triggerRef}
         className={`flex items-center gap-1 px-2 py-1 rounded-sm text-xs hover:bg-gray-100 dark:hover:bg-gray-700 ${getDateColor(value)}`}
         onClick={() => setIsOpen(!isOpen)}
         type="button"
+        aria-label={`Due date: ${value ? formatDateDisplay(value) : 'none'}`}
+        aria-expanded={isOpen}
       >
         <Calendar className="w-3.5 h-3.5" />
         {formatDateDisplay(value)}
         {time && <span className="ml-0.5">{formatUserTime(time)}</span>}
       </button>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2">
+      <Popover open={isOpen} onClose={() => setIsOpen(false)} anchorRef={triggerRef} label="Due date" className="w-64 py-2">
           {/* Quick options */}
           <div className="px-2 pb-2 border-b border-gray-100 dark:border-gray-700">
             {quickOptions.map((opt) => (
@@ -233,8 +230,7 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
               </button>
             </div>
           )}
-        </div>
-      )}
+      </Popover>
     </div>
   );
 }

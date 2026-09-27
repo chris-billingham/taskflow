@@ -1,30 +1,40 @@
 # Keyboard Shortcuts
 
-Taskflow has a small set of shortcuts today. More, such as moving between tasks with the arrow keys and single-key task actions, are planned.
+Press `?` in the app to see this list. Single-key shortcuts work when you're not typing in a text field and no dialog is open.
 
-## Global
-
-These work anywhere in the main app, as long as you're not typing in a text field.
+## Anywhere
 
 | Shortcut | Action |
 |----------|--------|
-| `Q` | Open Quick Add |
-| `/` | Open search |
+| `⌘K` (Mac) / `Ctrl+K` | Command palette: type a few letters to go to a view, project, filter or label, or to add a task or search |
+| `Q` | Add a task (Quick Add) |
+| `/` | Search |
+| `?` | Show the keyboard shortcuts |
 
-## Search
+## Task Lists
+
+`J` and `K` move between tasks; the other keys act on the task that has focus.
+
+| Shortcut | Action |
+|----------|--------|
+| `J` / `K` | Next / previous task |
+| `Enter` | Open the task |
+| `E` | Rename it in place |
+| `C` | Complete it (or reopen a completed one) |
+| `T` | Set its due date |
+| `1`–`4` | Set its priority |
+| `X` | Select it (to act on several at once) |
+| `D` | Delete it (to the Trash) |
+| `Escape` | Clear the selection |
+| `Tab` | Move between tasks and their buttons |
+
+## Search and the Command Palette
 
 | Shortcut | Action |
 |----------|--------|
 | `↑` / `↓` | Move through results |
 | `Enter` | Open the selected result |
-| `Escape` | Close search |
-
-## Task Lists
-
-| Shortcut | Action |
-|----------|--------|
-| `Tab` | Move focus between tasks and controls |
-| `Enter` / `Space` | Open the focused task |
+| `Escape` | Close |
 
 ## Text Fields
 
@@ -35,11 +45,10 @@ These work anywhere in the main app, as long as you're not typing in a text fiel
 | `Cmd/Ctrl+Enter` | Send a comment |
 | `↑` / `↓`, then `Enter` or `Tab` | Pick a person from the `@mention` list in a comment |
 
-## Dialogs and Previews
+## Panels, Dialogs and Menus
 
 | Shortcut | Action |
 |----------|--------|
-| `Escape` | Close a dialog (such as Quick Add) or the image preview |
+| `Escape` | Close the topmost menu, picker, dialog or the task panel |
+| `↑` / `↓`, `Home` / `End` | Move through a menu |
 | `←` / `→` | Previous / next image in the image preview |
-
-`Escape` doesn't close the task panel. Use the **×** button or click outside the panel.

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Outlet, useLocation, useSearchParams } from 'react-router';
 import { Menu, Plus, Search } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -18,6 +18,9 @@ import { BulkActionBar } from '@/components/task/BulkActionBar';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useRealTimeSync } from '@/hooks/useRealTimeSync';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { CommandPalette } from '@/components/layout/CommandPalette';
+import { ShortcutsSheet } from '@/components/layout/ShortcutsSheet';
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -38,35 +41,18 @@ export function AppLayout() {
   // useTheme lives at the app root (App.tsx) so it covers settings and auth
   // routes too, which this layout does not wrap.
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      // Don't trigger if typing in an input/textarea
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-
-      if (e.key === 'q' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        setQuickAddOpen(true);
-      }
-
-      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    },
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const shortcutHandlers = useMemo(
+    () => ({
+      quickAdd: () => setQuickAddOpen(true),
+      search: () => setSearchOpen(true),
+      commandPalette: () => setPaletteOpen((open) => !open),
+      shortcutsSheet: () => setShortcutsOpen(true),
+    }),
     [],
   );
-
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+  useKeyboardShortcuts(shortcutHandlers);
 
   const handleQuickAddSubmit = async (text: string) => {
     await quickAddTask(text);
@@ -143,6 +129,15 @@ export function AppLayout() {
       )}
 
       <BulkActionBar />
+
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onQuickAdd={() => setQuickAddOpen(true)}
+        onSearch={() => setSearchOpen(true)}
+        onShortcuts={() => setShortcutsOpen(true)}
+      />
+      <ShortcutsSheet isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       {/* Global Search Modal */}
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
