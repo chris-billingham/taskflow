@@ -123,6 +123,7 @@ be running alongside the dev compose stack:
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d          # Postgres, Redis, Garage
+pnpm --filter @taskflow/contract build                  # the API and web import it
 
 ADMIN_EMAILS=e2e-admin@taskflow.test \
   pnpm --filter @taskflow/api dev                       # terminal 2

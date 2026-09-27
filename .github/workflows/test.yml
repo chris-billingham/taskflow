@@ -97,6 +97,10 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter @taskflow/api db:generate
 
+      # The API and web app import the compiled contract package.
+      - name: Build contract
+        run: pnpm --filter @taskflow/contract build
+
       - name: Run API unit + integration tests (with coverage thresholds)
         run: pnpm --filter @taskflow/api test:coverage
         env:
