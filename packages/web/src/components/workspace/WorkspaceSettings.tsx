@@ -4,7 +4,7 @@ import { Settings, Users, FolderKanban, Trash2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import {
-  useCurrentWorkspace,
+  useWorkspace,
   useWorkspaceActions,
   useWorkspaceInvites,
   useWorkspaceMembers,
@@ -15,9 +15,9 @@ import { InviteMemberModal } from './InviteMemberModal';
 
 type SettingsTab = 'general' | 'members' | 'projects' | 'danger';
 
-export function WorkspaceSettings() {
+export function WorkspaceSettings({ workspaceId }: { workspaceId: string | undefined }) {
   const navigate = useNavigate();
-  const workspace = useCurrentWorkspace();
+  const { workspace, loading } = useWorkspace(workspaceId);
   const {
     updateWorkspace,
     deleteWorkspace,
@@ -52,7 +52,9 @@ export function WorkspaceSettings() {
   if (!workspace) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500 dark:text-gray-400">Select a workspace to view settings.</p>
+        <p className="text-gray-500 dark:text-gray-400">
+          {loading ? 'Loading…' : 'This workspace no longer exists, or you are no longer a member.'}
+        </p>
       </div>
     );
   }

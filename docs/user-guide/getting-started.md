@@ -37,8 +37,10 @@ If the server has email set up, you'll also get a verification email. Click the 
 - **Upcoming**: tasks due in the next 14 days, grouped by day, plus overdue tasks and a **No date** section. Drag a task onto another day to reschedule it.
 - **Filters & Labels**: manage your labels and saved filters.
 - **Favorites**: projects you've starred. Starred labels and filters get their own section below it.
-- **My Projects**: your personal projects. **Team Projects** appears when a workspace is selected in the switcher at the top.
-- **Your name** (bottom): Settings, Workspace settings and Log out.
+- **My Projects**: your personal projects, private to you.
+- **One section per workspace** you belong to, with its projects. The gear opens the workspace's settings. **New workspace** at the bottom creates one.
+- **Shared with me**: projects someone else shared with you directly, when there are any.
+- **Your name** (bottom): Settings and Log out.
 
 Today and Upcoming include tasks from every project you can see, including team projects.
 

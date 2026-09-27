@@ -4,6 +4,7 @@ vi.mock('../../config/database.js', () => {
   const mockPrismaClient = {
     user: { findUnique: vi.fn(), delete: vi.fn() },
     workspace: { findMany: vi.fn(), delete: vi.fn() },
+    project: { deleteMany: vi.fn() },
     attachment: { findMany: vi.fn() },
     refreshToken: { deleteMany: vi.fn() },
     $transaction: vi.fn(),

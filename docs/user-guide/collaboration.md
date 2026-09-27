@@ -2,10 +2,10 @@
 
 ## Workspaces
 
-Workspaces are how you share work in Taskflow. Every project under **Team Projects** belongs to a workspace, and every member of that workspace can see it. Projects under **My Projects** are private to you.
+Workspaces are how a team shares work in Taskflow. Your Inbox and the projects under **My Projects** are your own space, private to you. Each workspace you belong to has its own section in the sidebar, below My Projects, and every member of a workspace can see its projects.
 
-- Use the workspace switcher at the top of the sidebar to pick a workspace, or choose **Create workspace**.
-- **Team Projects** appears in the sidebar when a workspace is selected.
+- **New workspace** at the bottom of the sidebar creates one and opens its settings, so you can invite people.
+- The gear next to a workspace's name opens its settings. The **+** adds a project to it.
 - You can't share a single project with someone outside the workspace yet.
 
 ## Roles
@@ -23,7 +23,7 @@ The invite dialog describes Guest as "access specific shared projects only". Tha
 
 Owners and admins can invite people:
 
-1. Select the workspace, then open **Workspace settings** (the gear next to **Team Projects**, or the menu under your name).
+1. Click the gear next to the workspace's name in the sidebar.
 2. Open the **Members** tab and click **Invite**.
 3. Enter an email address and choose a role (Member, Admin or Guest).
 

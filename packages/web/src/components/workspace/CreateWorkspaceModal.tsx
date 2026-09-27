@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useNavigate } from 'react-router';
 import { useWorkspaceActions } from '@/queries/workspaces';
 
 interface CreateWorkspaceModalProps {
@@ -15,7 +15,7 @@ export function CreateWorkspaceModal({
   onClose,
 }: CreateWorkspaceModalProps) {
   const { createWorkspace } = useWorkspaceActions();
-  const switchWorkspace = useWorkspaceStore((s) => s.switchWorkspace);
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,10 +35,11 @@ export function CreateWorkspaceModal({
         name: name.trim(),
         description: description.trim() || undefined,
       });
-      switchWorkspace(workspace.id);
       setName('');
       setDescription('');
       onClose();
+      // Straight to its settings, where people can be invited.
+      navigate(`/workspaces/${workspace.id}/settings`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create workspace');
     } finally {

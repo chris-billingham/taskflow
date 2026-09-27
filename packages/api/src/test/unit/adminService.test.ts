@@ -13,7 +13,7 @@ vi.mock('../../config/database.js', () => {
       delete: vi.fn(),
     },
     workspace: { create: vi.fn(), findMany: vi.fn(), delete: vi.fn() },
-    project: { create: vi.fn() },
+    project: { create: vi.fn(), deleteMany: vi.fn() },
     // adminService.deleteUser delegates to userService.deleteUser, which now
     // collects attachment keys so the cascades don't strand the objects.
     attachment: { findMany: vi.fn() },
@@ -157,13 +157,13 @@ describe('createUser', () => {
     expect(created.emailVerified).toBe(true);
   });
 
-  it('provisions the personal workspace and inbox atomically', async () => {
+  it('provisions the account and its Inbox atomically', async () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
 
     await createUser({ email: 'new@example.com', name: 'New' });
 
     expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
-    expect(mockPrisma.workspace.create).toHaveBeenCalledOnce();
+    expect(mockPrisma.workspace.create).not.toHaveBeenCalled();
     expect(mockPrisma.project.create).toHaveBeenCalledOnce();
     expect(mockPrisma.project.create.mock.calls[0][0].data.isInbox).toBe(true);
   });

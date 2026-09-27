@@ -145,7 +145,7 @@ src/
 ```
 /login, /register, /forgot-password, /reset-password, /verify-email, /join   — public
 /today, /upcoming, /projects/:id, /labels/:id, /filters/:id, /tasks/:id,
-/filters-labels, /workspace/settings                                        — AppLayout, signed in
+/filters-labels, /workspaces/:id/settings                                        — AppLayout, signed in
 /settings/{profile,account,preferences,notifications,templates,
            integrations,export,admin}                                        — SettingsLayout, signed in
 ```
@@ -171,7 +171,7 @@ Task rows, board cards and calendar entries call `useTaskActions()` and `useTask
 
 All other server data is in queries too, one module per area (`projects.ts` with sections, `labels.ts`, `filters.ts`, `comments.ts`, `activity.ts`, `workspaces.ts`, `notifications.ts`, `templates.ts`, `taskExtras.ts` for members, reminders and attachments). Each exports read hooks and an actions hook; list changes go through `optimistic.ts`, which rolls back and shows the error on failure. Socket events patch or invalidate the matching queries. The cache is cleared when the signed-in user changes (`App.tsx`).
 
-Zustand holds client state only: `authStore` (session), `socketStore` (connection status and the resync counter), `toastStore`, `uiStore` and `workspaceStore` (which workspace the switcher shows).
+Zustand holds client state only: `authStore` (session), `socketStore` (connection status and the resync counter), `toastStore`, and `uiStore` (sidebar state, board grouping).
 
 `services/api.ts` is an axios instance with `withCredentials`. It attaches the in-memory access token. On a 401 it refreshes once through a shared promise (and a Web Locks mutex across tabs, because the refresh cookie is single-use), then retries the request.
 
@@ -190,7 +190,7 @@ Task ── Section?, parent Task? (subtasks), TaskLabel → Label, Comment, Att
 Template (project templates), InstanceSetting (e.g. sign-up mode)
 ```
 
-Each user gets a "Personal" workspace and an Inbox project at registration. `WorkspaceLabel` exists in the schema but is unused.
+Each user has their own space: an Inbox created at registration plus any personal projects, all with no workspace. Workspaces are for teams only. Favourites, sidebar order and collapsed sections are per person (`ProjectUserSetting`, `SectionUserSetting`). `WorkspaceLabel` exists in the schema but is unused.
 
 ## Testing
 

@@ -7,7 +7,6 @@ import type {
   WorkspaceRole,
   WorkspaceSummary,
 } from '@taskflow/contract';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { reportMutationError } from '@/utils/reportError';
 import { projectKeys } from './projects';
 import { taskKeys } from './taskKeys';
@@ -32,11 +31,10 @@ export function useWorkspaces() {
   return { workspaces: query.data ?? [], loading: query.isLoading };
 }
 
-/** The workspace picked in the switcher, if you still belong to it. */
-export function useCurrentWorkspace(): Workspace | null {
-  const { workspaces } = useWorkspaces();
-  const currentId = useWorkspaceStore((s) => s.currentWorkspaceId);
-  return workspaces.find((w) => w.id === currentId) ?? null;
+/** One of your workspaces, by id. */
+export function useWorkspace(id: string | undefined) {
+  const { workspaces, loading } = useWorkspaces();
+  return { workspace: workspaces.find((w) => w.id === id) ?? null, loading };
 }
 
 export function useWorkspaceMembers(workspaceId: string | undefined) {
@@ -77,11 +75,6 @@ export function useWorkspaceActions() {
         }
       }
     }
-    const forgetIfCurrent = (id: string) => {
-      const store = useWorkspaceStore.getState();
-      if (store.currentWorkspaceId === id) store.switchWorkspace(null);
-    };
-
     return {
       createWorkspace: (input: { name: string; description?: string }) =>
         run(async () => (await api.post('/workspaces', input)).data.data as Workspace, null),
@@ -89,7 +82,6 @@ export function useWorkspaceActions() {
         run(() => api.patch(`/workspaces/${id}`, input).then(() => undefined), null),
       deleteWorkspace: async (id: string) => {
         await run(() => api.delete(`/workspaces/${id}`), 'The workspace could not be deleted', true);
-        forgetIfCurrent(id);
       },
       /** Throws without a toast: the invite dialog shows its own error. */
       inviteMember: (workspaceId: string, email: string, role: string) =>
@@ -117,7 +109,6 @@ export function useWorkspaceActions() {
         run(() => api.delete(`/workspaces/${workspaceId}/members/${userId}`), 'The member could not be removed', true),
       leaveWorkspace: async (workspaceId: string) => {
         await run(() => api.post(`/workspaces/${workspaceId}/leave`), 'You could not leave the workspace', true);
-        forgetIfCurrent(workspaceId);
       },
       transferOwnership: (workspaceId: string, newOwnerId: string) =>
         run(

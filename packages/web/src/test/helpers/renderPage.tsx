@@ -10,7 +10,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { useSocketStore } from '@/stores/socketStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useUIStore } from '@/stores/uiStore';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { TEST_USER } from '../msw/fixtures';
 
 // Stores are module singletons, so state would leak between tests. Snapshot
@@ -20,7 +19,6 @@ const stores = [
   useSocketStore,
   useToastStore,
   useUIStore,
-  useWorkspaceStore,
 ] as const;
 const initialStates = stores.map((store) => store.getState());
 

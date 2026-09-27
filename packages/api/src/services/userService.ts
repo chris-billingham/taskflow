@@ -7,10 +7,10 @@ import type { SystemRole } from '@prisma/client';
 import { logger } from '../config/logger.js';
 
 /**
- * Creates an account together with the two rows every user is required to
- * have: their personal workspace and its Inbox project. Callers supply the
- * transaction client — a user without an Inbox permanently breaks quick-add
- * ("No default project found"), so all three rows land or none do.
+ * Creates an account together with its Inbox, in the user's own space (no
+ * workspace; workspaces are for teams). Callers supply the transaction
+ * client — a user without an Inbox permanently breaks quick-add ("No default
+ * project found"), so both rows land or neither does.
  *
  * Shared by self-service registration and admin-created accounts so the two
  * provisioning paths cannot drift apart.
@@ -43,22 +43,10 @@ export async function provisionUser(
     },
   });
 
-  const workspace = await tx.workspace.create({
-    data: {
-      name: 'Personal',
-      slug: `personal-${created.id}`,
-      ownerId: created.id,
-      members: {
-        create: { userId: created.id, role: 'OWNER' },
-      },
-    },
-  });
-
   await tx.project.create({
     data: {
       name: 'Inbox',
       ownerId: created.id,
-      workspaceId: workspace.id,
       isInbox: true,
     },
   });
@@ -212,10 +200,16 @@ export async function deleteUser(id: string) {
   // workspaces cascades through projects and tasks, taking attachments OTHER
   // people uploaded there with them. Either way the row is gone and the bytes
   // are unreachable but still billed and still copied into every backup.
+  // Their own space (Inbox and personal projects) goes with them. The owner
+  // relation is SetNull, so without this those projects were left behind
+  // with no owner and no workspace: unreachable, but still stored.
+  const personalProjects = { ownerId: id, workspaceId: null };
   const doomedAttachments = await prisma.attachment.findMany({
     where: {
       OR: [
         { uploadedById: id },
+        { task: { project: personalProjects } },
+        { comment: { task: { project: personalProjects } } },
         ...(ownedWorkspaces.length > 0
           ? [
               {
@@ -248,14 +242,15 @@ export async function deleteUser(id: string) {
     select: { url: true },
   });
 
-  // Sole-member workspaces (including the personal one) are the user's own
-  // data — remove them explicitly, then the account. Tasks the user created
-  // in OTHER people's projects survive with creatorId set to null (schema),
-  // and the DB-level Restrict on workspace ownership backstops this logic.
+  // Sole-member workspaces and their own space are the user's own data —
+  // remove them explicitly, then the account. Tasks the user created in
+  // OTHER people's projects survive with creatorId set to null (schema), and
+  // the DB-level Restrict on workspace ownership backstops this logic.
   await prisma.$transaction(async (tx) => {
     for (const workspace of ownedWorkspaces) {
       await tx.workspace.delete({ where: { id: workspace.id } });
     }
+    await tx.project.deleteMany({ where: personalProjects });
     await tx.user.delete({ where: { id } });
   });
 

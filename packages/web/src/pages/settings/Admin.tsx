@@ -285,7 +285,7 @@ export default function Admin() {
             Delete {pendingDelete.name}?
           </h3>
           <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            This permanently removes {pendingDelete.email}, their personal workspace
+            This permanently removes {pendingDelete.email}, their own projects
             and everything only they can see. Tasks they created in shared projects
             stay behind. This cannot be undone.
           </p>

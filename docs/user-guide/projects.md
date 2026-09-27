@@ -2,7 +2,7 @@
 
 ## Creating a Project
 
-1. Click the **+** next to **My Projects** in the sidebar. For a shared project, select a workspace in the switcher first and use the **+** next to **Team Projects**.
+1. Click the **+** next to **My Projects** in the sidebar. For a team project, use the **+** next to the workspace's name instead.
 2. Enter a name and choose a color. Optionally pick a parent project and a default view.
 3. Click **Add**.
 
@@ -81,8 +81,8 @@ Use **Delete** in the project header's **⋯** menu, and confirm. This permanent
 
 ## Sharing Projects (Workspaces)
 
-Projects are shared through workspaces, not one at a time. Every project under **Team Projects** belongs to the selected workspace, and all its members can see it. Projects under **My Projects** are private to you.
+Projects are shared through workspaces, not one at a time. Each workspace has its own section in the sidebar, and all its members can see its projects. Projects under **My Projects** are private to you.
 
-To invite someone, open **Workspace settings** (the gear next to **Team Projects**, or the menu under your name) → **Members** → **Invite**.
+To invite someone, click the gear next to the workspace's name → **Members** → **Invite**.
 
 See [collaboration.md](collaboration.md) for roles and team features.

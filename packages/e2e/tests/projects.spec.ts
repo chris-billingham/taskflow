@@ -38,8 +38,7 @@ test.describe('Project Management', () => {
   });
 
   test('Inbox is pinned in the sidebar on a fresh load', async ({ page }) => {
-    // The Inbox lives in the auto-created "Personal" workspace; it used to be
-    // hidden whenever no workspace was selected, which is the default.
+    // The Inbox has its own entry above the project lists.
     const inboxLink = page.locator('aside nav').getByRole('button', { name: 'Inbox', exact: true });
     await expect(inboxLink).toBeVisible();
     await inboxLink.click();

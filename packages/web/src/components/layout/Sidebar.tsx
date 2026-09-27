@@ -21,13 +21,12 @@ import { useAuthStore } from '@/stores/authStore';
 import { useProjects, useProjectActions } from '@/queries/projects';
 import { useLabels } from '@/queries/labels';
 import { useFilters } from '@/queries/filters';
-import { useCurrentWorkspace } from '@/queries/workspaces';
+import { useWorkspaces } from '@/queries/workspaces';
 import { ProjectList } from '@/components/project/ProjectList';
 import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
-import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 import { CreateWorkspaceModal } from '@/components/workspace/CreateWorkspaceModal';
 import type { ProjectTreeNode, Project } from '@/types/project';
 
@@ -46,14 +45,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { favorites: favoriteLabels } = useLabels();
   const { favorites: favoriteFilters } = useFilters();
 
-  const currentWorkspace = useCurrentWorkspace();
+  const { workspaces } = useWorkspaces();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForTeam, setCreateForTeam] = useState(false);
+  // The workspace a new project goes into; undefined for your own space.
+  const [createInWorkspace, setCreateInWorkspace] = useState<string | undefined>();
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectsExpanded, setProjectsExpanded] = useState(true);
-  const [teamProjectsExpanded, setTeamProjectsExpanded] = useState(true);
+  const [collapsedWorkspaces, setCollapsedWorkspaces] = useState<Set<string>>(new Set());
+  const toggleWorkspace = (id: string) =>
+    setCollapsedWorkspaces((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const openCreateProject = (workspaceId?: string) => {
+    setCreateInWorkspace(workspaceId);
+    setShowCreateModal(true);
+  };
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
   const [filtersLabelsExpanded, setFiltersLabelsExpanded] = useState(true);
 
@@ -94,25 +105,31 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
   };
 
-  // The Inbox gets its own pinned nav entry. It lives in the auto-created
-  // "Personal" workspace, so leaving it in the project trees hid it whenever
-  // no workspace was selected — which is the default.
+  // The Inbox gets its own pinned nav entry, above the project lists.
   const inbox = useMemo(
     () => projects.find((p) => p.isInbox && p.ownerId === user?.id),
     [projects, user?.id],
   );
 
-  // Separate personal projects from team (workspace) projects
-  const { personalTree, teamTree } = useMemo(() => {
-    const personal = tree.filter((p) => !p.workspaceId && !p.isInbox);
-    const team = tree.filter(
-      (p) =>
-        p.workspaceId &&
-        !p.isInbox &&
-        (!currentWorkspace || p.workspaceId === currentWorkspace.id),
-    );
-    return { personalTree: personal, teamTree: team };
-  }, [tree, currentWorkspace]);
+  // Your own space, then each workspace you belong to, then projects shared
+  // with you from somewhere else (another person's space, or a workspace
+  // you're not in).
+  const { personalTree, workspaceTrees, sharedTree } = useMemo(() => {
+    const visible = tree.filter((p) => !p.isInbox);
+    const mine = new Set(workspaces.map((w) => w.id));
+    return {
+      personalTree: visible.filter((p) => !p.workspaceId && p.ownerId === user?.id),
+      workspaceTrees: [...workspaces]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((workspace) => ({
+          workspace,
+          projects: visible.filter((p) => p.workspaceId === workspace.id),
+        })),
+      sharedTree: visible.filter((p) =>
+        p.workspaceId ? !mine.has(p.workspaceId) : p.ownerId !== user?.id,
+      ),
+    };
+  }, [tree, workspaces, user?.id]);
 
   const navItems = [
     ...(inbox ? [{ path: `/projects/${inbox.id}`, label: 'Inbox', icon: Inbox }] : []),
@@ -143,11 +160,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
-
-        {/* Workspace Switcher */}
-        <WorkspaceSwitcher
-          onCreateWorkspace={() => setShowCreateWorkspaceModal(true)}
-        />
       </div>
 
       {/* Navigation */}
@@ -308,7 +320,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
             <button
               className="p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
-              onClick={() => { setCreateForTeam(false); setShowCreateModal(true); }}
+              onClick={() => openCreateProject()}
               title="Add project"
             >
               <Plus className="w-4 h-4 text-gray-500 dark:text-gray-400" />
@@ -332,60 +344,80 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
         </div>
 
-        {/* Team Projects section (shown when a workspace is selected) */}
-        {currentWorkspace && (
-          <div>
-            <div className="flex items-center justify-between px-2 py-1">
-              <button
-                className="flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200"
-                onClick={() => setTeamProjectsExpanded(!teamProjectsExpanded)}
-              >
-                <Building2 className="w-3.5 h-3.5" />
-                Team Projects
-                <ChevronDown
-                  className={`w-3.5 h-3.5 transition-transform ${
-                    teamProjectsExpanded ? '' : '-rotate-90'
-                  }`}
-                />
-              </button>
-              <div className="flex items-center gap-1">
+        {/* One section per workspace */}
+        {workspaceTrees.map(({ workspace, projects: workspaceProjects }) => {
+          const expanded = !collapsedWorkspaces.has(workspace.id);
+          return (
+            <div key={workspace.id} className="mb-4">
+              <div className="flex items-center justify-between px-2 py-1">
                 <button
-                  className="p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
-                  onClick={() => {
-                    navigate('/workspace/settings');
-                    onClose();
-                  }}
-                  title="Workspace settings"
+                  className="flex items-center gap-1 min-w-0 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200"
+                  onClick={() => toggleWorkspace(workspace.id)}
+                  aria-expanded={expanded}
                 >
-                  <Settings className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-                </button>
-                <button
-                  className="p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
-                  onClick={() => { setCreateForTeam(true); setShowCreateModal(true); }}
-                  title="Add team project"
-                >
-                  <Plus className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                </button>
-              </div>
-            </div>
-
-            {teamProjectsExpanded && (
-              <div className="mt-1">
-                {loading ? (
-                  <p className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">Loading...</p>
-                ) : teamTree.length > 0 ? (
-                  <ProjectList
-                    projects={teamTree}
-                    onEdit={(p) => setEditingProject(p)}
-                    onDelete={handleDeleteProject}
+                  <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{workspace.name}</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`}
+                    aria-hidden="true"
                   />
-                ) : (
-                  <p className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
-                    No team projects yet
-                  </p>
-                )}
+                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    className="p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
+                    onClick={() => {
+                      navigate(`/workspaces/${workspace.id}/settings`);
+                      onClose();
+                    }}
+                    title={`${workspace.name} settings`}
+                    aria-label={`${workspace.name} settings`}
+                  >
+                    <Settings className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+                  </button>
+                  {workspace.role !== 'GUEST' && (
+                    <button
+                      className="p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600"
+                      onClick={() => openCreateProject(workspace.id)}
+                      title={`Add project to ${workspace.name}`}
+                      aria-label={`Add project to ${workspace.name}`}
+                    >
+                      <Plus className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
+
+              {expanded && (
+                <div className="mt-1">
+                  {loading ? (
+                    <p className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">Loading...</p>
+                  ) : workspaceProjects.length > 0 ? (
+                    <ProjectList
+                      projects={workspaceProjects}
+                      onEdit={(p) => setEditingProject(p)}
+                      onDelete={handleDeleteProject}
+                    />
+                  ) : (
+                    <p className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">No projects yet</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {sharedTree.length > 0 && (
+          <div className="mb-4">
+            <p className="px-2 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Shared with me
+            </p>
+            <div className="mt-1">
+              <ProjectList
+                projects={sharedTree}
+                onEdit={(p) => setEditingProject(p)}
+                onDelete={handleDeleteProject}
+              />
+            </div>
           </div>
         )}
 
@@ -406,6 +438,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="ml-auto text-xs tabular-nums">{archived.length}</span>
           </button>
         )}
+        <button
+          className="mt-2 w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+          onClick={() => setShowCreateWorkspaceModal(true)}
+        >
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          New workspace
+        </button>
       </div>
 
       {/* User menu */}
@@ -430,14 +469,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </>
           }
         >
-          {currentWorkspace && (
-            <>
-              <MenuItem icon={Building2} onSelect={() => navigate('/workspace/settings')}>
-                Workspace settings
-              </MenuItem>
-              <MenuSeparator />
-            </>
-          )}
           <MenuItem icon={Settings} onSelect={() => navigate('/settings/profile')}>
             Settings
           </MenuItem>
@@ -473,7 +504,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <CreateProjectModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        workspaceId={createForTeam ? currentWorkspace?.id : undefined}
+        workspaceId={createInWorkspace}
       />
       <CreateWorkspaceModal
         isOpen={showCreateWorkspaceModal}

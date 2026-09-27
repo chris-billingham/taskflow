@@ -68,7 +68,7 @@ admins). From there you can:
 
 | Action | Effect |
 |---|---|
-| **Add user** | Creates the account, its personal workspace and its Inbox. Optionally generates a password, shown once. |
+| **Add user** | Creates the account and its Inbox. Optionally generates a password, shown once. |
 | **Make / revoke admin** | Toggles `SystemRole`. Takes effect on the target's next request. |
 | **Suspend** | Blocks sign-in, deletes every refresh token, drops live sockets. Keeps all data. Reversible. |
 | **Reactivate** | Restores sign-in with the same password. |

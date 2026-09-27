@@ -87,7 +87,7 @@ beforeEach(async () => {
 });
 
 describe('createUser', () => {
-  it('provisions the account, its personal workspace and its inbox', async () => {
+  it('provisions the account and its Inbox, in its own space', async () => {
     const email = `created${SUFFIX}`;
     const { user, temporaryPassword } = await adminService.createUser({
       email,
@@ -96,15 +96,9 @@ describe('createUser', () => {
 
     expect(temporaryPassword).toEqual(expect.any(String));
 
-    const workspace = await prisma.workspace.findFirst({
-      where: { ownerId: user.id },
-      include: { members: true, projects: true },
-    });
-    expect(workspace?.name).toBe('Personal');
-    // Without a membership row the workspace is invisible to its own owner.
-    expect(workspace?.members).toHaveLength(1);
-    expect(workspace?.members[0].role).toBe('OWNER');
-    expect(workspace?.projects.some((p) => p.isInbox)).toBe(true);
+    expect(await prisma.workspace.count({ where: { ownerId: user.id } })).toBe(0);
+    const inbox = await prisma.project.findFirst({ where: { ownerId: user.id, isInbox: true } });
+    expect(inbox?.workspaceId).toBeNull();
   });
 
   it('creates an account that can immediately sign in with the generated password', async () => {

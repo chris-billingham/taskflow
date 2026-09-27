@@ -142,7 +142,7 @@ describe('register', () => {
     expect(mockPrisma.user.create).not.toHaveBeenCalled();
   });
 
-  it('creates user, workspace, and inbox project', async () => {
+  it('creates the user and their Inbox, with no workspace', async () => {
     const result = await register({
       name: 'Test User',
       email: 'test@example.com',
@@ -150,8 +150,10 @@ describe('register', () => {
     });
 
     expect(mockPrisma.user.create).toHaveBeenCalledOnce();
-    expect(mockPrisma.workspace.create).toHaveBeenCalledOnce();
+    expect(mockPrisma.workspace.create).not.toHaveBeenCalled();
     expect(mockPrisma.project.create).toHaveBeenCalledOnce();
+    expect(mockPrisma.project.create.mock.calls[0][0].data).toMatchObject({ isInbox: true });
+    expect(mockPrisma.project.create.mock.calls[0][0].data.workspaceId).toBeUndefined();
     expect(result.user).toMatchObject({
       id: TEST_USER.id,
       email: TEST_USER.email,

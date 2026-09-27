@@ -125,7 +125,7 @@ function App() {
           <Route path="/tasks/:id" element={<TaskLink />} />
           <Route path="/trash" element={<Trash />} />
           <Route path="/archived" element={<ArchivedProjects />} />
-          <Route path="/workspace/settings" element={<WorkspaceSettingsPage />} />
+          <Route path="/workspaces/:id/settings" element={<WorkspaceSettingsPage />} />
         </Route>
 
         {/* Settings routes */}
