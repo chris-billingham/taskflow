@@ -3,7 +3,7 @@ import { TEST_USER } from '../global-setup';
 
 const API_URL = process.env.E2E_API_URL || 'http://localhost:3001';
 
-// Exercises the real chain (API → MinIO → API streaming) that presigned URLs
+// Exercises the real chain (API → object storage → API streaming) that presigned URLs
 // used to break: in the shipped topology the S3 endpoint is internal-only, so
 // downloads must round-trip through the API.
 test.describe('Attachments', () => {

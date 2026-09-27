@@ -36,6 +36,40 @@ docker compose -f docker-compose.yml run --rm api \
 docker compose -f docker-compose.yml up -d
 ```
 
+## Moving from MinIO to Garage
+
+Versions before October 2026 bundled MinIO for attachments. MinIO's images
+have been withdrawn from Docker Hub and quay.io, so current versions bundle
+Garage instead, and `upgrade.sh` stops if your `.env` hasn't been updated.
+Garage can't read MinIO's data directory, so existing files move across via a
+backup:
+
+```bash
+# 1. BEFORE pulling the new version: take a backup with the old scripts,
+#    while MinIO is still running. Note the archive name it prints.
+make backup
+
+# 2. Add the new storage settings to .env
+echo "S3_ACCESS_KEY=GK$(openssl rand -hex 12)" >> .env
+echo "S3_SECRET_KEY=$(openssl rand -hex 32)"   >> .env
+echo "GARAGE_RPC_SECRET=$(openssl rand -hex 32)" >> .env
+#    ...and delete the old MINIO_ROOT_USER / MINIO_ROOT_PASSWORD / MINIO_BUCKET
+#    and any earlier S3_ACCESS_KEY / S3_SECRET_KEY lines.
+
+# 3. Upgrade as usual
+make upgrade
+
+# 4. Copy the files from that backup into Garage
+mkdir -p /tmp/taskflow-files
+tar -xzf backups/<archive>.tar.gz -C /tmp/taskflow-files
+docker compose -f docker-compose.yml run --rm --no-deps \
+  -v /tmp/taskflow-files/<archive>/files:/in:ro rclone copy /in store:taskflow
+
+# 5. Once attachments open correctly, remove the old container and volume
+docker compose -f docker-compose.yml up -d --remove-orphans
+docker volume rm taskflow_minio_data   # name may differ: docker volume ls
+```
+
 ## Checking the Upgrade Succeeded
 
 ```bash

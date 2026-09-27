@@ -54,7 +54,7 @@ docker network create traefik
 docker compose -f docker-compose.yml build --parallel
 
 # Start infrastructure
-docker compose -f docker-compose.yml up -d postgres redis minio traefik
+docker compose -f docker-compose.yml up -d postgres redis garage traefik
 
 # Run migrations
 make migrate
@@ -103,7 +103,7 @@ bash scripts/backup.sh
 
 Backups are saved to `./backups/` as timestamped `.tar.gz` archives containing:
 - PostgreSQL dump (compressed SQL)
-- MinIO file storage mirror
+- Uploaded files (a full copy of the storage bucket)
 - Redis snapshot (queued jobs / reminder state)
 - `.env` (encrypted when `BACKUP_PASSPHRASE` is set in `.env`; **plaintext otherwise — store backups securely**)
 - `manifest.json` recording the app version, latest applied migration, and archive contents

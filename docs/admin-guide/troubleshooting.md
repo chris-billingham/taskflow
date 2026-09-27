@@ -62,9 +62,11 @@ openssl rand -base64 32
 
 ### File uploads fail
 
-1. Check that the S3/MinIO variables are set in `.env`:
-   - `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`
-2. Verify the MinIO container is running: `docker compose -f docker-compose.yml ps minio`
+1. Check that the storage variables are set in `.env`:
+   - `S3_ACCESS_KEY` (`GK` + 24 hex), `S3_SECRET_KEY` (64 hex), `S3_BUCKET`, `GARAGE_RPC_SECRET`
+2. Verify Garage is running and healthy: `docker compose -f docker-compose.yml ps garage`.
+   If it keeps restarting, `docker compose -f docker-compose.yml logs garage` usually
+   names the malformed key or secret.
 3. Check the API log for "Storage unavailable" warnings
 
 ---

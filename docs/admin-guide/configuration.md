@@ -53,36 +53,34 @@ password reset** — recovery is an admin resetting it from the console. Set
 
 ### File Storage
 
-Default uses the bundled MinIO container. `docker-compose.yml` points the API's
-S3 credentials at `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`, so in the bundled
-setup those two are all you set:
+Attachments are stored in the bundled [Garage](https://garagehq.deuxfleurs.fr/)
+container, an S3-compatible server built for small self-hosted setups. (Earlier
+versions bundled MinIO; its images were withdrawn upstream in 2026.) On first
+start, Garage creates the access key and bucket named below, and
+`docker-compose.yml` hands the same values to the API. `scripts/install.sh`
+generates all three secrets:
 
 ```env
-MINIO_ROOT_USER=taskflow-admin
-MINIO_ROOT_PASSWORD=<strong password>
-MINIO_BUCKET=taskflow
-```
-
-Connecting from outside Docker (local development, an external bucket) the API
-reads them directly. **In production these have no default and the API refuses
-to start without them** — the old `minioadmin` fallback shipped well-known
-credentials to anyone who forgot to set them:
-
-```env
-S3_ENDPOINT=http://minio:9000
+S3_ACCESS_KEY=GK<24 hex characters>   # GK$(openssl rand -hex 12)
+S3_SECRET_KEY=<64 hex characters>     # openssl rand -hex 32
 S3_BUCKET=taskflow
-S3_ACCESS_KEY=taskflow-admin
-S3_SECRET_KEY=<strong password>
-S3_REGION=us-east-1
+GARAGE_RPC_SECRET=<64 hex characters> # openssl rand -hex 32
 ```
 
-For AWS S3, omit `S3_ENDPOINT` and provide your bucket details:
+Garage rejects keys in any other format, so keep to these shapes if you write
+them by hand. **In production the API refuses to start without
+`S3_ACCESS_KEY` and `S3_SECRET_KEY`**; there are no default credentials.
+
+To use AWS S3 or another provider instead, set the endpoint and region too,
+then delete the `garage` service and the two `garage:` entries under
+`depends_on` in `docker-compose.yml`:
 
 ```env
+S3_ENDPOINT=https://s3.eu-west-2.amazonaws.com
+S3_REGION=eu-west-2
 S3_BUCKET=my-taskflow-bucket
 S3_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
 S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-S3_REGION=us-east-1
 ```
 
 ### Performance Tuning

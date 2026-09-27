@@ -10,7 +10,7 @@ A self-hosted, open-source task management application — a Todoist-style workf
 - **Board / Calendar views** — switch between list, Kanban board, and calendar
 - **Real-time updates** — task, project and comment changes broadcast live over WebSockets
 - **Comments & Activity** — per-task discussion and audit log
-- **File Attachments** — drag-and-drop uploads stored in S3 or MinIO
+- **File Attachments** — drag-and-drop uploads stored in the bundled Garage server or any S3-compatible bucket
 - **Reminders** — time-based notifications delivered via browser push (email delivery is stored but not yet selectable in the UI)
 - **Templates** — create and apply task templates for repeatable workflows
 - **Global Search** — full-text search across tasks, projects, and comments
@@ -39,7 +39,7 @@ import**.
 | Real-time | WebSocket + Socket.IO |
 | Auth | JWT (access + refresh tokens, httpOnly cookies) |
 | Email | Nodemailer |
-| Storage | S3-compatible (AWS S3 or MinIO) |
+| Storage | S3-compatible (bundled Garage, or AWS S3 and others) |
 | Frontend | React 18, TypeScript, Vite |
 | Styling | Tailwind CSS |
 | State | Zustand |

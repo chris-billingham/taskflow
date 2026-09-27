@@ -61,7 +61,7 @@ Common HTTP status codes:
     { name: 'Search', description: 'Full-text search across tasks, projects, and comments' },
     { name: 'Settings', description: 'User settings and preferences' },
     { name: 'Templates', description: 'Task templates' },
-    { name: 'Attachments', description: 'File attachments (S3/MinIO)' },
+    { name: 'Attachments', description: 'File attachments (S3-compatible storage)' },
     {
       name: 'Admin',
       description:

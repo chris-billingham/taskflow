@@ -78,7 +78,7 @@ CORS_ORIGIN=https://tasks.example.com
 
 - Maximum upload size is configurable via `MAX_FILE_SIZE_MB` (default 25 MB)
 - Declared MIME types are verified against the file's magic bytes; SVG is not accepted
-- Files are stored in S3/MinIO, not on the API container's disk
+- Files are stored in S3-compatible storage (bundled Garage), not on the API container's disk
 - Downloads are streamed through the authenticated API with `Content-Disposition: attachment` — the bucket is never exposed publicly
 
 ## Database

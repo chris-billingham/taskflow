@@ -47,15 +47,18 @@ if [ ! -f .env ]; then
   JWT_REFRESH_SECRET=$(openssl rand -hex 32)
   POSTGRES_PASSWORD=$(openssl rand -hex 16)
   REDIS_PASSWORD=$(openssl rand -hex 16)
-  MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)
+  S3_ACCESS_KEY="GK$(openssl rand -hex 12)"
+  S3_SECRET_KEY=$(openssl rand -hex 32)
+  GARAGE_RPC_SECRET=$(openssl rand -hex 32)
 
   sed -i.bak \
     -e "s|JWT_SECRET=.*|JWT_SECRET=${JWT_SECRET}|" \
     -e "s|JWT_REFRESH_SECRET=.*|JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}|" \
     -e "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${POSTGRES_PASSWORD}|" \
     -e "s|REDIS_PASSWORD=.*|REDIS_PASSWORD=${REDIS_PASSWORD}|" \
-    -e "s|MINIO_ROOT_PASSWORD=.*|MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}|" \
-    -e "s|S3_SECRET_KEY=.*|S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}|" \
+    -e "s|S3_ACCESS_KEY=.*|S3_ACCESS_KEY=${S3_ACCESS_KEY}|" \
+    -e "s|S3_SECRET_KEY=.*|S3_SECRET_KEY=${S3_SECRET_KEY}|" \
+    -e "s|GARAGE_RPC_SECRET=.*|GARAGE_RPC_SECRET=${GARAGE_RPC_SECRET}|" \
     .env
   rm -f .env.bak
   info "Secrets written to .env"
@@ -117,7 +120,7 @@ $COMPOSE build --parallel api web
 
 # ── 5. Start infrastructure ───────────────────────────────────────────────────
 step "Starting infrastructure services"
-$COMPOSE up -d postgres redis minio traefik
+$COMPOSE up -d postgres redis garage traefik
 
 info "Waiting for PostgreSQL to be ready..."
 until $COMPOSE exec -T postgres pg_isready -U "${POSTGRES_USER:-taskflow}" &>/dev/null; do

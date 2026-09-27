@@ -26,7 +26,7 @@ The installer will:
 - Generate cryptographically secure secrets and write `.env`
 - Prompt for your domain name and Let's Encrypt email
 - Build the Docker images from source
-- Start infrastructure (Postgres, Redis, MinIO, Traefik) and run database migrations
+- Start infrastructure (Postgres, Redis, Garage object storage, Traefik) and run database migrations
 - Start the application and wait for it to become healthy
 
 Access the app at `https://your-domain.example.com`.
@@ -56,7 +56,11 @@ ACME_EMAIL=you@example.com
 # Datastore credentials — generate with: openssl rand -hex 24
 POSTGRES_PASSWORD=CHANGE_ME
 REDIS_PASSWORD=CHANGE_ME
-MINIO_ROOT_PASSWORD=CHANGE_ME
+
+# Object storage (Garage) — the formats are strict:
+S3_ACCESS_KEY=CHANGE_ME       # GK$(openssl rand -hex 12)
+S3_SECRET_KEY=CHANGE_ME       # openssl rand -hex 32
+GARAGE_RPC_SECRET=CHANGE_ME   # openssl rand -hex 32
 
 # Auth — generate with: openssl rand -base64 32 (minimum 32 characters)
 JWT_SECRET=CHANGE_ME
@@ -87,7 +91,7 @@ See [configuration.md](configuration.md) for all available variables.
 ```bash
 docker network create traefik
 docker compose -f docker-compose.yml build --parallel
-docker compose -f docker-compose.yml up -d postgres redis minio traefik
+docker compose -f docker-compose.yml up -d postgres redis garage traefik
 ```
 
 ### 4. Run migrations
@@ -132,7 +136,7 @@ ufw allow 443/tcp
 ufw enable
 ```
 
-The database, Redis, MinIO and the API itself are only reachable on the
+The database, Redis, Garage and the API itself are only reachable on the
 internal Docker network — none of them publish host ports in production.
 
 ## Updating

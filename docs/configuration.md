@@ -64,27 +64,27 @@ and nothing here ever demotes, reactivates or deletes an account.
 forgotten password has no recovery path short of a database edit. See
 [admin-guide/user-management.md](admin-guide/user-management.md).
 
-## Object Storage (MinIO / S3)
+## Object Storage (Garage / S3)
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `MINIO_ROOT_USER` | Yes | `taskflow-admin` | MinIO admin username |
-| `MINIO_ROOT_PASSWORD` | Yes | — | MinIO admin password |
-| `MINIO_BUCKET` | No | `taskflow` | Bucket name for uploads |
-| `S3_ENDPOINT` | No | `http://localhost:9000` | S3-compatible endpoint (compose sets `http://minio:9000`) |
-| `S3_BUCKET` | No | `taskflow` | Bucket name used by API |
-| `S3_REGION` | No | `us-east-1` | S3 region (cosmetic for MinIO) |
-| `S3_ACCESS_KEY` | **In production** | none | S3 access key — no fallback; the API refuses to start without it |
-| `S3_SECRET_KEY` | **In production** | none | S3 secret key — same |
+| `S3_ACCESS_KEY` | **In production** | none | S3 access key. Bundled Garage: `GK` + 24 hex characters |
+| `S3_SECRET_KEY` | **In production** | none | S3 secret key. Bundled Garage: 64 hex characters |
+| `S3_BUCKET` | No | `taskflow` | Bucket for uploads (Garage creates it on first start) |
+| `GARAGE_RPC_SECRET` | With bundled Garage | none | Garage's internal RPC secret, 64 hex characters |
+| `S3_ENDPOINT` | No | `http://localhost:9000` | S3-compatible endpoint (compose defaults to `http://garage:3900`) |
+| `S3_REGION` | No | `us-east-1` | S3 region; must match `s3_region` in `docker/garage.toml` |
 | `MAX_FILE_SIZE_MB` | No | `25` | Upload size limit in MB |
 
-`S3_ACCESS_KEY` / `S3_SECRET_KEY` deliberately have no defaults: they used to
-fall back to `minioadmin`/`minioadmin`, so a deployment that forgot them came up
-with well-known credentials and no warning. Outside production (dev and the test
-suites) those MinIO defaults still apply so local setup needs no configuration.
+`S3_ACCESS_KEY` / `S3_SECRET_KEY` deliberately have no production defaults: a
+deployment that forgot them used to come up with well-known credentials and no
+warning. Outside production (dev and the test suites) they fall back to the
+fixed dev key in `docker-compose.dev.yml`, so local setup needs no
+configuration.
 
-In the bundled topology, compose points both at `MINIO_ROOT_USER` /
-`MINIO_ROOT_PASSWORD`, so setting those two is enough.
+In the bundled topology, Garage creates its key and bucket from these same
+variables (`garage server --single-node --default-bucket`), so the storage
+server and the API can't disagree about credentials.
 
 Attachment downloads are **proxied through the API**, not served by presigned
 URL — the S3 endpoint is internal-only and proxying lets the API enforce access
@@ -97,7 +97,7 @@ raise it substantially, also raise the proxy body limit (Traefik's
 
 ### Using an external S3 bucket
 
-To use AWS S3 or another S3-compatible provider instead of MinIO, remove the `minio` service from `docker-compose.yml` and set:
+To use AWS S3 or another S3-compatible provider instead of Garage, delete the `garage` service and the two `garage:` entries under `depends_on` in `docker-compose.yml`, then set:
 
 ```env
 S3_ENDPOINT=https://s3.amazonaws.com

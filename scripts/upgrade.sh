@@ -21,6 +21,16 @@ fi
 # shellcheck disable=SC1091
 source .env
 
+# Object storage moved from MinIO (images withdrawn upstream) to Garage, which
+# needs its own key format and an RPC secret. Stop before touching anything.
+if [ -z "${GARAGE_RPC_SECRET:-}" ] || [ "${GARAGE_RPC_SECRET}" = "change-me" ]; then
+  error "This .env predates the switch from MinIO to Garage."
+  error "Add S3_ACCESS_KEY (GK + 24 hex), S3_SECRET_KEY (64 hex) and GARAGE_RPC_SECRET"
+  error "(64 hex) as described in .env.example, move existing attachments across"
+  error "(see docs/admin-guide/upgrading.md), then run this again."
+  exit 1
+fi
+
 REGISTRY="${DOCKER_REGISTRY:-taskflow}"
 TAG="${IMAGE_TAG:-latest}"
 API_IMAGE="${REGISTRY}/api:${TAG}"

@@ -22,14 +22,14 @@ const envSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.string().default('info'),
-  // S3 / MinIO storage
+  // S3-compatible storage (bundled: Garage)
   S3_ENDPOINT: z.string().default('http://localhost:9000'),
   S3_BUCKET: z.string().default('taskflow'),
   S3_REGION: z.string().default('us-east-1'),
   // No default: these previously fell back to minioadmin/minioadmin, so a
   // deployment that forgot to set them came up with well-known credentials
-  // and no warning. Required in production; dev/test keep the MinIO default
-  // (see the refinement below) so local setup stays one command.
+  // and no warning. Required in production; dev/test fall back to the
+  // docker-compose.dev.yml Garage key (see below) so local setup stays one command.
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
   MAX_FILE_SIZE_MB: z.coerce.number().default(25),
@@ -136,11 +136,11 @@ function loadEnv() {
     process.exit(1);
   }
 
-  // Outside production, fall back to the docker-compose MinIO credentials so
+  // Outside production, fall back to the docker-compose.dev.yml Garage key so
   // `pnpm dev` and the test suites need no extra configuration.
   if (result.data.NODE_ENV !== 'production') {
-    result.data.S3_ACCESS_KEY ??= 'minioadmin';
-    result.data.S3_SECRET_KEY ??= 'minioadmin';
+    result.data.S3_ACCESS_KEY ??= 'GK000000000000000000000001';
+    result.data.S3_SECRET_KEY ??= 'a61e5c5683e8712af4b0934445b3e31d3c367aeda7e6ac6334474ffa1af7a6f7';
   }
 
   return result.data;

@@ -162,7 +162,7 @@ Internet
 API container
   → PostgreSQL container
   → Redis container
-  → MinIO container (S3-compatible object storage)
+  → Garage container (S3-compatible object storage)
 ```
 
 The `docker-compose.yml` defines all services. In production, each service runs in its own container with Docker named volumes for persistence.

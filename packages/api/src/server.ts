@@ -328,7 +328,7 @@ const start = async () => {
     io = createWebSocketServer(server.server);
     server.log.info('WebSocket server initialized');
 
-    // Initialize S3/MinIO storage bucket
+    // Initialize the S3 storage bucket (Garage creates it itself; external S3 may not)
     try {
       await ensureBucketExists();
       server.log.info('Storage bucket ready');

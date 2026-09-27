@@ -8,7 +8,7 @@ archive to `./backups/` containing everything a restore needs:
 | Data | Notes |
 |------|-------|
 | PostgreSQL dump | compressed SQL, taken with `pg_dump` |
-| Uploaded files | full MinIO bucket mirror |
+| Uploaded files | full copy of the storage bucket (taken with the pinned rclone tool container) |
 | Redis snapshot | queued jobs and reminder delivery state |
 | `.env` | encrypted when `BACKUP_PASSPHRASE` is set in `.env`; **plaintext otherwise — store archives securely** |
 | `manifest.json` | app version, latest applied migration, archive contents |
@@ -59,7 +59,7 @@ The restore script:
    (`ON_ERROR_STOP` — a mid-restore SQL error aborts loudly).
 4. Runs `prisma migrate deploy` so an older dump is reconciled with the
    currently deployed code's schema.
-5. Restores the MinIO bucket **point-in-time**: objects uploaded after the
+5. Restores the storage bucket **point-in-time**: objects uploaded after the
    backup was taken are removed.
 6. Flushes Redis (stale sessions and queue jobs reference the pre-restore
    world; users simply sign in again).

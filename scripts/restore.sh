@@ -111,24 +111,22 @@ else
 fi
 
 # ── File restore (point-in-time) ──────────────────────────────────────────────
-MINIO_USER="${MINIO_ROOT_USER:-minioadmin}"
-MINIO_PASS="${MINIO_ROOT_PASSWORD:-minioadmin}"
-BUCKET="${MINIO_BUCKET:-taskflow}"
+BUCKET="${S3_BUCKET:-taskflow}"
 
 if [ -d "${RESTORE_PATH}/files" ]; then
-  info "Restoring uploaded files to MinIO..."
+  info "Restoring uploaded files to object storage..."
+  $COMPOSE up -d garage >/dev/null
+  until [ "$(docker inspect -f '{{.State.Health.Status}}' "$($COMPOSE ps -q garage)" 2>/dev/null)" = "healthy" ]; do
+    sleep 2
+  done
 
-  CONTAINER_ID=$($COMPOSE ps -q minio)
-  $COMPOSE exec -T minio rm -rf /tmp/restore-files 2>/dev/null || true
-  docker cp "${RESTORE_PATH}/files" "${CONTAINER_ID}:/tmp/restore-files"
-
-  # --remove makes this point-in-time: objects uploaded AFTER the backup are
+  # `sync` makes this point-in-time: objects uploaded AFTER the backup are
   # deleted, so the bucket matches the database being restored (no orphaned
-  # attachment bytes, no rows pointing at future files).
-  $COMPOSE exec -T minio \
-    sh -c "mc alias set local http://localhost:9000 '${MINIO_USER}' '${MINIO_PASS}' >/dev/null && \
-           mc mb --ignore-existing local/${BUCKET} && \
-           mc mirror --overwrite --remove /tmp/restore-files/ local/${BUCKET}/ --quiet"
+  # attachment bytes, no rows pointing at future files). Garage creates the
+  # bucket itself on first start.
+  $COMPOSE run --rm --no-deps -T --user "$(id -u):$(id -g)" \
+    -e RCLONE_CACHE_DIR=/tmp/rclone -v "${RESTORE_PATH}/files:/in:ro" \
+    rclone sync /in "store:${BUCKET}" --quiet
 
   info "Files restored"
 else

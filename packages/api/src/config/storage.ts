@@ -13,7 +13,7 @@ import { env } from './env.js';
 export const s3 = new S3Client({
   endpoint: env.S3_ENDPOINT,
   region: env.S3_REGION,
-  // Non-null: loadEnv() requires both in production and fills the MinIO dev
+  // Non-null: loadEnv() requires both in production and fills the Garage dev
   // defaults otherwise, so neither is undefined by the time this runs.
   credentials: {
     accessKeyId: env.S3_ACCESS_KEY!,
@@ -66,7 +66,7 @@ export async function createPresignedUrl(key: string, expiresIn = 3600) {
 /**
  * Fetch an object for streaming through the API. Presigned URLs are unusable
  * client-side in the shipped topology (S3_ENDPOINT is the internal
- * http://minio:9000, unreachable from browsers), so downloads are proxied.
+ * http://garage:3900, unreachable from browsers), so downloads are proxied.
  */
 export async function getObjectStream(key: string) {
   const response = await s3.send(

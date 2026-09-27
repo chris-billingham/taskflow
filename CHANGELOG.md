@@ -28,6 +28,19 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   the project doesn't own) and ran migrations with the old image. It now builds
   from source and migrates with the new image, as `upgrade.sh` does.
 
+### Changed — breaking for existing installs
+
+- **Object storage is now Garage instead of MinIO.** MinIO's images were
+  withdrawn from Docker Hub and quay.io (its repository was archived in 2026),
+  so `install.sh`, restoring onto new hardware, new dev setups and CI could no
+  longer start file storage at all. Garage (`dxflrs/garage:v2.4.1`) creates its
+  key and bucket from `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_BUCKET` on first
+  start; `GARAGE_RPC_SECRET` is new and the `MINIO_*` variables are gone.
+  Backups and restores copy the bucket with a pinned rclone tool container.
+  `upgrade.sh` stops on an old `.env`; `docs/admin-guide/upgrading.md` has the
+  move-your-files procedure. Verified with a backup → mutate → restore drill on
+  the production compose file.
+
 ### Security
 
 - Patched runtime dependencies within their ranges: nodemailer 9.1.1, fastify

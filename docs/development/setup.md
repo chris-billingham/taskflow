@@ -20,7 +20,7 @@ pnpm install
 cp packages/api/.env.example packages/api/.env
 # Defaults match docker-compose.dev.yml — no edits needed
 
-# 4. Start infrastructure (Postgres, Redis, MinIO)
+# 4. Start infrastructure (Postgres, Redis, Garage object storage)
 docker compose -f docker-compose.dev.yml up -d
 
 # 5. Create database schema
@@ -35,7 +35,7 @@ URLs:
 - API: http://localhost:3001
 - API docs: http://localhost:3001/api/docs
 - Prisma Studio: `pnpm --filter @taskflow/api db:studio` → http://localhost:5555
-- MinIO console: http://localhost:9001 (user: minioadmin / minioadmin)
+- Object storage (Garage S3 API): http://localhost:9000 — key and bucket are created automatically; inspect with `docker exec taskflow-garage /garage bucket info taskflow`
 
 ## Package Scripts
 
@@ -107,7 +107,7 @@ Playwright drives a real browser against real servers, so both dev servers must
 be running alongside the dev compose stack:
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d          # Postgres, Redis, MinIO
+docker compose -f docker-compose.dev.yml up -d          # Postgres, Redis, Garage
 
 ADMIN_EMAILS=e2e-admin@taskflow.test \
   pnpm --filter @taskflow/api dev                       # terminal 2

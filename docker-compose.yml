@@ -82,27 +82,51 @@ services:
         limits:
           memory: 256m
 
-  minio:
-    # Pinned: :latest jumped MinIO majors (breaking auth/console changes)
-    # silently on every upgrade rebuild.
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+  garage:
+    # S3-compatible object storage for attachments. Replaces MinIO, whose
+    # images were withdrawn from Docker Hub and quay.io (the project was
+    # archived in 2026), so fresh installs could not start at all.
+    # `--single-node --default-bucket` creates the layout, the S3 key and the
+    # bucket from the GARAGE_DEFAULT_* variables on first start; later starts
+    # leave them as they are.
+    image: dxflrs/garage:v2.4.1
     restart: unless-stopped
     logging: *default-logging
-    command: server /data --console-address ":9001"
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-taskflow-admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+      GARAGE_DEFAULT_ACCESS_KEY: ${S3_ACCESS_KEY}
+      GARAGE_DEFAULT_SECRET_KEY: ${S3_SECRET_KEY}
+      GARAGE_DEFAULT_BUCKET: ${S3_BUCKET:-taskflow}
     volumes:
-      - minio_data:/data
+      - ./docker/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      # The image is a single static binary (no shell, curl or wget).
+      test: ["CMD", "/garage", "status"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - internal
-    # MinIO console (port 9001) is intentionally NOT exposed via Traefik.
-    # Access it via `docker compose port minio 9001` or an SSH tunnel.
+    # Not exposed via Traefik: only the API and worker talk to storage, and
+    # downloads are streamed through the API.
+
+  # One-shot S3 client for scripts/backup.sh and scripts/restore.sh (the
+  # Garage image has no tools of its own). Never started by `up`.
+  rclone:
+    image: rclone/rclone:1.75.1
+    profiles: ["tools"]
+    environment:
+      RCLONE_CONFIG_STORE_TYPE: s3
+      RCLONE_CONFIG_STORE_PROVIDER: Other
+      RCLONE_CONFIG_STORE_ENDPOINT: http://garage:3900
+      RCLONE_CONFIG_STORE_REGION: us-east-1
+      RCLONE_CONFIG_STORE_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
+      RCLONE_CONFIG_STORE_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
+    networks:
+      - internal
 
   api:
     build:
@@ -118,11 +142,11 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       CORS_ORIGIN: https://${DOMAIN}
-      S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: ${MINIO_BUCKET:-taskflow}
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-taskflow-admin}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      S3_REGION: us-east-1
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://garage:3900}
+      S3_BUCKET: ${S3_BUCKET:-taskflow}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION:-us-east-1}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-25}
       # Instance administrators. Without this the ADMIN_EMAILS in .env never
       # reached the container, so no account could ever hold the ADMIN role and
@@ -149,6 +173,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      garage:
         condition: service_healthy
     networks:
       - internal
@@ -199,11 +225,11 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: ${MINIO_BUCKET:-taskflow}
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-taskflow-admin}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      S3_REGION: us-east-1
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://garage:3900}
+      S3_BUCKET: ${S3_BUCKET:-taskflow}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION:-us-east-1}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-25}
       # The worker sends the reminder, digest, due-soon and overdue emails, so
       # it needs the SMTP settings and the app origin for links in them just as
@@ -223,6 +249,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      garage:
         condition: service_healthy
     networks:
       - internal
@@ -266,5 +294,6 @@ networks:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
+  garage_meta:
+  garage_data:
   letsencrypt:

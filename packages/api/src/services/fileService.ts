@@ -223,7 +223,7 @@ export async function deleteFile(id: string, userId: string) {
 /**
  * Delete the given attachment rows AND their object-storage bytes. Called
  * after task/project deletion (the FKs SetNull, so without this every delete
- * leaked orphaned rows plus unreachable objects that grew MinIO forever —
+ * leaked orphaned rows plus unreachable objects that grew the bucket forever —
  * and were faithfully mirrored into every backup).
  */
 export async function reclaimAttachments(

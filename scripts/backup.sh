@@ -39,35 +39,29 @@ DB_SIZE=$(du -sh "${BACKUP_PATH}/database.sql.gz" | cut -f1)
 info "Database backup complete (${DB_SIZE})"
 
 # ── File storage backup ───────────────────────────────────────────────────────
-info "Backing up uploaded files from MinIO..."
-MINIO_USER="${MINIO_ROOT_USER:-minioadmin}"
-MINIO_PASS="${MINIO_ROOT_PASSWORD:-minioadmin}"
-BUCKET="${MINIO_BUCKET:-taskflow}"
+# Garage's image is a bare binary, so the bucket is copied out by the pinned
+# rclone tool container (docker-compose.yml, profile "tools"), running as the
+# invoking user so the cleanup below can delete what it wrote.
+info "Backing up uploaded files from object storage..."
+BUCKET="${S3_BUCKET:-taskflow}"
+mkdir -p "${BACKUP_PATH}/files"
+FILES_ABS="$(cd "${BACKUP_PATH}/files" && pwd)"
 
-# Clear any previous mirror inside the container first — otherwise objects deleted
-# since the last backup linger and get re-captured into every future backup.
-$COMPOSE exec -T minio rm -rf /tmp/minio-backup 2>/dev/null || true
+# A failed copy MUST fail the backup: months of "successful" backups with no
+# attachments in them is how you find out during a disaster.
+if ! $COMPOSE run --rm --no-deps -T --user "$(id -u):$(id -g)" \
+  -e RCLONE_CACHE_DIR=/tmp/rclone -v "${FILES_ABS}:/out" \
+  rclone copy "store:${BUCKET}" /out --quiet; then
+  error "File backup FAILED — aborting so this is not reported as a good backup."
+  exit 1
+fi
 
-$COMPOSE exec -T minio sh -c \
-  "mc alias set local http://localhost:9000 '${MINIO_USER}' '${MINIO_PASS}' --api s3v4 >/dev/null"
-
-if $COMPOSE exec -T minio sh -c "mc ls local/${BUCKET} >/dev/null 2>&1"; then
-  # A failed mirror MUST fail the backup: months of "successful" backups with
-  # no attachments in them is how you find out during a disaster.
-  if ! $COMPOSE exec -T minio sh -c \
-    "mc mirror local/${BUCKET} /tmp/minio-backup/ --quiet"; then
-    error "MinIO file backup FAILED — aborting so this is not reported as a good backup."
-    exit 1
-  fi
-  if $COMPOSE exec -T minio test -d /tmp/minio-backup 2>/dev/null; then
-    docker cp "$($COMPOSE ps -q minio):/tmp/minio-backup" "${BACKUP_PATH}/files"
-    FILES_SIZE=$(du -sh "${BACKUP_PATH}/files" 2>/dev/null | cut -f1 || echo "0")
-    info "File backup complete (${FILES_SIZE})"
-  else
-    info "Bucket is empty — no files to back up"
-  fi
+if [ -n "$(ls -A "${BACKUP_PATH}/files")" ]; then
+  FILES_SIZE=$(du -sh "${BACKUP_PATH}/files" 2>/dev/null | cut -f1 || echo "0")
+  info "File backup complete (${FILES_SIZE})"
 else
-  info "Bucket '${BUCKET}' does not exist yet — no files to back up"
+  rmdir "${BACKUP_PATH}/files"
+  info "Bucket is empty — no files to back up"
 fi
 
 # ── Redis snapshot (queues/reminders; best-effort) ────────────────────────────
@@ -92,7 +86,7 @@ fi
 
 # ── Secrets (.env) ────────────────────────────────────────────────────────────
 # A backup you can't decrypt/restore against is not a backup: without .env the
-# database password, JWT secrets and MinIO credentials are gone with the server.
+# database password, JWT secrets and storage credentials are gone with the server.
 if [ -n "${BACKUP_PASSPHRASE:-}" ]; then
   openssl enc -aes-256-cbc -pbkdf2 -salt \
     -pass env:BACKUP_PASSPHRASE \
