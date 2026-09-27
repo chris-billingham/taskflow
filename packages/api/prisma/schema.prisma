@@ -586,3 +586,17 @@ model PushSubscription {
   @@index([userId])
   @@map("push_subscriptions")
 }
+
+// ─── InstanceSetting ───────────────────────────────────────────────────────
+
+// Deployment-wide settings an admin changes from the console. One row per
+// key; a missing row means "use the environment default" (e.g.
+// registration_mode falls back to REGISTRATION_MODE).
+model InstanceSetting {
+  key         String   @id
+  value       String
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("instance_settings")
+}

@@ -9,6 +9,7 @@ import { CreateUserModal, type CreateUserValues } from '@/components/admin/Creat
 import { CredentialReveal } from '@/components/admin/CredentialReveal';
 import * as adminApi from '@/services/admin';
 import type { AdminUser, AdminStats } from '@/services/admin';
+import { SignupSettings } from '@/components/admin/SignupSettings';
 
 const PAGE_SIZE = 25;
 
@@ -199,6 +200,8 @@ export default function Admin() {
           ))}
         </div>
       )}
+
+      <SignupSettings />
 
       {credential && (
         <CredentialReveal

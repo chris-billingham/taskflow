@@ -38,6 +38,14 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   pagination, deep links, not-found) and the board. Web statement coverage
   went from 13% to 28%, and the thresholds moved up with it. Board columns now
   have accessible names and a labelled collapse button.
+- **New installs are invite-only.** The first account, `ADMIN_EMAILS`
+  addresses and anyone holding an unexpired workspace invite can still sign up;
+  everyone else is added by an admin. **Settings → Users → Sign-ups** switches
+  to open registration (stored in the new `instance_settings` table, which then
+  overrides `REGISTRATION_MODE`). The sign-in page only offers "Sign up" when it
+  would work. Refusals return `REGISTRATION_CLOSED` before the duplicate-email
+  check, so a closed instance doesn't reveal which addresses have accounts.
+  Existing installs: set `REGISTRATION_MODE=open` to keep today's behaviour.
 
 ### Fixed
 

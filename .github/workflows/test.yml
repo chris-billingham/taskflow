@@ -253,6 +253,9 @@ jobs:
           # admin.spec.ts registers this address and expects it to come out an
           # administrator — that IS the bootstrap path under test.
           ADMIN_EMAILS: e2e-admin@taskflow.test
+          # The suite registers its own users; invite-only is covered by the
+          # API's database tests.
+          REGISTRATION_MODE: open
 
       - name: Wait for API to be ready
         run: |

@@ -67,6 +67,11 @@ const envSchema = z.object({
         .map((e) => e.trim().toLowerCase())
         .filter((e) => e.length > 0),
     ),
+  // Who may create an account until an admin changes it in the console:
+  // 'invite' (default) allows the first account, ADMIN_EMAILS addresses and
+  // people with a pending workspace invite; 'open' allows anyone who can reach
+  // the site.
+  REGISTRATION_MODE: z.enum(['invite', 'open']).default('invite'),
   // Run the BullMQ workers inside the API process.
   //
   // Production ships a dedicated `worker` container (docker-compose.yml) with

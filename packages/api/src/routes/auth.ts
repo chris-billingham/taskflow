@@ -7,6 +7,7 @@ import {
   verifyEmailSchema,
 } from '../schemas/auth.js';
 import * as authService from '../services/authService.js';
+import * as instanceSettings from '../services/instanceSettingsService.js';
 import { UnauthorizedError, ValidationError } from '../errors/index.js';
 import { env } from '../config/env.js';
 import { rateLimitMax } from '../config/rateLimits.js';
@@ -78,6 +79,16 @@ export async function authRoutes(app: FastifyInstance) {
       await authService.refreshTokens(refreshToken);
     reply.setCookie(REFRESH_COOKIE, newRefreshToken, refreshCookieOptions);
     return reply.send({ success: true, data: { accessToken } });
+  });
+
+  // Public: lets the sign-in page decide whether to offer "Sign up". `open` is
+  // also true on a brand-new install, whose first account is always allowed.
+  app.get('/registration', async (_request, reply) => {
+    const [mode, open] = await Promise.all([
+      instanceSettings.getRegistrationMode(),
+      instanceSettings.isRegistrationOpen(),
+    ]);
+    return reply.send({ success: true, data: { mode, open } });
   });
 
   app.post('/forgot-password', {

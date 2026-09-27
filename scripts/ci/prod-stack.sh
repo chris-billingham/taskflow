@@ -33,6 +33,7 @@ write_env() {
     -e "s|^GARAGE_RPC_SECRET=.*|GARAGE_RPC_SECRET=$(openssl rand -hex 32)|" \
     -e "s|^ADMIN_EMAILS=.*|ADMIN_EMAILS=e2e-admin@taskflow.test|" \
     -e "s|^RATE_LIMIT_MULTIPLIER=.*|RATE_LIMIT_MULTIPLIER=100|" \
+    -e "s|^REGISTRATION_MODE=.*|REGISTRATION_MODE=open|" \
     "$ENV_FILE" > "$tmp"
   mv "$tmp" "$ENV_FILE"
   # The end-to-end suite logs in dozens of times from one IP; production

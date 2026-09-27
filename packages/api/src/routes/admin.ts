@@ -7,8 +7,10 @@ import {
   setUserRoleSchema,
   setUserStatusSchema,
   adminResetPasswordSchema,
+  updateInstanceSettingsSchema,
 } from '../schemas/admin.js';
 import * as adminService from '../services/adminService.js';
+import * as instanceSettings from '../services/instanceSettingsService.js';
 import { ValidationError } from '../errors/index.js';
 import { rateLimitMax } from '../config/rateLimits.js';
 
@@ -23,6 +25,25 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/stats', async (_request, reply) => {
     const data = await adminService.getStats();
     return reply.send({ success: true, data });
+  });
+
+  // Deployment-wide settings. Only sign-up policy for now.
+  app.get('/settings', async (_request, reply) => {
+    const registrationMode = await instanceSettings.getRegistrationMode();
+    return reply.send({ success: true, data: { registrationMode } });
+  });
+
+  app.patch('/settings', async (request, reply) => {
+    const result = updateInstanceSettingsSchema.safeParse(request.body);
+    if (!result.success) {
+      throw new ValidationError(result.error.issues[0].message);
+    }
+    const registrationMode = await instanceSettings.setRegistrationMode(
+      result.data.registrationMode,
+      request.user.id,
+    );
+    request.log.info({ registrationMode, adminId: request.user.id }, 'registration mode changed');
+    return reply.send({ success: true, data: { registrationMode } });
   });
 
   app.get('/users', async (request, reply) => {

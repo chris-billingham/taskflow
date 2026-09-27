@@ -20,7 +20,12 @@ vi.mock('../../services/adminService.js', () => ({
   deleteUser: vi.fn(),
 }));
 
+vi.mock('../../services/instanceSettingsService.js', () => ({
+  getRegistrationMode: vi.fn(),
+  setRegistrationMode: vi.fn(),
+}));
 import { prisma } from '../../config/database.js';
+import * as instanceSettings from '../../services/instanceSettingsService.js';
 import * as adminService from '../../services/adminService.js';
 import { adminRoutes } from '../../routes/admin.js';
 import { ConflictError, ValidationError } from '../../errors/index.js';
@@ -401,5 +406,56 @@ describe('GET /api/v1/admin/stats', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().data.total).toBe(4);
+  });
+});
+
+describe('instance settings', () => {
+  beforeEach(() => {
+    mockUserFindUnique.mockResolvedValue({ role: 'ADMIN', isActive: true });
+  });
+
+  it('reports the current sign-up mode', async () => {
+    vi.mocked(instanceSettings.getRegistrationMode).mockResolvedValue('invite');
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/settings',
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data).toEqual({ registrationMode: 'invite' });
+  });
+
+  it('switches sign-up mode, recording which admin did it', async () => {
+    vi.mocked(instanceSettings.setRegistrationMode).mockResolvedValue('open');
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/admin/settings',
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: { registrationMode: 'open' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(instanceSettings.setRegistrationMode).toHaveBeenCalledWith('open', ADMIN.id);
+  });
+
+  it('rejects an unknown mode', async () => {
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/admin/settings',
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: { registrationMode: 'everyone' },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(instanceSettings.setRegistrationMode).not.toHaveBeenCalled();
+  });
+
+  it('is closed to non-admins', async () => {
+    mockUserFindUnique.mockResolvedValue({ role: 'USER', isActive: true });
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/admin/settings',
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: { registrationMode: 'open' },
+    });
+    expect(response.statusCode).toBe(403);
   });
 });

@@ -44,6 +44,11 @@ vi.mock('../../config/redis.js', () => ({
   })),
 }));
 
+const canRegisterMock = vi.hoisted(() => vi.fn(async () => true));
+vi.mock('../../services/instanceSettingsService.js', () => ({
+  canRegister: canRegisterMock,
+}));
+
 vi.mock('../../services/mailService.js', () => ({
   isMailerReady: vi.fn(() => false),
   sendVerificationEmail: vi.fn(() => Promise.resolve()),
@@ -67,7 +72,7 @@ import {
 import { prisma } from '../../config/database.js';
 import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../utils/jwt.js';
-import { ConflictError, UnauthorizedError, NotFoundError } from '../../errors/index.js';
+import { ConflictError, ForbiddenError, UnauthorizedError, NotFoundError } from '../../errors/index.js';
 
 const mockPrisma = prisma as unknown as {
   user: {
@@ -118,6 +123,23 @@ describe('register', () => {
     mockHashPassword.mockResolvedValue('$2b$12$hashedpw' as never);
     mockGenerateAccessToken.mockReturnValue('access-token-xyz');
     mockGenerateRefreshToken.mockReturnValue('refresh-token-xyz');
+    canRegisterMock.mockResolvedValue(true);
+  });
+
+  it('refuses a closed instance before revealing whether the email exists', async () => {
+    canRegisterMock.mockResolvedValue(false);
+
+    const err = await register({
+      email: 'stranger@example.com',
+      password: 'longenough',
+      name: 'Stranger',
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(ForbiddenError);
+    expect(err.code).toBe('REGISTRATION_CLOSED');
+    expect(canRegisterMock).toHaveBeenCalledWith('stranger@example.com');
+    expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
   });
 
   it('creates user, workspace, and inbox project', async () => {

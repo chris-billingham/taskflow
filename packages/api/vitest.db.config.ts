@@ -20,6 +20,9 @@ export default defineConfig({
       LOG_LEVEL: 'silent',
       // Exercises the ADMIN_EMAILS bootstrap against a real database.
       ADMIN_EMAILS: 'bootstrap-admin@admin.test',
+      // Suites that call register() need it open; registrationPolicy.test.ts
+      // switches modes through the stored setting, which overrides this.
+      REGISTRATION_MODE: 'open',
     },
     // Fixtures share one database — keep files sequential.
     pool: 'forks',

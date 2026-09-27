@@ -189,6 +189,7 @@ services:
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       TRUST_PROXY_ADDRS: ${TRUST_PROXY_ADDRS:-loopback,linklocal,uniquelocal}
       RATE_LIMIT_MULTIPLIER: ${RATE_LIMIT_MULTIPLIER:-1}
+      REGISTRATION_MODE: ${REGISTRATION_MODE:-invite}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:

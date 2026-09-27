@@ -27,8 +27,19 @@ async function submit(email = 'new@example.com') {
   return user;
 }
 
+function serveRegistration(open: boolean) {
+  mockApi.get.mockImplementation(async (url: string) => {
+    if (url === '/auth/registration') {
+      return { data: { success: true, data: { mode: open ? 'open' : 'invite', open } } };
+    }
+    throw new Error(`unexpected GET ${url}`);
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
+  serveRegistration(true);
 });
 
 describe('Login — unverified email', () => {
@@ -53,5 +64,35 @@ describe('Login — unverified email', () => {
 
     expect(await screen.findByText('Invalid email or password')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Resend verification email' })).toBeNull();
+  });
+});
+
+describe('Login — sign-up link', () => {
+  function renderLogin() {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>,
+    );
+  }
+
+  it('offers sign-up when registration is open', async () => {
+    renderLogin();
+    expect(await screen.findByRole('link', { name: 'Sign up' })).toBeInTheDocument();
+  });
+
+  it('explains invitation-only sign-up instead of linking to it', async () => {
+    serveRegistration(false);
+    renderLogin();
+    expect(await screen.findByText(/New accounts are by invitation/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Sign up' })).toBeNull();
+  });
+
+  it('still offers sign-up to someone holding an invitation', async () => {
+    serveRegistration(false);
+    sessionStorage.setItem('taskflow.pendingInvite', 'invite-123');
+    renderLogin();
+    await waitFor(() => expect(mockApi.get).toHaveBeenCalledWith('/auth/registration'));
+    expect(screen.getByRole('link', { name: 'Sign up' })).toBeInTheDocument();
   });
 });

@@ -120,6 +120,7 @@ S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 | `TRUST_PROXY_HOPS` | No | `1` | Number of proxy hops in front of the API |
 | `TRUST_PROXY_ADDRS` | No | `loopback,linklocal,uniquelocal` | Networks a proxy hop must come from to be trusted |
 | `RATE_LIMIT_MULTIPLIER` | No | `1` | Multiplies every production rate limit (minimum 1) |
+| `REGISTRATION_MODE` | No | `invite` | Who can sign up until an admin changes it: `invite` or `open` (see admin-guide/user-management.md) |
 | `RUN_WORKERS_IN_API` | No | off in production | Also run background jobs in the API process |
 | `ENABLE_API_DOCS` | No | off | Serve Swagger UI at `/api/docs` (always on in development) |
 

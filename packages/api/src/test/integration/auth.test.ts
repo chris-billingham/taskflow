@@ -14,7 +14,13 @@ vi.mock('../../services/authService.js', () => ({
   resendVerificationEmail: vi.fn(),
 }));
 
+vi.mock('../../services/instanceSettingsService.js', () => ({
+  getRegistrationMode: vi.fn(),
+  isRegistrationOpen: vi.fn(),
+}));
+
 import * as authService from '../../services/authService.js';
+import * as instanceSettings from '../../services/instanceSettingsService.js';
 import { authRoutes } from '../../routes/auth.js';
 import { ConflictError, UnauthorizedError } from '../../errors/index.js';
 
@@ -272,5 +278,17 @@ describe('POST /api/v1/auth/verify-email', () => {
 
     expect(response.statusCode).toBe(404);
     expect(authService.verifyEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/v1/auth/registration', () => {
+  it('tells the sign-in page whether anyone can sign up', async () => {
+    vi.mocked(instanceSettings.getRegistrationMode).mockResolvedValue('invite');
+    vi.mocked(instanceSettings.isRegistrationOpen).mockResolvedValue(false);
+
+    const response = await app.inject({ method: 'GET', url: '/api/v1/auth/registration' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data).toEqual({ mode: 'invite', open: false });
   });
 });

@@ -46,6 +46,21 @@ docker compose -f docker-compose.yml restart api
 docker compose -f docker-compose.yml logs api | grep '\[admin\]'
 ```
 
+## Who can sign up
+
+New installs are **invite-only**. On an invite-only instance these people can
+create an account themselves:
+
+- the very first account on a fresh install, so it can never be locked
+- any address in `ADMIN_EMAILS`, so the operator can bootstrap
+- anyone with an unexpired workspace invitation, using the address it was sent
+  to (matched case-insensitively)
+
+Everyone else sees "New accounts are by invitation" on the sign-in page, and
+an admin adds them from **Settings → Users**. To let anyone sign up, choose
+**Anyone can sign up** under **Sign-ups** on the same page; the choice is saved
+in the database and overrides `REGISTRATION_MODE` from then on.
+
 ## Day-to-day management
 
 Sign in as an admin and go to **Settings → Users** (the entry only appears for

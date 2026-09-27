@@ -16,6 +16,8 @@ vi.mock('@/services/admin', async () => {
     setUserActive: vi.fn(),
     resetUserPassword: vi.fn(),
     deleteUser: vi.fn(),
+    fetchSettings: vi.fn(),
+    updateSettings: vi.fn(),
   };
 });
 
@@ -91,6 +93,7 @@ beforeEach(() => {
     admins: 1,
     unverified: 0,
   });
+  vi.mocked(adminApi.fetchSettings).mockResolvedValue({ registrationMode: 'invite' });
 });
 
 describe('admin console access', () => {
@@ -300,5 +303,34 @@ describe('creating a user', () => {
     });
     // The typed values survive so the admin can correct them.
     expect(screen.getByLabelText('Email')).toHaveValue('bob@example.com');
+  });
+});
+
+describe('Admin sign-up settings', () => {
+  it('shows the current mode and switches it', async () => {
+    vi.mocked(adminApi.updateSettings).mockResolvedValue({ registrationMode: 'open' });
+    renderPage();
+
+    const inviteOnly = await screen.findByRole('radio', { name: /Invite only/ });
+    await waitFor(() => expect(inviteOnly).toBeChecked());
+
+    fireEvent.click(screen.getByRole('radio', { name: /Anyone can sign up/ }));
+
+    await waitFor(() =>
+      expect(adminApi.updateSettings).toHaveBeenCalledWith({ registrationMode: 'open' }),
+    );
+    expect(screen.getByRole('radio', { name: /Anyone can sign up/ })).toBeChecked();
+  });
+
+  it('puts the old mode back and says so when saving fails', async () => {
+    vi.mocked(adminApi.updateSettings).mockRejectedValue(new Error('nope'));
+    renderPage();
+
+    const inviteOnly = await screen.findByRole('radio', { name: /Invite only/ });
+    await waitFor(() => expect(inviteOnly).toBeChecked());
+    fireEvent.click(screen.getByRole('radio', { name: /Anyone can sign up/ }));
+
+    await waitFor(() => expect(inviteOnly).toBeChecked());
+    expect(await screen.findByText(/sign-up settings/i)).toBeInTheDocument();
   });
 });

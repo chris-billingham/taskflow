@@ -9,6 +9,7 @@ import {
 } from '../utils/jwt.js';
 import {
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   UnauthorizedError,
   ValidationError,
@@ -17,6 +18,7 @@ import type { RegisterInput } from '../schemas/auth.js';
 import type { SystemRole } from '@prisma/client';
 import { disconnectUserSockets } from '../websocket/events.js';
 import { isBootstrapAdminEmail } from '../config/env.js';
+import { canRegister } from './instanceSettingsService.js';
 import { provisionUser } from './userService.js';
 import {
   isMailerReady,
@@ -91,6 +93,15 @@ async function createTokenPair(user: {
 }
 
 export async function register(data: RegisterInput) {
+  // Checked before the duplicate-email lookup, so a closed instance doesn't
+  // tell strangers which addresses already have accounts.
+  if (!(await canRegister(data.email))) {
+    throw new ForbiddenError(
+      'This Taskflow is invite-only. Ask an administrator for an account, or sign up with the address your invitation was sent to.',
+      'REGISTRATION_CLOSED',
+    );
+  }
+
   const existing = await prisma.user.findUnique({
     where: { email: data.email },
   });

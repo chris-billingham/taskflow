@@ -85,3 +85,17 @@ export function adminErrorMessage(err: unknown, fallback: string): string {
     ?.message;
   return message ?? fallback;
 }
+
+export type RegistrationMode = 'invite' | 'open';
+
+export async function fetchSettings(): Promise<{ registrationMode: RegistrationMode }> {
+  const { data } = await api.get('/admin/settings');
+  return data.data;
+}
+
+export async function updateSettings(input: {
+  registrationMode: RegistrationMode;
+}): Promise<{ registrationMode: RegistrationMode }> {
+  const { data } = await api.patch('/admin/settings', input);
+  return data.data;
+}

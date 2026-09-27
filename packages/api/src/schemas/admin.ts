@@ -44,3 +44,7 @@ export const adminResetPasswordSchema = z.object({
 
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+export const updateInstanceSettingsSchema = z.object({
+  registrationMode: z.enum(['invite', 'open']),
+});

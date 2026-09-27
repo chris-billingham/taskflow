@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
+import { useRegistrationOpen } from '@/hooks/useRegistrationOpen';
+import { readPendingInvite } from '@/utils/pendingInvite';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -27,6 +29,11 @@ export default function Login() {
   // failure the user can fix from here, by asking for a fresh link.
   const [unverified, setUnverified] = useState(false);
   const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const registrationOpen = useRegistrationOpen();
+  // Someone arriving from an invite link may sign up even when sign-up is
+  // closed; the server checks the invitation.
+  const [hasInvite] = useState(() => readPendingInvite() !== null);
+  const offerSignUp = registrationOpen !== false || hasInvite;
 
   const rawRedirect = searchParams.get('redirect');
   // Only allow relative paths to prevent open redirect attacks
@@ -124,15 +131,21 @@ export default function Login() {
           Sign in
         </Button>
 
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-          Don&apos;t have an account?{' '}
-          <Link
-            to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : '/register'}
-            className="text-[#db4c3f] hover:text-[#c53727] font-medium"
-          >
-            Sign up
-          </Link>
-        </p>
+        {offerSignUp ? (
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+            Don&apos;t have an account?{' '}
+            <Link
+              to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : '/register'}
+              className="text-[#db4c3f] hover:text-[#c53727] font-medium"
+            >
+              Sign up
+            </Link>
+          </p>
+        ) : (
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+            New accounts are by invitation. Ask an administrator of this Taskflow.
+          </p>
+        )}
       </form>
     </AuthLayout>
   );
