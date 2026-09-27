@@ -1,111 +1,122 @@
 import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import {
+  notificationQuerySchema,
+  markReadSchema,
+  subscribePushSchema,
+  unsubscribePushSchema,
+  notificationSchema,
+  notificationListResponse,
+  markAllReadResponse,
+  pushSubscriptionSchema,
+  vapidKeySchema,
+  messageResponse,
+  ok,
+} from '@taskflow/contract';
 import { env } from '../config/env.js';
 import { authenticate } from '../middleware/authenticate.js';
-import { ValidationError } from '../errors/index.js';
 import * as notificationService from '../services/notificationService.js';
-import { z } from 'zod';
 
-const notificationQuerySchema = z.object({
-  unreadOnly: z.coerce.boolean().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
-  cursor: z.string().optional(),
-});
+const tags = ['Notifications'];
 
-const markReadSchema = z.object({
-  notificationId: z.string().min(1, 'Notification ID is required'),
-});
+export async function notificationRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
 
-const subscribePushSchema = z.object({
-  endpoint: z.url('Invalid endpoint URL'),
-  keys: z.object({
-    p256dh: z.string().min(1),
-    auth: z.string().min(1),
-  }),
-});
-
-const unsubscribePushSchema = z.object({
-  endpoint: z.url('Invalid endpoint URL'),
-});
-
-export async function notificationRoutes(app: FastifyInstance) {
-  // GET /api/v1/notifications/vapid-public-key — served by the API so a
-  // self-hosted deployment doesn't need a frontend rebuild to enable push.
-  app.get('/notifications/vapid-public-key', async (_request, reply) => {
-    return reply.send({
-      success: true,
-      data: { publicKey: env.VAPID_PUBLIC_KEY ?? null },
-    });
-  });
+  // Served by the API so a self-hosted deployment doesn't need a frontend
+  // rebuild to enable push. Public: it's a public key.
+  app.get(
+    '/notifications/vapid-public-key',
+    {
+      schema: {
+        tags,
+        summary: 'The Web Push public key (null when push is not configured)',
+        security: [],
+        response: { 200: ok(vapidKeySchema) },
+      },
+    },
+    async () => ({ success: true as const, data: { publicKey: env.VAPID_PUBLIC_KEY ?? null } }),
+  );
 
   app.addHook('preHandler', authenticate);
 
-  // GET /api/v1/notifications - Get user notifications
-  app.get('/notifications', async (request, reply) => {
-    const query = notificationQuerySchema.safeParse(request.query);
-    if (!query.success) {
-      throw new ValidationError(query.error.issues[0].message);
-    }
+  app.get(
+    '/notifications',
+    {
+      schema: {
+        tags,
+        summary: 'Your notifications, newest first, with the unread count',
+        querystring: notificationQuerySchema,
+        response: { 200: notificationListResponse },
+      },
+    },
+    async (request) => {
+      const [data, unreadCount] = await Promise.all([
+        notificationService.getUserNotifications(
+          request.user.id,
+          request.query.unreadOnly,
+          request.query.limit,
+          request.query.cursor,
+        ),
+        notificationService.getUnreadCount(request.user.id),
+      ]);
+      return { success: true as const, data, unreadCount };
+    },
+  );
 
-    const [data, unreadCount] = await Promise.all([
-      notificationService.getUserNotifications(
+  app.post(
+    '/notifications/mark-read',
+    {
+      schema: { tags, summary: 'Mark a notification read', body: markReadSchema, response: { 200: ok(notificationSchema) } },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await notificationService.markAsRead(request.body.notificationId, request.user.id),
+    }),
+  );
+
+  app.post(
+    '/notifications/mark-all-read',
+    { schema: { tags, summary: 'Mark all your notifications read', response: { 200: markAllReadResponse } } },
+    async (request) => ({
+      success: true as const,
+      ...(await notificationService.markAllAsRead(request.user.id)),
+    }),
+  );
+
+  app.post(
+    '/notifications/subscribe-push',
+    {
+      schema: {
+        tags,
+        summary: "Register this browser's push subscription",
+        body: subscribePushSchema,
+        response: { 200: ok(pushSubscriptionSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await notificationService.savePushSubscription(
         request.user.id,
-        query.data.unreadOnly,
-        query.data.limit,
-        query.data.cursor,
+        request.body.endpoint,
+        request.body.keys.p256dh,
+        request.body.keys.auth,
       ),
-      notificationService.getUnreadCount(request.user.id),
-    ]);
+    }),
+  );
 
-    return reply.send({ success: true, data, unreadCount });
-  });
-
-  // POST /api/v1/notifications/mark-read - Mark a notification as read
-  app.post('/notifications/mark-read', async (request, reply) => {
-    const body = markReadSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await notificationService.markAsRead(
-      body.data.notificationId,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
-
-  // POST /api/v1/notifications/mark-all-read - Mark all notifications as read
-  app.post('/notifications/mark-all-read', async (request, reply) => {
-    const data = await notificationService.markAllAsRead(request.user.id);
-    return reply.send({ success: true, ...data });
-  });
-
-  // POST /api/v1/notifications/subscribe-push - Subscribe to push notifications
-  app.post('/notifications/subscribe-push', async (request, reply) => {
-    const body = subscribePushSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await notificationService.savePushSubscription(
-      request.user.id,
-      body.data.endpoint,
-      body.data.keys.p256dh,
-      body.data.keys.auth,
-    );
-    return reply.send({ success: true, data });
-  });
-
-  // POST /api/v1/notifications/unsubscribe-push - Unsubscribe from push
-  app.post('/notifications/unsubscribe-push', async (request, reply) => {
-    const body = unsubscribePushSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    await notificationService.removePushSubscription(
-      body.data.endpoint,
-      request.user.id,
-    );
-    return reply.send({ success: true, message: 'Unsubscribed from push notifications' });
-  });
+  app.post(
+    '/notifications/unsubscribe-push',
+    {
+      schema: {
+        tags,
+        summary: "Remove this browser's push subscription",
+        body: unsubscribePushSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => {
+      await notificationService.removePushSubscription(request.body.endpoint, request.user.id);
+      return { success: true as const, message: 'Unsubscribed from push notifications' };
+    },
+  );
 }

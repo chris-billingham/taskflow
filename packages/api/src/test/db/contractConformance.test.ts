@@ -2,7 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
+  activitySchema,
+  attachmentSchema,
   commentSchema,
+  notificationListResponse,
+  searchResultsSchema,
   filterSchema,
   filterTaskSchema,
   labelSchema,
@@ -28,6 +32,10 @@ import * as viewService from '../../services/viewService.js';
 import * as filterService from '../../services/filterService.js';
 import * as commentService from '../../services/commentService.js';
 import * as reminderService from '../../services/reminderService.js';
+import * as fileService from '../../services/fileService.js';
+import * as activityService from '../../services/activityService.js';
+import * as searchService from '../../services/searchService.js';
+import * as notificationService from '../../services/notificationService.js';
 
 // Route suites mock the services, so only this file checks the contract
 // against what Prisma really returns: nulls, Dates, nested includes. Each
@@ -173,6 +181,43 @@ describe('real service output matches the API contract', () => {
     conforms(ok(z.array(reminderSchema)), {
       success: true,
       data: await reminderService.getTaskReminders(taskId, userId),
+    });
+  });
+
+  it('attachments (row only; storage is out of scope here)', async () => {
+    await prisma.attachment.create({
+      data: {
+        filename: 'notes.txt',
+        mimeType: 'text/plain',
+        size: 12,
+        url: `attachments/${userId}/contract-${RUN}`,
+        taskId,
+        uploadedById: userId,
+      },
+    });
+    const list = conforms(ok(z.array(attachmentSchema)), {
+      success: true,
+      data: await fileService.getTaskAttachments(taskId, userId),
+    }) as { data: Array<Record<string, unknown>> };
+    expect(list.data[0]).not.toHaveProperty('url');
+  });
+
+  it('activity, search and notifications', async () => {
+    conforms(ok(z.array(activitySchema)), {
+      success: true,
+      data: await activityService.getTaskActivity(taskId, userId),
+    });
+    const found = conforms(ok(searchResultsSchema), {
+      success: true,
+      data: await searchService.searchAll('Contract', userId, { limit: 10, offset: 0, entityTypes: ['task', 'project', 'comment'] }),
+    }) as { data: { tasks: unknown[]; projects: unknown[] } };
+    expect(found.data.tasks.length + found.data.projects.length).toBeGreaterThan(0);
+
+    await notificationService.createNotification(userId, 'REMINDER', 'Reminder', 'Contract task is due', { taskId });
+    conforms(notificationListResponse, {
+      success: true,
+      data: await notificationService.getUserNotifications(userId, false, 10),
+      unreadCount: await notificationService.getUnreadCount(userId),
     });
   });
 });

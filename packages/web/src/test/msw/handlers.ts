@@ -18,7 +18,7 @@ export const defaultHandlers = [
   http.get(`${API}/tasks/:id/reminders`, () => HttpResponse.json(ok([]))),
   http.get(`${API}/tasks/:id/activity`, () => HttpResponse.json(ok([]))),
   http.get(`${API}/attachments/limits`, () =>
-    HttpResponse.json(ok({ maxFileSizeMb: 25, allowedTypes: [] })),
+    HttpResponse.json(ok({ maxFileSizeMb: 25, allowedMimeTypes: [] })),
   ),
   http.get(`${API}/notifications/vapid-public-key`, () =>
     HttpResponse.json(ok({ publicKey: null })),

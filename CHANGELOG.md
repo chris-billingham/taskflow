@@ -10,6 +10,15 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   error handler, routes) instead of per-file copies.
 - Zod 4 in the API and web app (`@hookform/resolvers` 5); string formats use
   the top-level `z.email()` / `z.url()` / `z.iso.datetime()`.
+- **`@taskflow/contract`** replaces the unused shared package: Zod schemas for
+  requests and responses. Routes validate input and serialize output through
+  them (unlisted fields are dropped, so e.g. attachment storage keys and push
+  subscription keys no longer reach clients). The OpenAPI document at
+  `/api/docs` is generated from the same schemas; the hand-written spec is
+  gone.
+- **Read notifications disappeared from the bell.** `?unreadOnly=false` was
+  coerced to `true`, so the list only ever showed unread items. Activity
+  endpoints now cap `limit` at 100 (it was unbounded).
 
 ### Phase 1: safety net
 
