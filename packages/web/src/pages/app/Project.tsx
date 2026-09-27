@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Spinner } from '@/components/ui/Spinner';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ProjectHeader } from '@/components/project/ProjectHeader';
 import { SectionList } from '@/components/project/SectionList';
 import { TaskList } from '@/components/task/TaskList';
@@ -67,7 +68,7 @@ export default function Project() {
           This project may have been deleted or you don't have access.
         </p>
         <button
-          className="text-[#db4c3f] hover:underline"
+          className="text-primary-500 hover:underline"
           onClick={() => navigate('/today')}
         >
           Go to Today
@@ -179,38 +180,13 @@ export default function Project() {
         </>
       )}
 
-      {/* Delete confirmation modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => setShowDeleteConfirm(false)}
-          />
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Delete project?
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              This will permanently delete "{project.name}" and all its tasks
-              and sections.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
-                onClick={handleDelete}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete project?"
+        message={`This permanently deletes "${project.name}" and all its tasks and sections.`}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

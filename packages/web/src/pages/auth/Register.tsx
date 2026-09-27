@@ -25,7 +25,7 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[#db4c3f] hover:text-[#c53727]"
+      className="text-primary-500 hover:text-primary-600"
     >
       {children}
     </a>
@@ -121,7 +121,7 @@ export default function Register() {
           confirm your address, then sign in.
         </Alert>
         <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-          <Link to="/login" className="text-[#db4c3f] hover:text-[#c53727] font-medium">
+          <Link to="/login" className="text-primary-500 hover:text-primary-600 font-medium">
             Go to sign in
           </Link>
         </p>
@@ -194,7 +194,7 @@ export default function Register() {
           <label className="flex items-start gap-2">
             <input
               type="checkbox"
-              className="rounded border-gray-300 dark:border-gray-600 text-[#db4c3f] focus:ring-[#db4c3f] mt-0.5"
+              className="rounded border-gray-300 dark:border-gray-600 text-primary-500 focus:ring-primary-500 mt-0.5"
               {...register('acceptTerms')}
             />
             <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -226,7 +226,7 @@ export default function Register() {
           Already have an account?{' '}
           <Link
             to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login'}
-            className="text-[#db4c3f] hover:text-[#c53727] font-medium"
+            className="text-primary-500 hover:text-primary-600 font-medium"
           >
             Sign in
           </Link>

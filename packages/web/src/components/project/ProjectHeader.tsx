@@ -73,7 +73,7 @@ export function ProjectHeader({
         {isEditingName ? (
           <input
             ref={nameInputRef}
-            className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-[#db4c3f] outline-none flex-1"
+            className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 outline-none flex-1"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             onBlur={handleNameSubmit}

@@ -53,7 +53,7 @@ export function BoardAddColumn({ onCreateSection }: BoardAddColumnProps) {
       <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
         <input
           ref={inputRef}
-          className="w-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:border-[#db4c3f]"
+          className="w-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 outline-none focus:border-primary-500"
           placeholder="Section name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -73,7 +73,7 @@ export function BoardAddColumn({ onCreateSection }: BoardAddColumnProps) {
             Cancel
           </button>
           <button
-            className="px-3 py-1 text-xs font-medium text-white bg-[#db4c3f] hover:bg-[#c53727] rounded disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded disabled:opacity-50"
             onClick={handleSubmit}
             disabled={!name.trim() || isSubmitting}
           >

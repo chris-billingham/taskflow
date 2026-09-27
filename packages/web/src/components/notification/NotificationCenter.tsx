@@ -57,7 +57,7 @@ export function NotificationCenter() {
       >
         <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#db4c3f] text-white text-[10px] font-bold px-1">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary-500 text-white text-[10px] font-bold px-1">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -71,7 +71,7 @@ export function NotificationCenter() {
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</h3>
             {unreadCount > 0 && (
               <button
-                className="flex items-center gap-1 text-xs text-[#db4c3f] hover:text-[#c53727]"
+                className="flex items-center gap-1 text-xs text-primary-500 hover:text-primary-600"
                 onClick={handleMarkAllRead}
               >
                 <Check className="w-3.5 h-3.5" />
@@ -106,7 +106,7 @@ export function NotificationCenter() {
           {notifications.length > 0 && (
             <div className="border-t border-gray-100 dark:border-gray-700 px-3 py-2">
               <button
-                className="w-full text-xs text-center text-gray-500 dark:text-gray-400 hover:text-[#db4c3f]"
+                className="w-full text-xs text-center text-gray-500 dark:text-gray-400 hover:text-primary-500"
                 onClick={() => {
                   navigate('/settings/notifications');
                   setIsOpen(false);

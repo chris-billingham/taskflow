@@ -117,7 +117,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <div className="px-4 py-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckSquare className="w-6 h-6 text-[#db4c3f]" />
+            <CheckSquare className="w-6 h-6 text-primary-500" />
             <span className="text-lg font-bold text-gray-900 dark:text-white">Taskflow</span>
           </div>
           <button
@@ -141,7 +141,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             key={path}
             className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
               location.pathname === path
-                ? 'bg-[#db4c3f]/10 text-[#db4c3f] font-medium'
+                ? 'bg-primary-500/10 text-primary-500 font-medium'
                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
             onClick={() => {
@@ -180,7 +180,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     key={p.id}
                     className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
                       location.pathname === `/projects/${p.id}`
-                        ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
+                        ? 'bg-primary-500/10 text-primary-500'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => {
@@ -225,7 +225,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     key={`filter-${f.id}`}
                     className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
                       location.pathname === `/filters/${f.id}`
-                        ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
+                        ? 'bg-primary-500/10 text-primary-500'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => {
@@ -246,7 +246,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     key={`label-${l.id}`}
                     className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
                       location.pathname === `/labels/${l.id}`
-                        ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
+                        ? 'bg-primary-500/10 text-primary-500'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => {
@@ -263,7 +263,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 ))}
                 {/* Show all link */}
                 <button
-                  className="w-full text-left px-2 py-1 text-xs text-gray-400 dark:text-gray-500 hover:text-[#db4c3f]"
+                  className="w-full text-left px-2 py-1 text-xs text-gray-400 dark:text-gray-500 hover:text-primary-500"
                   onClick={() => {
                     navigate('/filters-labels');
                     onClose();
@@ -380,7 +380,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           onClick={() => setShowUserMenu(!showUserMenu)}
         >
-          <div className="w-7 h-7 rounded-full bg-[#db4c3f] flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+          <div className="w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
             {user?.name?.charAt(0).toUpperCase()}
           </div>
           <span className="truncate">{user?.name}</span>

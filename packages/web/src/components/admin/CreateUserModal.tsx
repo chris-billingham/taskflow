@@ -3,7 +3,7 @@ import { Modal } from '@/components/ui/Modal';
 import type { SystemRole } from '@/stores/authStore';
 
 const INPUT_CLASS =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#db4c3f] dark:border-gray-600 dark:bg-gray-700 dark:text-white';
+  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white';
 
 export interface CreateUserValues {
   email: string;
@@ -164,7 +164,7 @@ export function CreateUserModal({
           <button
             type="submit"
             disabled={saving || !email.trim() || !name.trim()}
-            className="rounded-lg bg-[#db4c3f] px-5 py-2 text-sm font-medium text-white hover:bg-[#c53727] disabled:opacity-60"
+            className="rounded-lg bg-primary-500 px-5 py-2 text-sm font-medium text-white hover:bg-primary-600 disabled:opacity-60"
           >
             {saving ? 'Creating…' : 'Create user'}
           </button>

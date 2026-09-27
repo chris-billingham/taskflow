@@ -54,7 +54,7 @@ export default function ForgotPassword() {
           </Alert>
           <Link
             to="/login"
-            className="flex items-center justify-center gap-2 text-sm text-[#db4c3f] hover:text-[#c53727] font-medium"
+            className="flex items-center justify-center gap-2 text-sm text-primary-500 hover:text-primary-600 font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to sign in

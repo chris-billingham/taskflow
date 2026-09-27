@@ -86,7 +86,7 @@ export function RecurrencePicker({
           onClick={() => setIsOpen(!isOpen)}
           className={`flex items-center gap-1.5 text-sm px-2 py-1 rounded transition-colors ${
             active
-              ? 'text-[#db4c3f] hover:bg-red-50 dark:hover:bg-red-900/20'
+              ? 'text-primary-500 hover:bg-red-50 dark:hover:bg-red-900/20'
               : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
         >
@@ -115,7 +115,7 @@ export function RecurrencePicker({
                 type="button"
                 onClick={() => apply(null)}
                 className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                  !active ? 'text-[#db4c3f] font-medium' : 'text-gray-700 dark:text-gray-300'
+                  !active ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-300'
                 }`}
               >
                 Does not repeat
@@ -130,7 +130,7 @@ export function RecurrencePicker({
                   onClick={() => apply(preset.rule)}
                   className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
                     recurrenceRule === preset.rule
-                      ? 'text-[#db4c3f] font-medium'
+                      ? 'text-primary-500 font-medium'
                       : 'text-gray-700 dark:text-gray-300'
                   }`}
                 >
@@ -190,7 +190,7 @@ export function RecurrencePicker({
                       aria-pressed={byDay.includes(code)}
                       className={`w-7 h-7 rounded-full text-xs font-medium transition-colors ${
                         byDay.includes(code)
-                          ? 'bg-[#db4c3f] text-white'
+                          ? 'bg-primary-500 text-white'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
@@ -208,7 +208,7 @@ export function RecurrencePicker({
                 <button
                   type="button"
                   onClick={() => apply(buildRecurrence({ freq, interval, byDay }))}
-                  className="flex-1 px-2 py-1 text-xs bg-[#db4c3f] text-white rounded hover:bg-[#c53727]"
+                  className="flex-1 px-2 py-1 text-xs bg-primary-500 text-white rounded hover:bg-primary-600"
                 >
                   Save
                 </button>

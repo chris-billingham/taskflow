@@ -108,7 +108,7 @@ function MemberRow({
   return (
     <div className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-[#db4c3f] flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
           {member.user.avatarUrl ? (
             <img
               src={member.user.avatarUrl}

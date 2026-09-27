@@ -52,7 +52,7 @@ export default function DataExport() {
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#db4c3f] text-white rounded-lg text-sm font-medium hover:bg-[#c53727] disabled:opacity-60 transition-colors"
+              className="mt-4 flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600 disabled:opacity-60 transition-colors"
             >
               <Download className="w-4 h-4" />
               {exporting ? 'Preparing export…' : 'Download my data'}
@@ -90,7 +90,7 @@ export default function DataExport() {
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Delete account</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Permanently delete your account and all data. To proceed, go to{' '}
-              <a href="/settings/account" className="text-[#db4c3f] hover:underline">
+              <a href="/settings/account" className="text-primary-500 hover:underline">
                 Account settings
               </a>
               .

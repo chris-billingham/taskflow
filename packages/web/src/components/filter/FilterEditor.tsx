@@ -80,7 +80,7 @@ export function FilterEditor() {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Filters</h3>
         <button
-          className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-[#db4c3f] hover:bg-[#db4c3f]/5 rounded-lg"
+          className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-primary-500 hover:bg-primary-500/5 rounded-lg"
           onClick={() => setShowCreate(!showCreate)}
         >
           <Plus className="w-4 h-4" />
@@ -92,7 +92,7 @@ export function FilterEditor() {
       {showCreate && (
         <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
           <input
-            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-[#db4c3f] mb-2"
+            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-primary-500 mb-2"
             placeholder="Filter name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -132,7 +132,7 @@ export function FilterEditor() {
           </div>
           <div className="flex gap-2">
             <button
-              className="px-3 py-1.5 text-sm font-medium text-white bg-[#db4c3f] rounded-lg hover:bg-[#c53829] disabled:opacity-50"
+              className="px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-[#c53829] disabled:opacity-50"
               onClick={handleCreate}
               disabled={!newName.trim() || !newQuery.trim() || creating || !queryValid}
             >
@@ -172,7 +172,7 @@ export function FilterEditor() {
               {editingId === filter.id ? (
                 <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
                   <input
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-[#db4c3f] mb-2"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-primary-500 mb-2"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     autoFocus
@@ -197,7 +197,7 @@ export function FilterEditor() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      className="px-3 py-1.5 text-sm font-medium text-white bg-[#db4c3f] rounded-lg hover:bg-[#c53829]"
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-[#c53829]"
                       onClick={() => handleUpdate(filter.id)}
                     >
                       Save
@@ -220,7 +220,7 @@ export function FilterEditor() {
                     className="flex-1 min-w-0 text-left cursor-pointer"
                     onClick={() => navigate(`/filters/${filter.id}`)}
                   >
-                    <div className="text-sm text-gray-700 dark:text-gray-300 hover:text-[#db4c3f]">{filter.name}</div>
+                    <div className="text-sm text-gray-700 dark:text-gray-300 hover:text-primary-500">{filter.name}</div>
                     <div className="text-xs text-gray-400 dark:text-gray-500 font-mono truncate">{filter.query}</div>
                   </button>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">

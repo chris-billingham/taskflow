@@ -53,7 +53,7 @@ function Toggle({
       aria-checked={on}
       aria-label={label}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-        on ? 'bg-[#db4c3f]' : 'bg-gray-200 dark:bg-gray-600'
+        on ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-600'
       }`}
       onClick={onClick}
       disabled={disabled}
@@ -199,7 +199,7 @@ export default function NotificationSettings() {
                       value={freq}
                       checked={prefs.emailFrequency === freq}
                       onChange={() => savePrefs({ ...prefs, emailFrequency: freq })}
-                      className="text-[#db4c3f] focus:ring-[#db4c3f]"
+                      className="text-primary-500 focus:ring-primary-500"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{freq}</span>
                   </label>

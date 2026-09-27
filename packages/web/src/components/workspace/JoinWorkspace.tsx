@@ -57,7 +57,7 @@ export function JoinWorkspace() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-700">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-[#db4c3f] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 text-primary-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Joining workspace...</p>
         </div>
       </div>

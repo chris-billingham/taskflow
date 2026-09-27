@@ -5,18 +5,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#fef7f6',
-          100: '#fde8e6',
-          200: '#fbd5d1',
-          300: '#f7b1ab',
-          400: '#f08377',
-          500: '#db4c3f',
-          600: '#c53727',
-          700: '#a62d20',
-          800: '#89281e',
-          900: '#72261f',
-        },
+        // The brand colour, from CSS variables in index.css so it can be
+        // changed (or themed) in one place. Use these classes, never hex.
+        primary: Object.fromEntries(
+          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((step) => [
+            step,
+            `rgb(var(--color-primary-${step}) / <alpha-value>)`,
+          ]),
+        ),
       },
     },
   },

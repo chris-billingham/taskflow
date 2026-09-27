@@ -139,7 +139,7 @@ export function WorkspaceSettings() {
                   Description
                 </label>
                 <textarea
-                  className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db4c3f] focus:border-[#db4c3f] resize-none disabled:bg-gray-50 disabled:text-gray-500"
+                  className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none disabled:bg-gray-50 disabled:text-gray-500"
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}

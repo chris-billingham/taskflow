@@ -35,7 +35,7 @@ export function ProjectItem({
       <div
         className={`group flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm ${
           isActive
-            ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
+            ? 'bg-primary-500/10 text-primary-500'
             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
         }`}
         style={{ paddingLeft: `${8 + depth * 16}px` }}

@@ -188,7 +188,7 @@ export function SectionList({
         </div>
       ) : (
         <button
-          className="mt-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-[#db4c3f] transition-colors"
+          className="mt-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500 transition-colors"
           onClick={() => setIsAdding(true)}
         >
           <Plus className="w-4 h-4" />

@@ -82,7 +82,7 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <input
-                className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-[#db4c3f]"
+                className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-primary-500"
                 placeholder="Search or create label..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -119,7 +119,7 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
                         {label.name}
                       </span>
                       {isSelected && (
-                        <Check className="w-4 h-4 text-[#db4c3f]" />
+                        <Check className="w-4 h-4 text-primary-500" />
                       )}
                     </button>
                   );
@@ -132,7 +132,7 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
                 {/* Create new label option */}
                 {canCreate && (
                   <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-[#db4c3f]"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-primary-500"
                     onClick={handleCreateLabel}
                     disabled={creating}
                   >

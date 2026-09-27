@@ -121,7 +121,7 @@ export default function Login() {
         <div className="flex items-center justify-between">
           <Link
             to="/forgot-password"
-            className="text-sm text-[#db4c3f] hover:text-[#c53727]"
+            className="text-sm text-primary-500 hover:text-primary-600"
           >
             Forgot password?
           </Link>
@@ -136,7 +136,7 @@ export default function Login() {
             Don&apos;t have an account?{' '}
             <Link
               to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : '/register'}
-              className="text-[#db4c3f] hover:text-[#c53727] font-medium"
+              className="text-primary-500 hover:text-primary-600 font-medium"
             >
               Sign up
             </Link>

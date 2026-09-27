@@ -68,7 +68,7 @@ export function AdminUserRow({
       }`}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#db4c3f] text-sm font-medium text-white">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-sm font-medium text-white">
           {user.avatarUrl ? (
             <img src={user.avatarUrl} alt="" className="h-8 w-8 rounded-full" />
           ) : (

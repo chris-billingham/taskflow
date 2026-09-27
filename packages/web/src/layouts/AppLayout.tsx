@@ -85,7 +85,7 @@ export function AppLayout() {
               className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => setQuickAddOpen(true)}
             >
-              <Plus className="w-5 h-5 text-[#db4c3f]" />
+              <Plus className="w-5 h-5 text-primary-500" />
             </button>
           </div>
         </div>
@@ -106,7 +106,7 @@ export function AppLayout() {
         {/* Desktop quick add button */}
         <div className="hidden md:block fixed bottom-6 right-6 z-30">
           <button
-            className="w-12 h-12 rounded-full bg-[#db4c3f] hover:bg-[#c53727] text-white shadow-lg flex items-center justify-center transition-colors"
+            className="w-12 h-12 rounded-full bg-primary-500 hover:bg-primary-600 text-white shadow-lg flex items-center justify-center transition-colors"
             onClick={() => setQuickAddOpen(true)}
             title="Quick add task (Q)"
           >

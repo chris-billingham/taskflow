@@ -1,0 +1,46 @@
+import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
+
+interface SheetProps {
+  onClose: () => void;
+  /** Accessible name of the panel. */
+  label: string;
+  children: ReactNode;
+}
+
+/**
+ * A panel that slides in from the right over the page (the task panel). Focus
+ * stays inside while it's open, Escape and a click outside close it, and it
+ * renders into <body> so no ancestor's stacking context can cover it.
+ */
+export function Sheet({ onClose, label, children }: SheetProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, true);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // A menu or picker inside the panel handles its own Escape first.
+      if (e.key === 'Escape' && !e.defaultPrevented) onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  return createPortal(
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        tabIndex={-1}
+        className="fixed top-0 right-0 h-full w-full max-w-lg bg-white dark:bg-gray-800 shadow-xl z-50 flex flex-col border-l border-gray-200 dark:border-gray-700 animate-in slide-in-from-right duration-200 focus:outline-none"
+      >
+        {children}
+      </div>
+    </>,
+    document.body,
+  );
+}

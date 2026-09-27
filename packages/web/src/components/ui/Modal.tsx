@@ -16,7 +16,8 @@ export function Modal({ isOpen, onClose, children, title, size = 'md' }: ModalPr
   useFocusTrap(panelRef, isOpen);
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      // A menu or picker inside the dialog handles its own Escape first.
+      if (e.key === 'Escape' && !e.defaultPrevented) onClose();
     },
     [onClose],
   );

@@ -37,7 +37,7 @@ export function LabelList() {
           key={label.id}
           className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm group ${
             location.pathname === `/labels/${label.id}`
-              ? 'bg-[#db4c3f]/10 text-[#db4c3f]'
+              ? 'bg-primary-500/10 text-primary-500'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
           onClick={() => navigate(`/labels/${label.id}`)}

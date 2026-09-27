@@ -199,7 +199,7 @@ export default function Upcoming() {
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{error}</p>
               <button
-                className="px-4 py-1.5 text-sm text-white bg-[#db4c3f] rounded-lg hover:bg-[#c53727]"
+                className="px-4 py-1.5 text-sm text-white bg-primary-500 rounded-lg hover:bg-primary-600"
                 onClick={() => refetch()}
               >
                 Try again
@@ -297,7 +297,7 @@ function DroppableDateSection({
     <div
       ref={setNodeRef}
       className={`transition-colors rounded-lg ${
-        isOver ? 'ring-2 ring-[#db4c3f] ring-opacity-50 bg-red-50/30' : ''
+        isOver ? 'ring-2 ring-primary-500 ring-opacity-50 bg-red-50/30' : ''
       }`}
     >
       <DateSection date={date} tasks={tasks} onAddTask={onAddTask} externalDnd />

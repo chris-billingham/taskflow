@@ -83,7 +83,7 @@ export function LabelManager() {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Labels</h3>
         <button
-          className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-[#db4c3f] hover:bg-[#db4c3f]/5 rounded-lg"
+          className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-primary-500 hover:bg-primary-500/5 rounded-lg"
           onClick={() => setShowCreate(!showCreate)}
         >
           <Plus className="w-4 h-4" />
@@ -95,7 +95,7 @@ export function LabelManager() {
       {showCreate && (
         <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
           <input
-            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-[#db4c3f] mb-2"
+            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-primary-500 mb-2"
             placeholder="Label name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -116,7 +116,7 @@ export function LabelManager() {
           </div>
           <div className="flex gap-2">
             <button
-              className="px-3 py-1.5 text-sm font-medium text-white bg-[#db4c3f] rounded-lg hover:bg-[#c53829] disabled:opacity-50"
+              className="px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-[#c53829] disabled:opacity-50"
               onClick={handleCreate}
               disabled={!newName.trim() || creating}
             >
@@ -164,7 +164,7 @@ export function LabelManager() {
                     />
                   </div>
                   <input
-                    className="flex-1 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-[#db4c3f]"
+                    className="flex-1 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-primary-500"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     onKeyDown={(e) => {
@@ -193,7 +193,7 @@ export function LabelManager() {
                     style={{ backgroundColor: label.color }}
                   />
                   <button
-                    className="flex-1 text-sm text-gray-700 dark:text-gray-300 text-left hover:text-[#db4c3f] cursor-pointer"
+                    className="flex-1 text-sm text-gray-700 dark:text-gray-300 text-left hover:text-primary-500 cursor-pointer"
                     onClick={() => navigate(`/labels/${label.id}`)}
                   >
                     {label.name}

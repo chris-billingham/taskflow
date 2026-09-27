@@ -63,7 +63,7 @@ export default function Integrations() {
           href="https://github.com/chris-billingham/taskflow/issues"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[#db4c3f] hover:underline flex items-center gap-0.5"
+          className="text-primary-500 hover:underline flex items-center gap-0.5"
         >
           Open an issue <ExternalLink className="w-3 h-3" />
         </a>

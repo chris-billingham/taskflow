@@ -67,7 +67,7 @@ export function SignupSettings() {
             key={option.value}
             className={`flex cursor-pointer gap-3 rounded-lg border p-3 text-sm ${
               mode === option.value
-                ? 'border-[#db4c3f] bg-[#db4c3f]/5'
+                ? 'border-primary-500 bg-primary-500/5'
                 : 'border-gray-200 dark:border-gray-700'
             }`}
           >
@@ -77,7 +77,7 @@ export function SignupSettings() {
               value={option.value}
               checked={mode === option.value}
               onChange={() => choose(option.value)}
-              className="mt-0.5 accent-[#db4c3f]"
+              className="mt-0.5 accent-primary-500"
             />
             <span>
               <span className="block font-medium text-gray-900 dark:text-white">

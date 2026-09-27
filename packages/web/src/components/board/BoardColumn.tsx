@@ -9,6 +9,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ChevronDown, GripVertical, Trash2 } from 'lucide-react';
 import { BoardCard } from './BoardCard';
 import { BoardQuickAdd } from './BoardQuickAdd';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Task } from '@/types/task';
 
 interface BoardColumnProps {
@@ -33,6 +34,7 @@ export function BoardColumn({
   const [collapsed, setCollapsed] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(title);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Sortable for column reordering (only non-virtual columns)
@@ -116,7 +118,7 @@ export function BoardColumn({
         {isEditing && !isVirtual ? (
           <input
             ref={inputRef}
-            className="flex-1 text-sm font-semibold bg-white dark:bg-gray-800 border border-[#db4c3f] rounded px-1 py-0.5 outline-none"
+            className="flex-1 text-sm font-semibold bg-white dark:bg-gray-800 border border-primary-500 rounded px-1 py-0.5 outline-none"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             onBlur={handleSubmitEdit}
@@ -146,11 +148,7 @@ export function BoardColumn({
         {!isVirtual && onDeleteSection && (
           <button
             className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity flex-shrink-0"
-            onClick={() => {
-              if (window.confirm(`Delete section "${title}"? Its tasks move out of the board columns.`)) {
-                onDeleteSection(columnId);
-              }
-            }}
+            onClick={() => setConfirmDelete(true)}
             title="Delete section"
             aria-label="Delete section"
           >
@@ -187,6 +185,17 @@ export function BoardColumn({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title="Delete section?"
+        message={`"${title}" will be deleted. Its tasks stay in the project, outside any section.`}
+        onConfirm={() => {
+          setConfirmDelete(false);
+          onDeleteSection?.(columnId);
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
 
       {/* Quick add at bottom */}
       {!collapsed && (

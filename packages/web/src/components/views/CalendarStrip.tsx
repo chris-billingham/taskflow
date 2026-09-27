@@ -50,7 +50,7 @@ export function CalendarStrip({
             ref={today ? todayRef : undefined}
             className={`flex-shrink-0 w-12 h-14 flex flex-col items-center justify-center rounded-lg text-xs transition-colors ${
               today
-                ? 'bg-[#db4c3f] text-white'
+                ? 'bg-primary-500 text-white'
                 : selected
                   ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -64,7 +64,7 @@ export function CalendarStrip({
             {count > 0 && (
               <span
                 className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
-                  today ? 'bg-white/70' : 'bg-[#db4c3f]'
+                  today ? 'bg-white/70' : 'bg-primary-500'
                 }`}
               />
             )}

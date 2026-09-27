@@ -58,7 +58,7 @@ export function TimezoneSelect({ value, onChange }: TimezoneSelectProps) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#db4c3f] dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
       >
         <span className="truncate">{value || 'Select timezone'}</span>
         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
@@ -76,7 +76,7 @@ export function TimezoneSelect({ value, onChange }: TimezoneSelectProps) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search timezones..."
-              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:ring-1 focus:ring-[#db4c3f] dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:ring-1 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
             />
           </div>
           <div className="max-h-56 overflow-y-auto">
@@ -89,7 +89,7 @@ export function TimezoneSelect({ value, onChange }: TimezoneSelectProps) {
                 <span className="truncate">{tz}</span>
                 <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                   <span className="text-xs text-gray-400">{localTime(tz)}</span>
-                  {value === tz && <Check className="w-4 h-4 text-[#db4c3f]" />}
+                  {value === tz && <Check className="w-4 h-4 text-primary-500" />}
                 </div>
               </button>
             ))}

@@ -33,7 +33,7 @@ export function AvatarUpload({ name, avatarUrl, onSave }: AvatarUploadProps) {
             className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
           />
         ) : (
-          <div className="w-16 h-16 rounded-full bg-[#db4c3f] flex items-center justify-center text-white text-xl font-semibold">
+          <div className="w-16 h-16 rounded-full bg-primary-500 flex items-center justify-center text-white text-xl font-semibold">
             {initials}
           </div>
         )}
@@ -48,7 +48,7 @@ export function AvatarUpload({ name, avatarUrl, onSave }: AvatarUploadProps) {
       <div>
         <button
           onClick={() => { setUrlInput(avatarUrl ?? ''); setEditing(true); }}
-          className="text-sm font-medium text-[#db4c3f] hover:text-[#c53727]"
+          className="text-sm font-medium text-primary-500 hover:text-primary-600"
         >
           Change avatar
         </button>
@@ -82,13 +82,13 @@ export function AvatarUpload({ name, avatarUrl, onSave }: AvatarUploadProps) {
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="https://example.com/avatar.jpg"
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#db4c3f] focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               autoFocus
             />
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-[#db4c3f] text-white rounded-lg text-sm font-medium hover:bg-[#c53727]"
+                className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600"
               >
                 Save
               </button>

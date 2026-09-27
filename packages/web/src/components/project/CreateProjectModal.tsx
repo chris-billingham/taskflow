@@ -139,7 +139,7 @@ export function CreateProjectModal({
               Parent project (optional)
             </label>
             <select
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#db4c3f] focus:border-[#db4c3f]"
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               value={selectedParentId}
               onChange={(e) => setSelectedParentId(e.target.value)}
             >
@@ -164,7 +164,7 @@ export function CreateProjectModal({
                   type="button"
                   className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     viewStyle === style
-                      ? 'bg-[#db4c3f] text-white'
+                      ? 'bg-primary-500 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   onClick={() => setViewStyle(style)}

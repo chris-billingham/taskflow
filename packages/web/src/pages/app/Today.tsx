@@ -138,7 +138,7 @@ export default function Today() {
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{error}</p>
           <button
-            className="px-4 py-1.5 text-sm text-white bg-[#db4c3f] rounded-lg hover:bg-[#c53727]"
+            className="px-4 py-1.5 text-sm text-white bg-primary-500 rounded-lg hover:bg-primary-600"
             onClick={() => refetch()}
           >
             Try again

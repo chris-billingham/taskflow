@@ -41,7 +41,7 @@ export function DateSection({
       <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 flex items-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
         <h3
           className={`text-sm font-semibold ${
-            today ? 'text-[#db4c3f]' : 'text-gray-700 dark:text-gray-300'
+            today ? 'text-primary-500' : 'text-gray-700 dark:text-gray-300'
           }`}
         >
           {headerText}

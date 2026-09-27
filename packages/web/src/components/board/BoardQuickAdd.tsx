@@ -36,7 +36,7 @@ export function BoardQuickAdd({ onSubmit }: BoardQuickAddProps) {
   if (!isExpanded) {
     return (
       <button
-        className="w-full flex items-center gap-1.5 px-2 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-[#db4c3f] transition-colors rounded-lg hover:bg-white/60"
+        className="w-full flex items-center gap-1.5 px-2 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500 transition-colors rounded-lg hover:bg-white/60"
         onClick={() => setIsExpanded(true)}
       >
         <Plus className="w-4 h-4" />
@@ -69,7 +69,7 @@ export function BoardQuickAdd({ onSubmit }: BoardQuickAddProps) {
           Cancel
         </button>
         <button
-          className="px-2 py-1 text-xs font-medium text-white bg-[#db4c3f] hover:bg-[#c53727] rounded disabled:opacity-50"
+          className="px-2 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded disabled:opacity-50"
           onClick={handleSubmit}
           disabled={!text.trim() || isSubmitting}
         >

@@ -157,7 +157,7 @@ export function FilterQueryInput({ value, onChange, onValidation, placeholder }:
           className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none pr-8 font-mono ${
             validation && !validation.valid
               ? 'border-red-300 dark:border-red-800 focus:border-red-500'
-              : 'border-gray-200 dark:border-gray-700 focus:border-[#db4c3f]'
+              : 'border-gray-200 dark:border-gray-700 focus:border-primary-500'
           }`}
           placeholder={placeholder || 'e.g. today & p1 & @work'}
           value={value}
@@ -202,7 +202,7 @@ export function FilterQueryInput({ value, onChange, onValidation, placeholder }:
               onMouseDown={() => applySuggestion(s)}
               onMouseEnter={() => setSelectedIndex(i)}
             >
-              <span className="font-mono text-[#db4c3f]">{s.label}</span>
+              <span className="font-mono text-primary-500">{s.label}</span>
               <span className="text-xs text-gray-400 dark:text-gray-500">{s.desc}</span>
             </button>
           ))}

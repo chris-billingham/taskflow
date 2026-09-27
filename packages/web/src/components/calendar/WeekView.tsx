@@ -104,7 +104,7 @@ export function WeekView({
           >
             <div
               className={`text-xs font-medium ${
-                day.isToday ? 'text-[#db4c3f]' : 'text-gray-500 dark:text-gray-400'
+                day.isToday ? 'text-primary-500' : 'text-gray-500 dark:text-gray-400'
               }`}
             >
               {format(day.date, 'EEE')}
@@ -112,7 +112,7 @@ export function WeekView({
             <div
               className={`text-sm font-bold inline-flex items-center justify-center w-7 h-7 rounded-full ${
                 day.isToday
-                  ? 'bg-[#db4c3f] text-white'
+                  ? 'bg-primary-500 text-white'
                   : 'text-gray-900 dark:text-white'
               }`}
             >
@@ -211,8 +211,8 @@ export function WeekView({
                     }}
                   >
                     <div className="flex items-center">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#db4c3f] -ml-1" />
-                      <div className="flex-1 h-[2px] bg-[#db4c3f]" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary-500 -ml-1" />
+                      <div className="flex-1 h-[2px] bg-primary-500" />
                     </div>
                   </div>
                 )}

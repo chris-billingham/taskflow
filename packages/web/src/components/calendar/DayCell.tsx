@@ -34,7 +34,7 @@ export function DayCell({
       <button
         className={`w-7 h-7 flex items-center justify-center rounded-full text-sm mb-1 ${
           day.isToday
-            ? 'bg-[#db4c3f] text-white font-bold'
+            ? 'bg-primary-500 text-white font-bold'
             : !day.isCurrentMonth
               ? 'text-gray-300 dark:text-gray-600'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'

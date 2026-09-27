@@ -3,6 +3,18 @@
 @tailwind utilities;
 
 :root {
+  /* Brand colour scale as RGB channels (Tailwind's primary-* classes). */
+  --color-primary-50: 254 247 246;
+  --color-primary-100: 253 232 230;
+  --color-primary-200: 251 213 209;
+  --color-primary-300: 247 177 171;
+  --color-primary-400: 240 131 119;
+  --color-primary-500: 219 76 63;
+  --color-primary-600: 197 55 39;
+  --color-primary-700: 166 45 32;
+  --color-primary-800: 137 40 30;
+  --color-primary-900: 114 38 31;
+
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;

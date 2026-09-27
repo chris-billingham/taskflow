@@ -57,7 +57,7 @@ export function SectionHeader({
       {isEditing ? (
         <input
           ref={inputRef}
-          className="text-sm font-semibold text-gray-900 dark:text-white bg-transparent border-b border-[#db4c3f] outline-none flex-1"
+          className="text-sm font-semibold text-gray-900 dark:text-white bg-transparent border-b border-primary-500 outline-none flex-1"
           value={editName}
           onChange={(e) => setEditName(e.target.value)}
           onBlur={handleSubmit}

@@ -22,7 +22,7 @@ export function ThemeToggle({ value, onChange }: ThemeToggleProps) {
           onClick={() => onChange(v)}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
             value === v
-              ? 'border-[#db4c3f] bg-red-50 text-[#db4c3f] dark:bg-red-900/20'
+              ? 'border-primary-500 bg-red-50 text-primary-500 dark:bg-red-900/20'
               : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700'
           }`}
         >

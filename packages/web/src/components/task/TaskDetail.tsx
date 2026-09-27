@@ -25,6 +25,8 @@ import { CommentList } from '@/components/comment/CommentList';
 import { ActivityLog } from '@/components/activity/ActivityLog';
 import { AttachmentList } from '@/components/attachment/AttachmentList';
 import type { Task } from '@/types/task';
+import { Sheet } from '@/components/ui/Sheet';
+import { IconButton } from '@/components/ui/IconButton';
 
 interface TaskDetailProps {
   task: Task;
@@ -94,12 +96,7 @@ export function TaskDetail({
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-
-      {/* Panel */}
-      <div role="dialog" aria-modal="true" aria-label="Task detail" className="fixed top-0 right-0 h-full w-full max-w-lg bg-white dark:bg-gray-800 shadow-xl z-50 flex flex-col border-l border-gray-200 dark:border-gray-700 animate-in slide-in-from-right duration-200">
+    <Sheet onClose={onClose} label="Task detail">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
@@ -132,13 +129,9 @@ export function TaskDetail({
               </span>
             )}
           </div>
-          <button
-            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-            onClick={onClose}
-            aria-label="Close task detail"
-          >
-            <X className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-          </button>
+          <IconButton label="Close task detail" onClick={onClose}>
+            <X className="w-5 h-5" />
+          </IconButton>
         </div>
 
         {/* Content area */}
@@ -147,7 +140,7 @@ export function TaskDetail({
           {editingContent ? (
             <input
               ref={contentRef}
-              className="w-full text-lg font-medium text-gray-900 dark:text-white bg-transparent border-b-2 border-[#db4c3f] outline-none pb-1 mb-3"
+              className="w-full text-lg font-medium text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 outline-none pb-1 mb-3"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onBlur={handleContentSubmit}
@@ -161,7 +154,7 @@ export function TaskDetail({
             />
           ) : (
             <h2
-              className={`text-lg font-medium mb-3 cursor-pointer hover:text-[#db4c3f] ${
+              className={`text-lg font-medium mb-3 cursor-pointer hover:text-primary-500 ${
                 task.isCompleted ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'
               }`}
               onClick={() => setEditingContent(true)}
@@ -174,7 +167,7 @@ export function TaskDetail({
           {editingDescription ? (
             <textarea
               ref={descRef}
-              className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-3 outline-none focus:border-[#db4c3f] resize-none mb-4"
+              className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-3 outline-none focus:border-primary-500 resize-none mb-4"
               rows={4}
               placeholder="Add a description..."
               value={description}
@@ -409,7 +402,6 @@ export function TaskDetail({
             </button>
           )}
         </div>
-      </div>
-    </>
+    </Sheet>
   );
 }

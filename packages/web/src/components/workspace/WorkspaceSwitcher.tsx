@@ -34,7 +34,7 @@ export function WorkspaceSwitcher({ onCreateWorkspace }: WorkspaceSwitcherProps)
         onClick={() => setIsOpen(!isOpen)}
       >
         {currentWorkspace ? (
-          <div className="w-6 h-6 rounded bg-[#db4c3f] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+          <div className="w-6 h-6 rounded bg-primary-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
             {currentWorkspace.name.charAt(0).toUpperCase()}
           </div>
         ) : (
@@ -51,7 +51,7 @@ export function WorkspaceSwitcher({ onCreateWorkspace }: WorkspaceSwitcherProps)
           {/* Personal option */}
           <button
             className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
-              !currentWorkspace ? 'bg-gray-50 dark:bg-gray-700 text-[#db4c3f] font-medium' : 'text-gray-700 dark:text-gray-300'
+              !currentWorkspace ? 'bg-gray-50 dark:bg-gray-700 text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-300'
             }`}
             onClick={() => {
               switchWorkspace(null);
@@ -72,7 +72,7 @@ export function WorkspaceSwitcher({ onCreateWorkspace }: WorkspaceSwitcherProps)
               key={ws.id}
               className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
                 currentWorkspace?.id === ws.id
-                  ? 'bg-gray-50 dark:bg-gray-700 text-[#db4c3f] font-medium'
+                  ? 'bg-gray-50 dark:bg-gray-700 text-primary-500 font-medium'
                   : 'text-gray-700 dark:text-gray-300'
               }`}
               onClick={() => {
@@ -80,7 +80,7 @@ export function WorkspaceSwitcher({ onCreateWorkspace }: WorkspaceSwitcherProps)
                 setIsOpen(false);
               }}
             >
-              <div className="w-5 h-5 rounded bg-[#db4c3f]/10 flex items-center justify-center text-[#db4c3f] text-[10px] font-semibold flex-shrink-0">
+              <div className="w-5 h-5 rounded bg-primary-500/10 flex items-center justify-center text-primary-500 text-[10px] font-semibold flex-shrink-0">
                 {ws.name.charAt(0).toUpperCase()}
               </div>
               <span className="truncate">{ws.name}</span>

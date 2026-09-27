@@ -74,7 +74,7 @@ export function TemplateCard({ template, onUse, onPreview }: TemplateCardProps) 
           e.stopPropagation();
           onUse(template);
         }}
-        className="w-full py-1.5 px-3 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-[#db4c3f] hover:text-white dark:hover:bg-[#db4c3f] dark:hover:text-white transition-colors"
+        className="w-full py-1.5 px-3 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-500 dark:hover:text-white transition-colors"
       >
         Use template
       </button>

@@ -173,9 +173,9 @@ export function DueDatePicker({ value, time, onChange }: DueDatePickerProps) {
                     key={day}
                     className={`w-7 h-7 rounded-full text-xs ${
                       isSelected
-                        ? 'bg-[#db4c3f] text-white'
+                        ? 'bg-primary-500 text-white'
                         : isToday
-                          ? 'text-[#db4c3f] font-semibold hover:bg-gray-100 dark:hover:bg-gray-700'
+                          ? 'text-primary-500 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700'
                           : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => handleSelectDate(dateStr)}

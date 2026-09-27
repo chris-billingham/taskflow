@@ -19,13 +19,13 @@ function EditTemplateInline({
   return (
     <div className="flex flex-col gap-2 flex-1">
       <input
-        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db4c3f]"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
         value={name}
         onChange={(e) => setName(e.target.value)}
         autoFocus
       />
       <input
-        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#db4c3f]"
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Description (optional)"
@@ -82,7 +82,7 @@ export default function Templates() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#db4c3f] text-white text-sm font-medium hover:bg-[#c0392b] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors"
         >
           <Plus className="w-4 h-4" />
           New template

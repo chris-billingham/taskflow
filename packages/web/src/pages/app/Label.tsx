@@ -28,7 +28,7 @@ export default function Label() {
           This label may have been deleted.
         </p>
         <button
-          className="text-[#db4c3f] hover:underline"
+          className="text-primary-500 hover:underline"
           onClick={() => navigate('/filters-labels')}
         >
           Go to Filters & Labels
@@ -62,7 +62,7 @@ export default function Label() {
         {editing ? (
           <div className="flex items-center gap-2 flex-1">
             <input
-              className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-[#db4c3f] focus:outline-none"
+              className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 focus:outline-none"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => {
@@ -72,7 +72,7 @@ export default function Label() {
               autoFocus
             />
             <button
-              className="text-sm text-[#db4c3f] hover:underline"
+              className="text-sm text-primary-500 hover:underline"
               onClick={handleSaveEdit}
             >
               Save

@@ -117,7 +117,7 @@ export function QuickAdd({
   if (!isExpanded && inline) {
     return (
       <button
-        className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#db4c3f] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+        className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500 transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={() => setIsExpanded(true)}
       >
         <Plus className="w-4 h-4" />
@@ -190,7 +190,7 @@ export function QuickAdd({
             Cancel
           </button>
           <button
-            className="px-3 py-1 text-xs font-medium text-white bg-[#db4c3f] hover:bg-[#c53727] rounded disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 rounded disabled:opacity-50"
             onClick={handleSubmit}
             disabled={!text.trim() || isSubmitting}
           >

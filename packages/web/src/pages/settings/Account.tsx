@@ -20,7 +20,7 @@ function Toggle({
       onClick={onChange}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
         disabled ? 'cursor-not-allowed' : ''
-      } ${checked ? 'bg-[#db4c3f]' : 'bg-gray-200 dark:bg-gray-600'}`}
+      } ${checked ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-600'}`}
     >
       <span
         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -97,7 +97,7 @@ export default function Account() {
               type="password"
               value={value}
               onChange={(e) => set(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#db4c3f] focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
         ))}
@@ -108,7 +108,7 @@ export default function Account() {
         <button
           onClick={handleChangePassword}
           disabled={pwSaving || !currentPassword || !newPassword || !confirmPassword}
-          className="px-5 py-2 bg-[#db4c3f] text-white rounded-lg text-sm font-medium hover:bg-[#c53727] disabled:opacity-60 transition-colors"
+          className="px-5 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600 disabled:opacity-60 transition-colors"
         >
           {pwSaving ? 'Saving…' : 'Update password'}
         </button>

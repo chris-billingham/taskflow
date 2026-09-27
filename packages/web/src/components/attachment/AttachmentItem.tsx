@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Download, Trash2, File, FileText, Image, Archive, Code, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { Attachment } from '@/hooks/useFileUpload';
@@ -44,8 +45,10 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
     }
   };
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const handleDelete = async () => {
-    if (!window.confirm(`Delete "${attachment.filename}"?`)) return;
+    setConfirmDelete(false);
     setDeleting(true);
     try {
       await api.delete(`/attachments/${attachment.id}`);
@@ -128,9 +131,10 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
         {isOwn && (
           <button
             className="p-1 rounded hover:bg-red-100 disabled:opacity-50"
-            onClick={handleDelete}
+            onClick={() => setConfirmDelete(true)}
             disabled={deleting}
             title="Delete"
+            aria-label={`Delete ${attachment.filename}`}
           >
             {deleting ? (
               <Loader2 className="w-3.5 h-3.5 text-red-500 animate-spin" />
@@ -140,6 +144,13 @@ export function AttachmentItem({ attachment, currentUserId, onDelete, onImageCli
           </button>
         )}
       </div>
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title="Delete attachment?"
+        message={`"${attachment.filename}" will be deleted for everyone on this task.`}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

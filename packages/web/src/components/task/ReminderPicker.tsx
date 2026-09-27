@@ -187,7 +187,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
               />
               <div className="flex gap-2">
                 <button
-                  className="flex-1 px-2 py-1 text-xs bg-[#db4c3f] text-white rounded hover:bg-[#c53727]"
+                  className="flex-1 px-2 py-1 text-xs bg-primary-500 text-white rounded hover:bg-primary-600"
                   onClick={addCustom}
                 >
                   Add
@@ -218,7 +218,7 @@ export function ReminderPicker({ taskId }: ReminderPickerProps) {
                 are off.{' '}
                 <Link
                   to="/settings/notifications"
-                  className="text-[#db4c3f] hover:underline"
+                  className="text-primary-500 hover:underline"
                 >
                   Enable push
                 </Link>

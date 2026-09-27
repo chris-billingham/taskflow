@@ -14,7 +14,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="flex items-center gap-2 mb-6">
-            <CheckSquare className="w-8 h-8 text-[#db4c3f]" />
+            <CheckSquare className="w-8 h-8 text-primary-500" />
             <span className="text-2xl font-bold text-gray-900 dark:text-white">Taskflow</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h1>

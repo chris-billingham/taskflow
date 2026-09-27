@@ -4,6 +4,7 @@ import {
   Trash2,
   Copy,
   GripVertical,
+  Pencil,
   ChevronDown,
   User,
   GitBranch,
@@ -16,6 +17,7 @@ import { DueDatePicker } from './DueDatePicker';
 import { PriorityPicker } from './PriorityPicker';
 import { LabelBadges } from './LabelPicker';
 import { useTaskActions } from '@/queries/taskActions';
+import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import { useSubtasks } from '@/queries/tasks';
 import { useTaskPanel } from '@/hooks/useTaskPanel';
 import type { Task } from '@/types/task';
@@ -46,12 +48,10 @@ export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: Tas
   const onClick = (t: Task) => openTask(t.id);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(task.content);
-  const [showMenu, setShowMenu] = useState(false);
   // Rows whose subtasks came embedded start open; count-only rows (project
   // lists) start closed, so a long list doesn't fetch every row's subtasks.
   const [expanded, setExpanded] = useState(() => task.subtasks !== undefined);
   const inputRef = useRef<HTMLInputElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEditContent(task.content);
@@ -62,19 +62,6 @@ export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: Tas
       inputRef.current.focus();
     }
   }, [isEditing]);
-
-  useEffect(() => {
-    // Listen only while the menu is open: an always-on listener PER ROW meant
-    // a 500-task list ran ~500 contains() checks on every document click.
-    if (!showMenu) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showMenu]);
 
   const handleSubmitEdit = () => {
     const trimmed = editContent.trim();
@@ -156,7 +143,7 @@ export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: Tas
 
         {/* Content area */}
         <div
-          className="flex-1 min-w-0 py-2.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#db4c3f]/40 rounded"
+          className="flex-1 min-w-0 py-2.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 rounded"
           role="button"
           tabIndex={0}
           aria-label={`Open task: ${task.content}`}
@@ -174,7 +161,7 @@ export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: Tas
           {isEditing ? (
             <input
               ref={inputRef}
-              className="w-full text-sm bg-transparent border-b border-[#db4c3f] outline-none py-0.5"
+              className="w-full text-sm bg-transparent border-b border-primary-500 outline-none py-0.5"
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
               onBlur={handleSubmitEdit}
@@ -256,57 +243,18 @@ export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: Tas
             onChange={(priority) => onUpdate(task.id, { priority })}
           />
 
-          {/* More menu */}
-          <div className="relative" ref={menuRef}>
-            <button
-              className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-              title="Task options"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-            >
-              <MoreHorizontal className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            </button>
-
-            {showMenu && (
-              <div className="absolute top-full right-0 mt-1 z-50 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
-                <button
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditing(true);
-                    setShowMenu(false);
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void duplicateTask(task.id);
-                    setShowMenu(false);
-                  }}
-                >
-                  <Copy className="w-4 h-4" />
-                  Duplicate
-                </button>
-                <hr className="my-1 border-gray-100 dark:border-gray-700" />
-                <button
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void deleteTask(task.id);
-                    setShowMenu(false);
-                  }}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
+          <Menu label="Task options" trigger={<MoreHorizontal className="w-4 h-4" />}>
+            <MenuItem icon={Pencil} onSelect={() => setIsEditing(true)}>
+              Edit
+            </MenuItem>
+            <MenuItem icon={Copy} onSelect={() => void duplicateTask(task.id)}>
+              Duplicate
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem icon={Trash2} tone="danger" onSelect={() => void deleteTask(task.id)}>
+              Delete
+            </MenuItem>
+          </Menu>
         </div>
       </div>
 
