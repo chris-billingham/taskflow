@@ -61,6 +61,7 @@ describe('POST /api/v1/auth/register', () => {
       user: { id: 'u1', email: 'new@example.com', name: 'New User' },
       accessToken: 'access-tok',
       refreshToken: 'refresh-tok',
+      verificationRequired: false,
     } as never);
 
     const response = await app.inject({
@@ -81,6 +82,25 @@ describe('POST /api/v1/auth/register', () => {
     // Refresh token must not be in the response body — it's set as a cookie
     expect(body.data.refreshToken).toBeUndefined();
     expect(response.headers['set-cookie']).toBeDefined();
+  });
+
+  it('creates no session when the address must be verified first', async () => {
+    vi.mocked(authService.register).mockResolvedValue({
+      user: { id: 'u2', email: 'verify@example.com', name: 'Verify Me' },
+      verificationRequired: true,
+    } as never);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { name: 'Verify Me', email: 'verify@example.com', password: 'Password123!' },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.data.verificationRequired).toBe(true);
+    expect(body.data.accessToken).toBeUndefined();
+    expect(response.headers['set-cookie']).toBeUndefined();
   });
 
   it('returns 409 when email already exists', async () => {

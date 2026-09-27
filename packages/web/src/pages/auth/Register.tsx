@@ -74,6 +74,7 @@ export default function Register() {
   const [searchParams] = useSearchParams();
   const registerUser = useAuthStore((s) => s.register);
   const [error, setError] = useState('');
+  const [verifyEmailSentTo, setVerifyEmailSentTo] = useState<string | null>(null);
 
   const rawRedirect = searchParams.get('redirect');
   const redirect =
@@ -96,7 +97,15 @@ export default function Register() {
   const onSubmit = async (formData: RegisterForm) => {
     try {
       setError('');
-      await registerUser(formData.name, formData.email, formData.password);
+      const { verificationRequired } = await registerUser(
+        formData.name,
+        formData.email,
+        formData.password,
+      );
+      if (verificationRequired) {
+        setVerifyEmailSentTo(formData.email);
+        return;
+      }
       navigate(redirect || '/today', { replace: true });
     } catch (err: any) {
       setError(
@@ -105,6 +114,22 @@ export default function Register() {
       );
     }
   };
+
+  if (verifyEmailSentTo) {
+    return (
+      <AuthLayout title="Check your email" subtitle="One more step to finish signing up">
+        <Alert variant="success">
+          We sent a verification link to <strong>{verifyEmailSentTo}</strong>. Open it to
+          confirm your address, then sign in.
+        </Alert>
+        <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+          <Link to="/login" className="text-[#db4c3f] hover:text-[#c53727] font-medium">
+            Go to sign in
+          </Link>
+        </p>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout

@@ -37,9 +37,18 @@ export async function authRoutes(app: FastifyInstance) {
       throw new ValidationError(result.error.issues[0].message);
     }
 
-    const { user, accessToken, refreshToken } = await authService.register(result.data);
-    reply.setCookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions);
-    return reply.status(201).send({ success: true, data: { user, accessToken } });
+    const registered = await authService.register(result.data);
+    if (registered.verificationRequired) {
+      // Account created, verification email sent; no session until verified.
+      return reply
+        .status(201)
+        .send({ success: true, data: { user: registered.user, verificationRequired: true } });
+    }
+    reply.setCookie(REFRESH_COOKIE, registered.refreshToken, refreshCookieOptions);
+    return reply.status(201).send({
+      success: true,
+      data: { user: registered.user, accessToken: registered.accessToken, verificationRequired: false },
+    });
   });
 
   app.post('/login', {

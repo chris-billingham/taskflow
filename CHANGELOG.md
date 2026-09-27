@@ -81,6 +81,18 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 #### September review
 
+- **Unverified accounts could stay signed in indefinitely.** With email
+  verification on, registration still issued a session and refresh never
+  checked `emailVerified`; only password sign-in was blocked. Registration
+  now creates the account without a session and the page asks the user to
+  check their inbox; refresh refuses unverified accounts (`EMAIL_NOT_VERIFIED`).
+- **Tasks added on a calendar day or under an Upcoming day could land a year
+  out,** and a week-view slot's time ended up in the task name. Quick Add now
+  takes an exact `dueDate`/`dueTime` from those views, and a typed month/day
+  that falls today means today.
+- **Deleting a project from the sidebar didn't ask first.** It now confirms,
+  like the project header. The invite dialog's Guest description is accurate
+  (comment access to every team project).
 - **Due-soon and overdue notifications stopped for everyone once an instance
   had more than 500 stale overdue tasks.** The hourly job read one fixed batch
   of the 500 oldest due tasks and never skipped already-notified ones, so the

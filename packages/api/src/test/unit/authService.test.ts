@@ -157,6 +157,8 @@ describe('register', () => {
       email: TEST_USER.email,
       name: TEST_USER.name,
     });
+    expect(result.verificationRequired).toBe(false);
+    if (result.verificationRequired) throw new Error('expected a session');
     expect(result.accessToken).toBe('access-token-xyz');
     expect(result.refreshToken).toBe('refresh-token-xyz');
   });
@@ -184,7 +186,13 @@ describe('register', () => {
 
   it('requires verification and emails a token when the mailer is ready', async () => {
     mockIsMailerReady.mockReturnValue(true);
-    await register({ name: 'User', email: 'u@e.com', password: 'pw123456' });
+    const result = await register({ name: 'User', email: 'u@e.com', password: 'pw123456' });
+
+    // No session before the address is verified.
+    expect(result.verificationRequired).toBe(true);
+    expect(result).not.toHaveProperty('accessToken');
+    expect(result).not.toHaveProperty('refreshToken');
+    expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
 
     const created = mockPrisma.user.create.mock.calls[0][0].data;
     expect(created.emailVerified).toBe(false);
@@ -307,6 +315,16 @@ describe('refreshTokens', () => {
     const result = await refreshTokens('valid-refresh-token');
     expect(result.accessToken).toBe('new-access-token');
     expect(result.refreshToken).toBe('new-refresh-token');
+  });
+
+  it('refuses to renew a session for an unverified account', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ ...TEST_USER, emailVerified: false });
+
+    const err = await refreshTokens('valid-refresh-token').catch((e) => e);
+
+    expect(err).toBeInstanceOf(UnauthorizedError);
+    expect(err.code).toBe('EMAIL_NOT_VERIFIED');
+    expect(mockGenerateAccessToken).not.toHaveBeenCalled();
   });
 
   it('looks the stored token up by hash and stores only the new hash', async () => {

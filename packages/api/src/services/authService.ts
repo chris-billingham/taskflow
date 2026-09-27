@@ -142,12 +142,16 @@ export async function register(data: RegisterInput) {
     sendInBackground('verification email', () =>
       sendVerificationEmail(user.email, user.name, rawVerifyToken),
     );
+    // No session until the address is proven: signing the user in here let
+    // an unverified account stay signed in indefinitely via refresh.
+    return { user: publicUser(user), verificationRequired: true as const };
   }
 
   const tokens = await createTokenPair(user);
 
   return {
     user: publicUser(user),
+    verificationRequired: false as const,
     ...tokens,
   };
 }
@@ -228,6 +232,15 @@ export async function refreshTokens(refreshToken: string) {
     if (!user.isActive) {
       await tx.refreshToken.deleteMany({ where: { userId: user.id } });
       throw new UnauthorizedError('This account has been deactivated');
+    }
+
+    // Sessions only belong to verified accounts. Registration no longer issues
+    // one before verification; this also ends any issued before that change.
+    if (!user.emailVerified) {
+      throw new UnauthorizedError(
+        'Please verify your email address before signing in',
+        'EMAIL_NOT_VERIFIED',
+      );
     }
 
     return user;

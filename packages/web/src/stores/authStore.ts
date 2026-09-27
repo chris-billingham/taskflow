@@ -27,7 +27,12 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  /** Resolves to whether the address must be verified before signing in. */
+  register: (
+    name: string,
+    email: string,
+    password: string,
+  ) => Promise<{ verificationRequired: boolean }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   updateUser: (data: Partial<User>) => void;
@@ -84,11 +89,14 @@ export const useAuthStore = create<AuthState>()(
           email,
           password,
         });
-        const { user, accessToken } = data.data;
+        const { user, accessToken, verificationRequired } = data.data;
+        // Verification required: the account exists but has no session yet.
+        if (verificationRequired) return { verificationRequired: true };
 
         setAccessToken(accessToken);
         // Refresh token is set as an httpOnly cookie by the server
         set({ user, isAuthenticated: true, isLoading: false });
+        return { verificationRequired: false };
       },
 
       logout: async () => {
