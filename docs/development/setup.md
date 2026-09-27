@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Node.js >= 22.12, 24 LTS recommended ([nvm](https://github.com/nvm-sh/nvm) recommended)
-- pnpm >= 8: `npm install -g pnpm`
+- pnpm 10: `corepack enable` (uses the version pinned in `package.json`) or `npm install -g pnpm@10`
 - Docker >= 24 with Compose v2
 
 ## Setup

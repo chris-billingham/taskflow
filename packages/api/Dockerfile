@@ -14,7 +14,7 @@ RUN apk add --no-cache openssl
 
 # Pin the exact pnpm from package.json's packageManager field. Installing pnpm@9
 # globally against a v6 lockfile + --frozen-lockfile diverges from CI/dev (pnpm 8).
-RUN corepack enable && corepack prepare pnpm@8.15.1 --activate
+RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
 
 # Cache dependency layer
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
@@ -38,7 +38,8 @@ RUN pnpm --filter @taskflow/api build
 # this pruning — install/upgrade run `npx prisma migrate deploy` inside this
 # image, and without a local install npx would download WHATEVER the latest
 # Prisma major is from npmjs.org at migration time (or die without egress).
-RUN pnpm deploy --filter @taskflow/api --prod /build/deploy
+# --legacy: pnpm 10's deploy otherwise requires inject-workspace-packages.
+RUN pnpm deploy --legacy --filter @taskflow/api --prod /build/deploy
 
 # Overlay compiled output
 RUN cp -r packages/api/dist /build/deploy/dist

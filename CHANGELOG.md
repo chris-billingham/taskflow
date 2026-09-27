@@ -51,6 +51,17 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   Prisma binary directly instead of through `npx`.
 - Removed unused API dependencies: `@fastify/websocket`, `@fastify/jwt`, a
   direct `pino`; `pino-pretty` is dev-only and no longer ships in the image.
+- **pnpm 10 and Turbo 2.** Lockfile v9; dependency install scripts are
+  allow-listed (`pnpm.onlyBuiltDependencies`: the Prisma packages, esbuild,
+  msgpackr-extract); the API image deploys with `pnpm deploy --legacy`.
+  `turbo.json` uses `tasks`, with loose env mode to keep today's behaviour.
+  **Local setup:** run `corepack enable` (or `npm i -g pnpm@10`); pnpm 8
+  can't read the new lockfile.
+- Prisma 6's config loader pins `deepmerge-ts` 7.1.5 (GHSA-ggr8-5vv4-36mx,
+  stack exhaustion on deeply nested input). A scoped override,
+  `@prisma/config>deepmerge-ts: 8.0.2`, removes it; `prisma generate`,
+  `validate` and `migrate deploy` were checked against it. Drop the override
+  when Prisma ships a fixed version.
 
 ### Fixed
 

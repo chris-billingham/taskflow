@@ -53,7 +53,7 @@ import**.
 ### Prerequisites
 
 - **Node.js** >= 22.12 (24 LTS recommended — see `.nvmrc`)
-- **pnpm** >= 8 (`npm install -g pnpm`)
+- **pnpm** 10 (`corepack enable`, which picks up the version pinned in `package.json`, or `npm install -g pnpm@10`)
 - **Docker** >= 24 with Compose v2
 
 ### 1. Clone and install

@@ -3,7 +3,7 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Pin the exact pnpm from package.json's packageManager field (matches CI/dev, pnpm 8).
-RUN corepack enable && corepack prepare pnpm@8.15.1 --activate
+RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
 
 # Cache dependency layer
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./

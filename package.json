@@ -21,12 +21,27 @@
     "eslint-plugin-react-hooks": "^5",
     "globals": "^17.7.0",
     "prettier": "^3.2.4",
-    "turbo": "^1.12.4",
+    "turbo": "^2.11.4",
     "typescript-eslint": "^8"
   },
-  "packageManager": "pnpm@8.15.1",
+  "packageManager": "pnpm@10.34.5",
   "engines": {
     "node": ">=22.12.0",
-    "pnpm": ">=8.0.0"
+    "pnpm": ">=10.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "msgpackr-extract",
+      "prisma"
+    ],
+    "ignoredBuiltDependencies": [
+      "msw"
+    ],
+    "overrides": {
+      "@prisma/config>deepmerge-ts": "8.0.2"
+    }
   }
 }
