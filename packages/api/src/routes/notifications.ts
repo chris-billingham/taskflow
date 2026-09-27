@@ -16,7 +16,7 @@ const markReadSchema = z.object({
 });
 
 const subscribePushSchema = z.object({
-  endpoint: z.string().url('Invalid endpoint URL'),
+  endpoint: z.url('Invalid endpoint URL'),
   keys: z.object({
     p256dh: z.string().min(1),
     auth: z.string().min(1),
@@ -24,7 +24,7 @@ const subscribePushSchema = z.object({
 });
 
 const unsubscribePushSchema = z.object({
-  endpoint: z.string().url('Invalid endpoint URL'),
+  endpoint: z.url('Invalid endpoint URL'),
 });
 
 export async function notificationRoutes(app: FastifyInstance) {

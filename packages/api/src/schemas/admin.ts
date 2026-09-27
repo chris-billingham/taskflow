@@ -23,7 +23,7 @@ export const listUsersQuerySchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z.email('Invalid email address'),
   name: z.string().min(1, 'Name is required').max(100),
   // Omit to have the server generate one and return it once.
   password: passwordSchema.optional(),

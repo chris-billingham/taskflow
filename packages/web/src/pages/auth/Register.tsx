@@ -35,12 +35,10 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
 const registerSchema = z
   .object({
     name: z.string().min(1, 'Name is required'),
-    email: z.string().email('Please enter a valid email address'),
+    email: z.email('Please enter a valid email address'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
-    acceptTerms: z.literal(true, {
-      errorMap: () => ({ message: 'You must accept the terms' }),
-    }),
+    acceptTerms: z.literal(true, { error: 'You must accept the terms' }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

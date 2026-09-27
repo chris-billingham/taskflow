@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createReminderSchema = z.object({
   taskId: z.string().min(1, 'Task ID is required'),
   type: z.enum(['ABSOLUTE', 'RELATIVE']),
-  triggerAt: z.string().datetime().optional(),
+  triggerAt: z.iso.datetime().optional(),
   minutesBefore: z.number().int().min(1).max(40320).optional(), // max 4 weeks
   method: z.enum(['PUSH', 'EMAIL']).optional(),
 }).refine(

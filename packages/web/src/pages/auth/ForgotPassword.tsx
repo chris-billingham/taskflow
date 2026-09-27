@@ -11,7 +11,7 @@ import { Alert } from '@/components/ui/Alert';
 import api from '@/services/api';
 
 const forgotSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.email('Please enter a valid email address'),
 });
 
 type ForgotForm = z.infer<typeof forgotSchema>;

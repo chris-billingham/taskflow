@@ -11,7 +11,7 @@ export const updateWorkspaceSchema = z.object({
 });
 
 export const inviteMemberSchema = z.object({
-  email: z.string().email('Valid email is required'),
+  email: z.email('Valid email is required'),
   role: z.enum(['ADMIN', 'MEMBER', 'GUEST']).default('MEMBER'),
 });
 

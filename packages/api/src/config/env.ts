@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url().default('redis://localhost:6379'),
+  DATABASE_URL: z.url(),
+  REDIS_URL: z.url().default('redis://localhost:6379'),
   JWT_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
@@ -52,7 +52,7 @@ const envSchema = z.object({
   SMTP_FROM: z.string().optional(),
   // Public base URL of the web app, used for links in emails. Falls back to
   // CORS_ORIGIN (which is the web origin in every shipped topology).
-  APP_URL: z.string().url().optional(),
+  APP_URL: z.url().optional(),
   // Comma-separated addresses designated instance administrators. Promote-only
   // and idempotent: listed accounts are promoted at boot (and any matching
   // sign-up is created as an admin), but nothing here ever demotes, deletes or

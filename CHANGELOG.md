@@ -4,6 +4,13 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Phase 2: API contract
+
+- `buildApp()` factory: integration tests now run the real app (plugins,
+  error handler, routes) instead of per-file copies.
+- Zod 4 in the API and web app (`@hookform/resolvers` 5); string formats use
+  the top-level `z.email()` / `z.url()` / `z.iso.datetime()`.
+
 ### Phase 1: safety net
 
 - **CI now boots the production stack and runs the end-to-end suite against
