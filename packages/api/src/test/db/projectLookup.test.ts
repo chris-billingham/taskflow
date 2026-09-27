@@ -139,8 +139,8 @@ describe('reorderProjects', () => {
     await expect(reorderProjects([P.dupTeam, P.team], U.me)).resolves.toBeTruthy();
   });
 
-  it('refuses a guest', async () => {
-    await expect(reorderProjects([P.dupTeam, P.team], U.guest)).rejects.toBeInstanceOf(ForbiddenError);
+  it('lets a guest arrange their own view of the projects they can see', async () => {
+    await expect(reorderProjects([P.dupTeam, P.team], U.guest)).resolves.toBeTruthy();
   });
 
   it('refuses projects the user cannot see', async () => {

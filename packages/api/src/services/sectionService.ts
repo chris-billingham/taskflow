@@ -7,6 +7,7 @@ import {
   broadcastSectionUpdated,
   broadcastSectionDeleted,
 } from './syncService.js';
+import { saveSectionSettings, sectionSettingsInclude, withSectionSettings } from './userSettings.js';
 
 async function requireSectionAccess(
   sectionId: string,
@@ -27,15 +28,21 @@ async function requireSectionAccess(
 export async function getProjectSections(projectId: string, userId: string) {
   await requireProjectAccess(projectId, userId, 'VIEW');
 
-  return prisma.section.findMany({
+  const sections = await prisma.section.findMany({
     where: { projectId },
     orderBy: { sortOrder: 'asc' },
-    include: {
-      _count: {
-        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
-      },
-    },
+    include: sectionInclude(userId),
   });
+  return sections.map((section) => withSectionSettings(section));
+}
+
+function sectionInclude(userId: string) {
+  return {
+    ...sectionSettingsInclude(userId),
+    _count: {
+      select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
+    },
+  };
 }
 
 export async function createSection(data: CreateSectionInput, userId: string) {
@@ -53,16 +60,13 @@ export async function createSection(data: CreateSectionInput, userId: string) {
       projectId: data.projectId,
       sortOrder: data.sortOrder ?? (maxSort._max.sortOrder ?? 0) + 1,
     },
-    include: {
-      _count: {
-        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
-      },
-    },
+    include: sectionInclude(userId),
   });
 
-  broadcastSectionCreated(section);
+  const result = withSectionSettings(section);
+  broadcastSectionCreated(result);
 
-  return section;
+  return result;
 }
 
 export async function updateSection(
@@ -70,18 +74,22 @@ export async function updateSection(
   data: UpdateSectionInput,
   userId: string,
 ) {
-  await requireSectionAccess(id, userId, 'EDIT');
+  // Collapsing is the caller's own view of the section; renaming or moving
+  // it changes it for everyone.
+  const { isCollapsed, ...shared } = data;
+  const changesShared = Object.values(shared).some((v) => v !== undefined);
+  await requireSectionAccess(id, userId, changesShared ? 'EDIT' : 'VIEW');
 
-  const section = await prisma.section.update({
-    where: { id },
-    data,
-    include: {
-      _count: {
-        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
-      },
-    },
-  });
+  if (isCollapsed !== undefined) await saveSectionSettings(userId, id, { isCollapsed });
+  if (!changesShared) {
+    return withSectionSettings(
+      await prisma.section.findUniqueOrThrow({ where: { id }, include: sectionInclude(userId) }),
+    );
+  }
 
+  const section = withSectionSettings(
+    await prisma.section.update({ where: { id }, data: shared, include: sectionInclude(userId) }),
+  );
   broadcastSectionUpdated(section);
 
   return section;

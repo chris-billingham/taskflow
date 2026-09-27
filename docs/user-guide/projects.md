@@ -49,7 +49,7 @@ Sections divide a project into groups (for example "To Do", "In Progress", "Done
 - Click **Add section** at the top of a project. A section called "New section" is added. Click its name to rename it.
 - Drag sections by the handle (⠿) next to their name to reorder them.
 - Typing in a section's **Add task** box understands the same shortcuts as Quick Add (`p1`, `tomorrow`, `@label`…), and the task lands in that section.
-- Click the arrow next to a section to collapse it.
+- Click the arrow next to a section to collapse it. Collapsing is just for you: others still see the section open.
 - In the Board view, each section is a column. Drag tasks between columns to move them, and use **Add section** at the end of the board to add a column.
 - Deleting a section keeps its tasks. They move out of the section.
 
@@ -58,6 +58,8 @@ Sections divide a project into groups (for example "To Do", "In Progress", "Done
 - Drag projects in the sidebar to reorder them.
 - Use a project's **⋯** menu → **Add to favorites** to pin it under **Favorites**.
 - **Edit project** in the same menu changes the name, color and default view.
+
+Your sidebar order and favorites are your own. Rearranging or starring a shared project doesn't change anyone else's sidebar, and even people who can only view a project can arrange it for themselves. Projects you haven't placed yourself, such as new ones, appear at the end.
 
 ## Duplicating a Project
 

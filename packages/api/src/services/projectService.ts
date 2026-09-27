@@ -15,13 +15,21 @@ import {
   broadcastProjectDeleted,
 } from './syncService.js';
 import { logFailure } from '../config/logger.js';
+import {
+  projectSettingsInclude,
+  sectionSettingsInclude,
+  saveProjectSettings,
+  withProjectSettings,
+} from './userSettings.js';
 
 export async function getUserProjects(userId: string) {
   const projects = await prisma.project.findMany({
     where: projectAccessWhere(userId),
     include: {
+      ...projectSettingsInclude(userId),
       sections: {
         orderBy: { sortOrder: 'asc' },
+        include: sectionSettingsInclude(userId),
       },
       _count: {
         select: {
@@ -35,7 +43,7 @@ export async function getUserProjects(userId: string) {
     orderBy: { sortOrder: 'asc' },
   });
 
-  return projects;
+  return projects.map((project) => withProjectSettings(project));
 }
 
 export async function getProjectById(id: string, userId: string) {
@@ -44,9 +52,11 @@ export async function getProjectById(id: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: { id },
     include: {
+      ...projectSettingsInclude(userId),
       sections: {
         orderBy: { sortOrder: 'asc' },
         include: {
+          ...sectionSettingsInclude(userId),
           _count: {
             select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
           },
@@ -68,7 +78,7 @@ export async function getProjectById(id: string, userId: string) {
     throw new NotFoundError('Project not found');
   }
 
-  return project;
+  return withProjectSettings(project);
 }
 
 /**
@@ -128,7 +138,8 @@ export async function createProject(data: CreateProjectInput, userId: string) {
       sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
     },
     include: {
-      sections: true,
+      ...projectSettingsInclude(userId),
+      sections: { include: sectionSettingsInclude(userId) },
       _count: {
         select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
       },
@@ -148,7 +159,7 @@ export async function createProject(data: CreateProjectInput, userId: string) {
 
   broadcastProjectUpdated(project);
 
-  return project;
+  return withProjectSettings(project);
 }
 
 export async function updateProject(
@@ -156,27 +167,39 @@ export async function updateProject(
   data: UpdateProjectInput,
   userId: string,
 ) {
-  const oldProject = await requireProjectAccess(id, userId, 'ADMIN');
-  if (data.parentId !== undefined && data.parentId !== oldProject.parentId) {
+  // Favourite and order are the caller's own arrangement: anyone who can see
+  // the project may change them. Everything else changes it for everyone.
+  const { isFavorite, sortOrder, ...shared } = data;
+  const changesShared = Object.values(shared).some((v) => v !== undefined);
+
+  const oldProject = await requireProjectAccess(id, userId, changesShared ? 'ADMIN' : 'VIEW');
+  if (shared.parentId !== undefined && shared.parentId !== oldProject.parentId) {
     if (oldProject.isInbox) throw new ValidationError('The Inbox cannot be nested');
-    if (data.parentId) await assertValidParent(data.parentId, userId, oldProject);
+    if (shared.parentId) await assertValidParent(shared.parentId, userId, oldProject);
   }
 
-  const project = await prisma.project.update({
-    where: { id },
-    data,
-    include: {
-      sections: {
-        orderBy: { sortOrder: 'asc' },
-      },
-      _count: {
-        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
-      },
-      children: {
-        select: { id: true },
-      },
+  if (isFavorite !== undefined || sortOrder !== undefined) {
+    await saveProjectSettings(userId, id, { isFavorite, sortOrder });
+  }
+
+  const include = {
+    ...projectSettingsInclude(userId),
+    sections: {
+      orderBy: { sortOrder: 'asc' as const },
+      include: sectionSettingsInclude(userId),
     },
-  });
+    _count: {
+      select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
+    },
+    children: {
+      select: { id: true },
+    },
+  };
+  if (!changesShared) {
+    return withProjectSettings(await prisma.project.findUniqueOrThrow({ where: { id }, include }));
+  }
+
+  const project = await prisma.project.update({ where: { id }, data: shared, include });
 
   logActivity({
     action: 'UPDATED',
@@ -184,12 +207,12 @@ export async function updateProject(
     entityId: id,
     userId,
     oldData: { id: oldProject.id },
-    newData: data as Record<string, unknown>,
+    newData: shared as Record<string, unknown>,
   }).catch(logFailure('activity log failed'));
 
   broadcastProjectUpdated(project);
 
-  return project;
+  return withProjectSettings(project);
 }
 
 export async function deleteProject(id: string, userId: string) {
@@ -236,6 +259,7 @@ export async function archiveProject(id: string, userId: string) {
   const project = await prisma.project.update({
     where: { id },
     data: { isArchived: true },
+    include: projectSettingsInclude(userId),
   });
 
   logActivity({
@@ -248,7 +272,7 @@ export async function archiveProject(id: string, userId: string) {
 
   broadcastProjectUpdated(project);
 
-  return project;
+  return withProjectSettings(project);
 }
 
 export async function unarchiveProject(id: string, userId: string) {
@@ -257,6 +281,7 @@ export async function unarchiveProject(id: string, userId: string) {
   const project = await prisma.project.update({
     where: { id },
     data: { isArchived: false },
+    include: projectSettingsInclude(userId),
   });
 
   logActivity({
@@ -269,7 +294,7 @@ export async function unarchiveProject(id: string, userId: string) {
 
   broadcastProjectUpdated(project);
 
-  return project;
+  return withProjectSettings(project);
 }
 
 export async function getProjectMembers(projectId: string, userId: string) {
@@ -459,22 +484,22 @@ export async function duplicateProject(
     return created;
   }, { timeout: 30_000 });
 
-  return prisma.project.findUniqueOrThrow({
+  const copy = await prisma.project.findUniqueOrThrow({
     where: { id: duplicate.id },
     include: {
-      sections: { orderBy: { sortOrder: 'asc' } },
+      ...projectSettingsInclude(userId),
+      sections: { orderBy: { sortOrder: 'asc' }, include: sectionSettingsInclude(userId) },
       _count: {
         select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
       },
       children: { select: { id: true } },
     },
   });
+  return withProjectSettings(copy);
 }
 
 export async function reorderProjects(projectIds: string[], userId: string) {
-  // sortOrder is shared by everyone who sees the project, so reordering needs
-  // EDIT on each one (workspace MEMBERs can arrange the team's projects;
-  // GUESTs and project VIEWERs can't rearrange them for everybody).
+  // The order is the caller's own, so seeing each project is enough.
   const projects = await prisma.project.findMany({
     where: { id: { in: projectIds } },
     select: { id: true, ownerId: true, workspaceId: true },
@@ -483,20 +508,20 @@ export async function reorderProjects(projectIds: string[], userId: string) {
 
   if (
     projects.length !== new Set(projectIds).size ||
-    !projects.every((p) => levelSatisfies(levels.get(p.id), 'EDIT'))
+    !projects.every((p) => levelSatisfies(levels.get(p.id), 'VIEW'))
   ) {
     throw new ForbiddenError('You do not have access to all specified projects');
   }
 
-  // Update sortOrder for each project
-  const updates = projectIds.map((id, index) =>
-    prisma.project.update({
-      where: { id },
-      data: { sortOrder: index },
-    }),
+  await prisma.$transaction(
+    projectIds.map((projectId, index) =>
+      prisma.projectUserSetting.upsert({
+        where: { userId_projectId: { userId, projectId } },
+        create: { userId, projectId, sortOrder: index },
+        update: { sortOrder: index },
+      }),
+    ),
   );
-
-  await prisma.$transaction(updates);
 
   return { message: 'Projects reordered successfully' };
 }

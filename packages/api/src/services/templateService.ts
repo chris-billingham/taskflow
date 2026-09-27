@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/database.js';
+import { projectSettingsInclude, sectionSettingsInclude, withProjectSettings } from './userSettings.js';
 import { DEFAULT_TEMPLATES } from '../config/defaultTemplates.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 import type {
@@ -327,14 +328,16 @@ export async function applyTemplate(
       }
     }
 
-    return tx.project.findUniqueOrThrow({
+    const created = await tx.project.findUniqueOrThrow({
       where: { id: project.id },
       include: {
-        sections: { orderBy: { sortOrder: 'asc' } },
+        ...projectSettingsInclude(userId),
+        sections: { orderBy: { sortOrder: 'asc' }, include: sectionSettingsInclude(userId) },
         _count: { select: { tasks: { where: { isCompleted: false, deletedAt: null } } } },
         children: { select: { id: true } },
       },
     });
+    return withProjectSettings(created);
     // Large templates legitimately exceed Prisma's 5s default.
   }, { timeout: 30_000 });
 }

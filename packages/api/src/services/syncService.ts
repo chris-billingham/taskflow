@@ -17,9 +17,12 @@ export function broadcastProjectUpdated(project: {
   workspaceId?: string | null;
   [key: string]: unknown;
 }): void {
-  emitToProject(project.id, WS_EVENTS.PROJECT_UPDATED, { project });
+  // Only what everyone shares: favourite, order and section collapse are each
+  // viewer's own, so the actor's values must not overwrite anyone else's.
+  const { isFavorite: _f, sortOrder: _s, sections: _sections, userSettings: _u, ...shared } = project;
+  emitToProject(project.id, WS_EVENTS.PROJECT_UPDATED, { project: shared });
   if (project.workspaceId) {
-    emitToWorkspace(project.workspaceId, WS_EVENTS.PROJECT_UPDATED, { project });
+    emitToWorkspace(project.workspaceId, WS_EVENTS.PROJECT_UPDATED, { project: shared });
   }
 }
 
@@ -41,7 +44,8 @@ export function broadcastSectionUpdated(section: {
   projectId: string;
   [key: string]: unknown;
 }): void {
-  emitToProject(section.projectId, WS_EVENTS.SECTION_UPDATED, { section });
+  const { isCollapsed: _c, userSettings: _u, ...shared } = section;
+  emitToProject(section.projectId, WS_EVENTS.SECTION_UPDATED, { section: shared });
 }
 
 export function broadcastSectionDeleted(sectionId: string, projectId: string): void {

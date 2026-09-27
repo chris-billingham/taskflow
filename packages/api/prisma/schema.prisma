@@ -127,6 +127,8 @@ model User {
   attachments       Attachment[]      @relation("AttachmentUploader")
   templates         Template[]
   activityLogs      ActivityLog[]
+  projectSettings   ProjectUserSetting[]
+  sectionSettings   SectionUserSetting[]
 
   @@index([email])
   // The admin console filters on both; also backs the "is there another
@@ -246,6 +248,7 @@ model Project {
   sections  Section[]
   tasks     Task[]
   comments  Comment[]       @relation("ProjectComments")
+  userSettings ProjectUserSetting[]
 
   @@index([ownerId])
   @@index([workspaceId])
@@ -284,9 +287,46 @@ model Section {
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks   Task[]
+  userSettings SectionUserSetting[]
 
   @@index([projectId])
   @@map("sections")
+}
+
+// ─── Per-user settings ──────────────────────────────────────────────────────
+
+// How one person arranges a project they can see. These used to be columns on
+// the shared project row, so favouriting or reordering a team project did it
+// for everyone.
+model ProjectUserSetting {
+  userId     String
+  projectId  String
+  isFavorite Boolean  @default(false)
+  // Null until this person reorders; the project's own sortOrder applies.
+  sortOrder  Int?
+  updatedAt  DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, projectId])
+  @@index([projectId])
+  @@map("project_user_settings")
+}
+
+// Whether one person has a section collapsed.
+model SectionUserSetting {
+  userId      String
+  sectionId   String
+  isCollapsed Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, sectionId])
+  @@index([sectionId])
+  @@map("section_user_settings")
 }
 
 // ─── Task ───────────────────────────────────────────────────────────────────
