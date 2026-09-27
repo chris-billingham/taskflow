@@ -3,7 +3,6 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import helmet from '@fastify/helmet';
-import websocket from '@fastify/websocket';
 import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
@@ -83,7 +82,6 @@ await server.register(rateLimit, {
   nameSpace: 'rl:',
 });
 
-await server.register(websocket);
 await server.register(multipart, {
   limits: { fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024 },
 });
