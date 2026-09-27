@@ -19,6 +19,8 @@ import { TaskList } from '@/components/task/TaskList';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { CalendarView } from '@/components/views/CalendarView';
 import { BoardView } from '@/components/views/BoardView';
+import { BoardGroupingMenu, GroupedBoard, useBoardGrouping } from '@/components/views/GroupedBoard';
+import type { BoardGrouping } from '@/stores/uiStore';
 import { useProject, useProjectActions, useSectionActions } from '@/queries/projects';
 import { useProjectRoom } from '@/hooks/useProjectRoom';
 import { useProjectTasks } from '@/queries/tasks';
@@ -26,6 +28,8 @@ import { useTaskActions } from '@/queries/taskActions';
 import type { Task } from '@/types/task';
 
 const UNSECTIONED = '__unsectioned__';
+
+const PROJECT_GROUPINGS: BoardGrouping[] = ['section', 'priority', 'assignee', 'dueDate'];
 
 export default function Project() {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +43,7 @@ export default function Project() {
   const { createSection, updateSection, deleteSection, reorderSections } = useSectionActions(id);
 
   const { tasks, hasMore, loadingMore, loadMore } = useProjectTasks(id);
+  const [grouping, setGrouping] = useBoardGrouping(`project:${id}`, 'section');
   const { quickAddTask, moveTask, reorderTasks } = useTaskActions();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -177,15 +182,24 @@ export default function Project() {
       {project.viewStyle === 'CALENDAR' ? (
         <CalendarView tasks={ordered} defaultProjectId={project.id} />
       ) : project.viewStyle === 'BOARD' ? (
-        <BoardView
-          tasks={ordered}
-          sections={sections}
-          projectId={project.id}
-          onCreateSection={createSection}
-          onUpdateSection={updateSection}
-          onDeleteSection={deleteSection}
-          onReorderSections={reorderSections}
-        />
+        <>
+          <div className="flex justify-end -mb-2">
+            <BoardGroupingMenu value={grouping} options={PROJECT_GROUPINGS} onChange={setGrouping} />
+          </div>
+          {grouping === 'section' ? (
+            <BoardView
+              tasks={ordered}
+              sections={sections}
+              projectId={project.id}
+              onCreateSection={createSection}
+              onUpdateSection={updateSection}
+              onDeleteSection={deleteSection}
+              onReorderSections={reorderSections}
+            />
+          ) : (
+            <GroupedBoard tasks={ordered.filter((t) => !t.parentId)} grouping={grouping} />
+          )}
+        </>
       ) : (
         <DndContext
           sensors={sensors}

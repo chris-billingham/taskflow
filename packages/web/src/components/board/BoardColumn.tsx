@@ -17,7 +17,10 @@ interface BoardColumnProps {
   title: string;
   tasks: Task[];
   isVirtual?: boolean;
-  onCreateTask: (content: string) => Promise<void>;
+  /** Columns that can't take a dropped card (e.g. "Overdue" on a date board). */
+  dropDisabled?: boolean;
+  /** Without it, the column has no quick add. */
+  onCreateTask?: (content: string) => Promise<void>;
   onUpdateSection?: (id: string, data: { name?: string }) => void;
   onDeleteSection?: (id: string) => void;
 }
@@ -27,6 +30,7 @@ export function BoardColumn({
   title,
   tasks,
   isVirtual,
+  dropDisabled,
   onCreateTask,
   onUpdateSection,
   onDeleteSection,
@@ -55,6 +59,7 @@ export function BoardColumn({
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: `column-${columnId}`,
     data: { type: 'column', columnId },
+    disabled: dropDisabled,
   });
 
   useEffect(() => {
@@ -198,7 +203,7 @@ export function BoardColumn({
       />
 
       {/* Quick add at bottom */}
-      {!collapsed && (
+      {!collapsed && onCreateTask && (
         <div className="px-2 pb-2">
           <BoardQuickAdd onSubmit={onCreateTask} />
         </div>

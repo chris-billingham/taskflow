@@ -20,7 +20,7 @@ Open a task and click the label button next to **Labels** to pick from your labe
 
 ### Viewing Tasks by Label
 
-Click a label in **Filters & Labels** to see every task with that label, across all projects. The label page has a list view and a calendar view.
+Click a label in **Filters & Labels** to see every task with that label, across all projects. The label page has list, board and calendar views. The board groups tasks by priority, due date, assignee or project; see [grouping a board](projects.md#grouping-a-board). Dragging a card between project columns moves the task to that project.
 
 Star a label to show it in the sidebar.
 
@@ -88,7 +88,7 @@ Apart from `today`, `tomorrow`, `overdue` and `no date`, terms match completed t
 
 ### Using a Filter
 
-Click the filter name in **Filters & Labels**, or star it to show it in the sidebar. The filter page has a list view and a calendar view, and it remembers which one you chose.
+Click the filter name in **Filters & Labels**, or star it to show it in the sidebar. The filter page has list, board and calendar views, and it remembers which one you chose. The board can be grouped by priority, due date, assignee or project, as on a label page.
 
 The filter runs when you open it and again after changes you make on that page. It doesn't update live when tasks change elsewhere. Reopen it to refresh.
 

@@ -29,6 +29,19 @@ Switch views with the icons at the top right of a project:
 
 The view is saved on the project, so everyone who opens it sees the same one.
 
+### Grouping a board
+
+A board has a **Group** menu at its top right. Its columns can be:
+
+| Group by | Columns | Dragging a card to another column |
+|----------|---------|-----------------------------------|
+| Section (default) | **No section**, then each section | Moves the task to that section |
+| Priority | Priority 1 to Priority 4 | Changes its priority |
+| Assignee | **Unassigned**, then each person with a task | Assigns it to that person |
+| Due date | Overdue, Today, Tomorrow, Next 7 days, Later, No date | Sets the date. This works only for **Today**, **Tomorrow** and **No date**, because the other columns cover more than one day. |
+
+Cards within a grouped column are sorted by priority, then due date. The grouping is remembered in your browser, separately for each board.
+
 ## Sections
 
 Sections divide a project into groups (for example "To Do", "In Progress", "Done").

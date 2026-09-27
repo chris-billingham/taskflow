@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { Pencil, Star, Calendar, List } from 'lucide-react';
+import { Pencil, Star } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { TaskList } from '@/components/task/TaskList';
 import { CalendarView } from '@/components/views/CalendarView';
+import { ViewModeToggle, type ViewMode } from '@/components/views/ViewModeToggle';
+import { BoardGroupingMenu, GroupedBoard, useBoardGrouping } from '@/components/views/GroupedBoard';
+import type { BoardGrouping } from '@/stores/uiStore';
+
+const FILTER_GROUPINGS: BoardGrouping[] = ['priority', 'dueDate', 'assignee', 'project'];
 import { useFilters, useFilterActions } from '@/queries/filters';
 import { useFilterTasks } from '@/queries/tasks';
 
@@ -21,15 +26,16 @@ export default function Filter() {
   // Filter.viewStyle is a persisted column (and was already accepted by the
   // API) but the page kept its own local state, so the saved choice was never
   // loaded and never written back. Read it from the filter and persist changes.
-  const viewMode: 'list' | 'calendar' =
-    filter?.viewStyle === 'CALENDAR' ? 'calendar' : 'list';
+  const viewMode: ViewMode =
+    filter?.viewStyle === 'CALENDAR' ? 'calendar' : filter?.viewStyle === 'BOARD' ? 'board' : 'list';
 
-  const setViewMode = (mode: 'list' | 'calendar') => {
+  const setViewMode = (mode: ViewMode) => {
     if (!filter) return;
     void updateFilter(filter.id, {
-      viewStyle: mode === 'calendar' ? 'CALENDAR' : 'LIST',
+      viewStyle: mode === 'calendar' ? 'CALENDAR' : mode === 'board' ? 'BOARD' : 'LIST',
     });
   };
+  const [grouping, setGrouping] = useBoardGrouping(`filter:${id}`, 'priority');
 
 
   if (!filter && !filtersLoading) {
@@ -116,30 +122,7 @@ export default function Filter() {
                 )}
               </button>
             )}
-            <div className="flex items-center gap-0.5 ml-2">
-              <button
-                className={`p-1 rounded transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
-                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                onClick={() => setViewMode('list')}
-                title="List view"
-              >
-                <List className="w-4 h-4" />
-              </button>
-              <button
-                className={`p-1 rounded transition-colors ${
-                  viewMode === 'calendar'
-                    ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
-                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                onClick={() => setViewMode('calendar')}
-                title="Calendar view"
-              >
-                <Calendar className="w-4 h-4" />
-              </button>
-            </div>
+            <ViewModeToggle value={viewMode} onChange={setViewMode} />
           </div>
         )}
       </div>
@@ -158,7 +141,16 @@ export default function Filter() {
         <CalendarView tasks={tasks.filter((t) => !t.parentId)} />
       ) : (
         <>
-          <TaskList tasks={tasks} emptyMessage="No tasks match this filter" />
+          {viewMode === 'board' ? (
+            <>
+              <div className="flex justify-end -mb-2">
+                <BoardGroupingMenu value={grouping} options={FILTER_GROUPINGS} onChange={setGrouping} />
+              </div>
+              <GroupedBoard tasks={tasks} grouping={grouping as Exclude<BoardGrouping, 'section'>} />
+            </>
+          ) : (
+            <TaskList tasks={tasks} emptyMessage="No tasks match this filter" />
+          )}
 
           {hasMore && (
             <div className="flex justify-center py-3">
