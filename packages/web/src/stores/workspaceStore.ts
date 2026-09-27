@@ -1,45 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '@/services/api';
+import type { WorkspaceInvite as ContractWorkspaceInvite, WorkspaceMember as ContractWorkspaceMember, WorkspaceRole, WorkspaceSummary } from '@taskflow/contract';
 
-export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST';
+export type { WorkspaceRole };
 
-export interface WorkspaceMember {
-  id: string;
-  workspaceId: string;
-  userId: string;
-  role: WorkspaceRole;
-  joinedAt: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    avatarUrl: string | null;
-  };
-}
+/** Email is null when a guest is looking: guests see names, not addresses. */
+export type WorkspaceMember = ContractWorkspaceMember;
 
-export interface WorkspaceInvite {
-  id: string;
-  workspaceId: string;
-  email: string;
-  role: WorkspaceRole;
-  token: string;
-  expiresAt: string;
-  createdAt: string;
-}
+export type WorkspaceInvite = ContractWorkspaceInvite;
 
-export interface Workspace {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  avatarUrl: string | null;
-  ownerId: string;
-  role: WorkspaceRole;
-  createdAt: string;
-  updatedAt: string;
-  _count?: { members: number; projects: number };
-}
+/** A workspace you belong to, with your role (counts where the endpoint includes them). */
+export type Workspace = Omit<WorkspaceSummary, '_count'> & { _count?: WorkspaceSummary['_count'] };
 
 interface WorkspaceState {
   workspaces: Workspace[];

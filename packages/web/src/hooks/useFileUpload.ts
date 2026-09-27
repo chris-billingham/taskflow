@@ -1,37 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import api from '@/services/api';
+import { ALLOWED_MIME_TYPES, type Attachment as ContractAttachment } from '@taskflow/contract';
 
-export interface Attachment {
-  id: string;
-  filename: string;
-  mimeType: string;
-  size: number;
-  taskId: string | null;
-  commentId: string | null;
-  uploadedById: string;
-  createdAt: string;
-  uploadedBy: {
-    id: string;
-    name: string;
-    avatarUrl: string | null;
-  };
-}
+export type Attachment = ContractAttachment;
 
-// Keep in sync with ALLOWED_MIME_TYPES in the API (packages/api/src/schemas/attachment.ts).
-// image/svg+xml is intentionally excluded (stored-XSS risk when opened top-level).
-export const ALLOWED_TYPES = new Set([
-  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'text/plain', 'text/csv', 'text/markdown',
-  'application/zip', 'application/x-zip-compressed', 'application/x-tar', 'application/gzip',
-  'application/json',
-]);
+// The API's own list (image/svg+xml is excluded: stored-XSS risk when opened
+// top-level). Used until GET /attachments/limits answers.
+export const ALLOWED_TYPES = ALLOWED_MIME_TYPES;
 
 // Fallback only. The real limit is MAX_FILE_SIZE_MB on the API and is fetched
 // at runtime by useUploadLimits() — hardcoding it here meant raising the

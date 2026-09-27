@@ -1,17 +1,8 @@
 import { create } from 'zustand';
 import api from '@/services/api';
+import type { Notification as ContractNotification } from '@taskflow/contract';
 
-export interface Notification {
-  id: string;
-  userId: string;
-  type: string;
-  title: string;
-  body: string;
-  data: Record<string, unknown> | null;
-  isRead: boolean;
-  readAt: string | null;
-  createdAt: string;
-}
+export type Notification = ContractNotification;
 
 interface NotificationState {
   notifications: Notification[];

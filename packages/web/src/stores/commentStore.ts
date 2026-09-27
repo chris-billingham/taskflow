@@ -1,25 +1,11 @@
 import { create } from 'zustand';
 import api from '@/services/api';
+import type { Comment as ContractComment } from '@taskflow/contract';
 
-export interface CommentAuthor {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl: string | null;
-}
+export type CommentAuthor = ContractComment['author'];
 
-export interface Comment {
-  id: string;
-  content: string;
-  authorId: string;
-  taskId: string | null;
-  projectId: string | null;
-  parentId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  author: CommentAuthor;
-  replies: Comment[];
-}
+/** A top-level comment with its replies (one level deep), as the API sends it. */
+export type Comment = ContractComment;
 
 interface CommentState {
   comments: Map<string, Comment>;

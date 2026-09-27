@@ -1,24 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/services/api';
+import type { Activity } from '@taskflow/contract';
 
-export interface ActivityUser {
-  id: string;
-  name: string;
-  avatarUrl: string | null;
-}
+export type ActivityUser = Activity['user'];
 
-export interface ActivityItem {
-  id: string;
-  userId: string;
-  action: string;
-  entityType: string;
-  entityId: string;
-  oldData: Record<string, unknown> | null;
-  newData: Record<string, unknown> | null;
-  taskId: string | null;
-  createdAt: string;
-  user: ActivityUser;
-}
+export type ActivityItem = Activity;
 
 export function useTaskActivity(taskId: string, limit?: number, refreshKey?: string | number) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);

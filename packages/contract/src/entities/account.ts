@@ -4,6 +4,8 @@ import { notificationTypeSchema } from './notification.js';
 
 export const systemRoleSchema = z.enum(['USER', 'ADMIN']);
 export const workspaceRoleSchema = z.enum(['OWNER', 'ADMIN', 'MEMBER', 'GUEST']);
+export type SystemRole = Wire<typeof systemRoleSchema>;
+export type WorkspaceRole = Wire<typeof workspaceRoleSchema>;
 
 /** The signed-in user as auth endpoints return them. */
 export const authUserSchema = z.object({

@@ -4,6 +4,7 @@
   "private": true,
   "description": "The Taskflow API contract: Zod schemas and types for every request and response, shared by the API, the web app and (via the generated OpenAPI) native clients.",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

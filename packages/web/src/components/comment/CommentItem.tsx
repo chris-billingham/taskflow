@@ -6,7 +6,8 @@ import type { Comment } from '@/stores/commentStore';
 import { CommentEditor } from './CommentEditor';
 
 interface CommentItemProps {
-  comment: Comment;
+  /** A top-level comment, or one of its replies (which have none of their own). */
+  comment: Comment | Omit<Comment, 'replies'>;
   currentUserId: string;
   onEdit: (id: string, content: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -158,7 +159,7 @@ export function CommentItem({
       )}
 
       {/* Nested replies */}
-      {comment.replies && comment.replies.length > 0 && (
+      {'replies' in comment && comment.replies.length > 0 && (
         <div className="mt-2 space-y-2">
           {comment.replies.map((reply) => (
             <CommentItem

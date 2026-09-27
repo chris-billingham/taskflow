@@ -1,54 +1,30 @@
 import { create } from 'zustand';
 import api from '@/services/api';
 import { reportMutationError } from '@/utils/reportError';
+import type { Subtask, TaskDetail, TaskListItem, TodayView, UpcomingView, UserSummary } from '@taskflow/contract';
 
+/** The label parts task rows use; satisfied by full labels and filter results alike. */
 export interface TaskLabel {
   taskId: string;
   labelId: string;
-  label: {
-    id: string;
-    name: string;
-    color: string;
-  };
+  label: { id: string; name: string; color: string };
 }
 
-export interface TaskAssignee {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl: string | null;
-}
+export type TaskAssignee = UserSummary;
 
-export interface Task {
-  id: string;
-  content: string;
-  description: string | null;
-  projectId: string;
-  sectionId: string | null;
-  parentId: string | null;
-  creatorId: string;
-  assigneeId: string | null;
-  dueDate: string | null;
-  dueTime: string | null;
-  deadline: string | null;
-  duration: number | null;
-  isRecurring: boolean;
-  recurrenceRule: string | null;
-  priority: number;
-  isCompleted: boolean;
-  completedAt: string | null;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
+/**
+ * A task as the store holds it. The Map mixes list items, full tasks, detail
+ * responses, filter results and embedded subtasks, so the parts only some
+ * endpoints include are optional here.
+ */
+export type Task = Omit<TaskListItem, 'taskLabels' | '_count'> & {
   taskLabels: TaskLabel[];
-  assignee: TaskAssignee | null;
-  subtasks?: Task[];
-  _count?: { subtasks: number; comments: number };
-  // Extended fields for detail view
-  project?: { id: string; name: string; color: string };
-  section?: { id: string; name: string } | null;
-  parent?: { id: string; content: string } | null;
-}
+  _count?: TaskListItem['_count'];
+  subtasks?: Subtask[];
+  project?: TaskDetail['project'];
+  section?: TaskDetail['section'];
+  parent?: TaskDetail['parent'];
+};
 
 export interface TaskQuery {
   projectId?: string;
@@ -69,37 +45,9 @@ export interface QuickAddDue {
   dueTime?: string; // HH:mm
 }
 
-export interface TodayViewData {
-  overdue: Task[];
-  morning: Task[];
-  afternoon: Task[];
-  evening: Task[];
-  noTime: Task[];
-  counts: {
-    overdue: number;
-    morning: number;
-    afternoon: number;
-    evening: number;
-    noTime: number;
-    /** Everything matching the view, which may exceed what was returned. */
-    total: number;
-    returned: number;
-  };
-  /** True when the server capped the list and `total` exceeds `returned`. */
-  truncated?: boolean;
-}
+export type TodayViewData = TodayView;
 
-export interface UpcomingViewData {
-  overdue: Task[];
-  byDate: Record<string, Task[]>;
-  noDate: Task[];
-  counts: {
-    overdue: number;
-    total: number;
-    returned: number;
-  };
-  truncated?: boolean;
-}
+export type UpcomingViewData = UpcomingView;
 
 interface TaskState {
   tasks: Map<string, Task>;

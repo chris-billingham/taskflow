@@ -1,40 +1,12 @@
 import { create } from 'zustand';
 import api from '@/services/api';
+import type { Template as ContractTemplate, TemplateData as ContractTemplateData } from '@taskflow/contract';
 
-export interface TemplateTask {
-  content: string;
-  description?: string;
-  priority: number;
-  sectionIndex?: number;
-  labels: string[];
-  sortOrder: number;
-  subtasks: Array<{
-    content: string;
-    description?: string;
-    priority: number;
-    labels: string[];
-    sortOrder: number;
-  }>;
-}
+export type TemplateTask = TemplateData['tasks'][number];
 
-export interface TemplateData {
-  project: { name: string; color: string; viewStyle: string };
-  sections: Array<{ name: string; sortOrder: number }>;
-  tasks: TemplateTask[];
-}
+export type TemplateData = ContractTemplateData;
 
-export interface Template {
-  id: string;
-  name: string;
-  description: string | null;
-  data: TemplateData;
-  userId: string | null;
-  workspaceId: string | null;
-  isPublic: boolean;
-  createdAt: string;
-  updatedAt: string;
-  user?: { id: string; name: string; avatarUrl: string | null } | null;
-}
+export type Template = ContractTemplate;
 
 interface TemplateState {
   userTemplates: Template[];

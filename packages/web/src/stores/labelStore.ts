@@ -1,16 +1,9 @@
 import { create } from 'zustand';
 import api from '@/services/api';
+import type { Label as ContractLabel } from '@taskflow/contract';
 
-export interface Label {
-  id: string;
-  name: string;
-  color: string;
-  userId: string;
-  isFavorite: boolean;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-}
+/** A label, exactly as the API sends it. */
+export type Label = ContractLabel;
 
 interface LabelState {
   labels: Map<string, Label>;

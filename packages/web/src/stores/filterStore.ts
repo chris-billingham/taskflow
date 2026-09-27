@@ -1,19 +1,10 @@
 import { create } from 'zustand';
 import api from '@/services/api';
 import type { Task } from '@/stores/taskStore';
+import type { Filter as ContractFilter } from '@taskflow/contract';
 
-export interface Filter {
-  id: string;
-  name: string;
-  query: string;
-  color: string;
-  userId: string;
-  isFavorite: boolean;
-  sortOrder: number;
-  viewStyle: 'LIST' | 'BOARD' | 'CALENDAR';
-  createdAt: string;
-  updatedAt: string;
-}
+/** A saved filter, exactly as the API sends it. */
+export type Filter = ContractFilter;
 
 interface FilterState {
   filters: Map<string, Filter>;

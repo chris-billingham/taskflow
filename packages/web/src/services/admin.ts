@@ -1,34 +1,12 @@
 import api from '@/services/api';
 import type { SystemRole } from '@/stores/authStore';
+import type { AdminStats as ContractAdminStats, AdminUser as ContractAdminUser, AdminUserPage as ContractAdminUserPage } from '@taskflow/contract';
 
-export interface AdminUser {
-  id: string;
-  email: string;
-  name: string;
-  avatarUrl: string | null;
-  role: SystemRole;
-  isActive: boolean;
-  emailVerified: boolean;
-  createdAt: string;
-  updatedAt: string;
-  lastLoginAt: string | null;
-}
+export type AdminUser = ContractAdminUser;
 
-export interface AdminUserPage {
-  users: AdminUser[];
-  total: number;
-  page: number;
-  limit: number;
-  pages: number;
-}
+export type AdminUserPage = ContractAdminUserPage;
 
-export interface AdminStats {
-  total: number;
-  active: number;
-  suspended: number;
-  admins: number;
-  unverified: number;
-}
+export type AdminStats = ContractAdminStats;
 
 export async function fetchStats(): Promise<AdminStats> {
   const { data } = await api.get('/admin/stats');

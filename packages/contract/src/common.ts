@@ -13,8 +13,18 @@ export const instant = z.codec(z.iso.datetime(), z.date(), {
 
 export const id = z.string().min(1);
 
-/** Free-form JSON stored as-is (template bodies, activity snapshots). */
+/** Free-form JSON stored as-is. */
 export const json = z.unknown();
+
+/**
+ * A JSON object with free-form keys (notification targets, activity
+ * snapshots). Prisma types JSON columns as any JSON value, so the server side
+ * is `unknown`; clients see an object, and encoding still checks it is one.
+ */
+export const jsonObject = z.codec(z.record(z.string(), z.unknown()), z.unknown(), {
+  decode: (value) => value,
+  encode: (value) => value as Record<string, unknown>,
+});
 
 /** The success envelope every JSON endpoint uses: `{ success: true, data }`. */
 export function ok<T extends z.ZodType>(data: T) {

@@ -1,37 +1,15 @@
 import { create } from 'zustand';
 import api from '@/services/api';
 import { reportMutationError } from '@/utils/reportError';
+import type { Project as ContractProject, ProjectFields, Section } from '@taskflow/contract';
 
-export interface ProjectSection {
-  id: string;
-  name: string;
-  projectId: string;
-  sortOrder: number;
-  isCollapsed: boolean;
-  createdAt: string;
-  updatedAt: string;
-  _count?: { tasks: number };
-}
+export type ProjectSection = Section;
 
-export interface Project {
-  id: string;
-  name: string;
-  color: string;
-  description: string | null;
-  ownerId: string | null;
-  workspaceId: string | null;
-  parentId: string | null;
-  viewStyle: 'LIST' | 'BOARD' | 'CALENDAR';
-  isFavorite: boolean;
-  isArchived: boolean;
-  isInbox: boolean;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-  sections?: ProjectSection[];
-  _count?: { tasks: number };
-  children?: { id: string; name?: string; color?: string }[];
-}
+/**
+ * A project as the store holds it. List, detail and mutation endpoints include
+ * sections, counts and children; archive/unarchive return the fields only.
+ */
+export type Project = ProjectFields & Partial<Pick<ContractProject, 'sections' | '_count' | 'children'>>;
 
 interface ProjectState {
   projects: Map<string, Project>;

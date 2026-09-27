@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { id, instant, json, type Wire } from '../common.js';
+import { id, instant, jsonObject, type Wire } from '../common.js';
 
 export const notificationTypeSchema = z.enum([
   'TASK_ASSIGNED',
@@ -19,7 +19,7 @@ export const notificationSchema = z.object({
   title: z.string(),
   body: z.string(),
   /** Where it points, e.g. { taskId, projectId }. */
-  data: json.nullable(),
+  data: jsonObject.nullable(),
   isRead: z.boolean(),
   readAt: instant.nullable(),
   digestedAt: instant.nullable(),

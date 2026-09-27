@@ -1,49 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '@/services/api';
+import type { SearchResults } from '@taskflow/contract';
 
 const RECENT_SEARCHES_KEY = 'taskflow:recent-searches';
 const MAX_RECENT = 5;
 const DEBOUNCE_MS = 300;
 
-export interface TaskResult {
-  type: 'task';
-  id: string;
-  content: string;
-  description: string | null;
-  projectId: string;
-  projectName: string;
-  projectColor: string;
-  dueDate: string | null;
-  isCompleted: boolean;
-  priority: number;
-  rank: number;
-}
-
-export interface ProjectResult {
-  type: 'project';
-  id: string;
-  name: string;
-  color: string;
-  taskCount: number;
-  rank: number;
-}
-
-export interface CommentResult {
-  type: 'comment';
-  id: string;
-  content: string;
-  taskId: string | null;
-  taskContent: string | null;
-  projectId: string | null;
-  projectName: string | null;
-  rank: number;
-}
-
-export interface SearchResults {
-  tasks: TaskResult[];
-  projects: ProjectResult[];
-  comments: CommentResult[];
-}
+export type TaskResult = SearchResults['tasks'][number];
+export type ProjectResult = SearchResults['projects'][number];
+export type CommentResult = SearchResults['comments'][number];
+export type { SearchResults };
 
 function loadRecentSearches(): string[] {
   try {
