@@ -132,6 +132,7 @@ export async function register(data: RegisterInput) {
         ? new Date(Date.now() + VERIFY_TOKEN_TTL_MS)
         : null,
       emailVerified: !emailConfigured,
+      preferences: data.preferences,
       // On a fresh install the operator's own sign-up must land as an admin
       // straight away; waiting for the next restart to be promoted would mean
       // nobody can administer the instance in the meantime.

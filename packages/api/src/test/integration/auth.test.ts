@@ -62,6 +62,33 @@ describe('POST /api/v1/auth/register', () => {
     expect(response.headers['set-cookie']).toBeDefined();
   });
 
+  it('passes browser preferences through, dropping any it does not recognise', async () => {
+    vi.mocked(authService.register).mockResolvedValue({
+      user: { id: 'u1', email: 'new@example.com', name: 'New User', role: 'USER', isActive: true },
+      accessToken: 'access-tok',
+      refreshToken: 'refresh-tok',
+      verificationRequired: false,
+    } as never);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: {
+        name: 'New User',
+        email: 'new@example.com',
+        password: 'Password123!',
+        preferences: { timezone: 'Europe/London', weekStart: 1, dateFormat: 'dd/MM/yyyy', timeFormat: 'fortnightly' },
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(vi.mocked(authService.register).mock.lastCall?.[0].preferences).toEqual({
+      timezone: 'Europe/London',
+      weekStart: 1,
+      dateFormat: 'dd/MM/yyyy',
+    });
+  });
+
   it('creates no session when the address must be verified first', async () => {
     vi.mocked(authService.register).mockResolvedValue({
       user: { id: 'u2', email: 'verify@example.com', name: 'Verify Me', role: 'USER', isActive: true },

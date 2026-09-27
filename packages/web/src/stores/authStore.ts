@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api, { setAccessToken, refreshAccessToken } from '@/services/api';
+import { browserPreferences } from '@/utils/browserPreferences';
 import { disconnectSocket } from '@/services/socket';
 
 export type SystemRole = 'USER' | 'ADMIN';
@@ -88,6 +89,7 @@ export const useAuthStore = create<AuthState>()(
           name,
           email,
           password,
+          preferences: browserPreferences(),
         });
         const { user, accessToken, verificationRequired } = data.data;
         // Verification required: the account exists but has no session yet.

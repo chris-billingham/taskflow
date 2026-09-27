@@ -1,10 +1,23 @@
 import { z } from 'zod';
 import { emailAddress } from '../common.js';
+import { isValidTimeZone } from './account.js';
+
+/**
+ * Starting preferences read from the browser at sign-up. Anything invalid is
+ * dropped rather than failing the sign-up: the column defaults apply instead.
+ */
+const signUpPreferencesSchema = z.object({
+  timezone: z.string().max(64).refine(isValidTimeZone).optional().catch(undefined),
+  weekStart: z.union([z.literal(0), z.literal(1), z.literal(6)]).optional().catch(undefined),
+  dateFormat: z.enum(['MMM d, yyyy', 'MM/dd/yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd']).optional().catch(undefined),
+  timeFormat: z.enum(['12h', '24h']).optional().catch(undefined),
+});
 
 export const registerSchema = z.object({
   email: emailAddress('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().min(1, 'Name is required').max(100),
+  preferences: signUpPreferencesSchema.optional(),
 });
 
 export const loginSchema = z.object({

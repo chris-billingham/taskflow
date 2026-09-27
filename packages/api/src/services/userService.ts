@@ -25,6 +25,7 @@ export async function provisionUser(
     role?: SystemRole;
     emailVerifyToken?: string | null;
     emailVerifyTokenExpiresAt?: Date | null;
+    preferences?: { timezone?: string; weekStart?: number; dateFormat?: string; timeFormat?: string };
   },
 ) {
   const created = await tx.user.create({
@@ -35,6 +36,7 @@ export async function provisionUser(
       emailVerified: data.emailVerified,
       emailVerifyToken: data.emailVerifyToken ?? null,
       emailVerifyTokenExpiresAt: data.emailVerifyTokenExpiresAt ?? null,
+      ...data.preferences,
       // Omitted rather than defaulted so the column default applies and the
       // self-service path's insert shape is unchanged.
       ...(data.role ? { role: data.role } : {}),

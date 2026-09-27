@@ -6,6 +6,8 @@
 2. Click **Sign up** and enter your name, email and a password (8+ characters).
 3. You're signed in and taken to your **Today** view.
 
+Your timezone, the day your week starts, and your date and time formats are set from your browser's language and region. Change them any time under **Settings → Preferences**.
+
 New installs are **invite-only**. If the sign-in page says "New accounts are by invitation", you need a workspace invite link or an administrator to create your account. The very first account on a fresh install can always sign up. See [user management](../admin-guide/user-management.md#who-can-sign-up) for details.
 
 If the server has email set up, you'll also get a verification email. Click the link in it before your next sign-in, because password sign-in is blocked until your address is verified. The sign-in page can resend the email.
