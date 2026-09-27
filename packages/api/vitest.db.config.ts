@@ -23,7 +23,7 @@ export default defineConfig({
     },
     // Fixtures share one database — keep files sequential.
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    fileParallelism: false,
     testTimeout: 20000,
   },
 });

@@ -30,11 +30,14 @@ export default defineConfig({
       // Ratchet thresholds: set just under MEASURED coverage so CI blocks
       // regressions; raise them as the mocked suites grow. (The previous 70%
       // was aspirational fiction — coverage was never run in CI at all.)
+      // Re-baselined for Vitest 5 (Sept 2026): its v8 coverage remaps by AST
+      // and counts files no test loads, so branch/function figures are not
+      // comparable with the Vitest 1 ones. Ratchet up from here, never down.
       thresholds: {
-        statements: 25,
-        branches: 78,
-        functions: 55,
-        lines: 25,
+        statements: 39,
+        branches: 40,
+        functions: 33,
+        lines: 40,
       },
     },
   },

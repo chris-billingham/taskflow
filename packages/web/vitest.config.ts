@@ -27,11 +27,14 @@ export default defineConfig({
       ],
       exclude: ['src/test/**', 'src/**/*.d.ts'],
       // Ratchet thresholds set just under measured coverage — see api config.
+      // Re-baselined for Vitest 5 (Sept 2026): its v8 coverage remaps by AST
+      // and counts files no test loads, so branch/function figures are not
+      // comparable with the Vitest 1 ones. Ratchet up from here, never down.
       thresholds: {
-        statements: 6,
-        branches: 42,
-        functions: 16,
-        lines: 6,
+        statements: 13,
+        branches: 12,
+        functions: 12,
+        lines: 13,
       },
     },
   },

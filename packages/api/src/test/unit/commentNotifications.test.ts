@@ -25,7 +25,7 @@ type NotifyManyArgs = [
 ];
 
 const notifyManyMock = vi.hoisted(() =>
-  vi.fn<NotifyManyArgs, Promise<number>>(() => Promise.resolve(0)),
+  vi.fn<(...args: NotifyManyArgs) => Promise<number>>(() => Promise.resolve(0)),
 );
 vi.mock('../../services/notificationService.js', () => ({
   notifyMany: notifyManyMock,

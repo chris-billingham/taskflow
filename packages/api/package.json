@@ -54,13 +54,13 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^20.11.0",
+    "@types/node": "^24.19.0",
     "@types/nodemailer": "^8.0.1",
     "@types/proxy-addr": "^2.0.3",
     "@types/web-push": "^3.6.4",
-    "@vitest/coverage-v8": "^1.6.0",
+    "@vitest/coverage-v8": "^5.0.2",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
-    "vitest": "^1.6.0"
+    "vitest": "^5.0.2"
   }
 }

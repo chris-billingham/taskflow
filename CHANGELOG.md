@@ -19,6 +19,12 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   minimum 1). Limits count per client IP, so a team behind one office IP
   shared a single 5-logins-per-15-minutes bucket. The limits now live in one
   place (`config/rateLimits.ts`) instead of nine inline conditions.
+- **Test and build stack upgraded:** Vite 8 (Rolldown), Vitest 5, coverage-v8
+  5, jsdom 30, Testing Library 16 (+ explicit `@testing-library/dom`),
+  jest-dom 7, `@types/node` 24. Clears both critical advisories; the full
+  audit now has no high or critical findings and CI gates on it. Coverage
+  thresholds were re-baselined: Vitest 5 measures by AST and counts files no
+  test loads, so its branch/function figures aren't comparable with Vitest 1's.
 
 ### Fixed
 
