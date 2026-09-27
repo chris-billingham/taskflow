@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createQueryClient } from '@/queries/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -51,6 +51,17 @@ function RouteFallback() {
 function App() {
   const initialize = useAuthStore((s) => s.initialize);
   const [queryClient] = useState(createQueryClient);
+
+  // Cached server data belongs to whoever was signed in. Drop it when that
+  // changes (sign-out, or another account signing in on this tab) so one
+  // person's tasks can never show in the next person's session.
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const cachedFor = useRef(userId);
+  useEffect(() => {
+    if (cachedFor.current === userId) return;
+    cachedFor.current = userId;
+    queryClient.clear();
+  }, [userId, queryClient]);
 
   // At the app root, not in AppLayout. Mounted only there, the theme was never
   // applied on any route AppLayout doesn't wrap — so loading or refreshing any

@@ -8,7 +8,7 @@ import {
   Mail,
   Bell,
 } from 'lucide-react';
-import type { Notification } from '@/stores/notificationStore';
+import type { Notification } from '@/queries/notifications';
 import { formatUserDate } from '@/utils/dateFormat';
 
 interface NotificationItemProps {

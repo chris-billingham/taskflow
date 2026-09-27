@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FileText, Plus, Pencil, Trash2, Globe, Lock, Users, Check, X } from 'lucide-react';
-import { useTemplateStore } from '@/stores/templateStore';
+import { useMyTemplates, useTemplateActions } from '@/queries/templates';
 import { CreateTemplateModal } from '@/components/template/CreateTemplateModal';
-import type { Template } from '@/stores/templateStore';
+import type { Template } from '@/queries/templates';
 
 function EditTemplateInline({
   template,
@@ -50,16 +50,12 @@ function EditTemplateInline({
 }
 
 export default function Templates() {
-  const { userTemplates, loading, error, fetchUserTemplates, updateTemplate, deleteTemplate } =
-    useTemplateStore();
+  const { templates: userTemplates, loading, error } = useMyTemplates();
+  const { updateTemplate, deleteTemplate } = useTemplateActions();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchUserTemplates();
-  }, []);
 
   const handleSave = async (id: string, name: string, description: string) => {
     await updateTemplate(id, { name, description: description || undefined });

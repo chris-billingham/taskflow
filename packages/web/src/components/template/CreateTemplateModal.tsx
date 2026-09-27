@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useTemplateStore } from '@/stores/templateStore';
+import { useTemplateActions } from '@/queries/templates';
 import { useProjectStore, selectActiveProjects } from '@/stores/projectStore';
 
 interface CreateTemplateModalProps {
@@ -18,13 +18,12 @@ export function CreateTemplateModal({
   preselectedProjectId,
   workspaceId,
 }: CreateTemplateModalProps) {
-  const createTemplate = useTemplateStore((s) => s.createTemplate);
+  const { createTemplate } = useTemplateActions();
   const projects = useProjectStore(selectActiveProjects);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState(preselectedProjectId ?? '');
-  const [isPublic, setIsPublic] = useState(false);
   const [shareWithWorkspace, setShareWithWorkspace] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -49,7 +48,6 @@ export function CreateTemplateModal({
         name: name.trim(),
         description: description.trim() || undefined,
         projectId,
-        isPublic,
         workspaceId: shareWithWorkspace ? workspaceId : undefined,
       });
       onClose();
@@ -132,17 +130,6 @@ export function CreateTemplateModal({
                 </span>
               </label>
             )}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                className="rounded border-gray-300 text-[#db4c3f] focus:ring-[#db4c3f]"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Make public (visible in gallery)
-              </span>
-            </label>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

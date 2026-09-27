@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useTemplateStore } from '@/stores/templateStore';
-import { useProjectStore } from '@/stores/projectStore';
-import type { Template } from '@/stores/templateStore';
+import { useTemplateActions } from '@/queries/templates';
+import type { Template } from '@/queries/templates';
 
 interface UseTemplateModalProps {
   template: Template;
@@ -19,8 +18,7 @@ export function UseTemplateModal({
   onSuccess,
   workspaceId,
 }: UseTemplateModalProps) {
-  const applyTemplate = useTemplateStore((s) => s.applyTemplate);
-  const setProject = useProjectStore((s) => s.setProject);
+  const { applyTemplate } = useTemplateActions();
 
   const [name, setName] = useState(template.data.project.name);
   const [destination, setDestination] = useState<'personal' | 'workspace'>(
@@ -42,12 +40,8 @@ export function UseTemplateModal({
       const project = await applyTemplate(template.id, {
         name: name.trim(),
         workspaceId: destination === 'workspace' ? workspaceId : undefined,
-      }) as any;
-
-      if (project) {
-        setProject(project);
-        onSuccess?.(project.id);
-      }
+      });
+      onSuccess?.(project.id);
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create project from template');

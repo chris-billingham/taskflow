@@ -1,47 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Check } from 'lucide-react';
-import { useNotificationStore } from '@/stores/notificationStore';
+import { useNotifications, useNotificationActions, type Notification } from '@/queries/notifications';
 import { NotificationItem } from './NotificationItem';
-import type { Notification } from '@/stores/notificationStore';
-
-// See polling effect: shared across the two header instances.
-let pollOwnerCount = 0;
 
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const {
-    notifications,
-    unreadCount,
-    loading,
-    fetchNotifications,
-    markAsRead,
-    markAllAsRead,
-  } = useNotificationStore();
-
-  // Fetch notifications on mount and poll every 30 seconds. Two instances are
-  // always mounted (mobile + desktop headers, CSS-hidden) — the module-level
-  // guard makes sure only ONE runs the polling loop instead of doubling it.
-  useEffect(() => {
-    if (pollOwnerCount === 0) {
-      fetchNotifications();
-    }
-    pollOwnerCount += 1;
-    if (pollOwnerCount > 1) {
-      return () => {
-        pollOwnerCount -= 1;
-      };
-    }
-
-    const interval = setInterval(() => fetchNotifications(), 30_000);
-    return () => {
-      pollOwnerCount -= 1;
-      clearInterval(interval);
-    };
-  }, [fetchNotifications]);
+  // Both header instances (mobile and desktop, one CSS-hidden) share one
+  // cached query, so the 30-second refresh runs once, not twice.
+  const { notifications, unreadCount, loading } = useNotifications();
+  const { markAsRead, markAllAsRead } = useNotificationActions();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -81,6 +52,8 @@ export function NotificationCenter() {
         className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
         title="Notifications"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        aria-expanded={isOpen}
       >
         <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         {unreadCount > 0 && (

@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Search } from 'lucide-react';
 import { TemplateCard } from './TemplateCard';
 import { TemplatePreview } from './TemplatePreview';
 import { UseTemplateModal } from './UseTemplateModal';
-import { useTemplateStore } from '@/stores/templateStore';
-import type { Template } from '@/stores/templateStore';
+import { useMyTemplates, useGalleryTemplates, useWorkspaceTemplates } from '@/queries/templates';
+import type { Template } from '@/queries/templates';
 
 type TabKey = 'personal' | 'workspace' | 'gallery';
 
@@ -21,27 +21,17 @@ export function TemplateGallery({
   workspaceId,
   onProjectCreated,
 }: TemplateGalleryProps) {
-  const {
-    userTemplates,
-    workspaceTemplates,
-    publicTemplates,
-    loading,
-    fetchUserTemplates,
-    fetchWorkspaceTemplates,
-    fetchPublicTemplates,
-  } = useTemplateStore();
+  const mine = useMyTemplates(isOpen);
+  const gallery = useGalleryTemplates(isOpen);
+  const shared = useWorkspaceTemplates(workspaceId, isOpen);
+  const userTemplates = mine.templates;
+  const publicTemplates = gallery.templates;
+  const loading = mine.loading || gallery.loading || shared.loading;
 
   const [activeTab, setActiveTab] = useState<TabKey>('gallery');
   const [search, setSearch] = useState('');
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
   const [useTemplate, setUseTemplate] = useState<Template | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    fetchUserTemplates();
-    fetchPublicTemplates();
-    if (workspaceId) fetchWorkspaceTemplates(workspaceId);
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -49,7 +39,7 @@ export function TemplateGallery({
     { key: 'gallery', label: 'Gallery', count: publicTemplates.length },
     { key: 'personal', label: 'Personal', count: userTemplates.length },
     ...(workspaceId
-      ? [{ key: 'workspace' as TabKey, label: 'Workspace', count: workspaceTemplates.get(workspaceId)?.length }]
+      ? [{ key: 'workspace' as TabKey, label: 'Workspace', count: shared.templates.length }]
       : []),
   ];
 
@@ -57,7 +47,7 @@ export function TemplateGallery({
     activeTab === 'personal'
       ? userTemplates
       : activeTab === 'workspace'
-      ? (workspaceTemplates.get(workspaceId ?? '') ?? [])
+      ? shared.templates
       : publicTemplates;
 
   const filtered = search

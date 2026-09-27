@@ -1,5 +1,5 @@
 import { FileText, Globe, Lock, Users } from 'lucide-react';
-import type { Template } from '@/stores/templateStore';
+import type { Template } from '@/queries/templates';
 
 interface TemplateCardProps {
   template: Template;

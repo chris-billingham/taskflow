@@ -1,6 +1,6 @@
 import { X, ChevronRight, Globe, Lock, Users } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import type { Template, TemplateTask } from '@/stores/templateStore';
+import type { Template, TemplateTask } from '@/queries/templates';
 
 interface TemplatePreviewProps {
   template: Template;
