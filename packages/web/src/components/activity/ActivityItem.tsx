@@ -10,7 +10,7 @@ import {
   ArchiveRestore,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import type { ActivityItem as ActivityItemType } from '@/hooks/useActivity';
+import type { ActivityItem as ActivityItemType } from '@/queries/activity';
 
 const actionConfig: Record<string, { icon: typeof Plus; color: string; label: string }> = {
   CREATED: { icon: Plus, color: 'text-green-500', label: 'created' },

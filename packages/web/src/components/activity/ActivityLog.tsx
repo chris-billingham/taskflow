@@ -1,17 +1,13 @@
 import { Activity, Loader2, AlertCircle } from 'lucide-react';
-import { useTaskActivity } from '@/hooks/useActivity';
-import { useCommentStore } from '@/stores/commentStore';
+import { useTaskActivity } from '@/queries/activity';
 import { ActivityItemComponent } from './ActivityItem';
 
 interface ActivityLogProps {
   taskId: string;
-  taskUpdatedAt?: string;
 }
 
-export function ActivityLog({ taskId, taskUpdatedAt }: ActivityLogProps) {
-  const commentVersion = useCommentStore((s) => s.version);
-  const refreshKey = `${taskUpdatedAt ?? ''}-${commentVersion}`;
-  const { activities, loading, error } = useTaskActivity(taskId, undefined, refreshKey);
+export function ActivityLog({ taskId }: ActivityLogProps) {
+  const { activities, loading, error } = useTaskActivity(taskId);
 
   return (
     <div>

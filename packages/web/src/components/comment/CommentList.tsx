@@ -1,5 +1,5 @@
 import { MessageSquare, Loader2, AlertCircle } from 'lucide-react';
-import { useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/useComments';
+import { useComments, useCommentActions } from '@/queries/comments';
 import { useAuthStore } from '@/stores/authStore';
 import { CommentEditor } from './CommentEditor';
 import { CommentItem } from './CommentItem';
@@ -13,9 +13,7 @@ interface CommentListProps {
 
 export function CommentList({ taskId, projectId }: CommentListProps) {
   const { comments, loading, error } = useComments(taskId);
-  const createComment = useCreateComment();
-  const updateComment = useUpdateComment();
-  const deleteComment = useDeleteComment();
+  const { createComment, updateComment, deleteComment } = useCommentActions(taskId);
   const user = useAuthStore((s) => s.user);
 
   if (!user) return null;
@@ -37,7 +35,7 @@ export function CommentList({ taskId, projectId }: CommentListProps) {
         <CommentEditor
           projectId={projectId}
           onSubmit={async (content, files) => {
-            const comment = await createComment(taskId, content);
+            const comment = await createComment(content);
             if (files.length > 0) {
               await Promise.all(
                 files.map((file) => {
@@ -92,7 +90,7 @@ export function CommentList({ taskId, projectId }: CommentListProps) {
                 await deleteComment(id);
               }}
               onReply={async (content, _files) => {
-                await createComment(taskId, content, comment.id);
+                await createComment(content, comment.id);
               }}
             />
           ))}

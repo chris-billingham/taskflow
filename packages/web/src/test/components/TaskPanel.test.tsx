@@ -86,6 +86,41 @@ describe('task panel', () => {
   });
 });
 
+describe('comments in the panel', () => {
+  it('posts a comment and shows it, refreshing the activity log', async () => {
+    let comments: Array<Record<string, unknown>> = [];
+    let activityReads = 0;
+    serveTasks(makeTask({ id: 't1', content: 'Plan the offsite' }));
+    server.use(
+      http.get(`${API}/tasks/t1/comments`, () => HttpResponse.json(ok(comments, { nextCursor: null }))),
+      http.get(`${API}/tasks/t1/activity`, () => {
+        activityReads++;
+        return HttpResponse.json(ok([], { nextCursor: null }));
+      }),
+      http.post(`${API}/tasks/t1/comments`, async ({ request }) => {
+        const { content } = (await request.json()) as { content: string };
+        const comment = {
+          id: 'c1', content, taskId: 't1', projectId: null, parentId: null, authorId: 'user-1',
+          author: { id: 'user-1', name: 'Test User', avatarUrl: null },
+          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), replies: [],
+          attachments: [],
+        };
+        comments = [comment];
+        return HttpResponse.json(ok(comment), { status: 201 });
+      }),
+    );
+    const { user } = renderPage(<p>Page</p>, { route: '/today?task=t1', path: '/today' });
+
+    const dialog = await panel();
+    await user.type(within(dialog).getByPlaceholderText('Write a comment...'), 'Venue booked');
+    const readsBefore = activityReads;
+    await user.click(within(dialog).getByRole('button', { name: /comment/i }));
+
+    expect(await within(dialog).findByText('Venue booked')).toBeInTheDocument();
+    await waitFor(() => expect(activityReads).toBeGreaterThan(readsBefore));
+  });
+});
+
 describe('/tasks/:id', () => {
   it('opens the task over its project', async () => {
     serveTasks(makeTask({ id: 't9', projectId: 'project-7' }));

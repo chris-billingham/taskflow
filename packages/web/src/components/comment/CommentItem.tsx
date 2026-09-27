@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MoreHorizontal, Pencil, Trash2, Reply } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
-import type { Comment } from '@/stores/commentStore';
+import type { Comment } from '@/queries/comments';
 import { CommentEditor } from './CommentEditor';
 
 interface CommentItemProps {

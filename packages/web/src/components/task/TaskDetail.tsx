@@ -371,7 +371,7 @@ export function TaskDetail({
 
           {/* Activity */}
           <div className="mb-6">
-            <ActivityLog taskId={task.id} taskUpdatedAt={task.updatedAt} />
+            <ActivityLog taskId={task.id} />
           </div>
         </div>
 

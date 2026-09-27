@@ -4,6 +4,7 @@ import api from '@/services/api';
 import { reportMutationError } from '@/utils/reportError';
 import type { CreateTaskInput, MoveTaskInput, QuickAddDue, Task } from '@/types/task';
 import { taskKeys } from './taskKeys';
+import { activityKeys } from './activity';
 import { mergeTask, patchTaskCaches, snapshotTaskCaches, type TaskMapper } from './taskCache';
 
 // Task mutations in flight, per client. Caches are refetched only when the
@@ -44,7 +45,10 @@ function createTaskActions(qc: QueryClient) {
     } finally {
       const remaining = (inFlight.get(qc) ?? 1) - 1;
       inFlight.set(qc, remaining);
-      if (remaining === 0) void qc.invalidateQueries({ queryKey: taskKeys.all });
+      if (remaining === 0) {
+        void qc.invalidateQueries({ queryKey: taskKeys.all });
+        void qc.invalidateQueries({ queryKey: activityKeys.all });
+      }
     }
   }
 

@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TaskPanel } from '@/components/task/TaskPanel';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { useAuthStore } from '@/stores/authStore';
-import { useCommentStore } from '@/stores/commentStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useSocketStore } from '@/stores/socketStore';
 import { useToastStore } from '@/stores/toastStore';
@@ -18,7 +17,6 @@ import { TEST_USER } from '../msw/fixtures';
 // each one's initial state at import and restore it before every render.
 const stores = [
   useAuthStore,
-  useCommentStore,
   useProjectStore,
   useSocketStore,
   useToastStore,

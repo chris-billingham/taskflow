@@ -7,7 +7,8 @@ import type { Task } from '@/types/task';
 import { taskKeys } from '@/queries/taskKeys';
 import { mergeTask, patchTaskCaches } from '@/queries/taskCache';
 import { useProjectStore, type Project, type ProjectSection } from '@/stores/projectStore';
-import { useCommentStore, type Comment } from '@/stores/commentStore';
+import { removeComment, updateCachedComments, upsertComment, type Comment } from '@/queries/comments';
+import { activityKeys } from '@/queries/activity';
 
 export function useRealTimeSync(): void {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -101,69 +102,17 @@ export function useRealTimeSync(): void {
       projectState.setProject({ ...project, sections });
     };
 
-    const onCommentCreated = ({ comment }: { comment: Comment }) => {
-      const state = useCommentStore.getState();
-      if (!comment.taskId || state.currentTaskId !== comment.taskId) return;
-      const comments = new Map(state.comments);
-      if (comment.parentId) {
-        const parent = comments.get(comment.parentId);
-        if (parent && !parent.replies.some((r) => r.id === comment.id)) {
-          comments.set(comment.parentId, {
-            ...parent,
-            replies: [...parent.replies, comment],
-          });
-        }
-      } else if (!comments.has(comment.id)) {
-        comments.set(comment.id, comment);
-      }
-      state.setComments(comments);
+    // Comments for tasks nobody has open aren't cached, so these are no-ops
+    // unless that task's panel has loaded its comments.
+    const onCommentChanged = ({ comment }: { comment: Comment }) => {
+      if (!comment.taskId) return;
+      updateCachedComments(qc, comment.taskId, upsertComment(comment));
+      void qc.invalidateQueries({ queryKey: activityKeys.task(comment.taskId) });
     };
 
-    const onCommentUpdated = ({ comment }: { comment: Comment }) => {
-      const state = useCommentStore.getState();
-      if (!comment.taskId || state.currentTaskId !== comment.taskId) return;
-      const comments = new Map(state.comments);
-      if (comments.has(comment.id)) {
-        comments.set(comment.id, comment);
-      } else {
-        for (const [parentId, parent] of comments) {
-          const idx = parent.replies.findIndex((r) => r.id === comment.id);
-          if (idx !== -1) {
-            const replies = [...parent.replies];
-            replies[idx] = comment;
-            comments.set(parentId, { ...parent, replies });
-            break;
-          }
-        }
-      }
-      state.setComments(comments);
-    };
-
-    const onCommentDeleted = ({
-      commentId,
-      taskId,
-    }: {
-      commentId: string;
-      taskId: string | null;
-    }) => {
-      const state = useCommentStore.getState();
-      if (!taskId || state.currentTaskId !== taskId) return;
-      const comments = new Map(state.comments);
-      if (comments.has(commentId)) {
-        comments.delete(commentId);
-      } else {
-        for (const [parentId, parent] of comments) {
-          const idx = parent.replies.findIndex((r) => r.id === commentId);
-          if (idx !== -1) {
-            comments.set(parentId, {
-              ...parent,
-              replies: parent.replies.filter((r) => r.id !== commentId),
-            });
-            break;
-          }
-        }
-      }
-      state.setComments(comments);
+    const onCommentDeleted = ({ commentId, taskId }: { commentId: string; taskId: string | null }) => {
+      if (!taskId) return;
+      updateCachedComments(qc, taskId, removeComment(commentId));
     };
 
     socket.on('task:created', onTaskCreated);
@@ -175,8 +124,8 @@ export function useRealTimeSync(): void {
     socket.on('section:created', onSectionCreated);
     socket.on('section:updated', onSectionUpdated);
     socket.on('section:deleted', onSectionDeleted);
-    socket.on('comment:created', onCommentCreated);
-    socket.on('comment:updated', onCommentUpdated);
+    socket.on('comment:created', onCommentChanged);
+    socket.on('comment:updated', onCommentChanged);
     socket.on('comment:deleted', onCommentDeleted);
 
     return () => {
@@ -190,8 +139,8 @@ export function useRealTimeSync(): void {
       socket.off('section:created', onSectionCreated);
       socket.off('section:updated', onSectionUpdated);
       socket.off('section:deleted', onSectionDeleted);
-      socket.off('comment:created', onCommentCreated);
-      socket.off('comment:updated', onCommentUpdated);
+      socket.off('comment:created', onCommentChanged);
+      socket.off('comment:updated', onCommentChanged);
       socket.off('comment:deleted', onCommentDeleted);
     };
   }, [isAuthenticated, isLoading, status, qc]);
