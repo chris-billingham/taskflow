@@ -1,5 +1,5 @@
 # Build stage
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 # Prisma needs OpenSSL, and needs to be able to SEE which version it has.
@@ -68,7 +68,7 @@ RUN cd /build/deploy && \
     ./node_modules/.bin/prisma version
 
 # Production stage
-FROM node:24-alpine AS production
+FROM node:26-alpine AS production
 
 # See the builder stage: Prisma's engines link against libssl and Prisma probes
 # the `openssl` binary to pick which build to load.
