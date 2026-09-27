@@ -21,6 +21,7 @@ import { AssigneePicker } from './AssigneePicker';
 import { ReminderPicker } from './ReminderPicker';
 import { RecurrencePicker } from './RecurrencePicker';
 import { QuickAdd } from './QuickAdd';
+import { MoveTaskDialog } from './MoveTaskDialog';
 import { CommentList } from '@/components/comment/CommentList';
 import { ActivityLog } from '@/components/activity/ActivityLog';
 import { AttachmentList } from '@/components/attachment/AttachmentList';
@@ -57,6 +58,7 @@ export function TaskDetail({
   const [editingDescription, setEditingDescription] = useState(false);
   const [description, setDescription] = useState(task.description || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [moving, setMoving] = useState(false);
   const contentRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
@@ -119,15 +121,23 @@ export function TaskDetail({
               </button>
             )}
             {task.project && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setMoving(true)}
+                aria-label={`Move task (now in ${task.project.name}${task.section ? ` / ${task.section.name}` : ''})`}
+                title="Move to another project or section"
+                className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 px-1.5 py-0.5 -ml-1.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
                 <span
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: task.project.color }}
+                  aria-hidden="true"
                 />
                 {task.project.name}
                 {task.section && <span> / {task.section.name}</span>}
-              </span>
+              </button>
             )}
+            {moving && <MoveTaskDialog isOpen onClose={() => setMoving(false)} task={task} />}
           </div>
           <IconButton label="Close task detail" onClick={onClose}>
             <X className="w-5 h-5" />

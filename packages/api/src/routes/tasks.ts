@@ -72,6 +72,7 @@ export async function taskRoutes(fastify: FastifyInstance) {
         data: await taskService.quickAddTask(request.body.text, request.body.projectId, request.user.id, {
           dueDate: request.body.dueDate,
           dueTime: request.body.dueTime,
+          sectionId: request.body.sectionId,
         }),
       }),
   );

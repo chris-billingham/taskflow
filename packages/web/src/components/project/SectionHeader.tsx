@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronRight, GripVertical, Trash2 } from 'lucide-react';
 import type { ProjectSection } from '@/types/project';
 
 interface SectionHeaderProps {
@@ -7,6 +7,8 @@ interface SectionHeaderProps {
   onUpdateName: (name: string) => void;
   onToggleCollapse: () => void;
   onDelete: () => void;
+  /** Drag listeners for reordering sections; the header grip is the only handle. */
+  dragHandleProps?: Record<string, any>;
 }
 
 export function SectionHeader({
@@ -14,6 +16,7 @@ export function SectionHeader({
   onUpdateName,
   onToggleCollapse,
   onDelete,
+  dragHandleProps,
 }: SectionHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(section.name);
@@ -43,6 +46,16 @@ export function SectionHeader({
 
   return (
     <div className="group flex items-center gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
+      {dragHandleProps && (
+        <button
+          type="button"
+          aria-label={`Reorder section ${section.name}`}
+          className="-ml-6 w-5 h-5 flex items-center justify-center shrink-0 cursor-grab opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+          {...dragHandleProps}
+        >
+          <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600" />
+        </button>
+      )}
       <button
         className="w-5 h-5 flex items-center justify-center shrink-0"
         onClick={onToggleCollapse}

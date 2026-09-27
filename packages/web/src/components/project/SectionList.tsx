@@ -1,16 +1,6 @@
 import { useState } from 'react';
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
@@ -30,7 +20,6 @@ interface SectionListProps {
     data: Partial<{ name: string; isCollapsed: boolean }>,
   ) => Promise<unknown>;
   onDeleteSection: (id: string) => Promise<void>;
-  onReorderSections: (sectionIds: string[]) => Promise<void>;
   renderSectionContent?: (section: ProjectSection) => ReactNode;
 }
 
@@ -48,8 +37,10 @@ function SortableSectionItem({
   onDelete: (id: string) => Promise<void>;
   renderContent?: (section: ProjectSection) => ReactNode;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: section.id });
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: section.id,
+    data: { type: 'section' },
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -57,9 +48,10 @@ function SortableSectionItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style}>
       <SectionHeader
         section={section}
+        dragHandleProps={{ ...attributes, ...listeners }}
         onUpdateName={(name) => onUpdate(section.id, { name })}
         onToggleCollapse={() =>
           onUpdate(section.id, { isCollapsed: !section.isCollapsed })
@@ -82,35 +74,11 @@ export function SectionList({
   onCreateSection,
   onUpdateSection,
   onDeleteSection,
-  onReorderSections,
   renderSectionContent,
 }: SectionListProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const ids = sections.map((s) => s.id);
-    const oldIndex = ids.indexOf(active.id as string);
-    const newIndex = ids.indexOf(over.id as string);
-
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const newIds = [...ids];
-    newIds.splice(oldIndex, 1);
-    newIds.splice(newIndex, 0, active.id as string);
-    onReorderSections(newIds);
-  };
 
   const handleAddSection = async () => {
     if (!newName.trim()) return;
@@ -128,11 +96,8 @@ export function SectionList({
 
   return (
     <div>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
+      {/* Sections sort inside the project page's drag context, which also
+          lets tasks move between them. */}
         <SortableContext
           items={sectionIds}
           strategy={verticalListSortingStrategy}
@@ -149,7 +114,6 @@ export function SectionList({
             ))}
           </div>
         </SortableContext>
-      </DndContext>
 
       {/* Add section */}
       {isAdding ? (

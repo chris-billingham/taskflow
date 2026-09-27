@@ -32,6 +32,11 @@ export interface QuickAddDue {
   dueTime?: string; // HH:mm
 }
 
+/** Where a quick-add box sits: an exact due date/time and/or a section. */
+export interface QuickAddContext extends QuickAddDue {
+  sectionId?: string;
+}
+
 export interface CreateTaskInput {
   content: string;
   description?: string;

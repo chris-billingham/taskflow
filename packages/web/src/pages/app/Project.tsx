@@ -1,5 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type CollisionDetection,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ProjectHeader } from '@/components/project/ProjectHeader';
@@ -14,6 +25,8 @@ import { useProjectTasks } from '@/queries/tasks';
 import { useTaskActions } from '@/queries/taskActions';
 import type { Task } from '@/types/task';
 
+const UNSECTIONED = '__unsectioned__';
+
 export default function Project() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -26,7 +39,7 @@ export default function Project() {
   const { createSection, updateSection, deleteSection, reorderSections } = useSectionActions(id);
 
   const { tasks, hasMore, loadingMore, loadMore } = useProjectTasks(id);
-  const { createTask, quickAddTask } = useTaskActions();
+  const { quickAddTask, moveTask, reorderTasks } = useTaskActions();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -49,6 +62,59 @@ export default function Project() {
     }
     return map;
   }, [ordered]);
+
+  // One drag context for the whole list view: tasks reorder within a list,
+  // move between sections (and "no section"), and sections reorder by their
+  // header grip. Each drag only ever lands on its own kind of target.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const collisionDetection: CollisionDetection = (args) => {
+    const dragging = args.active.data.current?.type;
+    return closestCenter({
+      ...args,
+      droppableContainers: args.droppableContainers.filter((c) => {
+        const type = c.data.current?.type;
+        return dragging === 'section' ? type === 'section' : type === 'task' || type === 'task-list';
+      }),
+    });
+  };
+
+  const tasksIn = (containerId: string) =>
+    containerId === UNSECTIONED ? unsectionedTasks : (tasksBySection.get(containerId) ?? []);
+
+  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
+    if (!over) return;
+    const from = active.data.current;
+    const to = over.data.current;
+    if (from?.type === 'section') {
+      const ids = sections.map((s) => s.id);
+      const oldIndex = ids.indexOf(String(active.id));
+      const newIndex = ids.indexOf(String(over.id));
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        await reorderSections(arrayMove(ids, oldIndex, newIndex));
+      }
+      return;
+    }
+    if (from?.type !== 'task' || !to?.containerId) return;
+    const taskId = String(active.id);
+    const target = tasksIn(to.containerId).map((t) => t.id);
+    if (from.containerId === to.containerId) {
+      const oldIndex = target.indexOf(taskId);
+      const newIndex = target.indexOf(String(over.id));
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        await reorderTasks(arrayMove(target, oldIndex, newIndex));
+      }
+      return;
+    }
+    // Into another section: move it, then place it where it was dropped.
+    const at = to.type === 'task' ? target.indexOf(String(over.id)) : target.length;
+    const order = [...target];
+    order.splice(at === -1 ? order.length : at, 0, taskId);
+    await moveTask(taskId, { sectionId: to.containerId === UNSECTIONED ? null : to.containerId });
+    await reorderTasks(order);
+  };
 
   if (loading && !project) {
     return (
@@ -121,10 +187,18 @@ export default function Project() {
           onReorderSections={reorderSections}
         />
       ) : (
-        <>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={collisionDetection}
+          onDragEnd={(event) => void handleDragEnd(event)}
+        >
           {/* Unsectioned tasks */}
           <div className="mb-4">
-            <TaskList tasks={unsectionedTasks} emptyMessage="No tasks yet. Add one below!" />
+            <TaskList
+              tasks={unsectionedTasks}
+              containerId={UNSECTIONED}
+              emptyMessage="No tasks yet. Add one below!"
+            />
             <div className="mt-2">
               <QuickAdd
                 projectId={project.id}
@@ -140,22 +214,22 @@ export default function Project() {
             onCreateSection={createSection}
             onUpdateSection={updateSection}
             onDeleteSection={deleteSection}
-            onReorderSections={reorderSections}
             renderSectionContent={(section) => {
               const sectionTasks = tasksBySection.get(section.id) || [];
               return (
                 <div className="pl-7 py-1">
-                  <TaskList tasks={sectionTasks} emptyMessage="No tasks in this section" />
+                  <TaskList
+                    tasks={sectionTasks}
+                    containerId={section.id}
+                    emptyMessage="No tasks in this section"
+                  />
                   <div className="mt-1">
                     <QuickAdd
                       projectId={project.id}
                       sectionId={section.id}
+                      // Parsed like every other quick add ("p1 tomorrow" etc.).
                       onSubmit={async (text) => {
-                        await createTask({
-                          content: text,
-                          projectId: project.id,
-                          sectionId: section.id,
-                        });
+                        await quickAddTask(text, project.id, { sectionId: section.id });
                       }}
                       placeholder="Add task"
                     />
@@ -177,7 +251,7 @@ export default function Project() {
             </div>
           )}
 
-        </>
+        </DndContext>
       )}
 
       <ConfirmDialog

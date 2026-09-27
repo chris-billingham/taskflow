@@ -5,6 +5,7 @@ import {
   Copy,
   GripVertical,
   Pencil,
+  FolderInput,
   ChevronDown,
   User,
   GitBranch,
@@ -18,6 +19,7 @@ import { PriorityPicker } from './PriorityPicker';
 import { LabelBadges } from './LabelPicker';
 import { useTaskActions } from '@/queries/taskActions';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
+import { MoveTaskDialog } from './MoveTaskDialog';
 import { useSubtasks } from '@/queries/tasks';
 import { useOpenTask } from '@/hooks/useTaskPanel';
 import type { Task } from '@/types/task';
@@ -51,6 +53,7 @@ export const TaskItem = memo(function TaskItem({
   const openTask = useOpenTask();
   const onUpdate = (id: string, data: Record<string, unknown>) => void updateTask(id, data);
   const onClick = (t: Task) => openTask(t.id);
+  const [moving, setMoving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(task.content);
   // Rows whose subtasks came embedded start open; count-only rows (project
@@ -254,6 +257,9 @@ export const TaskItem = memo(function TaskItem({
             <MenuItem icon={Pencil} onSelect={() => setIsEditing(true)}>
               Edit
             </MenuItem>
+            <MenuItem icon={FolderInput} onSelect={() => setMoving(true)}>
+              Move to…
+            </MenuItem>
             <MenuItem icon={Copy} onSelect={() => void duplicateTask(task.id)}>
               Duplicate
             </MenuItem>
@@ -264,6 +270,8 @@ export const TaskItem = memo(function TaskItem({
           </Menu>
         </div>
       </div>
+
+      {moving && <MoveTaskDialog isOpen onClose={() => setMoving(false)} task={task} />}
 
       {/* Inline subtask list — rendered directly below parent, indented */}
       {showSubtasks && hasSubtasks && expanded && subtasks && (

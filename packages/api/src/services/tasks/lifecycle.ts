@@ -412,7 +412,7 @@ export async function quickAddTask(
   text: string,
   defaultProjectId: string | undefined,
   userId: string,
-  due: { dueDate?: string; dueTime?: string } = {},
+  due: { dueDate?: string; dueTime?: string; sectionId?: string } = {},
 ) {
   const parsed = await parseQuickAdd(text, userId);
 
@@ -433,6 +433,8 @@ export async function quickAddTask(
     {
       content: parsed.content,
       projectId,
+      // A section only means something in the project the box belongs to.
+      sectionId: projectId === defaultProjectId ? due.sectionId : undefined,
       dueDate: due.dueDate ?? parsed.dueDate,
       dueTime: due.dueTime ?? parsed.dueTime,
       priority: parsed.priority,

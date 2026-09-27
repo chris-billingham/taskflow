@@ -47,9 +47,13 @@ export async function moveTask(
       : projectChanged
         ? { section: { disconnect: true } }
         : {}),
-    ...(data.parentId !== undefined && {
-      parent: data.parentId ? { connect: { id: data.parentId } } : { disconnect: true },
-    }),
+    ...(data.parentId !== undefined
+      ? { parent: data.parentId ? { connect: { id: data.parentId } } : { disconnect: true } }
+      : // A subtask moved to another project leaves its parent behind and
+        // becomes a top-level task there.
+        projectChanged && oldTask.parentId
+        ? { parent: { disconnect: true } }
+        : {}),
   };
 
   const task = await prisma.$transaction(async (tx) => {

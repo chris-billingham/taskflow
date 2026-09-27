@@ -3,10 +3,19 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import { reportMutationError } from '@/utils/reportError';
 import { toastUndo } from '@/stores/toastStore';
-import type { CreateTaskInput, MoveTaskInput, QuickAddDue, Task } from '@/types/task';
+import type { CreateTaskInput, MoveTaskInput, QuickAddContext, Task } from '@/types/task';
 import { taskKeys } from './taskKeys';
 import { activityKeys } from './activity';
+import { projectKeys } from './projects';
+import type { Project } from '@/types/project';
 import { findCachedTask, mergeTask, patchTaskCaches, snapshotTaskCaches, type TaskMapper } from './taskCache';
+
+/** Where a task sat before a move, so Undo can put it back. */
+export interface MoveOrigin {
+  projectId: string;
+  sectionId: string | null;
+  parentId?: string | null;
+}
 
 /** Pass `{ undo: false }` when the action is itself an undo, or is one of many. */
 export interface ActionOptions {
@@ -90,8 +99,23 @@ function createTaskActions(qc: QueryClient) {
     if (options.undo !== false) toastUndo('Task moved to trash', () => void restoreTask(id));
   };
 
-  const moveTask = async (id: string, input: MoveTaskInput, options: ActionOptions = {}) => {
-    const before = findCachedTask(qc, id);
+  /** "Work", "Work / Next week" or "No section", for the move toast. */
+  const destinationName = (input: MoveTaskInput, before: MoveOrigin) => {
+    const projectId = input.projectId ?? before.projectId;
+    const project = qc.getQueryData<Project[]>(projectKeys.list())?.find((p) => p.id === projectId);
+    const section = input.sectionId ? project?.sections?.find((s) => s.id === input.sectionId) : null;
+    const projectName = project ? (project.isInbox ? 'Inbox' : project.name) : 'another project';
+    if (section) return `${projectName} / ${section.name}`;
+    return projectId === before.projectId ? `${projectName} (no section)` : projectName;
+  };
+
+  const moveTask = async (
+    id: string,
+    input: MoveTaskInput,
+    options: ActionOptions & { from?: MoveOrigin } = {},
+  ) => {
+    // Where it was, for Undo: from the caller, or any cached copy.
+    const before: MoveOrigin | undefined = options.from ?? findCachedTask(qc, id);
     const moved = await run({
       optimistic: only(id, (task) => ({ ...task, ...input }) as Task),
       request: async () => (await api.post(`/tasks/${id}/move`, input)).data.data as Task,
@@ -99,11 +123,10 @@ function createTaskActions(qc: QueryClient) {
       failure: 'The task could not be moved',
     });
     if (options.undo !== false && before) {
-      const where = moved.project?.name ?? (input.projectId && input.projectId !== before.projectId ? 'another project' : null);
-      toastUndo(where ? `Moved to ${where}` : 'Task moved', () =>
+      toastUndo(`Moved to ${destinationName(input, before)}`, () =>
         void moveTask(
           id,
-          { projectId: before.projectId, sectionId: before.sectionId, parentId: before.parentId },
+          { projectId: before.projectId, sectionId: before.sectionId, parentId: before.parentId ?? null },
           { undo: false },
         ),
       );
@@ -126,10 +149,10 @@ function createTaskActions(qc: QueryClient) {
         failure: 'The task could not be added',
       }),
 
-    quickAddTask: (text: string, projectId?: string, due?: QuickAddDue) =>
+    quickAddTask: (text: string, projectId?: string, context?: QuickAddContext) =>
       run({
         request: async () =>
-          (await api.post('/tasks/quick-add', { text, projectId, ...due })).data.data as Task,
+          (await api.post('/tasks/quick-add', { text, projectId, ...context })).data.data as Task,
         failure: 'The task could not be added',
       }),
 

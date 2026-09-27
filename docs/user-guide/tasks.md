@@ -26,7 +26,7 @@ Quick Add and the project-level **+ Add task** understand dates, priorities, `#p
 | Assignee | A member of the project's workspace (in a personal project, only you) |
 | Duration | Estimated time: presets from 15 minutes to 4 hours, or a custom value |
 
-A task's project, section and parent are set when you create it. They can't be changed from the task panel. To move a task to another section, drag it in the Board view. Moving a task to a different project isn't available in the app yet.
+To move a task to another project or section, choose **Move to…** from its **⋯** menu, or click the project name at the top of the task panel. Type to find the destination, then press Enter or click it. A message with **Undo** appears after the move. A subtask moved to another project becomes a top-level task there. Its own subtasks move with it.
 
 ## Completing a Task
 
@@ -76,7 +76,7 @@ The task panel also has:
 
 ## Reordering
 
-Drag a task by the handle (⠿) that appears on the left when you hover. In the List view you can reorder tasks within the same list or section. To move tasks between sections, use the Board view.
+Drag a task by the handle (⠿) that appears on the left when you hover. In a project's List view you can reorder tasks, or drop them into another section (or out of any section). In the Board view, drag cards between columns.
 
 ## Not Available Yet
 

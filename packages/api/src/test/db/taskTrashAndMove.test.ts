@@ -101,3 +101,23 @@ describe('trash', () => {
     expect((await getDueReminders()).some((r) => r.taskId === t.id)).toBe(false);
   });
 });
+
+describe('moving across projects', () => {
+  it('a subtask moved to another project becomes top-level there', async () => {
+    const other = await prisma.project.create({ data: { name: 'Elsewhere', ownerId: me } });
+    const parent = await task('parent 3');
+    const child = await task('child 3', { parentId: parent.id });
+    const moved = await taskService.moveTask(child.id, { projectId: other.id }, me);
+    expect(moved.projectId).toBe(other.id);
+    expect(moved.parentId).toBeNull();
+  });
+
+  it('quick add in a section files the task there, unless the text names another project', async () => {
+    const section = await prisma.section.create({ data: { name: 'Later', projectId } });
+    const here = await taskService.quickAddTask('Buy stamps', projectId, me, { sectionId: section.id });
+    expect(here.sectionId).toBe(section.id);
+    await prisma.project.create({ data: { name: `Elsewhere${fx.run}`, ownerId: me } });
+    const there = await taskService.quickAddTask(`Buy stamps #Elsewhere${fx.run}`, projectId, me, { sectionId: section.id });
+    expect(there.sectionId).toBeNull();
+  });
+});

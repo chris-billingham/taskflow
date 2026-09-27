@@ -27,7 +27,8 @@ The view is saved on the project, so everyone who opens it sees the same one.
 Sections divide a project into groups (for example "To Do", "In Progress", "Done").
 
 - Click **Add section** at the top of a project. A section called "New section" is added. Click its name to rename it.
-- Drag sections to reorder them.
+- Drag sections by the handle (⠿) next to their name to reorder them.
+- Typing in a section's **Add task** box understands the same shortcuts as Quick Add (`p1`, `tomorrow`, `@label`…), and the task lands in that section.
 - Click the arrow next to a section to collapse it.
 - In the Board view, each section is a column. Drag tasks between columns to move them, and use **Add section** at the end of the board to add a column.
 - Deleting a section keeps its tasks. They move out of the section.
