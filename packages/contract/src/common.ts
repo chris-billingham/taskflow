@@ -26,6 +26,14 @@ export const jsonObject = z.codec(z.record(z.string(), z.unknown()), z.unknown()
   encode: (value) => value as Record<string, unknown>,
 });
 
+/**
+ * An email address as an account identity: lowercased, so "Alice@Example.com"
+ * and "alice@example.com" are one person at sign-up, sign-in and invite time.
+ */
+export function emailAddress(message = 'Invalid email address') {
+  return z.email(message).toLowerCase();
+}
+
 /** The success envelope every JSON endpoint uses: `{ success: true, data }`. */
 export function ok<T extends z.ZodType>(data: T) {
   return z.object({ success: z.literal(true), data });

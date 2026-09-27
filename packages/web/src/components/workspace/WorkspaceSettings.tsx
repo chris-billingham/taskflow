@@ -243,6 +243,7 @@ export function WorkspaceSettings() {
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         workspaceId={workspace.id}
+        canInviteAdmins={isOwner}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  ValidationError,
 } from '../errors/index.js';
 import type {
   CreateWorkspaceInput,
@@ -224,6 +225,11 @@ export async function inviteMember(
   userId: string,
 ) {
   await verifyWorkspaceAdmin(workspaceId, userId);
+  // Making someone an admin is owner-only (see updateMemberRole); inviting
+  // them as one must be too, or any admin could mint more admins.
+  if (data.role === 'ADMIN') {
+    await verifyWorkspaceOwner(workspaceId, userId);
+  }
 
   const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
@@ -501,6 +507,10 @@ export async function transferOwnership(
   userId: string,
 ) {
   await verifyWorkspaceOwner(workspaceId, userId);
+  // Transferring to yourself would demote you and leave no OWNER at all.
+  if (newOwnerId === userId) {
+    throw new ValidationError('You already own this workspace');
+  }
 
   const newOwnerMember = await prisma.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId: newOwnerId } },

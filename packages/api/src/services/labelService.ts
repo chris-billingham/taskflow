@@ -9,14 +9,25 @@ export async function getUserLabels(userId: string) {
   });
 }
 
-export async function createLabel(data: CreateLabelInput, userId: string) {
-  // Check for duplicate name
-  const existing = await prisma.label.findUnique({
-    where: { userId_name: { userId, name: data.name } },
+/**
+ * Label names are unique per user regardless of case: quick add's @name and
+ * the filter @name match case-insensitively, so "Urgent" and "urgent" side by
+ * side would be indistinguishable there. (The database constraint is
+ * case-sensitive; this check is the rule.)
+ */
+async function assertNameFree(userId: string, name: string, exceptId?: string) {
+  const sameName = await prisma.label.findMany({
+    where: { userId, name: { equals: name, mode: 'insensitive' } },
+    select: { id: true, name: true },
   });
-  if (existing) {
+  // Insensitive equals is an unescaped ILIKE; compare exactly here.
+  if (sameName.some((l) => l.id !== exceptId && l.name.toLowerCase() === name.toLowerCase())) {
     throw new ConflictError('A label with this name already exists');
   }
+}
+
+export async function createLabel(data: CreateLabelInput, userId: string) {
+  await assertNameFree(userId, data.name);
 
   const maxSort = await prisma.label.aggregate({
     where: { userId },
@@ -39,12 +50,7 @@ export async function updateLabel(id: string, data: UpdateLabelInput, userId: st
   if (label.userId !== userId) throw new ForbiddenError('You do not own this label');
 
   if (data.name && data.name !== label.name) {
-    const existing = await prisma.label.findUnique({
-      where: { userId_name: { userId, name: data.name } },
-    });
-    if (existing) {
-      throw new ConflictError('A label with this name already exists');
-    }
+    await assertNameFree(userId, data.name, id);
   }
 
   return prisma.label.update({ where: { id }, data });

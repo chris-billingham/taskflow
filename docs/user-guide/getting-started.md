@@ -60,7 +60,7 @@ Quick Add understands:
 - **Dates**: `today`, `tomorrow`, `next week` (next Monday), `in 3 days`, a weekday name such as `monday` (the next one), or a month and day such as `May 10`
 - **Time**: `at 3pm`, `at 15:00`, `at 3:30pm`
 - **Priority**: `p1` (highest) to `p4` (none), or `!!!`, `!!`, `!`
-- **Project**: `#ProjectName` (a partial name match against projects you own)
+- **Project**: `#ProjectName`: the exact name (any case) of a project you can add tasks to, team projects included. Names with spaces can't be typed this way; pick the project in the task instead.
 - **Labels**: `@labelname` (must be one of your existing labels)
 - **Duration**: `for 30m`, `for 2h`, `for 1h30m`
 - **Repeat**: `every day`, `every 2 weeks`, `every month`, `every year`, `every Monday`
@@ -69,7 +69,7 @@ Things it doesn't understand yet:
 
 - Numeric dates such as `2025-05-10` or `10/05`. Set these with the date picker instead.
 - Words around a date. In `next Monday` the date is set, but the word "next" stays in the task name. Write just `monday`.
-- Unmatched `#project` and `@label` words are removed from the name but otherwise ignored.
+- An unmatched `@label` word is removed from the name and otherwise ignored. An unmatched `#word` stays in the name, so `Fix issue #42` is left alone.
 
 **+ Add task** under a section in a project adds the text as-is, without parsing.
 

@@ -2,7 +2,7 @@
 
 ## Labels
 
-Labels are tags you can apply to tasks. Each label has a name and a color.
+Labels are tags you can apply to tasks. Each label has a name and a color. Names are unique regardless of case, so `Urgent` and `urgent` count as the same label.
 
 Labels are **personal**. Each person has their own set, and only you can apply your labels. In a shared project, other members can see labels you've put on a task, but they can't use your labels on their tasks.
 
@@ -58,11 +58,11 @@ Terms:
 | `due: <date>` | Tasks due on a date: `today`, `tomorrow`, `yesterday`, `2025-05-10`, or a range such as `next 7 days` |
 | `due before: <date>`, `due after: <date>` | Tasks due before or after a date |
 | `p1`, `p2`, `p3`, `p4` (or `priority 1` … `priority 4`) | Tasks with that priority |
-| `#Project` | Tasks in a project **you own** with exactly that name |
+| `#Project` | Tasks in any project you can see with exactly that name (any case), including team projects. If names clash, your own project wins. |
 | `##Project` | Tasks in any project you can see with that name, including team projects. `##Parent/Child` targets a sub-project. |
 | `!#Project` | Tasks not in that project |
 | `@label` | Tasks with one of your labels |
-| `assigned to: me`, `assigned to: <name>` | Tasks assigned to you or to someone whose name contains that text |
+| `assigned to: me`, `assigned to: <name>` | Tasks assigned to you, or to someone you work with whose name contains that text |
 | `assigned by: me`, `assigned by: <name>` | Assigned tasks created by you or by that person |
 | `created: <date>`, `created before: <date>`, `created after: <date>` | Tasks by creation date |
 | `recurring`, `!recurring` | Repeating / non-repeating tasks |
@@ -80,7 +80,7 @@ assigned to: me & due: next 7 days
 completed & created after: 2025-01-01
 ```
 
-Apart from `today`, `tomorrow`, `overdue` and `no date`, terms match completed tasks as well. Add `& !completed` if you only want open ones. A filter shows up to 200 tasks.
+Apart from `today`, `tomorrow`, `overdue` and `no date`, terms match completed tasks as well. Add `& !completed` if you only want open ones. Long results load a page at a time: use **Load more tasks** at the bottom of the list.
 
 ### Using a Filter
 

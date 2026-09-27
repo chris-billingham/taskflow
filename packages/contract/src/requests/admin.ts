@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { emailAddress } from '../common.js';
 import { systemRoleSchema } from '../entities/account.js';
 
 
@@ -23,7 +24,7 @@ export const listUsersQuerySchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  email: z.email('Invalid email address'),
+  email: emailAddress('Invalid email address'),
   name: z.string().min(1, 'Name is required').max(100),
   // Omit to have the server generate one and return it once.
   password: passwordSchema.optional(),

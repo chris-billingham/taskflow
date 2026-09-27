@@ -8,6 +8,7 @@ import type {
   UpdateTemplateInput,
 } from '@taskflow/contract';
 import { logger } from '../config/logger.js';
+import { requireProjectAccess, requireWorkspaceRole } from './access.js';
 
 interface TemplateSubtask {
   content: string;
@@ -143,14 +144,9 @@ export async function createTemplate(data: CreateTemplateInput, userId: string) 
   if (!project) {
     throw new NotFoundError('Source project not found');
   }
-  if (project.ownerId !== userId) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: data.projectId, userId } },
-    });
-    if (!member) {
-      throw new ForbiddenError('You do not have access to this project');
-    }
-  }
+  // Anyone who can see a project can save it as a template, workspace
+  // projects included (the old owner-or-direct-member check refused them).
+  await requireProjectAccess(data.projectId, userId, 'VIEW');
 
   if (data.workspaceId) {
     await verifyWorkspaceMembership(data.workspaceId, userId);
@@ -211,8 +207,9 @@ export async function applyTemplate(
   const template = await getTemplateById(templateId, userId);
   const templateData = template.data as unknown as TemplateData;
 
+  // Same rule as creating a project there: GUESTs can't add projects.
   if (data.workspaceId) {
-    await verifyWorkspaceMembership(data.workspaceId, userId);
+    await requireWorkspaceRole(data.workspaceId, userId, 'MEMBER');
   }
 
   // Compute sort order for new project
