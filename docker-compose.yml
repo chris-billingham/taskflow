@@ -34,7 +34,7 @@ services:
       - traefik
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     logging: *default-logging
     environment:
