@@ -1,0 +1,39 @@
+# Weekly dependency updates, so upgrades arrive as small tested PRs instead of
+# piling up behind security overrides. Minor and patch bumps are grouped into
+# one PR per ecosystem; each major version gets its own PR to review.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      github-actions:
+        patterns: ['*']
+
+  # Base images in the Dockerfiles (node, nginx).
+  - package-ecosystem: docker
+    directories:
+      - /packages/api
+      - /packages/web
+    schedule:
+      interval: weekly
+      day: monday
+
+  # Service images in docker-compose.yml (postgres, redis, garage, traefik, rclone).
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

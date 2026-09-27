@@ -70,6 +70,12 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 - **TypeScript 6.0** in every package (7.0 waits for typescript-eslint
   support). The unused shared package moved off the deprecated `node10`
   module resolution.
+- **CI hygiene and automated updates.** Actions moved to their Node 24
+  majors and are pinned by commit SHA; read-only default permissions;
+  superseded pull-request runs are cancelled (pushes to main always finish);
+  every job has a timeout. Dependabot opens weekly PRs for npm, GitHub
+  Actions, Dockerfile base images and compose service images, with minor and
+  patch bumps grouped.
 
 ### Fixed
 
