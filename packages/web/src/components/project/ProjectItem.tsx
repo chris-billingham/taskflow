@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRight, MoreHorizontal } from 'lucide-react';
+import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import type { ProjectTreeNode } from '@/types/project';
 
 interface ProjectItemProps {
@@ -25,7 +26,6 @@ export function ProjectItem({
   const navigate = useNavigate();
   const location = useLocation();
   const [isExpanded, setIsExpanded] = useState(true);
-  const [showMenu, setShowMenu] = useState(false);
   const isActive = location.pathname === `/projects/${project.id}`;
   const hasChildren = project.childNodes.length > 0;
   const taskCount = project._count?.tasks ?? 0;
@@ -46,6 +46,8 @@ export function ProjectItem({
           className={`w-5 h-5 flex items-center justify-center flex-shrink-0 ${
             hasChildren ? 'visible' : 'invisible'
           }`}
+          aria-label={isExpanded ? 'Collapse subprojects' : 'Expand subprojects'}
+          aria-expanded={isExpanded}
           onClick={(e) => {
             e.stopPropagation();
             setIsExpanded(!isExpanded);
@@ -72,83 +74,29 @@ export function ProjectItem({
           <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{taskCount}</span>
         )}
 
-        {/* More actions */}
-        <div className="relative flex-shrink-0">
-          <button
-            className="w-6 h-6 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 hidden group-hover:flex"
-            title="Project options"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu(!showMenu);
-            }}
+        {/* More actions. Kept in the layout (not display:none) while hidden so
+            keyboard users can still tab to it. */}
+        <div className="flex-shrink-0">
+          <Menu
+            label={`Options for ${project.name}`}
+            trigger={<MoreHorizontal className="w-4 h-4" />}
+            triggerVariant="plain"
+            triggerClassName="w-6 h-6 inline-flex items-center justify-center rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+            menuClassName="w-48"
           >
-            <MoreHorizontal className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-          </button>
-
-          {showMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                }}
-              />
-              <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onEdit(project);
-                  }}
-                >
-                  Edit project
-                </button>
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onToggleFavorite(project);
-                  }}
-                >
-                  {project.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                </button>
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onDuplicate(project);
-                  }}
-                >
-                  Duplicate
-                </button>
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onArchive(project);
-                  }}
-                >
-                  {project.isArchived ? 'Unarchive' : 'Archive'}
-                </button>
-                <hr className="my-1 border-gray-200 dark:border-gray-700" />
-                <button
-                  className="w-full text-left px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onDelete(project);
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </>
-          )}
+            <MenuItem onSelect={() => onEdit(project)}>Edit project</MenuItem>
+            <MenuItem onSelect={() => onToggleFavorite(project)}>
+              {project.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            </MenuItem>
+            <MenuItem onSelect={() => onDuplicate(project)}>Duplicate</MenuItem>
+            <MenuItem onSelect={() => onArchive(project)}>
+              {project.isArchived ? 'Unarchive' : 'Archive'}
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem tone="danger" onSelect={() => onDelete(project)}>
+              Delete
+            </MenuItem>
+          </Menu>
         </div>
       </div>
 

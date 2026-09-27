@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import { SearchInput } from './SearchInput';
 import { SearchResultsPanel } from './SearchResults';
 import { useSearch } from '@/hooks/useSearch';
@@ -79,13 +80,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     [results],
   );
 
+  // Escape belongs to Modal; the palette only adds result navigation.
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!isOpen) return;
 
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'ArrowDown') {
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIndex((i) => Math.min(i + 1, totalResults - 1));
       } else if (e.key === 'ArrowUp') {
@@ -105,7 +105,6 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
       totalResults,
       selectedIndex,
       getNthResult,
-      onClose,
       handleSelectTask,
       handleSelectProject,
       handleSelectComment,
@@ -117,86 +116,88 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  if (!isOpen) return null;
-
   const showRecents = !query.trim() && recentSearches.length > 0;
   const showResults = query.trim().length >= 2 && results !== null;
   const showEmpty = query.trim().length >= 2 && !loading && results !== null && totalResults === 0;
   const showPlaceholder = !query.trim() && recentSearches.length === 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <SearchInput query={query} onChange={setQuery} loading={loading} autoFocus />
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel="Search"
+      size="2xl"
+      align="top"
+      className="overflow-hidden"
+    >
+      <SearchInput query={query} onChange={setQuery} loading={loading} autoFocus />
 
-        <div className="max-h-[60vh] overflow-y-auto">
-          {showPlaceholder && (
-            <div className="py-12 text-center">
-              <p className="text-gray-400 dark:text-gray-500 text-sm">
-                Type to search tasks, projects, and comments
+      <div className="max-h-[60vh] overflow-y-auto">
+        {showPlaceholder && (
+          <div className="py-12 text-center">
+            <p className="text-gray-400 dark:text-gray-500 text-sm">
+              Type to search tasks, projects, and comments
+            </p>
+          </div>
+        )}
+
+        {showRecents && (
+          <div>
+            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                Recent Searches
               </p>
+              <button
+                onClick={clearRecentSearches}
+                className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                Clear
+              </button>
             </div>
-          )}
+            {recentSearches.map((term) => (
+              <button
+                key={term}
+                className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                onClick={() => setQuery(term)}
+              >
+                <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">{term}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
-          {showRecents && (
-            <div>
-              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-700">
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  Recent Searches
-                </p>
-                <button
-                  onClick={clearRecentSearches}
-                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                >
-                  Clear
-                </button>
-              </div>
-              {recentSearches.map((term) => (
-                <button
-                  key={term}
-                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => setQuery(term)}
-                >
-                  <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{term}</span>
-                </button>
-              ))}
-            </div>
-          )}
+        {showResults && (
+          <SearchResultsPanel
+            results={results}
+            query={query}
+            selectedIndex={selectedIndex}
+            onSelectTask={handleSelectTask}
+            onSelectProject={handleSelectProject}
+            onSelectComment={handleSelectComment}
+          />
+        )}
 
-          {showResults && (
-            <SearchResultsPanel
-              results={results}
-              query={query}
-              selectedIndex={selectedIndex}
-              onSelectTask={handleSelectTask}
-              onSelectProject={handleSelectProject}
-              onSelectComment={handleSelectComment}
-            />
-          )}
-
-          {showEmpty && (
-            <div className="py-12 text-center">
-              <p className="text-gray-500 dark:text-gray-400 text-sm">No results for &ldquo;{query}&rdquo;</p>
-            </div>
-          )}
-        </div>
-
-        {totalResults > 0 && (
-          <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
-            <span>
-              <kbd className="font-mono">↑↓</kbd> navigate
-            </span>
-            <span>
-              <kbd className="font-mono">↵</kbd> select
-            </span>
-            <span>
-              <kbd className="font-mono">esc</kbd> close
-            </span>
+        {showEmpty && (
+          <div className="py-12 text-center">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">No results for &ldquo;{query}&rdquo;</p>
           </div>
         )}
       </div>
-    </div>
+
+      {totalResults > 0 && (
+        <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
+          <span>
+            <kbd className="font-mono">↑↓</kbd> navigate
+          </span>
+          <span>
+            <kbd className="font-mono">↵</kbd> select
+          </span>
+          <span>
+            <kbd className="font-mono">esc</kbd> close
+          </span>
+        </div>
+      )}
+    </Modal>
   );
 }

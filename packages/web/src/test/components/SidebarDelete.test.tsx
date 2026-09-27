@@ -24,8 +24,8 @@ function serveProjects() {
 // The sidebar renders twice (mobile drawer and desktop column); use the first.
 async function openDeleteFromMenu(user: ReturnType<typeof renderPage>['user']) {
   await screen.findAllByText('Home reno');
-  await user.click(screen.getAllByTitle('Project options')[0]);
-  await user.click(screen.getByRole('button', { name: 'Delete' }));
+  await user.click(screen.getAllByRole('button', { name: /^Options for / })[0]);
+  await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
 }
 
 describe('Sidebar project delete', () => {

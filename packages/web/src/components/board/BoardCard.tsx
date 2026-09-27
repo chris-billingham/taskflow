@@ -6,7 +6,7 @@ import { DueDateBadge } from '@/components/task/DueDatePicker';
 import { LabelBadges } from '@/components/task/LabelPicker';
 import type { Task } from '@/types/task';
 import { useTaskActions } from '@/queries/taskActions';
-import { useTaskPanel } from '@/hooks/useTaskPanel';
+import { useOpenTask } from '@/hooks/useTaskPanel';
 
 interface BoardCardProps {
   task: Task;
@@ -21,7 +21,7 @@ const priorityBorderColors: Record<number, string> = {
 
 export function BoardCard({ task }: BoardCardProps) {
   const { completeTask, uncompleteTask } = useTaskActions();
-  const { openTask } = useTaskPanel();
+  const openTask = useOpenTask();
   const onClick = (t: Task) => openTask(t.id);
   const subtasks = task.subtasks as Task[] | undefined;
   const {

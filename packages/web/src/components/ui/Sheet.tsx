@@ -1,6 +1,7 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useEscapeToClose } from '@/hooks/useEscapeToClose';
 
 interface SheetProps {
   onClose: () => void;
@@ -17,15 +18,9 @@ interface SheetProps {
 export function Sheet({ onClose, label, children }: SheetProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, true);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      // A menu or picker inside the panel handles its own Escape first.
-      if (e.key === 'Escape' && !e.defaultPrevented) onClose();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  // Shares the overlay stack with Modal: Escape in a dialog opened from the
+  // panel (a lightbox, a confirm) closes that dialog, not the panel too.
+  useEscapeToClose(onClose);
 
   return createPortal(
     <>

@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MoreHorizontal, Pencil, Trash2, Star, StarOff } from 'lucide-react';
-import { useFilters, useFilterActions, type Filter } from '@/queries/filters';
+import { useFilters, useFilterActions } from '@/queries/filters';
+import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 
 export function FilterList() {
   const navigate = useNavigate();
@@ -9,106 +10,61 @@ export function FilterList() {
   const { filters } = useFilters();
   const { updateFilter, deleteFilter } = useFilterActions();
 
-  const [contextMenu, setContextMenu] = useState<{ filter: Filter; x: number; y: number } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setContextMenu(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  const handleContextMenu = (e: React.MouseEvent, filter: Filter) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu({ filter, x: e.clientX, y: e.clientY });
-  };
+  // Which row's menu is open, so a right-click on the row can open it too.
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   if (filters.length === 0) return null;
 
   return (
     <div className="space-y-0.5">
       {filters.map((filter) => (
-        <button
+        <div
           key={filter.id}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm group ${
+          className={`flex items-center gap-1 pr-1 rounded-md text-sm group ${
             location.pathname === `/filters/${filter.id}`
               ? 'bg-primary-500/10 text-primary-500'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
-          onClick={() => navigate(`/filters/${filter.id}`)}
-          onContextMenu={(e) => handleContextMenu(e, filter)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setMenuFor(filter.id);
+          }}
         >
-          <span
-            className="w-2.5 h-2.5 rounded flex-shrink-0"
-            style={{ backgroundColor: filter.color }}
-          />
-          <span className="truncate flex-1 text-left">{filter.name}</span>
           <button
-            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleContextMenu(e, filter);
-            }}
+            className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5 text-left"
+            onClick={() => navigate(`/filters/${filter.id}`)}
           >
-            <MoreHorizontal className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <span
+              className="w-2.5 h-2.5 rounded flex-shrink-0"
+              style={{ backgroundColor: filter.color }}
+            />
+            <span className="truncate flex-1">{filter.name}</span>
           </button>
-        </button>
-      ))}
-
-      {contextMenu && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
-          <div
-            ref={menuRef}
-            className="fixed z-50 w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+          <Menu
+            label={`Options for ${filter.name}`}
+            trigger={<MoreHorizontal className="w-3.5 h-3.5" />}
+            triggerVariant="plain"
+            triggerClassName="p-0.5 inline-flex items-center justify-center rounded text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+            menuClassName="w-44"
+            open={menuFor === filter.id}
+            onOpenChange={(open) => setMenuFor(open ? filter.id : null)}
           >
-            <button
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              onClick={() => {
-                updateFilter(contextMenu.filter.id, {
-                  isFavorite: !contextMenu.filter.isFavorite,
-                });
-                setContextMenu(null);
-              }}
+            <MenuItem
+              icon={filter.isFavorite ? StarOff : Star}
+              onSelect={() => updateFilter(filter.id, { isFavorite: !filter.isFavorite })}
             >
-              {contextMenu.filter.isFavorite ? (
-                <>
-                  <StarOff className="w-4 h-4" /> Remove favorite
-                </>
-              ) : (
-                <>
-                  <Star className="w-4 h-4" /> Add to favorites
-                </>
-              )}
-            </button>
-            <button
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              onClick={() => {
-                navigate(`/filters-labels`);
-                setContextMenu(null);
-              }}
-            >
-              <Pencil className="w-4 h-4" /> Edit
-            </button>
-            <hr className="my-1 border-gray-200 dark:border-gray-700" />
-            <button
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-              onClick={() => {
-                deleteFilter(contextMenu.filter.id);
-                setContextMenu(null);
-              }}
-            >
-              <Trash2 className="w-4 h-4" /> Delete
-            </button>
-          </div>
-        </>
-      )}
+              {filter.isFavorite ? 'Remove favorite' : 'Add to favorites'}
+            </MenuItem>
+            <MenuItem icon={Pencil} onSelect={() => navigate('/filters-labels')}>
+              Edit
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem icon={Trash2} tone="danger" onSelect={() => deleteFilter(filter.id)}>
+              Delete
+            </MenuItem>
+          </Menu>
+        </div>
+      ))}
     </div>
   );
 }

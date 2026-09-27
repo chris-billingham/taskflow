@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TaskPanel } from '@/components/task/TaskPanel';
+import { OpenTaskProvider } from '@/hooks/useTaskPanel';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { useAuthStore } from '@/stores/authStore';
 import { useSocketStore } from '@/stores/socketStore';
@@ -68,12 +69,14 @@ export function renderPage(ui: ReactElement, options: RenderPageOptions = {}) {
   const utils = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[route]}>
-        <Routes>
-          <Route path={path} element={ui} />
-        </Routes>
-        <TaskPanel />
-        <CurrentUrl />
-        <ToastContainer />
+        <OpenTaskProvider>
+          <Routes>
+            <Route path={path} element={ui} />
+          </Routes>
+          <TaskPanel />
+          <CurrentUrl />
+          <ToastContainer />
+        </OpenTaskProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );

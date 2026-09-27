@@ -55,9 +55,9 @@ test.describe('Authentication', () => {
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     await expect(page).toHaveURL(/\/(today|inbox|app)/);
 
-    // The logout button is inside the user menu popup — open it first
-    await page.getByRole('button').filter({ hasText: TEST_USER.name }).click();
-    await page.getByRole('button', { name: 'Log out' }).click();
+    // Log out lives in the account menu at the foot of the sidebar.
+    await page.getByRole('button', { name: `${TEST_USER.name}, account menu` }).click();
+    await page.getByRole('menuitem', { name: 'Log out' }).click();
     await expect(page).toHaveURL(/\/login/);
   });
 

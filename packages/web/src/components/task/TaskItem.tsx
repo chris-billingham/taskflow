@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { memo, useState, useRef, useEffect } from 'react';
 import {
   MoreHorizontal,
   Trash2,
@@ -19,7 +19,7 @@ import { LabelBadges } from './LabelPicker';
 import { useTaskActions } from '@/queries/taskActions';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import { useSubtasks } from '@/queries/tasks';
-import { useTaskPanel } from '@/hooks/useTaskPanel';
+import { useOpenTask } from '@/hooks/useTaskPanel';
 import type { Task } from '@/types/task';
 
 interface TaskItemProps {
@@ -41,9 +41,14 @@ const priorityBorderColors: Record<number, string> = {
  * A task row. It acts on the task itself (shared task actions) and opens it in
  * the task panel, so lists only need to hand it the task.
  */
-export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: TaskItemProps) {
+export const TaskItem = memo(function TaskItem({
+  task,
+  dragHandleProps,
+  showSubtasks,
+  isSubtask,
+}: TaskItemProps) {
   const { updateTask, completeTask, uncompleteTask, deleteTask, duplicateTask } = useTaskActions();
-  const { openTask } = useTaskPanel();
+  const openTask = useOpenTask();
   const onUpdate = (id: string, data: Record<string, unknown>) => void updateTask(id, data);
   const onClick = (t: Task) => openTask(t.id);
   const [isEditing, setIsEditing] = useState(false);
@@ -96,6 +101,8 @@ export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: Tas
   const borderColor = priorityBorderColors[task.priority] || priorityBorderColors[4];
 
   return (
+    // No content-visibility here: it implies paint containment, which clipped
+    // the row's own menu and date/priority pickers to the row.
     <div>
       <div
         className={`group flex items-start gap-0 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 transition-colors ${
@@ -243,7 +250,7 @@ export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: Tas
             onChange={(priority) => onUpdate(task.id, { priority })}
           />
 
-          <Menu label="Task options" trigger={<MoreHorizontal className="w-4 h-4" />}>
+          <Menu label={`Options for ${task.content}`} trigger={<MoreHorizontal className="w-4 h-4" />}>
             <MenuItem icon={Pencil} onSelect={() => setIsEditing(true)}>
               Edit
             </MenuItem>
@@ -268,4 +275,4 @@ export function TaskItem({ task, dragHandleProps, showSubtasks, isSubtask }: Tas
       )}
     </div>
   );
-}
+});

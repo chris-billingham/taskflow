@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useRef } from 'react';
-import { useFocusTrap } from '@/hooks/useFocusTrap';
-import { X, LayoutTemplate } from 'lucide-react';
+import { LayoutTemplate } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useProjects, useProjectActions } from '@/queries/projects';
 import { TemplateGallery } from '@/components/template/TemplateGallery';
@@ -38,19 +36,17 @@ export function CreateProjectModal({
   const [error, setError] = useState('');
   const [showGallery, setShowGallery] = useState(false);
 
-  const panelRef = useRef<HTMLDivElement>(null);
-  // Hooks must run on every render — this sits BEFORE the early return.
-  useFocusTrap(panelRef, isOpen);
-
-  if (!isOpen) return null;
-
-  if (showGallery) {
+  if (isOpen && showGallery) {
     return (
       <TemplateGallery
         isOpen
         onClose={() => setShowGallery(false)}
         workspaceId={workspaceId}
-        onProjectCreated={() => onClose()}
+        onProjectCreated={() => {
+          // Otherwise the next "Add project" reopened straight into the gallery.
+          setShowGallery(false);
+          onClose();
+        }}
       />
     );
   }
@@ -88,114 +84,102 @@ export function CreateProjectModal({
     (p) => !p.isInbox && !p.parentId,
   );
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Add project" className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Add project</h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-gray-100"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Add project">
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <Input
+          name="name"
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Project name"
+          error={error}
+          autoFocus
+        />
+
+        {/* Color picker */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Color
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {PRESET_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`w-7 h-7 rounded-full border-2 transition-all ${
+                  color === c ? 'border-gray-900 scale-110' : 'border-transparent'
+                }`}
+                style={{ backgroundColor: c }}
+                onClick={() => setColor(c)}
+                aria-label={`Color ${c}`}
+                aria-pressed={color === c}
+              />
+            ))}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            name="name"
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Project name"
-            error={error}
-            autoFocus
-          />
+        {/* Parent project selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Parent project (optional)
+          </label>
+          <select
+            className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            value={selectedParentId}
+            onChange={(e) => setSelectedParentId(e.target.value)}
+          >
+            <option value="">None</option>
+            {parentOptions.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          {/* Color picker */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Color
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`w-7 h-7 rounded-full border-2 transition-all ${
-                    color === c ? 'border-gray-900 scale-110' : 'border-transparent'
-                  }`}
-                  style={{ backgroundColor: c }}
-                  onClick={() => setColor(c)}
-                />
-              ))}
-            </div>
+        {/* View style */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            View
+          </label>
+          <div className="flex gap-2">
+            {(['LIST', 'BOARD', 'CALENDAR'] as const).map((style) => (
+              <button
+                key={style}
+                type="button"
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  viewStyle === style
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+                onClick={() => setViewStyle(style)}
+              >
+                {style.charAt(0) + style.slice(1).toLowerCase()}
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Parent project selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Parent project (optional)
-            </label>
-            <select
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              value={selectedParentId}
-              onChange={(e) => setSelectedParentId(e.target.value)}
-            >
-              <option value="">None</option>
-              {parentOptions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+        <div className="flex items-center justify-between pt-2">
+          <button
+            type="button"
+            onClick={() => setShowGallery(true)}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+          >
+            <LayoutTemplate className="w-4 h-4" />
+            Start from template
+          </button>
+          <div className="flex gap-2">
+            <Button variant="secondary" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={isSubmitting} disabled={!name.trim()}>
+              Add
+            </Button>
           </div>
-
-          {/* View style */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              View
-            </label>
-            <div className="flex gap-2">
-              {(['LIST', 'BOARD', 'CALENDAR'] as const).map((style) => (
-                <button
-                  key={style}
-                  type="button"
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    viewStyle === style
-                      ? 'bg-primary-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  onClick={() => setViewStyle(style)}
-                >
-                  {style.charAt(0) + style.slice(1).toLowerCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-2">
-            <button
-              type="button"
-              onClick={() => setShowGallery(true)}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-            >
-              <LayoutTemplate className="w-4 h-4" />
-              Start from template
-            </button>
-            <div className="flex gap-2">
-              <Button variant="secondary" type="button" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" isLoading={isSubmitting} disabled={!name.trim()}>
-                Add
-              </Button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body,
+        </div>
+      </form>
+    </Modal>
   );
 }

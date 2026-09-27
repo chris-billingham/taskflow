@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { Outlet, useSearchParams } from 'react-router-dom';
 import { Menu, Plus, Search } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationCenter } from '@/components/notification/NotificationCenter';
@@ -7,8 +7,13 @@ import { Modal } from '@/components/ui/Modal';
 import { QuickAdd } from '@/components/task/QuickAdd';
 import { SyncStatus } from '@/components/ui/SyncStatus';
 import { SearchModal } from '@/components/search/SearchModal';
-import { TaskPanel } from '@/components/task/TaskPanel';
+// The panel (comments, Markdown, attachments, pickers) loads the first time a
+// task is opened, not with the app.
+const TaskPanel = lazy(() =>
+  import('@/components/task/TaskPanel').then((m) => ({ default: m.TaskPanel })),
+);
 import { useTaskActions } from '@/queries/taskActions';
+import { OpenTaskProvider } from '@/hooks/useTaskPanel';
 import { useSocket } from '@/hooks/useSocket';
 import { useRealTimeSync } from '@/hooks/useRealTimeSync';
 
@@ -17,6 +22,8 @@ export function AppLayout() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const { quickAddTask } = useTaskActions();
+  const [searchParams] = useSearchParams();
+  const taskOpen = searchParams.has('task');
 
   useSocket();
   useRealTimeSync();
@@ -59,6 +66,7 @@ export function AppLayout() {
   };
 
   return (
+    <OpenTaskProvider>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -120,7 +128,11 @@ export function AppLayout() {
       </div>
 
       {/* The open task (?task= in the URL), over whichever page is showing */}
-      <TaskPanel />
+      {taskOpen && (
+        <Suspense fallback={null}>
+          <TaskPanel />
+        </Suspense>
+      )}
 
       {/* Global Search Modal */}
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
@@ -143,5 +155,6 @@ export function AppLayout() {
         </div>
       </Modal>
     </div>
+    </OpenTaskProvider>
   );
 }

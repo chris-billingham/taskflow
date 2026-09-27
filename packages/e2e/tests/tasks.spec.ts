@@ -62,16 +62,9 @@ test.describe('Task Management', () => {
     await page.goto('/today');
     await quickAddToday(page, taskName);
 
-    // The row content is now itself role=button ("Open task: …"), so pick the
-    // OUTER sortable row: the one that CONTAINS the Task options button.
-    const taskRow = page
-      .getByRole('button', { name: new RegExp(taskName) })
-      .filter({ has: page.getByRole('button', { name: 'Task options' }) });
-    await taskRow.hover();
-    await taskRow.getByRole('button', { name: 'Task options' }).click();
-    // Use exact match: the open dropdown causes the task row's accessible name to
-    // include "Delete", so /delete/i matches both the row and the menu item.
-    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    // Each row's options button names its task.
+    await page.getByRole('button', { name: `Options for ${taskName}`, exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
 
     await expect(page.getByText(taskName)).not.toBeVisible({ timeout: 5000 });
   });

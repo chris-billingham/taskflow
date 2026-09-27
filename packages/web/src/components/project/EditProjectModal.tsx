@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { useRef } from 'react';
-import { useFocusTrap } from '@/hooks/useFocusTrap';
-import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import type { Project } from '@/types/project';
 
@@ -44,12 +42,6 @@ export function EditProjectModal({
     setViewStyle(project.viewStyle);
   }, [project]);
 
-  const panelRef = useRef<HTMLDivElement>(null);
-  // Hooks must run on every render — this sits BEFORE the early return.
-  useFocusTrap(panelRef, isOpen);
-
-  if (!isOpen) return null;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -74,6 +66,7 @@ export function EditProjectModal({
   };
 
   const handleDelete = async () => {
+    setShowDeleteConfirm(false);
     try {
       await onDelete(project.id);
       onClose();
@@ -91,136 +84,110 @@ export function EditProjectModal({
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Edit project" className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit project</h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-          </button>
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit project">
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <Input
+          name="name"
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Project name"
+          error={error}
+          autoFocus
+        />
+
+        {/* Color picker */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Color
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {PRESET_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`w-7 h-7 rounded-full border-2 transition-all ${
+                  color === c ? 'border-gray-900 scale-110' : 'border-transparent'
+                }`}
+                style={{ backgroundColor: c }}
+                onClick={() => setColor(c)}
+                aria-label={`Color ${c}`}
+                aria-pressed={color === c}
+              />
+            ))}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            name="name"
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Project name"
-            error={error}
-            autoFocus
-          />
-
-          {/* Color picker */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Color
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`w-7 h-7 rounded-full border-2 transition-all ${
-                    color === c ? 'border-gray-900 scale-110' : 'border-transparent'
-                  }`}
-                  style={{ backgroundColor: c }}
-                  onClick={() => setColor(c)}
-                />
-              ))}
-            </div>
+        {/* View style */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            View
+          </label>
+          <div className="flex gap-2">
+            {(['LIST', 'BOARD', 'CALENDAR'] as const).map((style) => (
+              <button
+                key={style}
+                type="button"
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  viewStyle === style
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+                onClick={() => setViewStyle(style)}
+              >
+                {style.charAt(0) + style.slice(1).toLowerCase()}
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* View style */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              View
-            </label>
-            <div className="flex gap-2">
-              {(['LIST', 'BOARD', 'CALENDAR'] as const).map((style) => (
-                <button
-                  key={style}
+        <div className="flex justify-between pt-2">
+          <div className="flex gap-2">
+            {!project.isInbox && (
+              <>
+                <Button
+                  variant="secondary"
                   type="button"
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    viewStyle === style
-                      ? 'bg-primary-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                  onClick={() => setViewStyle(style)}
+                  size="sm"
+                  onClick={handleArchive}
                 >
-                  {style.charAt(0) + style.slice(1).toLowerCase()}
-                </button>
-              ))}
-            </div>
+                  {project.isArchived ? 'Unarchive' : 'Archive'}
+                </Button>
+                <Button
+                  variant="danger"
+                  type="button"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  Delete
+                </Button>
+              </>
+            )}
           </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={isSubmitting}
+              disabled={!name.trim()}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </form>
 
-          <div className="flex justify-between pt-2">
-            <div className="flex gap-2">
-              {!project.isInbox && (
-                <>
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    size="sm"
-                    onClick={handleArchive}
-                  >
-                    {project.isArchived ? 'Unarchive' : 'Archive'}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    type="button"
-                    size="sm"
-                    onClick={() => setShowDeleteConfirm(true)}
-                  >
-                    Delete
-                  </Button>
-                </>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" type="button" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                isLoading={isSubmitting}
-                disabled={!name.trim()}
-              >
-                Save
-              </Button>
-            </div>
-          </div>
-        </form>
-
-        {/* Delete confirmation */}
-        {showDeleteConfirm && (
-          <div className="absolute inset-0 bg-white dark:bg-gray-800 rounded-xl p-6 flex flex-col items-center justify-center">
-            <p className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Delete project?
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
-              This will permanently delete "{project.name}" and all its tasks.
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancel
-              </Button>
-              <Button variant="danger" onClick={handleDelete}>
-                Delete
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body,
+      {/* Stacks over this dialog; Escape backs out of the confirm only. */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete project?"
+        message={`This will permanently delete "${project.name}" and all its tasks.`}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+    </Modal>
   );
 }

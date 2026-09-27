@@ -104,10 +104,9 @@ test.describe('Project Management', () => {
     // Hover to reveal the options button, then open the project menu
     const projectItem = page.locator('aside').getByText(projectName);
     await projectItem.hover();
-    await page.getByRole('button', { name: 'Project options' }).click();
+    await page.locator('aside').getByRole('button', { name: `Options for ${projectName}`, exact: true }).click();
 
-    // Click "Edit project" in the dropdown
-    await page.getByRole('button', { name: 'Edit project', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Edit project' }).click();
 
     // Edit name in the dialog
     const editDialog = page.getByRole('dialog');

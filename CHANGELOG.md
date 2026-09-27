@@ -4,6 +4,44 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Phase 3: frontend architecture
+
+- **Every task has a URL.** `?task=<id>` on any page opens the task panel,
+  one panel for the whole app in place of seven separate copies. Back closes
+  it, or steps from a subtask back to its parent. Subtasks and the parent can
+  be opened from the panel, and `/tasks/:id` is a stable link to a task.
+- **Server data moved to TanStack Query.** Tasks, projects, sections, labels,
+  filters, comments, activity, workspaces, notifications, templates, members,
+  reminders and attachments are all cached queries. A change to a task shows
+  everywhere it appears at once, and realtime events update the same cache.
+  Failed changes roll back and say so; several stores used to roll back
+  silently. The cache is cleared when the signed-in user changes.
+- **One set of task actions.** Rows, board cards and calendar entries act on
+  tasks themselves, so list pages no longer repeat the same handlers or
+  refetch after every change.
+- **Design system groundwork.** The brand colour is a token (CSS variables
+  behind Tailwind's `primary-*`) instead of 138 hard-coded values. There are
+  shared, labelled, keyboard-operable components: IconButton, Menu, Sheet,
+  Modal and ConfirmDialog, and every dialog and dropdown now uses them.
+  Escape closes only the topmost dialog, focus returns to what opened it,
+  menus open beside their trigger above everything else (flipping upwards
+  near the bottom of the screen), and each row's options button names its
+  item. The last browser `confirm()` prompts are gone, and the mobile sidebar
+  closes on Escape.
+- **Smaller first load.** The app's own first chunk went from 170 KB to 28 KB
+  gzipped. The task panel (comments, Markdown, attachments), the login page
+  and the other views load on demand, and Upcoming and Project are prefetched
+  while the browser is idle. Libraries sit in separate long-cached files, and
+  Zod no longer loads up front.
+- **Smoother long lists.** Task rows are memoised and open tasks through a
+  stable function, so navigating no longer re-renders every row.
+- **Fixed:**
+  - Expanding a task's subtasks in a project list showed nothing unless that
+    task had been loaded elsewhere.
+  - The assignee pickers crashed for guests as soon as they typed a search.
+  - The template dialog's "Make public" box did nothing and has been removed.
+  - The notification bell had no accessible name.
+
 ### Phase 2: API contract
 
 - `buildApp()` factory: integration tests now run the real app (plugins,

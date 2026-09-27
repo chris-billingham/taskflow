@@ -10,6 +10,21 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Libraries change far less often than the app, so keep them in their
+        // own long-cached files rather than re-downloaded with every release.
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/ },
+            { name: 'data', test: /node_modules[\\/](@tanstack|axios|socket\.io-client|engine\.io-client|zustand)[\\/]/ },
+            { name: 'ui', test: /node_modules[\\/](@dnd-kit|lucide-react|date-fns)[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
   server: {
     port: 31779,
     proxy: {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { X, Copy, Check } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useWorkspaceActions } from '@/queries/workspaces';
 
@@ -25,8 +26,6 @@ export function InviteMemberModal({
   const [error, setError] = useState('');
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,21 +64,8 @@ export function InviteMemberModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
-      <div className="relative z-10 bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Invite member
-          </h2>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-          </button>
-        </div>
-
+    <Modal isOpen={isOpen} onClose={handleClose} title="Invite member">
+      <div className="p-6">
         {inviteToken ? (
           <div className="space-y-4">
             <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -105,6 +91,7 @@ export function InviteMemberModal({
                   variant="secondary"
                   size="sm"
                   onClick={handleCopyLink}
+                  aria-label={copied ? 'Copied' : 'Copy invite link'}
                 >
                   {copied ? (
                     <Check className="w-4 h-4" />
@@ -177,6 +164,6 @@ export function InviteMemberModal({
           </form>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }

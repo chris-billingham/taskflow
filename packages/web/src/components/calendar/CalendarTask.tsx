@@ -4,7 +4,7 @@ import { TaskCheckbox } from '@/components/task/TaskCheckbox';
 import { formatUserTimeCompact } from '@/utils/dateFormat';
 import type { Task } from '@/types/task';
 import { useTaskActions } from '@/queries/taskActions';
-import { useTaskPanel } from '@/hooks/useTaskPanel';
+import { useOpenTask } from '@/hooks/useTaskPanel';
 
 interface CalendarTaskProps {
   task: Task;
@@ -52,7 +52,7 @@ export function CalendarTask({
     isDragging,
   } = useDraggable({ id: task.id });
   const { completeTask, uncompleteTask } = useTaskActions();
-  const { openTask } = useTaskPanel();
+  const openTask = useOpenTask();
   const onTaskClick = (t: Task) => openTask(t.id);
   const onComplete = (id: string) => void completeTask(id);
   const onUncomplete = (id: string) => void uncompleteTask(id);

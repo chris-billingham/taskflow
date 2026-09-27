@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Camera, X } from 'lucide-react';
+import { Camera } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 
 interface AvatarUploadProps {
   name: string;
@@ -39,6 +40,7 @@ export function AvatarUpload({ name, avatarUrl, onSave }: AvatarUploadProps) {
         )}
         <button
           onClick={() => { setUrlInput(avatarUrl ?? ''); setEditing(true); }}
+          aria-label="Change avatar"
           className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <Camera className="w-5 h-5 text-white" />
@@ -66,42 +68,33 @@ export function AvatarUpload({ name, avatarUrl, onSave }: AvatarUploadProps) {
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Enter an image URL</p>
       </div>
 
-      {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/40" onClick={() => setEditing(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Change Avatar</h3>
-              <button onClick={() => setEditing(false)}>
-                <X className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-              </button>
-            </div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL</label>
-            <input
-              type="url"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://example.com/avatar.jpg"
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              autoFocus
-            />
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setEditing(false)}
-                className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-            </div>
+      <Modal isOpen={editing} onClose={() => setEditing(false)} title="Change Avatar" size="sm">
+        <div className="p-6">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL</label>
+          <input
+            type="url"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            placeholder="https://example.com/avatar.jpg"
+            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            autoFocus
+          />
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={handleSave}
+              className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

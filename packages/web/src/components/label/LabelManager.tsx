@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, GripVertical, Pencil, Trash2, Check, X, Star } from 'lucide-react';
 import { useLabels, useLabelActions, type Label } from '@/queries/labels';
+import { IconButton } from '@/components/ui/IconButton';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 const DEFAULT_COLORS = [
   '#6B7280', '#EF4444', '#F59E0B', '#10B981',
@@ -110,13 +112,15 @@ export function LabelManager() {
                   newColor === color ? 'border-gray-900' : 'border-transparent'
                 }`}
                 style={{ backgroundColor: color }}
+                aria-label={`Colour ${color}`}
+                aria-pressed={newColor === color}
                 onClick={() => setNewColor(color)}
               />
             ))}
           </div>
           <div className="flex gap-2">
             <button
-              className="px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-[#c53829] disabled:opacity-50"
+              className="px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 disabled:opacity-50"
               onClick={handleCreate}
               disabled={!newName.trim() || creating}
             >
@@ -158,6 +162,7 @@ export function LabelManager() {
                   <div className="relative">
                     <input
                       type="color"
+                      aria-label="Label colour"
                       className="w-6 h-6 rounded-full border-0 cursor-pointer"
                       value={editColor}
                       onChange={(e) => setEditColor(e.target.value)}
@@ -173,18 +178,12 @@ export function LabelManager() {
                     }}
                     autoFocus
                   />
-                  <button
-                    className="p-1 rounded hover:bg-green-50 text-green-600 dark:text-green-400"
-                    onClick={() => handleUpdate(label.id)}
-                  >
-                    <Check className="w-4 h-4" />
-                  </button>
-                  <button
-                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500"
-                    onClick={() => setEditingId(null)}
-                  >
+                  <IconButton label="Save label" size="sm" onClick={() => handleUpdate(label.id)}>
+                    <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </IconButton>
+                  <IconButton label="Cancel editing" size="sm" onClick={() => setEditingId(null)}>
                     <X className="w-4 h-4" />
-                  </button>
+                  </IconButton>
                 </div>
               ) : (
                 <>
@@ -198,30 +197,24 @@ export function LabelManager() {
                   >
                     {label.name}
                   </button>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                    <button
-                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                    <IconButton
+                      label={label.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                      size="sm"
                       onClick={() => updateLabel(label.id, { isFavorite: !label.isFavorite })}
-                      title={label.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                     >
                       {label.isFavorite ? (
                         <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
                       ) : (
                         <Star className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                       )}
-                    </button>
-                    <button
-                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                      onClick={() => startEdit(label)}
-                    >
-                      <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-                    </button>
-                    <button
-                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                      onClick={() => setDeleteConfirm(label.id)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 hover:text-red-500" />
-                    </button>
+                    </IconButton>
+                    <IconButton label="Edit label" size="sm" onClick={() => startEdit(label)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </IconButton>
+                    <IconButton label="Delete label" size="sm" tone="danger" onClick={() => setDeleteConfirm(label.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </IconButton>
                   </div>
                 </>
               )}
@@ -230,35 +223,16 @@ export function LabelManager() {
         </div>
       )}
 
-      {/* Delete confirmation */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Delete label?</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              This will remove the label from all tasks. This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                onClick={() => setDeleteConfirm(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
-                onClick={() => {
-                  deleteLabel(deleteConfirm);
-                  setDeleteConfirm(null);
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Delete label?"
+        message="This will remove the label from all tasks. This action cannot be undone."
+        onConfirm={() => {
+          if (deleteConfirm) deleteLabel(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

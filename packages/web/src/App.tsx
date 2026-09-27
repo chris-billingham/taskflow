@@ -9,11 +9,16 @@ import { SettingsLayout } from '@/layouts/SettingsLayout';
 import { Spinner } from '@/components/ui/Spinner';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { useTheme } from '@/hooks/useTheme';
-// Core daily-use pages stay in the main bundle for instant navigation.
+// Today is where the app opens, so it ships in the first bundle. Everything
+// else loads on demand; the other daily views are prefetched once the first
+// screen is up (see below), so switching to them is still instant.
 import Today from '@/pages/app/Today';
-import Upcoming from '@/pages/app/Upcoming';
-import Project from '@/pages/app/Project';
-import Login from '@/pages/auth/Login';
+
+const loadUpcoming = () => import('@/pages/app/Upcoming');
+const loadProject = () => import('@/pages/app/Project');
+const Upcoming = lazy(loadUpcoming);
+const Project = lazy(loadProject);
+const Login = lazy(() => import('@/pages/auth/Login'));
 
 // Everything else loads on demand — auth flows, settings and secondary views
 // don't belong in the first paint of a task list.
@@ -73,6 +78,20 @@ function App() {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Warm the other daily views while the browser is idle.
+  useEffect(() => {
+    const prefetch = () => {
+      void loadUpcoming();
+      void loadProject();
+    };
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(prefetch, { timeout: 5000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = setTimeout(prefetch, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

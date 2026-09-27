@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   CheckSquare,
@@ -24,6 +24,7 @@ import { ProjectList } from '@/components/project/ProjectList';
 import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 import { CreateWorkspaceModal } from '@/components/workspace/CreateWorkspaceModal';
 import type { ProjectTreeNode, Project } from '@/types/project';
@@ -53,8 +54,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [teamProjectsExpanded, setTeamProjectsExpanded] = useState(true);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
   const [filtersLabelsExpanded, setFiltersLabelsExpanded] = useState(true);
-  const [showUserMenu, setShowUserMenu] = useState(false);
 
+  // The mobile drawer closes on Escape, unless a menu inside it already used
+  // that Escape or it came from a dialog opened over the drawer.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (e.target instanceof Element && e.target.closest('[role="dialog"]')) return;
+      onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
 
   const handleLogout = async () => {
     await logout();
@@ -123,6 +135,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <button
             className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 md:hidden"
             onClick={onClose}
+            aria-label="Close sidebar"
           >
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
@@ -375,60 +388,43 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </div>
 
       {/* User menu */}
-      <div className="relative border-t border-gray-200 dark:border-gray-700 px-2 py-2">
-        <button
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-          onClick={() => setShowUserMenu(!showUserMenu)}
+      <div className="border-t border-gray-200 dark:border-gray-700 px-2 py-2">
+        <Menu
+          // The visible name leads, so voice control can target it.
+          label={`${user?.name ?? 'Account'}, account menu`}
+          side="top"
+          align="left"
+          triggerVariant="plain"
+          triggerClassName="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          menuClassName="w-48"
+          trigger={
+            <>
+              <span
+                className="w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                aria-hidden="true"
+              >
+                {user?.name?.charAt(0).toUpperCase()}
+              </span>
+              <span className="truncate">{user?.name}</span>
+            </>
+          }
         >
-          <div className="w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
-            {user?.name?.charAt(0).toUpperCase()}
-          </div>
-          <span className="truncate">{user?.name}</span>
-        </button>
-
-        {showUserMenu && (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setShowUserMenu(false)}
-            />
-            <div className="absolute left-2 bottom-full mb-1 z-50 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
-              {currentWorkspace && (
-                <>
-                  <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      navigate('/workspace/settings');
-                    }}
-                  >
-                    <Building2 className="w-4 h-4" />
-                    Workspace settings
-                  </button>
-                  <hr className="my-1 border-gray-200 dark:border-gray-700" />
-                </>
-              )}
-              <button
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => {
-                  setShowUserMenu(false);
-                  navigate('/settings/profile');
-                }}
-              >
-                <Settings className="w-4 h-4" />
-                Settings
-              </button>
-              <hr className="my-1 border-gray-200 dark:border-gray-700" />
-              <button
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-4 h-4" />
-                Log out
-              </button>
-            </div>
-          </>
-        )}
+          {currentWorkspace && (
+            <>
+              <MenuItem icon={Building2} onSelect={() => navigate('/workspace/settings')}>
+                Workspace settings
+              </MenuItem>
+              <MenuSeparator />
+            </>
+          )}
+          <MenuItem icon={Settings} onSelect={() => navigate('/settings/profile')}>
+            Settings
+          </MenuItem>
+          <MenuSeparator />
+          <MenuItem icon={LogOut} tone="danger" onSelect={() => void handleLogout()}>
+            Log out
+          </MenuItem>
+        </Menu>
       </div>
 
     </div>

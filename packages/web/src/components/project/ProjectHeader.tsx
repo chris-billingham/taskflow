@@ -9,6 +9,7 @@ import {
   Archive,
   Trash2,
 } from 'lucide-react';
+import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import type { Project } from '@/types/project';
 
 interface ProjectHeaderProps {
@@ -32,7 +33,6 @@ export function ProjectHeader({
 }: ProjectHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(project.name);
-  const [showMenu, setShowMenu] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -126,61 +126,22 @@ export function ProjectHeader({
             Add section
           </button>
 
-          {/* More menu */}
-          <div className="relative">
-            <button
-              className="p-1.5 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              onClick={() => setShowMenu(!showMenu)}
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-
-            {showMenu && (
+          <Menu label="Project options" trigger={<MoreHorizontal className="w-4 h-4" />} menuClassName="w-48">
+            <MenuItem icon={Copy} onSelect={onDuplicate}>
+              Duplicate project
+            </MenuItem>
+            <MenuItem icon={Archive} onSelect={onArchive}>
+              {project.isArchived ? 'Unarchive' : 'Archive'}
+            </MenuItem>
+            {!project.isInbox && (
               <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowMenu(false)}
-                />
-                <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
-                  <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    onClick={() => {
-                      setShowMenu(false);
-                      onDuplicate();
-                    }}
-                  >
-                    <Copy className="w-4 h-4" />
-                    Duplicate project
-                  </button>
-                  <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    onClick={() => {
-                      setShowMenu(false);
-                      onArchive();
-                    }}
-                  >
-                    <Archive className="w-4 h-4" />
-                    {project.isArchived ? 'Unarchive' : 'Archive'}
-                  </button>
-                  {!project.isInbox && (
-                    <>
-                      <hr className="my-1 border-gray-200 dark:border-gray-700" />
-                      <button
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        onClick={() => {
-                          setShowMenu(false);
-                          onDelete();
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete project
-                      </button>
-                    </>
-                  )}
-                </div>
+                <MenuSeparator />
+                <MenuItem icon={Trash2} tone="danger" onSelect={onDelete}>
+                  Delete project
+                </MenuItem>
               </>
             )}
-          </div>
+          </Menu>
         </div>
       </div>
     </div>

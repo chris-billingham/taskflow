@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { createContext, createElement, useCallback, useContext, useRef, type ReactNode } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 /**
@@ -34,4 +34,25 @@ export function useTaskPanel() {
   }, [location.state, params, navigate]);
 
   return { openTaskId, openTask, closeTask };
+}
+
+const OpenTaskContext = createContext<((id: string) => void) | null>(null);
+
+/**
+ * Provides a stable "open this task" function to every row. Rows reading the
+ * URL themselves re-rendered on every navigation; through this they don't.
+ */
+export function OpenTaskProvider({ children }: { children: ReactNode }) {
+  const { openTask } = useTaskPanel();
+  const latest = useRef(openTask);
+  latest.current = openTask;
+  const stable = useCallback((id: string) => latest.current(id), []);
+  return createElement(OpenTaskContext.Provider, { value: stable }, children);
+}
+
+/** Open a task in the panel (needs OpenTaskProvider, which AppLayout mounts). */
+export function useOpenTask(): (id: string) => void {
+  const open = useContext(OpenTaskContext);
+  if (!open) throw new Error('useOpenTask must be used inside OpenTaskProvider');
+  return open;
 }

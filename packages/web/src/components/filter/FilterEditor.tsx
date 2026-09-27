@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Play, Star } from 'lucide-react';
 import { useFilters, useFilterActions } from '@/queries/filters';
 import { FilterQueryInput } from './FilterQueryInput';
+import { IconButton } from '@/components/ui/IconButton';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Filter } from '@/queries/filters';
 
 const DEFAULT_COLORS = [
@@ -114,6 +116,8 @@ export function FilterEditor() {
                   newColor === color ? 'border-gray-900' : 'border-transparent'
                 }`}
                 style={{ backgroundColor: color }}
+                aria-label={`Colour ${color}`}
+                aria-pressed={newColor === color}
                 onClick={() => setNewColor(color)}
               />
             ))}
@@ -132,7 +136,7 @@ export function FilterEditor() {
           </div>
           <div className="flex gap-2">
             <button
-              className="px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-[#c53829] disabled:opacity-50"
+              className="px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 disabled:opacity-50"
               onClick={handleCreate}
               disabled={!newName.trim() || !newQuery.trim() || creating || !queryValid}
             >
@@ -191,13 +195,15 @@ export function FilterEditor() {
                           editColor === color ? 'border-gray-900' : 'border-transparent'
                         }`}
                         style={{ backgroundColor: color }}
+                        aria-label={`Colour ${color}`}
+                        aria-pressed={editColor === color}
                         onClick={() => setEditColor(color)}
                       />
                     ))}
                   </div>
                   <div className="flex gap-2">
                     <button
-                      className="px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-[#c53829]"
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600"
                       onClick={() => handleUpdate(filter.id)}
                     >
                       Save
@@ -223,37 +229,27 @@ export function FilterEditor() {
                     <div className="text-sm text-gray-700 dark:text-gray-300 hover:text-primary-500">{filter.name}</div>
                     <div className="text-xs text-gray-400 dark:text-gray-500 font-mono truncate">{filter.query}</div>
                   </button>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                    <button
-                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                    <IconButton
+                      label={filter.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                      size="sm"
                       onClick={() => updateFilter(filter.id, { isFavorite: !filter.isFavorite })}
-                      title={filter.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                     >
                       {filter.isFavorite ? (
                         <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
                       ) : (
                         <Star className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                       )}
-                    </button>
-                    <button
-                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                      onClick={() => handlePreview(filter.query)}
-                      title="Preview results"
-                    >
-                      <Play className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-                    </button>
-                    <button
-                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                      onClick={() => startEdit(filter)}
-                    >
-                      <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-                    </button>
-                    <button
-                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                      onClick={() => setDeleteConfirm(filter.id)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 hover:text-red-500" />
-                    </button>
+                    </IconButton>
+                    <IconButton label="Preview results" size="sm" onClick={() => handlePreview(filter.query)}>
+                      <Play className="w-3.5 h-3.5" />
+                    </IconButton>
+                    <IconButton label="Edit filter" size="sm" onClick={() => startEdit(filter)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </IconButton>
+                    <IconButton label="Delete filter" size="sm" tone="danger" onClick={() => setDeleteConfirm(filter.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </IconButton>
                   </div>
                 </div>
               )}
@@ -304,35 +300,16 @@ export function FilterEditor() {
         </div>
       )}
 
-      {/* Delete confirmation */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setDeleteConfirm(null)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Delete filter?</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                onClick={() => setDeleteConfirm(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
-                onClick={() => {
-                  deleteFilter(deleteConfirm);
-                  setDeleteConfirm(null);
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Delete filter?"
+        message="This action cannot be undone."
+        onConfirm={() => {
+          if (deleteConfirm) deleteFilter(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

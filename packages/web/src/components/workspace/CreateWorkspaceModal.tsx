@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useWorkspaceActions } from '@/queries/workspaces';
@@ -21,8 +20,6 @@ export function CreateWorkspaceModal({
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,60 +46,44 @@ export function CreateWorkspaceModal({
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Create workspace
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-          </button>
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Create workspace">
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <Input
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. My Team"
+          error={error}
+          autoFocus
+        />
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Description (optional)
+          </label>
+          <textarea
+            className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+            rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What's this workspace for?"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. My Team"
-            error={error}
-            autoFocus
-          />
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description (optional)
-            </label>
-            <textarea
-              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What's this workspace for?"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              isLoading={isSubmitting}
-              disabled={!name.trim()}
-            >
-              Create
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body,
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            isLoading={isSubmitting}
+            disabled={!name.trim()}
+          >
+            Create
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
