@@ -15,6 +15,7 @@ import { logActivity } from './activityService.js';
 import { isMailerReady, sendWorkspaceInviteEmail } from './mailService.js';
 import { notify } from './notificationService.js';
 import { getIO } from '../websocket/events.js';
+import { logFailure } from '../config/logger.js';
 
 function generateSlug(name: string): string {
   return (
@@ -146,7 +147,7 @@ export async function createWorkspace(
     entityId: workspace.id,
     userId,
     newData: { name: data.name },
-  }).catch(console.error);
+  }).catch(logFailure('activity log failed'));
 
   return { ...workspace, role: 'OWNER' as const };
 }
@@ -177,7 +178,7 @@ export async function updateWorkspace(
     entityId: id,
     userId,
     newData: data as Record<string, unknown>,
-  }).catch(console.error);
+  }).catch(logFailure('activity log failed'));
 
   return workspace;
 }
@@ -192,7 +193,7 @@ export async function deleteWorkspace(id: string, userId: string) {
     entityType: 'WORKSPACE',
     entityId: id,
     userId,
-  }).catch(console.error);
+  }).catch(logFailure('activity log failed'));
 
   return { message: 'Workspace deleted successfully' };
 }
@@ -289,9 +290,7 @@ export async function inviteMember(
       'Workspace invitation',
       `${inviter?.name ?? 'A teammate'} invited you to join "${workspace.name}"`,
       { workspaceId: workspace.id, inviteToken: invite.token },
-    ).catch((err) =>
-      console.warn('[workspaceService] invite notification failed:', err),
-    );
+    ).catch(logFailure('invite notification failed', { workspaceId: workspace.id }));
   }
 
   if (isMailerReady()) {
@@ -306,12 +305,7 @@ export async function inviteMember(
       inviter?.name ?? 'A teammate',
       workspace.name,
       invite.token,
-    ).catch((err) => {
-      console.error(
-        '[mail] workspace invite email failed:',
-        err instanceof Error ? err.message : err,
-      );
-    });
+    ).catch(logFailure('workspace invite email failed', { workspaceId: workspace.id }));
   }
 
   return {

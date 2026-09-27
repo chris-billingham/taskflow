@@ -1,5 +1,6 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import { env } from '../config/env.js';
+import { logger } from '../config/logger.js';
 
 // Email delivery is optional for self-hosted deployments. The critical
 // contract: registration must never gate on email verification unless the
@@ -20,11 +21,11 @@ type MinimalLogger = {
 };
 
 export async function initMailer(
-  logger: MinimalLogger = { info: console.info, error: console.error },
+  log: MinimalLogger = logger,
 ): Promise<void> {
   if (!env.SMTP_HOST) {
     ready = false;
-    logger.info(
+    log.info(
       'SMTP not configured — email features disabled; new accounts are auto-verified',
     );
     return;
@@ -42,11 +43,11 @@ export async function initMailer(
   try {
     await transporter.verify();
     ready = true;
-    logger.info(`SMTP transport verified (${env.SMTP_HOST}:${env.SMTP_PORT}) — email enabled`);
+    log.info(`SMTP transport verified (${env.SMTP_HOST}:${env.SMTP_PORT}) — email enabled`);
   } catch (err) {
     ready = false;
     transporter = null;
-    logger.error(
+    log.error(
       `SMTP is configured (${env.SMTP_HOST}:${env.SMTP_PORT}) but unreachable: ${
         err instanceof Error ? err.message : String(err)
       }. Email features are DISABLED and new accounts will be auto-verified so registrations are not locked out. Fix the SMTP settings and restart to enable email.`,

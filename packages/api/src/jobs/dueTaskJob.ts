@@ -3,6 +3,7 @@ import { createBullMQConnection } from '../config/redis.js';
 import { prisma } from '../config/database.js';
 import { notify } from '../services/notificationService.js';
 import { isValidTimeZone, userDayBoundariesUTC, zonedWallClockToUTC } from '../utils/dates.js';
+import { logger } from '../config/logger.js';
 
 const QUEUE_NAME = 'due-task-check';
 
@@ -209,16 +210,14 @@ export function startDueTaskWorker() {
     async () => {
       const { dueSoon, overdue } = await runDueTaskCheck();
       if (dueSoon || overdue) {
-        console.log(
-          `[DueTask] sent ${dueSoon} due-soon and ${overdue} overdue notification(s)`,
-        );
+        logger.info({ dueSoon, overdue }, 'due-task notices sent');
       }
     },
     { connection: createBullMQConnection(), concurrency: 1 },
   );
 
   worker.on('failed', (job, err) => {
-    console.error(`Due-task job ${job?.id} failed:`, err.message);
+    logger.error({ err, jobId: job?.id }, 'due-task job failed');
   });
 
   return worker;

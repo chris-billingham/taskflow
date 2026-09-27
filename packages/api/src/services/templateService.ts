@@ -7,6 +7,7 @@ import type {
   ApplyTemplateInput,
   UpdateTemplateInput,
 } from '@taskflow/contract';
+import { logger } from '../config/logger.js';
 
 interface TemplateSubtask {
   content: string;
@@ -382,7 +383,7 @@ export async function deleteTemplate(id: string, userId: string) {
  * content, not user data).
  */
 export async function ensureDefaultTemplates(
-  logger: { info: (msg: string) => void } = { info: console.info },
+  log: { info: (msg: string) => void } = logger,
 ): Promise<{ created: number }> {
   let created = 0;
 
@@ -407,7 +408,7 @@ export async function ensureDefaultTemplates(
   }
 
   if (created > 0) {
-    logger.info(`Installed ${created} built-in template(s)`);
+    log.info(`Installed ${created} built-in template(s)`);
   }
   return { created };
 }

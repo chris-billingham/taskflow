@@ -3,6 +3,7 @@ import { createBullMQConnection } from '../config/redis.js';
 import { prisma } from '../config/database.js';
 import { sendEmailNotification } from '../services/notificationService.js';
 import { isValidTimeZone } from '../utils/dates.js';
+import { logger } from '../config/logger.js';
 
 const QUEUE_NAME = 'notification-digest';
 
@@ -142,7 +143,7 @@ export function startDigestWorker() {
   );
 
   worker.on('failed', (job, err) => {
-    console.error(`Digest job ${job?.id} failed:`, err.message);
+    logger.error({ err, jobId: job?.id }, 'digest job failed');
   });
 
   return worker;

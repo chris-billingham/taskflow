@@ -2,6 +2,7 @@ import { Worker, Queue } from 'bullmq';
 import { createBullMQConnection } from '../config/redis.js';
 import { prisma } from '../config/database.js';
 import { sweepOrphanedAttachments } from '../services/fileService.js';
+import { logger } from '../config/logger.js';
 
 const QUEUE_NAME = 'maintenance';
 
@@ -35,8 +36,9 @@ export function startMaintenanceWorker() {
       const swept = await sweepOrphanedAttachments();
 
       if (tokens.count || invites.count || swept) {
-        console.log(
-          `[Maintenance] pruned ${tokens.count} expired refresh tokens, ${invites.count} expired invites, ${swept} orphaned attachments`,
+        logger.info(
+          { refreshTokens: tokens.count, invites: invites.count, orphanedAttachments: swept },
+          'maintenance pruned expired rows',
         );
       }
     },
@@ -47,7 +49,7 @@ export function startMaintenanceWorker() {
   );
 
   worker.on('failed', (job, err) => {
-    console.error(`Maintenance job ${job?.id} failed:`, err.message);
+    logger.error({ err, jobId: job?.id }, 'maintenance job failed');
   });
 
   return worker;

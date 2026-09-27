@@ -18,37 +18,38 @@ import {
   startDueTaskWorker,
   scheduleDueTaskChecks,
 } from './jobs/dueTaskJob.js';
+import { logger } from './config/logger.js';
 
 export async function initializeWorkers() {
-  console.log('[Worker] Initializing BullMQ workers...');
+  logger.info('Initializing BullMQ workers...');
 
   // Reminder check worker - runs every minute
   const reminderQueue = createReminderQueue();
   const reminderWorker = startReminderWorker();
   await scheduleReminderChecks(reminderQueue);
-  console.log('[Worker] Reminder check worker started');
+  logger.info('Reminder check worker started');
 
   // Notification digest worker - daily/weekly
   const digestQueue = createDigestQueue();
   const digestWorker = startDigestWorker();
   await scheduleDigestJobs(digestQueue);
-  console.log('[Worker] Notification digest worker started');
+  logger.info('Notification digest worker started');
 
   // Due-soon / overdue notices - hourly, gated on each user's local time
   const dueTaskQueue = createDueTaskQueue();
   const dueTaskWorker = startDueTaskWorker();
   await scheduleDueTaskChecks(dueTaskQueue);
-  console.log('[Worker] Due-task check worker started');
+  logger.info('Due-task check worker started');
 
   // Daily cleanup - expired refresh tokens and invites
   const maintenanceQueue = createMaintenanceQueue();
   const maintenanceWorker = startMaintenanceWorker();
   await scheduleMaintenanceJobs(maintenanceQueue);
-  console.log('[Worker] Maintenance worker started');
+  logger.info('Maintenance worker started');
 
   // Graceful shutdown handler
   const shutdown = async () => {
-    console.log('[Worker] Shutting down workers...');
+    logger.info('Shutting down workers...');
     await Promise.all([
       reminderWorker.close(),
       digestWorker.close(),

@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import type { FastifyInstance, FastifyServerOptions } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance, FastifyServerOptions } from 'fastify';
 import type { Redis } from 'ioredis';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
@@ -9,6 +9,7 @@ import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { env } from './config/env.js';
+import { logger as rootLogger } from './config/logger.js';
 import { buildTrustProxy } from './utils/trustProxy.js';
 import { registerRoutes } from './routes/index.js';
 import { runWithRequestContext } from './utils/requestContext.js';
@@ -20,25 +21,13 @@ import { createContractSerializer } from './utils/contractSerializer.js';
 import { healthSchema } from '@taskflow/contract';
 import { rateLimitMax } from './config/rateLimits.js';
 
-const defaultLogger: FastifyServerOptions['logger'] = {
-  level: env.LOG_LEVEL,
-  transport:
-    env.NODE_ENV === 'development'
-      ? {
-          target: 'pino-pretty',
-          options: {
-            translateTime: 'HH:MM:ss Z',
-            ignore: 'pid,hostname',
-            colorize: true,
-          },
-        }
-      : undefined,
-};
-
 export const API_VERSION = '1.0.0';
 
 export interface BuildAppOptions {
-  /** Fastify logger config; defaults to the env-driven production/dev logger. */
+  /**
+   * Fastify logger config (tests pass `false`). Defaults to the shared
+   * application logger, so request and service logs are one stream.
+   */
   logger?: FastifyServerOptions['logger'];
   /**
    * Redis client for rate-limit counters, or `false` for the in-memory store
@@ -74,7 +63,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     // trusts nothing); see utils/trustProxy.ts.
     trustProxy: buildTrustProxy(env.TRUST_PROXY_HOPS, env.TRUST_PROXY_ADDRS),
     bodyLimit: 1_048_576, // 1MB JSON body limit
-    logger: options.logger ?? defaultLogger,
+    ...(options.logger !== undefined ? { logger: options.logger } : { loggerInstance: rootLogger as FastifyBaseLogger }),
   });
 
   // Register plugins

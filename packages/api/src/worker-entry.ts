@@ -3,8 +3,11 @@ import { initializeWorkers } from './worker.js';
 import { closeRedis } from './config/redis.js';
 import { prisma } from './config/database.js';
 import { initMailer } from './services/mailService.js';
+import { logger as rootLogger } from './config/logger.js';
 
-console.log(`[Worker] Starting in ${env.NODE_ENV} mode`);
+const logger = rootLogger.child({ process: 'worker' });
+
+logger.info(`Starting in ${env.NODE_ENV} mode`);
 
 let workersShutdown: (() => Promise<void>) | null = null;
 
@@ -12,10 +15,10 @@ let shuttingDown = false;
 async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log('[Worker] Shutting down...');
+  logger.info('Shutting down...');
 
   const forceExit = setTimeout(() => {
-    console.error('[Worker] Graceful shutdown timed out — forcing exit');
+    logger.error('Graceful shutdown timed out — forcing exit');
     process.exit(1);
   }, 10_000);
   forceExit.unref();
@@ -26,7 +29,7 @@ async function shutdown() {
     await closeRedis();
     process.exit(0);
   } catch (err) {
-    console.error('[Worker] Error during shutdown:', err);
+    logger.error({ err }, 'Error during shutdown');
     process.exit(1);
   }
 }
@@ -34,10 +37,10 @@ async function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 process.on('unhandledRejection', (reason) => {
-  console.error('[Worker] Unhandled promise rejection:', reason);
+  logger.error({ err: reason }, 'Unhandled promise rejection');
 });
 process.on('uncaughtException', (err) => {
-  console.error('[Worker] Uncaught exception — exiting:', err);
+  logger.fatal({ err }, 'Uncaught exception — exiting');
   process.exit(1);
 });
 
@@ -50,16 +53,13 @@ async function start() {
     // this process. They were all silently dropped in production, where jobs
     // run in the worker container; locally they appeared to work because the
     // API process runs the same workers in-process and had initialised its own.
-    await initMailer({
-      info: (msg) => console.log(`[Worker] ${msg}`),
-      error: (msg) => console.error(`[Worker] ${msg}`),
-    });
+    await initMailer(logger);
 
     const workers = await initializeWorkers();
     workersShutdown = workers.shutdown;
-    console.log('[Worker] All workers running. Waiting for jobs...');
+    logger.info('All workers running. Waiting for jobs...');
   } catch (err) {
-    console.error('[Worker] Failed to start:', err);
+    logger.fatal({ err }, 'Failed to start');
     process.exit(1);
   }
 }

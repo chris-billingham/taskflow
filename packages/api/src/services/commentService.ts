@@ -11,6 +11,7 @@ import {
 import { notifyMany } from './notificationService.js';
 import { resolveMentions, type MentionCandidate } from '../utils/mentions.js';
 import { cursorArgs, toPage } from '../utils/pagination.js';
+import { logFailure } from '../config/logger.js';
 
 const authorSelect = {
   id: true,
@@ -87,14 +88,14 @@ export async function createComment(
     userId,
     taskId,
     newData: { content: data.content },
-  }).catch(console.error);
+  }).catch(logFailure('activity log failed', { commentId: comment.id }));
 
   broadcastCommentCreated(comment, task.projectId);
 
   // Fire-and-forget, like the activity log above: a notification failure must
   // not fail the comment that is already committed.
-  notifyComment(task, comment, data.parentId ?? null, userId).catch((err) =>
-    console.warn('[commentService] comment notifications failed:', err),
+  notifyComment(task, comment, data.parentId ?? null, userId).catch(
+    logFailure('comment notifications failed', { commentId: comment.id }),
   );
 
   return comment;

@@ -5,6 +5,7 @@ import { NotFoundError, ForbiddenError } from '../errors/index.js';
 import { isMailerReady, sendNotificationEmail } from './mailService.js';
 import type { NotificationType } from '@prisma/client';
 import { cursorArgs, toPage } from '../utils/pagination.js';
+import { logger } from '../config/logger.js';
 
 // ─── Notification Preferences ────────────────────────────────────────────
 
@@ -254,10 +255,7 @@ export async function sendPushNotification(
           .delete({ where: { endpoint: sub.endpoint } })
           .catch(() => {});
       } else {
-        console.error(
-          `[Push] delivery failed for user ${userId}:`,
-          err instanceof Error ? err.message : err,
-        );
+        logger.warn({ err, userId }, 'push delivery failed');
       }
     }
   }
@@ -309,9 +307,6 @@ export async function sendEmailNotification(
   try {
     await sendNotificationEmail(user.email, user.name, subject, body);
   } catch (err) {
-    console.error(
-      `[Email] notification send failed for ${user.email}:`,
-      err instanceof Error ? err.message : err,
-    );
+    logger.error({ err, userId }, 'notification email failed');
   }
 }

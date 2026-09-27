@@ -10,6 +10,7 @@ import {
   sendPushNotification,
   sendEmailNotification,
 } from '../services/notificationService.js';
+import { logger } from '../config/logger.js';
 
 const QUEUE_NAME = 'reminder-check';
 
@@ -66,7 +67,7 @@ export function startReminderWorker() {
             });
           }
         } catch (err) {
-          console.error(`Failed to process reminder ${reminder.id}:`, err);
+          logger.error({ err, reminderId: reminder.id }, 'reminder processing failed');
           await releaseReminderAfterFailure(reminder.id).catch(() => {
             /* claim stays; better under- than over-notify */
           });
@@ -80,7 +81,7 @@ export function startReminderWorker() {
   );
 
   worker.on('failed', (job, err) => {
-    console.error(`Reminder job ${job?.id} failed:`, err.message);
+    logger.error({ err, jobId: job?.id }, 'reminder job failed');
   });
 
   return worker;

@@ -14,6 +14,7 @@ import {
   broadcastProjectUpdated,
   broadcastProjectDeleted,
 } from './syncService.js';
+import { logFailure } from '../config/logger.js';
 
 export async function getUserProjects(userId: string) {
   const projects = await prisma.project.findMany({
@@ -116,7 +117,7 @@ export async function createProject(data: CreateProjectInput, userId: string) {
     entityId: project.id,
     userId,
     newData: { name: data.name },
-  }).catch(console.error);
+  }).catch(logFailure('activity log failed'));
 
   broadcastProjectUpdated(project);
 
@@ -153,7 +154,7 @@ export async function updateProject(
     userId,
     oldData: { id: oldProject.id },
     newData: data as Record<string, unknown>,
-  }).catch(console.error);
+  }).catch(logFailure('activity log failed'));
 
   broadcastProjectUpdated(project);
 
@@ -183,9 +184,7 @@ export async function deleteProject(id: string, userId: string) {
 
   await prisma.project.delete({ where: { id } });
 
-  reclaimAttachments(attachments).catch((err) =>
-    console.error('[projectService] attachment reclaim failed:', err),
-  );
+  reclaimAttachments(attachments).catch(logFailure('attachment reclaim failed', { projectId: id }));
 
   logActivity({
     action: 'DELETED',
@@ -193,7 +192,7 @@ export async function deleteProject(id: string, userId: string) {
     entityId: id,
     userId,
     oldData: { name: project.name },
-  }).catch(console.error);
+  }).catch(logFailure('activity log failed'));
 
   broadcastProjectDeleted(id, project.workspaceId);
 
@@ -214,7 +213,7 @@ export async function archiveProject(id: string, userId: string) {
     entityId: id,
     userId,
     newData: { name: project.name },
-  }).catch(console.error);
+  }).catch(logFailure('activity log failed'));
 
   broadcastProjectUpdated(project);
 
@@ -235,7 +234,7 @@ export async function unarchiveProject(id: string, userId: string) {
     entityId: id,
     userId,
     newData: { name: project.name },
-  }).catch(console.error);
+  }).catch(logFailure('activity log failed'));
 
   broadcastProjectUpdated(project);
 

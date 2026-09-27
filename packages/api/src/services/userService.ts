@@ -4,6 +4,7 @@ import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/index
 import { disconnectUserSockets } from '../websocket/events.js';
 import { deleteObjects } from '../config/storage.js';
 import type { Prisma, SystemRole } from '@prisma/client';
+import { logger } from '../config/logger.js';
 
 /**
  * Creates an account together with the two rows every user is required to
@@ -262,9 +263,9 @@ export async function deleteUser(id: string) {
     try {
       await deleteObjects(doomedAttachments.map((a) => a.url));
     } catch (err) {
-      console.error(
-        `[userService] account ${id} deleted, but ${doomedAttachments.length} storage object(s) could not be removed:`,
-        err instanceof Error ? err.message : err,
+      logger.error(
+        { err, userId: id, objects: doomedAttachments.length },
+        'account deleted, but its storage objects could not be removed',
       );
     }
   }

@@ -1,5 +1,6 @@
 import { Redis } from 'ioredis';
 import { env } from './env.js';
+import { logger } from './logger.js';
 
 let redis: Redis | null = null;
 
@@ -27,7 +28,7 @@ export function getRedis(): Redis {
     });
 
     redis.on('error', (err: Error) => {
-      console.error('Redis connection error:', err.message);
+      logger.error({ err }, 'Redis connection error');
     });
   }
   return redis;
@@ -45,7 +46,7 @@ export function createBullMQConnection(): Redis {
   });
 
   conn.on('error', (err: Error) => {
-    console.error('BullMQ Redis connection error:', err.message);
+    logger.error({ err }, 'BullMQ Redis connection error');
   });
 
   return conn;

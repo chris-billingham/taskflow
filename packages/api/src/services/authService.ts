@@ -25,6 +25,7 @@ import {
   sendVerificationEmail,
   sendPasswordResetEmail,
 } from './mailService.js';
+import { logger } from '../config/logger.js';
 
 const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value).digest('hex');
@@ -35,7 +36,7 @@ const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 // always use "resend"/"forgot password" if a send is dropped.
 function sendInBackground(label: string, fn: () => Promise<void>) {
   void fn().catch((err) => {
-    console.error(`[mail] ${label} failed:`, err instanceof Error ? err.message : err);
+    logger.error({ err }, `${label} email failed`);
   });
 }
 
@@ -272,7 +273,7 @@ export async function forgotPassword(email: string) {
       sendPasswordResetEmail(user.email, user.name, resetToken),
     );
   } else if (process.env.NODE_ENV !== 'production') {
-    console.warn(`[DEV] Password reset token for ${email}: ${resetToken}`);
+    logger.warn({ email, resetToken }, 'no mailer configured: password reset token (development only)');
   }
   return { message: 'If that email exists, a reset link has been sent' };
 }
@@ -349,7 +350,7 @@ export async function resendVerificationEmail(email: string) {
   // Without a working mailer there is nothing useful to rotate or send.
   if (!isMailerReady()) {
     if (process.env.NODE_ENV !== 'production') {
-      console.warn(`[DEV] resend requested for ${email} but no mailer is configured`);
+      logger.warn({ email }, 'verification resend requested but no mailer is configured');
     }
     return neutral;
   }
