@@ -21,6 +21,11 @@ updates:
     groups:
       github-actions:
         patterns: ['*']
+    ignore:
+      # v6 bootstraps pnpm 11 before switching to the pinned version; revisit
+      # together with the next pnpm major.
+      - dependency-name: pnpm/action-setup
+        update-types: ['version-update:semver-major']
 
   # Base images in the Dockerfiles (node, nginx).
   - package-ecosystem: docker
@@ -30,6 +35,10 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      # Stay on the current Node LTS line (see .nvmrc); move majors on purpose.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
 
   # Service images in docker-compose.yml (postgres, redis, garage, traefik, rclone).
   - package-ecosystem: docker-compose
@@ -37,3 +46,11 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      # A new Postgres major can't start on the old data directory; it needs
+      # a dump/restore or pg_upgrade path, not a tag bump.
+      - dependency-name: postgres
+        update-types: ['version-update:semver-major']
+      # Redis majors change persistence formats and licensing; move on purpose.
+      - dependency-name: redis
+        update-types: ['version-update:semver-major']
