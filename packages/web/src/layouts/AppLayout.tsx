@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Outlet, useSearchParams } from 'react-router-dom';
+import { Outlet, useSearchParams } from 'react-router';
 import { Menu, Plus, Search } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationCenter } from '@/components/notification/NotificationCenter';

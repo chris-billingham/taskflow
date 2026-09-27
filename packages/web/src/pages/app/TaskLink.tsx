@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router';
 import { Spinner } from '@/components/ui/Spinner';
 import { useTaskDetail } from '@/queries/tasks';
 import { toastError } from '@/stores/toastStore';

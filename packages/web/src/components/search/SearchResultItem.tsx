@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { CheckSquare, FolderOpen, MessageSquare, Calendar } from 'lucide-react';
 import type { TaskResult, ProjectResult, CommentResult } from '@/hooks/useSearch';
 import { formatUserDate } from '@/utils/dateFormat';

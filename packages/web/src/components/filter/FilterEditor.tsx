@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Plus, Pencil, Trash2, Play, Star } from 'lucide-react';
 import { useFilters, useFilterActions } from '@/queries/filters';
 import { FilterQueryInput } from './FilterQueryInput';

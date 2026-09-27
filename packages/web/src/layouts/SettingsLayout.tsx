@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router';
 import { ArrowLeft, Menu, X } from 'lucide-react';
 import { SettingsNav } from '@/components/settings/SettingsNav';
 

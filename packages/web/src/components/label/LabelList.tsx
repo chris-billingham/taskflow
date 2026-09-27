@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router';
 import { MoreHorizontal, Pencil, Trash2, Star, StarOff } from 'lucide-react';
 import { useLabels, useLabelActions } from '@/queries/labels';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';

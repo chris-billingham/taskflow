@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Plus, GripVertical, Pencil, Trash2, Check, X, Star } from 'lucide-react';
 import { useLabels, useLabelActions, type Label } from '@/queries/labels';
 import { IconButton } from '@/components/ui/IconButton';

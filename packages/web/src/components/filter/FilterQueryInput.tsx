@@ -39,7 +39,7 @@ export function FilterQueryInput({ value, onChange, onValidation, placeholder }:
   const [validation, setValidation] = useState<{ valid: boolean; error?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const validateTimer = useRef<ReturnType<typeof setTimeout>>();
+  const validateTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const { validateFilter } = useFilterActions();
   const { labels } = useLabels();

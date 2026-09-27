@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Mail, Lock } from 'lucide-react';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { Input } from '@/components/ui/Input';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router';
 import { ChevronRight, MoreHorizontal } from 'lucide-react';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import type { ProjectTreeNode } from '@/types/project';

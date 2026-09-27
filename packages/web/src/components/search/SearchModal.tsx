@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Clock } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { SearchInput } from './SearchInput';

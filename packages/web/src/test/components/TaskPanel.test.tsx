@@ -2,7 +2,7 @@ import '../mocks/socket';
 import { describe, it, expect } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router';
 import { server } from '../msw/server';
 import { API } from '../msw/handlers';
 import { makeTask, ok } from '../msw/fixtures';

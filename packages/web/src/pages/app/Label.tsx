@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router';
 import { Pencil, Star, Calendar, List } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { TaskList } from '@/components/task/TaskList';
