@@ -74,11 +74,26 @@ export const bulkTaskSchema = z.object({
     .array(z.string())
     .min(1, 'At least one task ID is required')
     .max(100, 'Bulk operations are limited to 100 tasks at a time'),
-  action: z.enum(['complete', 'uncomplete', 'delete', 'move', 'updatePriority']),
+  action: z.enum([
+    'complete',
+    'uncomplete',
+    'delete',
+    /** Bring trashed tasks back (undoing a bulk delete). */
+    'restore',
+    'move',
+    'updatePriority',
+    /** data.dueDate: YYYY-MM-DD, or null to clear the date (and time). */
+    'setDueDate',
+    /** data.labelIds: your own labels to add or remove. */
+    'addLabels',
+    'removeLabels',
+  ]),
   data: z.object({
     projectId: z.string().optional(),
     sectionId: z.string().nullable().optional(),
     priority: z.number().int().min(1).max(4).optional(),
+    dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dueDate must be YYYY-MM-DD').nullable().optional(),
+    labelIds: z.array(z.string()).max(50).optional(),
   }).optional(),
 });
 

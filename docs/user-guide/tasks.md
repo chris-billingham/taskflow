@@ -78,10 +78,23 @@ The task panel also has:
 
 Drag a task by the handle (⠿) that appears on the left when you hover. In a project's List view you can reorder tasks, or drop them into another section (or out of any section). In the Board view, drag cards between columns.
 
+## Working on Several Tasks at Once
+
+Ctrl-click (⌘-click on a Mac) or Shift-click a task to select it, or choose **Select** from its **⋯** menu. While anything is selected, clicking a task adds it to the selection or removes it. It doesn't open the task.
+
+A bar at the bottom of the screen acts on everything selected:
+
+- **Complete**, or set a **due date** (Today, Tomorrow, Next week, No date)
+- Set the **priority**
+- **Move to…** another project or section
+- Add or remove a **label**
+- **Delete** (to the Trash)
+
+Deleting, moving and completing offer **Undo**. Completing a selection that includes repeating tasks doesn't. Press Escape, or the **✕** at the end of the bar, to clear the selection. Changing page clears it too.
+
 ## Not Available Yet
 
-- Selecting several tasks for bulk actions (complete, move, delete)
-- Moving a task to another project, or changing its section or parent, from the task panel
+- Changing a task's parent from the task panel
 
 ## Keyboard Shortcuts
 

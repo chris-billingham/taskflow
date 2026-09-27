@@ -7,7 +7,12 @@ import { useTaskActions } from '@/queries/taskActions';
 interface MoveTaskDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  task: { id: string; projectId: string; sectionId: string | null; parentId?: string | null };
+  /** Move this task (with Undo)… */
+  task?: { id: string; projectId: string; sectionId: string | null; parentId?: string | null };
+  /** …or hand the chosen destination to the caller (e.g. to move a selection). */
+  onChoose?: (destination: { projectId: string; sectionId: string | null }) => void;
+  /** Dialog title; defaults to "Move to…". */
+  title?: string;
 }
 
 interface Destination {
@@ -20,7 +25,7 @@ interface Destination {
 }
 
 /** Pick a project or section to move a task to: type to filter, arrows and Enter to choose. */
-export function MoveTaskDialog({ isOpen, onClose, task }: MoveTaskDialogProps) {
+export function MoveTaskDialog({ isOpen, onClose, task, onChoose, title = 'Move to…' }: MoveTaskDialogProps) {
   const { active: projects } = useProjects();
   const { moveTask } = useTaskActions();
   const [search, setSearch] = useState('');
@@ -52,13 +57,14 @@ export function MoveTaskDialog({ isOpen, onClose, task }: MoveTaskDialogProps) {
     return term ? all.filter((d) => d.label.toLowerCase().includes(term)) : all;
   }, [projects, search]);
 
-  const isCurrent = (d: Destination) => d.projectId === task.projectId && d.sectionId === task.sectionId;
+  const isCurrent = (d: Destination) =>
+    Boolean(task) && d.projectId === task!.projectId && d.sectionId === task!.sectionId;
 
   const choose = (d: Destination) => {
     onClose();
-    if (!isCurrent(d)) {
-      void moveTask(task.id, { projectId: d.projectId, sectionId: d.sectionId }, { from: task });
-    }
+    if (isCurrent(d)) return;
+    if (onChoose) onChoose({ projectId: d.projectId, sectionId: d.sectionId });
+    else if (task) void moveTask(task.id, { projectId: d.projectId, sectionId: d.sectionId }, { from: task });
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -75,7 +81,7 @@ export function MoveTaskDialog({ isOpen, onClose, task }: MoveTaskDialogProps) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Move to…" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <div className="p-3" onKeyDown={onKeyDown}>
         <input
           autoFocus

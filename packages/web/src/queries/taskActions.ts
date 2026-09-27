@@ -10,6 +10,25 @@ import { projectKeys } from './projects';
 import type { Project } from '@/types/project';
 import { findCachedTask, mergeTask, patchTaskCaches, snapshotTaskCaches, type TaskMapper } from './taskCache';
 
+export type BulkAction =
+  | 'complete'
+  | 'uncomplete'
+  | 'delete'
+  | 'restore'
+  | 'move'
+  | 'updatePriority'
+  | 'setDueDate'
+  | 'addLabels'
+  | 'removeLabels';
+
+export interface BulkData {
+  projectId?: string;
+  sectionId?: string | null;
+  priority?: number;
+  dueDate?: string | null;
+  labelIds?: string[];
+}
+
 /** Where a task sat before a move, so Undo can put it back. */
 export interface MoveOrigin {
   projectId: string;
@@ -134,6 +153,35 @@ function createTaskActions(qc: QueryClient) {
     return moved;
   };
 
+  /**
+   * One action on many tasks (POST /tasks/bulk), applied optimistically to
+   * every cached copy like the single-task actions.
+   */
+  const bulkUpdate = (taskIds: string[], action: BulkAction, data: BulkData = {}) => {
+    const selected = new Set(taskIds);
+    const optimistic: Partial<Record<BulkAction, (task: Task) => Task | null>> = {
+      complete: (t) => ({ ...t, isCompleted: true, completedAt: new Date().toISOString() }),
+      uncomplete: (t) => ({ ...t, isCompleted: false, completedAt: null }),
+      delete: () => null,
+      updatePriority: (t) => ({ ...t, priority: data.priority ?? t.priority }),
+      setDueDate: (t) =>
+        data.dueDate ? { ...t, dueDate: data.dueDate } : { ...t, dueDate: null, dueTime: null },
+      move: (t) => ({
+        ...t,
+        projectId: data.projectId ?? t.projectId,
+        sectionId: data.sectionId !== undefined ? data.sectionId : data.projectId ? null : t.sectionId,
+      }),
+    };
+    const apply = optimistic[action];
+    return run({
+      optimistic: apply ? (task) => (selected.has(task.id) ? apply(task) : task) : undefined,
+      request: async () => {
+        await api.post('/tasks/bulk', { taskIds, action, data });
+      },
+      failure: 'Those tasks could not be updated',
+    });
+  };
+
   const updateTask = (id: string, input: Record<string, unknown>) =>
     run({
       optimistic: only(id, (task) => ({ ...task, ...input }) as Task),
@@ -219,13 +267,7 @@ function createTaskActions(qc: QueryClient) {
       });
     },
 
-    bulkUpdate: (taskIds: string[], action: string, data?: Record<string, unknown>) =>
-      run({
-        request: async () => {
-          await api.post('/tasks/bulk', { taskIds, action, data });
-        },
-        failure: 'Those tasks could not be updated',
-      }),
+    bulkUpdate,
 
     rescheduleOverdue: (targetDate: string) =>
       run({

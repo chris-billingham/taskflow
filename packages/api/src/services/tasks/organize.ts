@@ -5,8 +5,10 @@ import { NotFoundError, ValidationError } from '../../errors/index.js';
 import { requireTaskAccess, requireProjectAccess } from '../access.js';
 import type { BulkTaskInput, MoveTaskInput } from '@taskflow/contract';
 import { logActivity } from '../activityService.js';
-import { broadcastTaskUpdated, broadcastTaskDeleted } from '../syncService.js';
+import { broadcastTaskCreated, broadcastTaskUpdated, broadcastTaskDeleted } from '../syncService.js';
+import { recomputeRelativeReminders } from '../reminderService.js';
 import {
+  assertLabelsOwned,
   assertTaskReferences,
   runSideEffect,
   taskInclude,
@@ -106,12 +108,13 @@ export async function bulkUpdate(
 ) {
   const { taskIds, action, data: actionData } = data;
 
-  // Verify access to all tasks
+  // Verify access to all tasks (restore acts on tasks in the trash).
   const tasks = await prisma.task.findMany({
-    where: { id: { in: taskIds } },
+    where: { id: { in: taskIds }, ...(action === 'restore' ? { deletedAt: { not: null } } : {}) },
     select: {
       id: true,
       projectId: true,
+      parentId: true,
       assigneeId: true,
       project: { select: { ownerId: true, workspaceId: true } },
     },
@@ -179,6 +182,60 @@ export async function bulkUpdate(
       }
       break;
 
+    case 'restore': {
+      // The selection and the subtasks that went to the trash with them.
+      const trashedAt = await prisma.task.findMany({
+        where: { id: { in: taskIds }, deletedAt: { not: null } },
+        select: { id: true, deletedAt: true },
+      });
+      await prisma.$transaction(
+        trashedAt.map((t) =>
+          prisma.task.updateMany({
+            where: { OR: [{ id: t.id }, { parentId: t.id, deletedAt: t.deletedAt }] },
+            data: { deletedAt: null },
+          }),
+        ),
+      );
+      const restored = await prisma.task.findMany({ where: { id: { in: taskIds } }, include: taskInclude });
+      for (const t of restored) runSideEffect('broadcastTaskCreated', () => broadcastTaskCreated(t));
+      break;
+    }
+
+    case 'setDueDate': {
+      const dueDate = actionData?.dueDate ? new Date(`${actionData.dueDate}T00:00:00.000Z`) : null;
+      await prisma.task.updateMany({
+        where: { id: { in: taskIds } },
+        // Clearing the date clears the time too; a new date keeps each time.
+        data: dueDate ? { dueDate } : { dueDate: null, dueTime: null },
+      });
+      const updated = await prisma.task.findMany({
+        where: { id: { in: taskIds } },
+        select: { id: true, dueDate: true, dueTime: true },
+      });
+      for (const t of updated) {
+        runSideEffect('recomputeRelativeReminders', () => recomputeRelativeReminders(t.id, t.dueDate, t.dueTime));
+      }
+      await emitBulkUpdated(taskIds, 'UPDATED');
+      break;
+    }
+
+    case 'addLabels':
+    case 'removeLabels': {
+      const labelIds = [...new Set(actionData?.labelIds ?? [])];
+      if (labelIds.length === 0) break;
+      await assertLabelsOwned(labelIds, userId);
+      if (action === 'addLabels') {
+        await prisma.taskLabel.createMany({
+          data: taskIds.flatMap((taskId) => labelIds.map((labelId) => ({ taskId, labelId }))),
+          skipDuplicates: true,
+        });
+      } else {
+        await prisma.taskLabel.deleteMany({ where: { taskId: { in: taskIds }, labelId: { in: labelIds } } });
+      }
+      await emitBulkUpdated(taskIds, 'UPDATED');
+      break;
+    }
+
     case 'move': {
       if (actionData?.projectId) {
         await requireProjectAccess(actionData.projectId, userId, 'EDIT');
@@ -198,6 +255,16 @@ export async function bulkUpdate(
 
       const movingProject = Boolean(actionData?.projectId);
       await prisma.$transaction(async (tx) => {
+        if (movingProject) {
+          // Like a single move: a subtask whose parent stays behind becomes
+          // top-level in its new project.
+          const leavingParent = tasks
+            .filter((t) => t.parentId && !taskIds.includes(t.parentId) && t.projectId !== actionData!.projectId)
+            .map((t) => t.id);
+          if (leavingParent.length > 0) {
+            await tx.task.updateMany({ where: { id: { in: leavingParent } }, data: { parentId: null } });
+          }
+        }
         await tx.task.updateMany({
           where: { id: { in: taskIds } },
           data: {

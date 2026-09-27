@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Outlet, useSearchParams } from 'react-router';
+import { Outlet, useLocation, useSearchParams } from 'react-router';
 import { Menu, Plus, Search } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationCenter } from '@/components/notification/NotificationCenter';
@@ -14,6 +14,8 @@ const TaskPanel = lazy(() =>
 );
 import { useTaskActions } from '@/queries/taskActions';
 import { OpenTaskProvider } from '@/hooks/useTaskPanel';
+import { BulkActionBar } from '@/components/task/BulkActionBar';
+import { useSelectionStore } from '@/stores/selectionStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useRealTimeSync } from '@/hooks/useRealTimeSync';
 
@@ -24,6 +26,12 @@ export function AppLayout() {
   const { quickAddTask } = useTaskActions();
   const [searchParams] = useSearchParams();
   const taskOpen = searchParams.has('task');
+
+  // A selection belongs to the page it was made on.
+  const { pathname } = useLocation();
+  useEffect(() => {
+    useSelectionStore.getState().clear();
+  }, [pathname]);
 
   useSocket();
   useRealTimeSync();
@@ -133,6 +141,8 @@ export function AppLayout() {
           <TaskPanel />
         </Suspense>
       )}
+
+      <BulkActionBar />
 
       {/* Global Search Modal */}
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />

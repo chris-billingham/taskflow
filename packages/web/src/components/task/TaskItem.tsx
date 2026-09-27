@@ -4,6 +4,7 @@ import {
   Trash2,
   Copy,
   GripVertical,
+  CheckSquare,
   Pencil,
   FolderInput,
   ChevronDown,
@@ -20,6 +21,7 @@ import { LabelBadges } from './LabelPicker';
 import { useTaskActions } from '@/queries/taskActions';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import { MoveTaskDialog } from './MoveTaskDialog';
+import { useSelectionStore } from '@/stores/selectionStore';
 import { useSubtasks } from '@/queries/tasks';
 import { useOpenTask } from '@/hooks/useTaskPanel';
 import type { Task } from '@/types/task';
@@ -53,6 +55,14 @@ export const TaskItem = memo(function TaskItem({
   const openTask = useOpenTask();
   const onUpdate = (id: string, data: Record<string, unknown>) => void updateTask(id, data);
   const onClick = (t: Task) => openTask(t.id);
+  const selected = useSelectionStore((s) => s.ids.includes(task.id));
+  const selecting = useSelectionStore((s) => s.ids.length > 0);
+  const toggleSelected = useSelectionStore((s) => s.toggle);
+  // Ctrl/⌘/Shift-click selects; once anything is selected, a click toggles.
+  const activate = (withModifier: boolean) => {
+    if (withModifier || selecting) toggleSelected(task.id);
+    else onClick(task);
+  };
   const [moving, setMoving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(task.content);
@@ -108,9 +118,11 @@ export const TaskItem = memo(function TaskItem({
     // the row's own menu and date/priority pickers to the row.
     <div>
       <div
-        className={`group flex items-start gap-0 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors ${
-          task.isCompleted ? 'opacity-60' : ''
-        } ${!isSubtask ? `border-l-2 ${borderColor}` : ''}`}
+        className={`group flex items-start gap-0 border-b border-gray-100 dark:border-gray-700 transition-colors ${
+          selected
+            ? 'bg-primary-50 dark:bg-primary-900/20'
+            : 'hover:bg-gray-50/50 dark:hover:bg-gray-700/30'
+        } ${task.isCompleted ? 'opacity-60' : ''} ${!isSubtask ? `border-l-2 ${borderColor}` : ''}`}
       >
         {/* Drag handle — only for top-level tasks */}
         {dragHandleProps && !isSubtask && (
@@ -126,6 +138,8 @@ export const TaskItem = memo(function TaskItem({
         {showSubtasks && hasSubtasks ? (
           <button
             className="pt-3 px-1 shrink-0"
+            aria-label={expanded ? 'Hide subtasks' : 'Show subtasks'}
+            aria-expanded={expanded}
             onClick={(e) => {
               e.stopPropagation();
               setExpanded(!expanded);
@@ -156,15 +170,16 @@ export const TaskItem = memo(function TaskItem({
           className="flex-1 min-w-0 py-2.5 cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500/40 rounded-sm"
           role="button"
           tabIndex={0}
-          aria-label={`Open task: ${task.content}`}
-          onClick={() => {
-            if (!isEditing) onClick(task);
+          aria-label={selecting ? `Select task: ${task.content}` : `Open task: ${task.content}`}
+          aria-pressed={selecting ? selected : undefined}
+          onClick={(e) => {
+            if (!isEditing) activate(e.metaKey || e.ctrlKey || e.shiftKey);
           }}
           onKeyDown={(e) => {
             if (isEditing) return;
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              onClick(task);
+              activate(e.metaKey || e.ctrlKey || e.shiftKey);
             }
           }}
         >
@@ -256,6 +271,9 @@ export const TaskItem = memo(function TaskItem({
           <Menu label={`Options for ${task.content}`} trigger={<MoreHorizontal className="w-4 h-4" />}>
             <MenuItem icon={Pencil} onSelect={() => setIsEditing(true)}>
               Edit
+            </MenuItem>
+            <MenuItem icon={CheckSquare} onSelect={() => toggleSelected(task.id)}>
+              {selected ? 'Deselect' : 'Select'}
             </MenuItem>
             <MenuItem icon={FolderInput} onSelect={() => setMoving(true)}>
               Move to…

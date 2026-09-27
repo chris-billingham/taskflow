@@ -121,3 +121,55 @@ describe('moving across projects', () => {
     expect(there.sectionId).toBeNull();
   });
 });
+
+describe('bulk actions', () => {
+  it('sets and clears due dates, keeping times on a new date', async () => {
+    const a = await task('bulk a', { dueDate: new Date('2027-01-01T00:00:00Z'), dueTime: '09:30' });
+    const b = await task('bulk b');
+    await taskService.bulkUpdate({ taskIds: [a.id, b.id], action: 'setDueDate', data: { dueDate: '2027-02-03' } }, me);
+    const after = await prisma.task.findMany({ where: { id: { in: [a.id, b.id] } }, orderBy: { content: 'asc' } });
+    expect(after.map((t) => [t.dueDate?.toISOString().slice(0, 10), t.dueTime])).toEqual([
+      ['2027-02-03', '09:30'],
+      ['2027-02-03', null],
+    ]);
+    await taskService.bulkUpdate({ taskIds: [a.id], action: 'setDueDate', data: { dueDate: null } }, me);
+    expect(await prisma.task.findUniqueOrThrow({ where: { id: a.id } })).toMatchObject({ dueDate: null, dueTime: null });
+  });
+
+  it('adds and removes your own labels, and refuses someone else’s', async () => {
+    const mine = await prisma.label.create({ data: { name: `bulk ${fx.run}`, userId: me } });
+    const theirs = await prisma.label.create({ data: { name: `theirs ${fx.run}`, userId: outsider } });
+    const a = await task('labelled a');
+    const b = await task('labelled b', { taskLabels: { create: [{ labelId: mine.id }] } });
+
+    await taskService.bulkUpdate({ taskIds: [a.id, b.id], action: 'addLabels', data: { labelIds: [mine.id] } }, me);
+    expect(await prisma.taskLabel.count({ where: { labelId: mine.id } })).toBe(2);
+    await taskService.bulkUpdate({ taskIds: [a.id, b.id], action: 'removeLabels', data: { labelIds: [mine.id] } }, me);
+    expect(await prisma.taskLabel.count({ where: { labelId: mine.id } })).toBe(0);
+    await expect(
+      taskService.bulkUpdate({ taskIds: [a.id], action: 'addLabels', data: { labelIds: [theirs.id] } }, me),
+    ).rejects.toThrow();
+  });
+
+  it('a bulk delete can be undone with a bulk restore, subtasks included', async () => {
+    const a = await task('undo a');
+    const child = await task('undo child', { parentId: a.id });
+    const b = await task('undo b');
+    await taskService.bulkUpdate({ taskIds: [a.id, b.id], action: 'delete' }, me);
+    expect(await prisma.task.count({ where: { id: { in: [a.id, b.id, child.id] } } })).toBe(0);
+
+    await taskService.bulkUpdate({ taskIds: [a.id, b.id], action: 'restore' }, me);
+    expect(await prisma.task.count({ where: { id: { in: [a.id, b.id, child.id] } } })).toBe(3);
+  });
+
+  it('a bulk move to another project detaches subtasks from parents left behind', async () => {
+    const other = await prisma.project.create({ data: { name: 'Bulk target', ownerId: me } });
+    const parent = await task('staying parent');
+    const child = await task('moving child', { parentId: parent.id });
+    await taskService.bulkUpdate({ taskIds: [child.id], action: 'move', data: { projectId: other.id } }, me);
+    expect(await prisma.task.findUniqueOrThrow({ where: { id: child.id } })).toMatchObject({
+      projectId: other.id,
+      parentId: null,
+    });
+  });
+});
