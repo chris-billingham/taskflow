@@ -14,6 +14,9 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
+    // The production-stack CI job serves https://localhost with Traefik's
+    // self-signed default certificate.
+    ignoreHTTPSErrors: true,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },

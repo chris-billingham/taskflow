@@ -128,6 +128,26 @@ services:
     networks:
       - internal
 
+  # Applies pending database migrations, then exits. api and worker wait for
+  # it to succeed, so a plain `docker compose up` after pulling new code can
+  # never run that code against an old schema.
+  migrate:
+    image: ${DOCKER_REGISTRY:-taskflow}/api:${IMAGE_TAG:-latest}
+    # Never pull: the image is built locally by the api service (same tag).
+    # With the default policy a missing image would be fetched from Docker
+    # Hub's `taskflow` namespace, which this project does not own.
+    pull_policy: never
+    restart: "no"
+    logging: *default-logging
+    command: ["sh", "-c", "npx prisma migrate deploy --schema prisma/schema.prisma"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-taskflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-taskflow}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
   api:
     build:
       context: .
@@ -168,6 +188,7 @@ services:
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       TRUST_PROXY_ADDRS: ${TRUST_PROXY_ADDRS:-loopback,linklocal,uniquelocal}
+      RATE_LIMIT_MULTIPLIER: ${RATE_LIMIT_MULTIPLIER:-1}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
@@ -176,6 +197,8 @@ services:
         condition: service_healthy
       garage:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - internal
       - traefik
@@ -252,6 +275,8 @@ services:
         condition: service_healthy
       garage:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - internal
     deploy:

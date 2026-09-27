@@ -10,7 +10,7 @@ import {
 } from '../schemas/admin.js';
 import * as adminService from '../services/adminService.js';
 import { ValidationError } from '../errors/index.js';
-import { env } from '../config/env.js';
+import { rateLimitMax } from '../config/rateLimits.js';
 
 /**
  * Instance administration. Every route here is gated by authenticate (valid
@@ -45,7 +45,7 @@ export async function adminRoutes(app: FastifyInstance) {
     {
       config: {
         rateLimit: {
-          max: env.NODE_ENV === 'production' ? 30 : 1000,
+          max: rateLimitMax(30),
           timeWindow: '1 hour',
         },
       },
@@ -89,7 +89,7 @@ export async function adminRoutes(app: FastifyInstance) {
     {
       config: {
         rateLimit: {
-          max: env.NODE_ENV === 'production' ? 20 : 1000,
+          max: rateLimitMax(20),
           timeWindow: '1 hour',
         },
       },

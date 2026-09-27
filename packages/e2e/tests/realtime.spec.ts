@@ -1,10 +1,9 @@
-import { test, expect, request as pwRequest, type Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { TEST_USER } from '../global-setup';
-
-const API_URL = process.env.E2E_API_URL || 'http://localhost:3001';
+import { newApiContext } from '../api-context';
 
 async function apiLogin() {
-  const api = await pwRequest.newContext({ baseURL: API_URL });
+  const api = await newApiContext();
   const res = await api.post('/api/v1/auth/login', {
     data: { email: TEST_USER.email, password: TEST_USER.password },
   });

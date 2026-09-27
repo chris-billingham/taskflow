@@ -1,6 +1,4 @@
-import { request } from '@playwright/test';
-
-const API_URL = process.env.E2E_API_URL || 'http://localhost:3001';
+import { newApiContext } from './api-context';
 
 export const TEST_USER = {
   name: 'E2E Test User',
@@ -9,7 +7,7 @@ export const TEST_USER = {
 };
 
 async function globalSetup() {
-  const api = await request.newContext({ baseURL: API_URL });
+  const api = await newApiContext();
   try {
     const response = await api.post('/api/v1/auth/register', {
       data: TEST_USER,

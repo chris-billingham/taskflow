@@ -130,19 +130,51 @@ jobs:
             packages/api/coverage/
             packages/web/coverage/
 
-  docker-build:
-    name: Docker Images Build
+  # Builds the release images and runs them the way an install does: Traefik
+  # on https://localhost, the migrate one-shot, Garage, api, worker and web,
+  # with freshly generated secrets. The end-to-end suite then runs against
+  # that stack. Most past production bugs were "the code is right, the
+  # container never gets the value" — only booting the real stack finds those.
+  production-stack:
+    name: Production Stack
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
-      # The Dockerfiles were previously exercised by no automation at all —
-      # a broken build was only discovered during a production upgrade.
-      - name: Build API image
-        run: docker build -f packages/api/Dockerfile -t taskflow/api:ci .
+      - uses: pnpm/action-setup@v4
 
-      - name: Build web image
-        run: docker build -f packages/web/Dockerfile -t taskflow/web:ci .
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @taskflow/e2e exec playwright install chromium --with-deps
+
+      - name: Build and boot the production stack
+        run: bash scripts/ci/prod-stack.sh up
+
+      - name: Run E2E tests against it
+        run: pnpm --filter @taskflow/e2e test
+        env:
+          E2E_BASE_URL: https://localhost
+          E2E_API_URL: https://localhost
+
+      - name: Container logs
+        if: failure()
+        run: bash scripts/ci/prod-stack.sh logs
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-production-stack
+          path: packages/e2e/playwright-report/
+          retention-days: 7
 
   e2e-tests:
     name: E2E Tests

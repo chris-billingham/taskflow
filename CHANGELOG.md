@@ -4,6 +4,22 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Phase 1: safety net
+
+- **CI now boots the production stack and runs the end-to-end suite against
+  it.** `scripts/ci/prod-stack.sh` builds the images and starts
+  `docker-compose.yml` as an install would (Traefik on https://localhost,
+  migrations, Garage, api, worker, web) with generated secrets; the "Production
+  Stack" job replaces the build-only image job. Runs locally too.
+- **`docker compose up` applies migrations.** A one-shot `migrate` service runs
+  `prisma migrate deploy` and the API and worker wait for it to succeed, so
+  new code can't start against an old schema. It never pulls (the image is
+  built locally), so a missing image can't be fetched from Docker Hub.
+- **`RATE_LIMIT_MULTIPLIER`** scales every production rate limit (default 1,
+  minimum 1). Limits count per client IP, so a team behind one office IP
+  shared a single 5-logins-per-15-minutes bucket. The limits now live in one
+  place (`config/rateLimits.ts`) instead of nine inline conditions.
+
 ### Fixed
 
 #### September review

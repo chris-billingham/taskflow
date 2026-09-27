@@ -8,6 +8,7 @@ import {
 import * as authService from '../services/authService.js';
 import { UnauthorizedError, ValidationError } from '../errors/index.js';
 import { env } from '../config/env.js';
+import { rateLimitMax } from '../config/rateLimits.js';
 
 // Refresh token cookie is httpOnly + SameSite=Strict.
 // SameSite=Strict prevents cross-origin requests from carrying the cookie,
@@ -26,7 +27,7 @@ const refreshCookieOptions = {
 export async function authRoutes(app: FastifyInstance) {
   app.post('/register', {
     config: {
-      rateLimit: { max: env.NODE_ENV === 'production' ? 5 : 1000, timeWindow: '1 hour' },
+      rateLimit: { max: rateLimitMax(5), timeWindow: '1 hour' },
     },
   }, async (request, reply) => {
     const result = registerSchema.safeParse(request.body);
@@ -41,7 +42,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/login', {
     config: {
-      rateLimit: { max: env.NODE_ENV === 'production' ? 5 : 1000, timeWindow: '15 minutes' },
+      rateLimit: { max: rateLimitMax(5), timeWindow: '15 minutes' },
     },
   }, async (request, reply) => {
     const result = loginSchema.safeParse(request.body);
@@ -80,7 +81,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/forgot-password', {
     config: {
-      rateLimit: { max: env.NODE_ENV === 'production' ? 3 : 1000, timeWindow: '1 hour' },
+      rateLimit: { max: rateLimitMax(3), timeWindow: '1 hour' },
     },
   }, async (request, reply) => {
     const result = forgotPasswordSchema.safeParse(request.body);
@@ -94,7 +95,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/reset-password', {
     config: {
-      rateLimit: { max: env.NODE_ENV === 'production' ? 5 : 1000, timeWindow: '1 hour' },
+      rateLimit: { max: rateLimitMax(5), timeWindow: '1 hour' },
     },
   }, async (request, reply) => {
     const result = resetPasswordSchema.safeParse(request.body);
@@ -113,7 +114,7 @@ export async function authRoutes(app: FastifyInstance) {
     config: {
       // Previously the only auth route with no limit — tokens must not be
       // brute-forceable and the lookup shouldn't be a free DoS lever.
-      rateLimit: { max: env.NODE_ENV === 'production' ? 10 : 1000, timeWindow: '15 minutes' },
+      rateLimit: { max: rateLimitMax(10), timeWindow: '15 minutes' },
     },
   }, async (request, reply) => {
     const { token } = request.query as { token?: string };
@@ -127,7 +128,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/resend-verification', {
     config: {
-      rateLimit: { max: env.NODE_ENV === 'production' ? 3 : 1000, timeWindow: '1 hour' },
+      rateLimit: { max: rateLimitMax(3), timeWindow: '1 hour' },
     },
   }, async (request, reply) => {
     const result = forgotPasswordSchema.safeParse(request.body);

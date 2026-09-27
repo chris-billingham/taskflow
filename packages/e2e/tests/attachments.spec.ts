@@ -1,18 +1,18 @@
-import { test, expect, request as pwRequest } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
 import { TEST_USER } from '../global-setup';
-
-const API_URL = process.env.E2E_API_URL || 'http://localhost:3001';
+import { newApiContext } from '../api-context';
 
 // Exercises the real chain (API → object storage → API streaming) that presigned URLs
 // used to break: in the shipped topology the S3 endpoint is internal-only, so
 // downloads must round-trip through the API.
 test.describe('Attachments', () => {
   let headers: { Authorization: string };
-  let api: Awaited<ReturnType<typeof pwRequest.newContext>>;
+  let api: APIRequestContext;
   let taskId: string;
 
   test.beforeAll(async () => {
-    api = await pwRequest.newContext({ baseURL: API_URL });
+    api = await newApiContext();
     const login = await api.post('/api/v1/auth/login', {
       data: { email: TEST_USER.email, password: TEST_USER.password },
     });
@@ -92,7 +92,7 @@ test.describe('Attachments', () => {
   });
 
   test('downloads require authentication', async () => {
-    const anon = await pwRequest.newContext({ baseURL: API_URL });
+    const anon = await newApiContext();
     const res = await anon.get('/api/v1/attachments/whatever/download');
     expect(res.status()).toBe(401);
     await anon.dispose();

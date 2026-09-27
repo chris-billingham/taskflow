@@ -9,6 +9,7 @@ import {
 import * as fileService from '../services/fileService.js';
 import { ValidationError } from '../errors/index.js';
 import { env } from '../config/env.js';
+import { rateLimitMax } from '../config/rateLimits.js';
 
 /**
  * Build a Content-Disposition header for an untrusted filename: an ASCII-safe
@@ -44,7 +45,7 @@ export async function attachmentRoutes(app: FastifyInstance) {
   // object storage) — give them their own budget.
   const uploadLimit = {
     config: {
-      rateLimit: { max: env.NODE_ENV === 'production' ? 60 : 1000, timeWindow: '10 minutes' },
+      rateLimit: { max: rateLimitMax(60), timeWindow: '10 minutes' },
     },
   };
 

@@ -119,6 +119,7 @@ S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 | `APP_URL` | No | falls back to `CORS_ORIGIN` | Public base URL used for links in email |
 | `TRUST_PROXY_HOPS` | No | `1` | Number of proxy hops in front of the API |
 | `TRUST_PROXY_ADDRS` | No | `loopback,linklocal,uniquelocal` | Networks a proxy hop must come from to be trusted |
+| `RATE_LIMIT_MULTIPLIER` | No | `1` | Multiplies every production rate limit (minimum 1) |
 | `RUN_WORKERS_IN_API` | No | off in production | Also run background jobs in the API process |
 | `ENABLE_API_DOCS` | No | off | Serve Swagger UI at `/api/docs` (always on in development) |
 
@@ -287,7 +288,12 @@ preserves queue state across a restart.
 Rate limits are Redis-backed and keyed on the client address (see
 `TRUST_PROXY_HOPS`): 300 requests/minute globally in production, with tighter
 per-route budgets on authentication (5 logins per 15 minutes, 3 password-reset
-requests per hour) and uploads (60 per 10 minutes). These are currently
-compiled in rather than configurable.
+requests per hour) and uploads (60 per 10 minutes).
+
+`RATE_LIMIT_MULTIPLIER` scales all of them together. Because limits count per
+client IP, a team that signs in from one office IP shares every bucket; a
+multiplier of 3–5 gives them room without opening the limits to the internet.
+It can't go below 1, so it can only loosen the shipped limits, never remove
+them.
 
 JSON bodies are capped at 1 MB; file uploads at `MAX_FILE_SIZE_MB`.

@@ -8,7 +8,9 @@
 ## Standard Upgrade Procedure
 
 These are the same steps `scripts/upgrade.sh` runs, minus the automatic
-rollback.
+rollback. (A plain `docker compose up -d` also applies pending migrations now:
+the `migrate` service runs first and the API and worker wait for it. The
+explicit step below keeps migration failures visible before anything restarts.)
 
 ```bash
 # 1. Back up first

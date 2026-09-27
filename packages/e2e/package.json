@@ -7,7 +7,7 @@
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "report": "playwright show-report",
-    "lint": "eslint tests global-setup.ts --max-warnings 0"
+    "lint": "eslint tests global-setup.ts api-context.ts --max-warnings 0"
   },
   "devDependencies": {
     "@playwright/test": "^1.41.0"

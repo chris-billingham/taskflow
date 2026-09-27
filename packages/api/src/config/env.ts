@@ -19,6 +19,12 @@ const envSchema = z.object({
   // or CIDRs). The default covers Docker bridge networks and loopback (Vite's
   // dev proxy); narrow it to the Traefik network's CIDR if you know it.
   TRUST_PROXY_ADDRS: z.string().min(1).default('loopback,linklocal,uniquelocal'),
+  // Scales every production rate limit (login 5/15min, register 5/h, global
+  // 300/min, ...). Limits count per client IP, so a team signing in from one
+  // office NAT shares a bucket; raise this for that, or for end-to-end runs
+  // against a production build. Values below 1 are rejected: this can only
+  // loosen the shipped limits, never switch them off.
+  RATE_LIMIT_MULTIPLIER: z.coerce.number().min(1).max(1000).default(1),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.string().default('info'),

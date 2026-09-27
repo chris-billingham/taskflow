@@ -132,6 +132,22 @@ Two things that cost time when they go wrong:
 Note that `waitForLoadState('networkidle')` never settles on a signed-in page:
 the realtime socket keeps a connection open. Wait for a rendered element instead.
 
+### Against the production build
+
+CI also runs the suite against the real `docker-compose.yml` stack (Traefik,
+migrations, Garage, api, worker, web) with generated secrets. To do the same
+locally (needs ports 80 and 443 free):
+
+```bash
+bash scripts/ci/prod-stack.sh up
+E2E_BASE_URL=https://localhost E2E_API_URL=https://localhost \
+  pnpm --filter @taskflow/e2e test
+bash scripts/ci/prod-stack.sh down
+```
+
+It runs as its own compose project (`taskflow-ci`) with its own volumes, so it
+doesn't touch a dev stack or a real install on the same machine.
+
 ## Environment Variables
 
 Development configuration lives in **`packages/api/.env`** (template:

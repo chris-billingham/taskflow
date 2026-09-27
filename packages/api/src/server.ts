@@ -22,6 +22,7 @@ import { ensureDefaultTemplates } from './services/templateService.js';
 import { prisma } from './config/database.js';
 import { Prisma } from '@prisma/client';
 import { openapiSpec } from './docs/openapi.js';
+import { rateLimitMax } from './config/rateLimits.js';
 
 const server = Fastify({
   // Number of proxy hops in front of the API, NOT `true`.
@@ -76,7 +77,7 @@ await server.register(cookie);
 // or sensitive routes carry stricter per-route budgets via config.rateLimit.
 await server.register(rateLimit, {
   global: true,
-  max: env.NODE_ENV === 'production' ? 300 : 5000,
+  max: rateLimitMax(300, 5000),
   timeWindow: '1 minute',
   redis: getRedis(),
   nameSpace: 'rl:',

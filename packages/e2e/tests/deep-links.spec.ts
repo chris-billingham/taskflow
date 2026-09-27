@@ -1,19 +1,19 @@
-import { test, expect, request as pwRequest } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
 import { TEST_USER } from '../global-setup';
-
-const API_URL = process.env.E2E_API_URL || 'http://localhost:3001';
+import { newApiContext } from '../api-context';
 
 // Notification, push and search links all point at /projects/:id?task=:taskId.
 // Nothing used to read the param, so they opened the project but not the task.
 test.describe('Task deep links', () => {
-  let api: Awaited<ReturnType<typeof pwRequest.newContext>>;
+  let api: APIRequestContext;
   let inboxId: string;
   let parentId: string;
   let subtaskId: string;
   const subtaskContent = `Deep-linked subtask ${Date.now()}`;
 
   test.beforeAll(async () => {
-    api = await pwRequest.newContext({ baseURL: API_URL });
+    api = await newApiContext();
     const login = await api.post('/api/v1/auth/login', {
       data: { email: TEST_USER.email, password: TEST_USER.password },
     });

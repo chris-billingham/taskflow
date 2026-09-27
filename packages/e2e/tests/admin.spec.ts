@@ -1,7 +1,5 @@
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
-import { request } from '@playwright/test';
-
-const API_URL = process.env.E2E_API_URL || 'http://localhost:3001';
+import { newApiContext } from '../api-context';
 
 // Matches ADMIN_EMAILS on the API under test (see the e2e job in CI and
 // docs/development/setup.md for the local run). Registering this address is
@@ -26,7 +24,7 @@ async function ensureAccount(
 }
 
 async function seed(user: { name: string; email: string; password: string }) {
-  const api = await request.newContext({ baseURL: API_URL });
+  const api = await newApiContext();
   try {
     await ensureAccount(api, user);
   } finally {
@@ -222,7 +220,7 @@ test.describe('Admin console', () => {
     const password = 'ApiUser123!';
     await seed({ name: 'Api User', email, password });
 
-    const api = await request.newContext({ baseURL: API_URL });
+    const api = await newApiContext();
     let accessToken: string;
     try {
       const login = await api.post('/api/v1/auth/login', {
@@ -233,8 +231,7 @@ test.describe('Admin console', () => {
       await api.dispose();
     }
 
-    const asUser = await request.newContext({
-      baseURL: API_URL,
+    const asUser = await newApiContext({
       extraHTTPHeaders: { authorization: `Bearer ${accessToken}` },
     });
     try {

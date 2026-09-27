@@ -1,7 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { request } from '@playwright/test';
-
-const API_URL = process.env.E2E_API_URL || 'http://localhost:3001';
+import { newApiContext } from '../api-context';
 
 const USER = {
   name: 'Date Format User',
@@ -34,7 +32,7 @@ function todayYMD(): string {
 }
 
 test.beforeAll(async () => {
-  const api = await request.newContext({ baseURL: API_URL });
+  const api = await newApiContext();
   try {
     const registered = await api.post('/api/v1/auth/register', { data: USER });
     if (!registered.ok() && registered.status() !== 409) {

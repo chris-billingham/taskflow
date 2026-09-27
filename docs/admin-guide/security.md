@@ -43,7 +43,7 @@ Traefik middleware. See [installation.md](installation.md).
 - Passwords are hashed with bcrypt (cost factor 12)
 - Access tokens expire after 15 minutes; websocket sessions are force-disconnected when their token expires
 - Refresh tokens expire after 30 days, are stored in httpOnly `SameSite=Strict` cookies, are rotated on every use (reuse detection revokes all sessions), and are stored server-side only as sha256 hashes
-- Rate limits: global 300 requests/minute per IP, plus stricter budgets on auth routes (login 5/15min, register 5/h, password reset 3/h, verify-email 10/15min) and uploads (60/10min). Limits are Redis-backed, so they survive restarts and are shared across processes
+- Rate limits: global 300 requests/minute per IP, plus stricter budgets on auth routes (login 5/15min, register 5/h, password reset 3/h, verify-email 10/15min) and uploads (60/10min). Limits are Redis-backed, so they survive restarts and are shared across processes. `RATE_LIMIT_MULTIPLIER` scales them all (minimum 1), for teams that share one office IP
 
 ### `TRUST_PROXY_HOPS` and rate limiting
 
