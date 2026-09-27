@@ -1,12 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Tag, Search, Check, Plus } from 'lucide-react';
-import api from '@/services/api';
-
-interface Label {
-  id: string;
-  name: string;
-  color: string;
-}
+import { useLabels, useLabelActions } from '@/queries/labels';
 
 interface LabelPickerProps {
   selectedIds: string[];
@@ -20,9 +14,9 @@ const DEFAULT_COLORS = [
 
 export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [labels, setLabels] = useState<Label[]>([]);
+  const { labels, loading } = useLabels();
+  const { createLabel } = useLabelActions();
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,24 +30,6 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const fetchLabels = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.get('/labels');
-      setLabels(data.data || []);
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchLabels();
-    }
-  }, [isOpen]);
 
   const filteredLabels = labels.filter((l) =>
     l.name.toLowerCase().includes(search.toLowerCase()),
@@ -76,16 +52,11 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
     setCreating(true);
     try {
       const color = DEFAULT_COLORS[labels.length % DEFAULT_COLORS.length];
-      const { data } = await api.post('/labels', {
-        name: search.trim(),
-        color,
-      });
-      const newLabel = data.data as Label;
-      setLabels((prev) => [...prev, newLabel]);
+      const newLabel = await createLabel({ name: search.trim(), color });
       onChange([...selectedIds, newLabel.id]);
       setSearch('');
     } catch {
-      // silently fail
+      // Already reported by createLabel.
     } finally {
       setCreating(false);
     }

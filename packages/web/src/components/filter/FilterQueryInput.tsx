@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useFilterStore } from '@/stores/filterStore';
-import { useLabelStore, selectLabelsArray } from '@/stores/labelStore';
+import { useFilterActions } from '@/queries/filters';
+import { useLabels } from '@/queries/labels';
 import { useProjectStore, selectProjectsArray } from '@/stores/projectStore';
 
 interface FilterQueryInputProps {
@@ -41,8 +41,8 @@ export function FilterQueryInput({ value, onChange, onValidation, placeholder }:
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const validateTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const validateFilter = useFilterStore((s) => s.validateFilter);
-  const labels = useLabelStore(selectLabelsArray);
+  const { validateFilter } = useFilterActions();
+  const { labels } = useLabels();
   const projects = useProjectStore(selectProjectsArray);
 
   const debounceValidate = useCallback(

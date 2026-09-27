@@ -1,19 +1,8 @@
-import { useEffect } from 'react';
 import { Tag, Filter } from 'lucide-react';
 import { LabelManager } from '@/components/label/LabelManager';
 import { FilterEditor } from '@/components/filter/FilterEditor';
-import { useLabelStore } from '@/stores/labelStore';
-import { useFilterStore } from '@/stores/filterStore';
 
 export default function FiltersLabels() {
-  const fetchLabels = useLabelStore((s) => s.fetchLabels);
-  const fetchFilters = useFilterStore((s) => s.fetchFilters);
-
-  useEffect(() => {
-    fetchLabels();
-    fetchFilters();
-  }, [fetchLabels, fetchFilters]);
-
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Filters & Labels</h1>

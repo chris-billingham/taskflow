@@ -1,29 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Pencil, Star, Calendar, List } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { TaskList } from '@/components/task/TaskList';
 import { CalendarView } from '@/components/views/CalendarView';
-import { useLabelStore } from '@/stores/labelStore';
+import { useLabels, useLabelActions } from '@/queries/labels';
 import { useFilterTasks } from '@/queries/tasks';
 
 export default function Label() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const label = useLabelStore((s) => (id ? s.labels.get(id) : undefined));
-  const fetchLabels = useLabelStore((s) => s.fetchLabels);
-  const updateLabel = useLabelStore((s) => s.updateLabel);
+  const { labels, loading: labelsLoading } = useLabels();
+  const label = labels.find((l) => l.id === id);
+  const { updateLabel } = useLabelActions();
 
   const { tasks, loading, hasMore, loadingMore, loadMore } = useFilterTasks(label ? `@${label.name}` : null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
-  useEffect(() => {
-    fetchLabels();
-  }, [fetchLabels]);
 
-  if (!label && !loading) {
+  if (!label && !labelsLoading) {
     return (
       <div className="text-center py-20">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Label not found</h2>

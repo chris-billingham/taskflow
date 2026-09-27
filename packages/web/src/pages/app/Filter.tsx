@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Pencil, Star, Calendar, List } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { TaskList } from '@/components/task/TaskList';
 import { CalendarView } from '@/components/views/CalendarView';
-import { useFilterStore } from '@/stores/filterStore';
+import { useFilters, useFilterActions } from '@/queries/filters';
 import { useFilterTasks } from '@/queries/tasks';
 
 export default function Filter() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const filter = useFilterStore((s) => (id ? s.filters.get(id) : undefined));
-  const fetchFilters = useFilterStore((s) => s.fetchFilters);
-  const updateFilter = useFilterStore((s) => s.updateFilter);
+  const { filters, loading: filtersLoading } = useFilters();
+  const filter = filters.find((f) => f.id === id);
+  const { updateFilter } = useFilterActions();
 
   const { tasks, loading, hasMore, loadingMore, loadMore } = useFilterTasks(filter ? filter.query : null);
   const [editing, setEditing] = useState(false);
@@ -31,11 +31,8 @@ export default function Filter() {
     });
   };
 
-  useEffect(() => {
-    fetchFilters();
-  }, [fetchFilters]);
 
-  if (!filter && !loading) {
+  if (!filter && !filtersLoading) {
     return (
       <div className="text-center py-20">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Filter not found</h2>

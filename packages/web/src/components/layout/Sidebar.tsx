@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   CheckSquare,
@@ -18,8 +18,8 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectStore } from '@/stores/projectStore';
-import { useLabelStore, selectFavoriteLabels } from '@/stores/labelStore';
-import { useFilterStore, selectFavoriteFilters } from '@/stores/filterStore';
+import { useLabels } from '@/queries/labels';
+import { useFilters } from '@/queries/filters';
 import {
   useWorkspaceStore,
   selectCurrentWorkspace,
@@ -46,10 +46,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const deleteProject = useProjectStore((s) => s.deleteProject);
   const archiveProject = useProjectStore((s) => s.archiveProject);
 
-  const fetchLabels = useLabelStore((s) => s.fetchLabels);
-  const fetchFilters = useFilterStore((s) => s.fetchFilters);
-  const favoriteLabels = useLabelStore(selectFavoriteLabels);
-  const favoriteFilters = useFilterStore(selectFavoriteFilters);
+  const { favorites: favoriteLabels } = useLabels();
+  const { favorites: favoriteFilters } = useFilters();
 
   const currentWorkspace = useWorkspaceStore(selectCurrentWorkspace);
 
@@ -63,10 +61,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [filtersLabelsExpanded, setFiltersLabelsExpanded] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  useEffect(() => {
-    fetchLabels();
-    fetchFilters();
-  }, [fetchLabels, fetchFilters]);
 
   const handleLogout = async () => {
     await logout();

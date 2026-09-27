@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Play, Star } from 'lucide-react';
-import { useFilterStore, selectFiltersArray } from '@/stores/filterStore';
+import { useFilters, useFilterActions } from '@/queries/filters';
 import { FilterQueryInput } from './FilterQueryInput';
-import type { Filter } from '@/stores/filterStore';
+import type { Filter } from '@/queries/filters';
 
 const DEFAULT_COLORS = [
   '#6B7280', '#EF4444', '#F59E0B', '#10B981',
@@ -13,11 +13,8 @@ const DEFAULT_COLORS = [
 
 export function FilterEditor() {
   const navigate = useNavigate();
-  const filters = useFilterStore(selectFiltersArray);
-  const createFilter = useFilterStore((s) => s.createFilter);
-  const updateFilter = useFilterStore((s) => s.updateFilter);
-  const deleteFilter = useFilterStore((s) => s.deleteFilter);
-  const executeFilter = useFilterStore((s) => s.executeFilter);
+  const { filters } = useFilters();
+  const { createFilter, updateFilter, deleteFilter, previewFilter } = useFilterActions();
 
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -69,7 +66,7 @@ export function FilterEditor() {
     setPreviewQuery(query);
     setPreviewLoading(true);
     try {
-      const { tasks } = await executeFilter(query);
+      const tasks = await previewFilter(query);
       setPreviewResults(tasks);
     } catch {
       setPreviewResults([]);

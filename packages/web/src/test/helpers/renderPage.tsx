@@ -7,8 +7,6 @@ import { TaskPanel } from '@/components/task/TaskPanel';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { useAuthStore } from '@/stores/authStore';
 import { useCommentStore } from '@/stores/commentStore';
-import { useFilterStore } from '@/stores/filterStore';
-import { useLabelStore } from '@/stores/labelStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useSocketStore } from '@/stores/socketStore';
@@ -23,8 +21,6 @@ import { TEST_USER } from '../msw/fixtures';
 const stores = [
   useAuthStore,
   useCommentStore,
-  useFilterStore,
-  useLabelStore,
   useNotificationStore,
   useProjectStore,
   useSocketStore,

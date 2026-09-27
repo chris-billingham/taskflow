@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, GripVertical, Pencil, Trash2, Check, X, Star } from 'lucide-react';
-import { useLabelStore, selectLabelsArray } from '@/stores/labelStore';
-import type { Label } from '@/stores/labelStore';
+import { useLabels, useLabelActions, type Label } from '@/queries/labels';
 
 const DEFAULT_COLORS = [
   '#6B7280', '#EF4444', '#F59E0B', '#10B981',
@@ -12,11 +11,8 @@ const DEFAULT_COLORS = [
 
 export function LabelManager() {
   const navigate = useNavigate();
-  const labels = useLabelStore(selectLabelsArray);
-  const createLabel = useLabelStore((s) => s.createLabel);
-  const updateLabel = useLabelStore((s) => s.updateLabel);
-  const deleteLabel = useLabelStore((s) => s.deleteLabel);
-  const reorderLabels = useLabelStore((s) => s.reorderLabels);
+  const { labels } = useLabels();
+  const { createLabel, updateLabel, deleteLabel, reorderLabels } = useLabelActions();
 
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');

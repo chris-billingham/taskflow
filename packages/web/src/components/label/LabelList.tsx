@@ -1,15 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MoreHorizontal, Pencil, Trash2, Star, StarOff } from 'lucide-react';
-import { useLabelStore, selectLabelsArray } from '@/stores/labelStore';
-import type { Label } from '@/stores/labelStore';
+import { useLabels, useLabelActions, type Label } from '@/queries/labels';
 
 export function LabelList() {
   const navigate = useNavigate();
   const location = useLocation();
-  const labels = useLabelStore(selectLabelsArray);
-  const updateLabel = useLabelStore((s) => s.updateLabel);
-  const deleteLabel = useLabelStore((s) => s.deleteLabel);
+  const { labels } = useLabels();
+  const { updateLabel, deleteLabel } = useLabelActions();
 
   const [contextMenu, setContextMenu] = useState<{ label: Label; x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);

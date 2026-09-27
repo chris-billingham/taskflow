@@ -1,15 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MoreHorizontal, Pencil, Trash2, Star, StarOff } from 'lucide-react';
-import { useFilterStore, selectFiltersArray } from '@/stores/filterStore';
-import type { Filter } from '@/stores/filterStore';
+import { useFilters, useFilterActions, type Filter } from '@/queries/filters';
 
 export function FilterList() {
   const navigate = useNavigate();
   const location = useLocation();
-  const filters = useFilterStore(selectFiltersArray);
-  const updateFilter = useFilterStore((s) => s.updateFilter);
-  const deleteFilter = useFilterStore((s) => s.deleteFilter);
+  const { filters } = useFilters();
+  const { updateFilter, deleteFilter } = useFilterActions();
 
   const [contextMenu, setContextMenu] = useState<{ filter: Filter; x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
