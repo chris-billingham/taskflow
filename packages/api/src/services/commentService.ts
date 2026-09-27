@@ -1,7 +1,7 @@
 import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 import { requireTaskAccess } from './access.js';
-import type { CreateCommentInput, UpdateCommentInput } from '../schemas/comment.js';
+import type { CreateCommentInput, UpdateCommentInput } from '@taskflow/contract';
 import { logActivity } from './activityService.js';
 import {
   broadcastCommentCreated,

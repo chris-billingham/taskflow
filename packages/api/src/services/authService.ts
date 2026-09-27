@@ -14,7 +14,7 @@ import {
   UnauthorizedError,
   ValidationError,
 } from '../errors/index.js';
-import type { RegisterInput } from '../schemas/auth.js';
+import type { RegisterInput } from '@taskflow/contract';
 import type { SystemRole } from '@prisma/client';
 import { disconnectUserSockets } from '../websocket/events.js';
 import { isBootstrapAdminEmail } from '../config/env.js';

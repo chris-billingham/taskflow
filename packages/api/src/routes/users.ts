@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { isValidTimeZone } from '../utils/dates.js';
 import { z } from 'zod';
 import { authenticate } from '../middleware/authenticate.js';
-import { changePasswordSchema } from '../schemas/auth.js';
+import { changePasswordSchema } from '@taskflow/contract';
 import * as userService from '../services/userService.js';
 import { ValidationError } from '../errors/index.js';
 

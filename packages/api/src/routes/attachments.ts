@@ -5,7 +5,7 @@ import {
   taskAttachmentParamsSchema,
   commentAttachmentParamsSchema,
   ALLOWED_MIME_TYPES,
-} from '../schemas/attachment.js';
+} from '@taskflow/contract';
 import * as fileService from '../services/fileService.js';
 import { ValidationError } from '../errors/index.js';
 import { env } from '../config/env.js';

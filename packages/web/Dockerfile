@@ -8,15 +8,15 @@ RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
 # Cache dependency layer
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/web/package.json ./packages/web/
-COPY packages/shared/package.json ./packages/shared/
+COPY packages/contract/package.json ./packages/contract/
 
 RUN pnpm install --frozen-lockfile
 
 # Copy source
-COPY packages/shared/ ./packages/shared/
+COPY packages/contract/ ./packages/contract/
 COPY packages/web/ ./packages/web/
 
-RUN pnpm --filter @taskflow/shared build
+RUN pnpm --filter @taskflow/contract build
 RUN pnpm --filter @taskflow/web build
 
 # Production stage

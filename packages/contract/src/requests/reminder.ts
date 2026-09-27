@@ -21,10 +21,10 @@ export const reminderParamsSchema = z.object({
   id: z.string().min(1, 'Reminder ID is required'),
 });
 
-export const taskParamsSchema = z.object({
+export const reminderTaskParamsSchema = z.object({
   taskId: z.string().min(1, 'Task ID is required'),
 });
 
 export type CreateReminderInput = z.infer<typeof createReminderSchema>;
 export type ReminderParams = z.infer<typeof reminderParamsSchema>;
-export type TaskParams = z.infer<typeof taskParamsSchema>;
+export type ReminderTaskParams = z.infer<typeof reminderTaskParamsSchema>;

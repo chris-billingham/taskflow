@@ -15,7 +15,8 @@ import { runWithRequestContext } from './utils/requestContext.js';
 import { getRedis } from './config/redis.js';
 import { prisma } from './config/database.js';
 import { Prisma } from '@prisma/client';
-import { openapiSpec } from './docs/openapi.js';
+import { jsonSchemaTransform, validatorCompiler } from 'fastify-type-provider-zod';
+import { createContractSerializer } from './utils/contractSerializer.js';
 import { rateLimitMax } from './config/rateLimits.js';
 
 const defaultLogger: FastifyServerOptions['logger'] = {
@@ -32,6 +33,8 @@ const defaultLogger: FastifyServerOptions['logger'] = {
         }
       : undefined,
 };
+
+export const API_VERSION = '1.0.0';
 
 export interface BuildAppOptions {
   /** Fastify logger config; defaults to the env-driven production/dev logger. */
@@ -102,12 +105,34 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     limits: { fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024 },
   });
 
+  // Requests are validated, and responses serialized, by each route's Zod
+  // schemas from @taskflow/contract.
+  server.setValidatorCompiler(validatorCompiler);
+  server.setSerializerCompiler(
+    createContractSerializer(server.log, env.NODE_ENV !== 'production'),
+  );
+
   // API docs are an endpoint inventory — served only when explicitly enabled
   // (or in development), not to every anonymous visitor of a production host.
+  // The OpenAPI document is generated from the same route schemas, so it can't
+  // drift from what the API actually accepts and returns.
   if (options.docs ?? (env.NODE_ENV === 'development' || env.ENABLE_API_DOCS)) {
     await server.register(swagger, {
-      mode: 'static',
-      specification: { document: openapiSpec as never },
+      openapi: {
+        info: {
+          title: 'Taskflow API',
+          description:
+            'Self-hosted task management. Authenticate with a Bearer access token from POST /api/v1/auth/login.',
+          version: API_VERSION,
+        },
+        components: {
+          securitySchemes: {
+            bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+          },
+        },
+        security: [{ bearerAuth: [] }],
+      },
+      transform: jsonSchemaTransform,
     });
 
     await server.register(swaggerUi, {
@@ -121,20 +146,22 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   server.setErrorHandler((error, request, reply) => {
     const err = error as Error & { statusCode?: number; code?: string; validation?: unknown };
 
+    // Schema validation errors: report the first issue's own message
+    // ("Invalid email address"), not Fastify's "body/email ..." prefix form.
+    if (err.validation) {
+      const first = (err.validation as Array<{ message?: string }>)[0];
+      return reply.status(400).send({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: first?.message ?? err.message,
+      });
+    }
+
     // Custom AppError or any error with statusCode
     if (err.statusCode && err.statusCode >= 400 && err.statusCode < 500) {
       return reply.status(err.statusCode).send({
         success: false,
         error: err.code ?? 'ERROR',
-        message: err.message,
-      });
-    }
-
-    // Fastify validation errors
-    if (err.validation) {
-      return reply.status(400).send({
-        success: false,
-        error: 'VALIDATION_ERROR',
         message: err.message,
       });
     }
@@ -238,7 +265,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       body: {
         status: healthy ? 'ok' : 'degraded',
         timestamp: new Date().toISOString(),
-        ...(isLoopback(request.ip) ? { version: '1.0.0', checks } : {}),
+        ...(isLoopback(request.ip) ? { version: API_VERSION, checks } : {}),
       },
     };
   }
@@ -257,7 +284,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   server.get('/', async () => {
     return {
       name: 'Taskflow API',
-      version: '1.0.0',
+      version: API_VERSION,
       status: 'running',
     };
   });

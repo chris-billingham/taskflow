@@ -5,7 +5,7 @@ import {
   updateSectionSchema,
   sectionParamsSchema,
   reorderSectionsSchema,
-} from '../schemas/section.js';
+} from '@taskflow/contract';
 import * as sectionService from '../services/sectionService.js';
 import { ValidationError } from '../errors/index.js';
 

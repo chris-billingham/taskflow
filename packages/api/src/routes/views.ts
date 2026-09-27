@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../middleware/authenticate.js';
-import { upcomingQuerySchema, rescheduleOverdueSchema } from '../schemas/view.js';
+import { upcomingQuerySchema, rescheduleOverdueSchema } from '@taskflow/contract';
 import * as viewService from '../services/viewService.js';
 import { ValidationError } from '../errors/index.js';
 

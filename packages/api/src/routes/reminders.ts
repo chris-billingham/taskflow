@@ -3,8 +3,8 @@ import { authenticate } from '../middleware/authenticate.js';
 import {
   createReminderSchema,
   reminderParamsSchema,
-  taskParamsSchema,
-} from '../schemas/reminder.js';
+  reminderTaskParamsSchema,
+} from '@taskflow/contract';
 import * as reminderService from '../services/reminderService.js';
 import { ValidationError } from '../errors/index.js';
 
@@ -13,7 +13,7 @@ export async function reminderRoutes(app: FastifyInstance) {
 
   // GET /api/v1/tasks/:taskId/reminders - List reminders for a task
   app.get('/tasks/:taskId/reminders', async (request, reply) => {
-    const params = taskParamsSchema.safeParse(request.params);
+    const params = reminderTaskParamsSchema.safeParse(request.params);
     if (!params.success) {
       throw new ValidationError(params.error.issues[0].message);
     }
@@ -27,7 +27,7 @@ export async function reminderRoutes(app: FastifyInstance) {
 
   // POST /api/v1/tasks/:taskId/reminders - Create a reminder
   app.post('/tasks/:taskId/reminders', async (request, reply) => {
-    const params = taskParamsSchema.safeParse(request.params);
+    const params = reminderTaskParamsSchema.safeParse(request.params);
     if (!params.success) {
       throw new ValidationError(params.error.issues[0].message);
     }

@@ -1,0 +1,31 @@
+{
+  "name": "@taskflow/contract",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Taskflow API contract: Zod schemas and types for every request and response, shared by the API, the web app and (via the generated OpenAPI) native clients.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "lint": "eslint src --max-warnings 0",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

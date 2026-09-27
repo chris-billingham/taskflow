@@ -10,7 +10,7 @@ import type {
   UpdateWorkspaceInput,
   InviteMemberInput,
   UpdateMemberInput,
-} from '../schemas/workspace.js';
+} from '@taskflow/contract';
 import { logActivity } from './activityService.js';
 import { isMailerReady, sendWorkspaceInviteEmail } from './mailService.js';
 import { notify } from './notificationService.js';

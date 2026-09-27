@@ -6,7 +6,7 @@ import {
   updateTemplateSchema,
   templateParamsSchema,
   workspaceTemplateParamsSchema,
-} from '../schemas/template.js';
+} from '@taskflow/contract';
 import * as templateService from '../services/templateService.js';
 import { ValidationError } from '../errors/index.js';
 

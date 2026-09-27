@@ -5,7 +5,7 @@ import {
   updateFilterSchema,
   filterParamsSchema,
   filterQuerySchema,
-} from '../schemas/filter.js';
+} from '@taskflow/contract';
 import * as filterService from '../services/filterService.js';
 import { ValidationError } from '../errors/index.js';
 

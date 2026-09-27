@@ -5,7 +5,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
-} from '../schemas/auth.js';
+} from '@taskflow/contract';
 import * as authService from '../services/authService.js';
 import * as instanceSettings from '../services/instanceSettingsService.js';
 import { UnauthorizedError, ValidationError } from '../errors/index.js';

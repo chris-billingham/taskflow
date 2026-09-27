@@ -2,7 +2,7 @@ import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import { requireTaskAccess } from './access.js';
 import { getUserTimezone, zonedWallClockToUTC } from '../utils/dates.js';
-import type { CreateReminderInput } from '../schemas/reminder.js';
+import type { CreateReminderInput } from '@taskflow/contract';
 
 export async function getTaskReminders(taskId: string, userId: string) {
   await requireTaskAccess(taskId, userId, 'VIEW');

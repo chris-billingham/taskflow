@@ -5,7 +5,7 @@ import type {
   CreateTemplateInput,
   ApplyTemplateInput,
   UpdateTemplateInput,
-} from '../schemas/template.js';
+} from '@taskflow/contract';
 
 interface TemplateSubtask {
   content: string;

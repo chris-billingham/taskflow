@@ -9,7 +9,7 @@ import {
   workspaceMemberParamsSchema,
   joinWorkspaceSchema,
   transferOwnershipSchema,
-} from '../schemas/workspace.js';
+} from '@taskflow/contract';
 import * as workspaceService from '../services/workspaceService.js';
 import { ValidationError } from '../errors/index.js';
 

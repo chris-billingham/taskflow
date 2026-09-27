@@ -5,7 +5,7 @@ import {
   updateCommentSchema,
   commentParamsSchema,
   commentQuerySchema,
-} from '../schemas/comment.js';
+} from '@taskflow/contract';
 import * as commentService from '../services/commentService.js';
 import { ValidationError } from '../errors/index.js';
 

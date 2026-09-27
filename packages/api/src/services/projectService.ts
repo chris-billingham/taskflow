@@ -5,7 +5,7 @@ import {
   requireWorkspaceRole,
   projectAccessWhere,
 } from './access.js';
-import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.js';
+import type { CreateProjectInput, UpdateProjectInput } from '@taskflow/contract';
 import { logActivity } from './activityService.js';
 import { reclaimAttachments } from './fileService.js';
 import {

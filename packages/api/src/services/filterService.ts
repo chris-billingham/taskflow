@@ -1,7 +1,7 @@
 import { prisma } from '../config/database.js';
 import { taskAccessWhere } from './access.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
-import type { CreateFilterInput, UpdateFilterInput } from '../schemas/filter.js';
+import type { CreateFilterInput, UpdateFilterInput } from '@taskflow/contract';
 import { parseFilterQuery, validateFilterQuery } from '../utils/filterParser.js';
 
 export async function getUserFilters(userId: string) {

@@ -17,7 +17,7 @@ import type {
   TaskQuery,
   BulkTaskInput,
   MoveTaskInput,
-} from '../schemas/task.js';
+} from '@taskflow/contract';
 import { parseQuickAdd } from '../utils/quickAddParser.js';
 import { getNextOccurrence, advanceRecurrenceRule } from '../utils/recurrence.js';
 import {

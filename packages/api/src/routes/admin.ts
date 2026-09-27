@@ -8,7 +8,7 @@ import {
   setUserStatusSchema,
   adminResetPasswordSchema,
   updateInstanceSettingsSchema,
-} from '../schemas/admin.js';
+} from '@taskflow/contract';
 import * as adminService from '../services/adminService.js';
 import * as instanceSettings from '../services/instanceSettingsService.js';
 import { ValidationError } from '../errors/index.js';

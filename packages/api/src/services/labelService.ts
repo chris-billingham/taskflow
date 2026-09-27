@@ -1,6 +1,6 @@
 import { prisma } from '../config/database.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../errors/index.js';
-import type { CreateLabelInput, UpdateLabelInput } from '../schemas/label.js';
+import type { CreateLabelInput, UpdateLabelInput } from '@taskflow/contract';
 
 export async function getUserLabels(userId: string) {
   return prisma.label.findMany({

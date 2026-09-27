@@ -1,7 +1,7 @@
 import { prisma } from '../config/database.js';
 import { NotFoundError } from '../errors/index.js';
 import { requireProjectAccess } from './access.js';
-import type { CreateSectionInput, UpdateSectionInput } from '../schemas/section.js';
+import type { CreateSectionInput, UpdateSectionInput } from '@taskflow/contract';
 import {
   broadcastSectionCreated,
   broadcastSectionUpdated,

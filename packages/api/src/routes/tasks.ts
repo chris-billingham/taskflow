@@ -9,7 +9,7 @@ import {
   quickAddSchema,
   moveTaskSchema,
   reorderTasksSchema,
-} from '../schemas/task.js';
+} from '@taskflow/contract';
 import * as taskService from '../services/taskService.js';
 import { ValidationError } from '../errors/index.js';
 

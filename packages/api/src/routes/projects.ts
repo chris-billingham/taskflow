@@ -6,7 +6,7 @@ import {
   projectParamsSchema,
   reorderProjectsSchema,
   duplicateProjectSchema,
-} from '../schemas/project.js';
+} from '@taskflow/contract';
 import * as projectService from '../services/projectService.js';
 import { ValidationError } from '../errors/index.js';
 

@@ -20,7 +20,7 @@
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.9.1",
-    "@taskflow/shared": "workspace:*",
+    "@taskflow/contract": "workspace:*",
     "axios": "^1.16.0",
     "date-fns": "^3.2.0",
     "lucide-react": "^0.309.0",

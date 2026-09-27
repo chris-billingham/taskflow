@@ -1,76 +1,96 @@
 import type { FastifyInstance } from 'fastify';
-import { authenticate } from '../middleware/authenticate.js';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import {
   createLabelSchema,
   updateLabelSchema,
   labelParamsSchema,
   reorderLabelsSchema,
-} from '../schemas/label.js';
+  labelSchema,
+  messageResponse,
+  ok,
+} from '@taskflow/contract';
+import { authenticate } from '../middleware/authenticate.js';
 import * as labelService from '../services/labelService.js';
-import { ValidationError } from '../errors/index.js';
 
-export async function labelRoutes(app: FastifyInstance) {
+const tags = ['Labels'];
+
+export async function labelRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
   app.addHook('preHandler', authenticate);
 
-  // GET /api/v1/labels - List user's labels
-  app.get('/', async (request, reply) => {
-    const data = await labelService.getUserLabels(request.user.id);
-    return reply.send({ success: true, data });
-  });
+  app.get(
+    '/',
+    { schema: { tags, summary: 'List your labels', response: { 200: ok(z.array(labelSchema)) } } },
+    async (request) => ({
+      success: true as const,
+      data: await labelService.getUserLabels(request.user.id),
+    }),
+  );
 
-  // POST /api/v1/labels - Create label
-  app.post('/', async (request, reply) => {
-    const result = createLabelSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
+  app.post(
+    '/',
+    {
+      schema: {
+        tags,
+        summary: 'Create a label',
+        body: createLabelSchema,
+        response: { 201: ok(labelSchema) },
+      },
+    },
+    async (request, reply) =>
+      reply.status(201).send({
+        success: true,
+        data: await labelService.createLabel(request.body, request.user.id),
+      }),
+  );
 
-    const data = await labelService.createLabel(result.data, request.user.id);
-    return reply.status(201).send({ success: true, data });
-  });
+  app.patch(
+    '/:id',
+    {
+      schema: {
+        tags,
+        summary: 'Update a label',
+        params: labelParamsSchema,
+        body: updateLabelSchema,
+        response: { 200: ok(labelSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await labelService.updateLabel(request.params.id, request.body, request.user.id),
+    }),
+  );
 
-  // PATCH /api/v1/labels/:id - Update label
-  app.patch('/:id', async (request, reply) => {
-    const params = labelParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
+  app.delete(
+    '/:id',
+    {
+      schema: {
+        tags,
+        summary: 'Delete a label',
+        params: labelParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await labelService.deleteLabel(request.params.id, request.user.id)),
+    }),
+  );
 
-    const body = updateLabelSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await labelService.updateLabel(
-      params.data.id,
-      body.data,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
-
-  // DELETE /api/v1/labels/:id - Delete label
-  app.delete('/:id', async (request, reply) => {
-    const params = labelParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const data = await labelService.deleteLabel(params.data.id, request.user.id);
-    return reply.send({ success: true, ...data });
-  });
-
-  // PUT /api/v1/labels/reorder - Reorder labels
-  app.put('/reorder', async (request, reply) => {
-    const result = reorderLabelsSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-
-    const data = await labelService.reorderLabels(
-      result.data.labelIds,
-      request.user.id,
-    );
-    return reply.send({ success: true, ...data });
-  });
+  app.put(
+    '/reorder',
+    {
+      schema: {
+        tags,
+        summary: 'Reorder your labels',
+        body: reorderLabelsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await labelService.reorderLabels(request.body.labelIds, request.user.id)),
+    }),
+  );
 }

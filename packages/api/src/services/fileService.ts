@@ -9,7 +9,7 @@ import {
   requireProjectAccess,
   type AccessLevel,
 } from './access.js';
-import { ALLOWED_MIME_TYPES } from '../schemas/attachment.js';
+import { ALLOWED_MIME_TYPES } from '@taskflow/contract';
 import { env } from '../config/env.js';
 
 // The client-declared MIME type is untrusted. For declared types whose real
