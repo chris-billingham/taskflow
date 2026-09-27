@@ -152,7 +152,8 @@ export function InviteMemberModal({
               >
                 <option value="MEMBER">Member - Create projects, access team projects</option>
                 <option value="ADMIN">Admin - Manage members and all projects</option>
-                <option value="GUEST">Guest - Access specific shared projects only</option>
+                {/* Guests get comment access to every team project (access.ts); project-scoped guests arrive with per-project sharing. */}
+                <option value="GUEST">Guest - View and comment on all team projects</option>
               </select>
             </div>
 

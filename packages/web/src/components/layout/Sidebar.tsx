@@ -27,6 +27,7 @@ import {
 import { ProjectList } from '@/components/project/ProjectList';
 import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher';
 import { CreateWorkspaceModal } from '@/components/workspace/CreateWorkspaceModal';
 import type { ProjectTreeNode, Project } from '@/stores/projectStore';
@@ -72,8 +73,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     navigate('/login');
   };
 
+  // Deleting removes every task and section in the project, so ask first
+  // (the project header already did; the sidebar menu used to delete at once).
+  const [pendingDelete, setPendingDelete] = useState<ProjectTreeNode | null>(null);
+
   const handleDeleteProject = (project: ProjectTreeNode) => {
     if (project.isInbox) return;
+    setPendingDelete(project);
+  };
+
+  const confirmDeleteProject = () => {
+    if (!pendingDelete) return;
+    const project = pendingDelete;
+    setPendingDelete(null);
     deleteProject(project.id);
     if (location.pathname === `/projects/${project.id}`) {
       navigate('/today');
@@ -462,6 +474,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         isOpen={showCreateWorkspaceModal}
         onClose={() => setShowCreateWorkspaceModal(false)}
       />
+      <ConfirmDialog
+        isOpen={pendingDelete !== null}
+        title="Delete project?"
+        message={`This permanently deletes "${pendingDelete?.name ?? ''}" and all its tasks and sections.`}
+        onConfirm={confirmDeleteProject}
+        onCancel={() => setPendingDelete(null)}
+      />
+
       {editingProject && (
         <EditProjectModal
           isOpen={!!editingProject}
