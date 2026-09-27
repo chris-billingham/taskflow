@@ -16,7 +16,7 @@ Quick Add and the project-level **+ Add task** understand dates, priorities, `#p
 | Field | Description |
 |-------|-------------|
 | Name | Required, up to 500 characters |
-| Description | Plain-text notes, up to 10,000 characters. Markdown is not rendered here (comments do render Markdown). |
+| Description | Notes in Markdown, up to 10,000 characters: bold, italics, lists, links, tables and checklists. |
 | Due date | The date the task is due, with an optional time |
 | Reminders | 30 minutes, 1 hour or 1 day before the due date, or at a specific date and time |
 | Repeat | See [Recurring Tasks](#recurring-tasks) |
@@ -40,6 +40,8 @@ Click the circle to the left of a task.
 ## Editing a Task
 
 Click a task to open the task panel on the right. Click the name or description to edit them. Every other field has its own picker.
+
+The description shows formatted. Click it (or its pencil button) to edit the Markdown, then click away or press Ctrl+Enter to save, or press Escape to cancel. Write a checklist with `- [ ] item`. You can tick its boxes straight from the formatted view without opening the editor. Links open in a new tab.
 
 From the list itself you can also:
 - Double-click a task name to rename it inline

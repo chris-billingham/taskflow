@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MoreHorizontal, Pencil, Trash2, Reply } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import ReactMarkdown from 'react-markdown';
+import { Markdown } from '@/components/ui/Markdown';
 import type { Comment } from '@/queries/comments';
 import { CommentEditor } from './CommentEditor';
 
@@ -85,9 +85,7 @@ export function CommentItem({
           </div>
 
           {/* Content */}
-          <div className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300 text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-            <ReactMarkdown>{comment.content}</ReactMarkdown>
-          </div>
+          <Markdown className="text-gray-700 dark:text-gray-300 text-sm">{comment.content}</Markdown>
 
           {/* Actions */}
           <div className="flex items-center gap-2 mt-1">

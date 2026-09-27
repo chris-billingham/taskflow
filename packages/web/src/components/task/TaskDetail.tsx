@@ -11,6 +11,7 @@ import {
   User,
   Bell,
   Repeat,
+  Pencil,
 } from 'lucide-react';
 import { TaskCheckbox } from './TaskCheckbox';
 import { DueDatePicker } from './DueDatePicker';
@@ -28,6 +29,7 @@ import { AttachmentList } from '@/components/attachment/AttachmentList';
 import type { Task } from '@/types/task';
 import { Sheet } from '@/components/ui/Sheet';
 import { IconButton } from '@/components/ui/IconButton';
+import { Markdown } from '@/components/ui/Markdown';
 
 interface TaskDetailProps {
   task: Task;
@@ -175,30 +177,67 @@ export function TaskDetail({
 
           {/* Description */}
           {editingDescription ? (
-            <textarea
-              ref={descRef}
-              className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-3 outline-hidden focus:border-primary-500 resize-none mb-4"
-              rows={4}
-              placeholder="Add a description..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={handleDescriptionSubmit}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  setDescription(task.description || '');
-                  setEditingDescription(false);
-                }
-              }}
-            />
-          ) : (
+            <div className="mb-4">
+              <textarea
+                ref={descRef}
+                aria-label="Description"
+                className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-3 outline-hidden focus:border-primary-500 resize-y font-mono"
+                rows={Math.min(16, Math.max(4, description.split('\n').length + 1))}
+                placeholder="Add a description..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onBlur={handleDescriptionSubmit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    handleDescriptionSubmit();
+                  }
+                  if (e.key === 'Escape') {
+                    setDescription(task.description || '');
+                    setEditingDescription(false);
+                  }
+                }}
+              />
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                Markdown supported: **bold**, _italic_, lists, links and [ ] checklists &middot; Ctrl+Enter to save
+              </p>
+            </div>
+          ) : task.description ? (
+            // Click anywhere but a link or checkbox to edit; the pencil is the
+            // keyboard way in.
             <div
-              className="text-sm text-gray-600 dark:text-gray-400 mb-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-2 -mx-2 min-h-[40px]"
+              className="group/desc relative text-sm text-gray-600 dark:text-gray-400 mb-4 cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg p-2 pr-8 -mx-2"
               onClick={() => setEditingDescription(true)}
             >
-              {task.description || (
-                <span className="text-gray-400 dark:text-gray-500 italic">Add a description...</span>
-              )}
+              <Markdown
+                className="text-gray-700 dark:text-gray-300"
+                onChange={(next) => {
+                  setDescription(next);
+                  onUpdate(task.id, { description: next });
+                }}
+              >
+                {task.description}
+              </Markdown>
+              <button
+                type="button"
+                aria-label="Edit description"
+                className="absolute top-1.5 right-1.5 p-1 rounded-sm text-gray-400 opacity-0 group-hover/desc:opacity-100 focus-visible:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingDescription(true);
+                }}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
             </div>
+          ) : (
+            <button
+              type="button"
+              className="block w-full text-left text-sm text-gray-400 dark:text-gray-500 italic mb-4 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-2 -mx-2 min-h-[40px]"
+              onClick={() => setEditingDescription(true)}
+            >
+              Add a description...
+            </button>
           )}
 
           {/* Properties */}
