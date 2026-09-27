@@ -47,6 +47,8 @@ RUN cp -r packages/api/dist /build/deploy/dist
 # The schema lives in the deployment tree: needed at runtime for `migrate deploy`,
 # and needed here so the client is generated against it in place (below).
 RUN cp -r packages/api/prisma /build/deploy/prisma
+# Prisma 7 reads the database URL for `migrate deploy` from this file.
+RUN cp packages/api/prisma.config.ts /build/deploy/prisma.config.ts
 
 # Generate the Prisma client INSIDE the pruned deployment tree, so the client and
 # its engine binary end up exactly where the runtime resolves them.
@@ -57,14 +59,15 @@ RUN cp -r packages/api/prisma /build/deploy/prisma
 # client is in neither of those places, so the guess always missed, the warning
 # scrolled past in build output nobody reads, and the image shipped with an empty
 # .prisma directory and no query engine.
-RUN cd /build/deploy && ./node_modules/.bin/prisma generate --schema prisma/schema.prisma
+RUN cd /build/deploy && ./node_modules/.bin/prisma generate
 
-# Prove the engines are present AND loadable, rather than shipping an image whose
-# database layer cannot work. `prisma -v` executes both engines to report their
-# versions, so it fails exactly the way `migrate deploy` did when the engine
-# could not load libssl — turning a silent broken image into a failed build.
+# Prove the schema engine (used by `migrate deploy`) is present AND loadable,
+# rather than shipping an image whose migrations cannot run. `prisma version`
+# executes it, so it fails exactly the way `migrate deploy` did when the engine
+# could not load libssl. Since Prisma 7 there is no query engine: the client
+# talks to Postgres through the node-postgres driver.
 RUN cd /build/deploy && \
-    find . -name 'libquery_engine*' -o -name 'schema-engine*' && \
+    find . -name 'schema-engine*' | grep -q . && \
     ./node_modules/.bin/prisma version
 
 # Production stage

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 // Reads that hide trashed tasks unless the query asks about deletedAt itself.
 const TASK_READS = new Set([
@@ -14,6 +15,8 @@ const TASK_READS = new Set([
 
 function createClient() {
   return new PrismaClient({
+    // Prisma 7 talks to Postgres through the node-postgres driver.
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
     // Query logging includes BOUND PARAMETER VALUES (password hashes, token
     // hashes) in container logs — opt in explicitly when debugging.
     log:
