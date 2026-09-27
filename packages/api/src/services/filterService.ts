@@ -84,7 +84,7 @@ export async function executeFilter(
       },
       project: { select: { id: true, name: true, color: true } },
       section: { select: { id: true, name: true } },
-      _count: { select: { subtasks: true, comments: true } },
+      _count: { select: { subtasks: { where: { deletedAt: null } }, comments: true } },
     },
     orderBy: [
       { priority: 'asc' },

@@ -14,6 +14,7 @@ import {
   Tag,
   Building2,
   Inbox,
+  Trash2,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProjects, useProjectActions } from '@/queries/projects';
@@ -117,6 +118,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: '/today', label: 'Today', icon: CalendarDays },
     { path: '/upcoming', label: 'Upcoming', icon: CalendarRange },
     { path: '/filters-labels', label: 'Filters & Labels', icon: Filter },
+    { path: '/trash', label: 'Trash', icon: Trash2 },
   ];
 
   const hasFavoriteFiltersOrLabels = favoriteFilters.length > 0 || favoriteLabels.length > 0;

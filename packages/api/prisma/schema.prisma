@@ -313,6 +313,9 @@ model Task {
   isCompleted    Boolean   @default(false)
   completedAt    DateTime?
   sortOrder      Int       @default(0)
+  // Set when the task is moved to the trash; the maintenance job deletes it
+  // for good after 30 days. Reads exclude trashed tasks (config/database.ts).
+  deletedAt      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -337,6 +340,7 @@ model Task {
   @@index([dueDate])
   @@index([isCompleted])
   @@index([priority])
+  @@index([deletedAt])
   @@map("tasks")
 }
 

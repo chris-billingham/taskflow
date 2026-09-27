@@ -14,17 +14,34 @@ const STYLES = {
   info: 'bg-blue-50 border-blue-200 text-blue-800',
 } as const;
 
+// Undo-style confirmations are quiet and neutral, not an alert colour.
+const ACTION_STYLE = 'bg-gray-900 dark:bg-gray-700 border-gray-800 dark:border-gray-600 text-white';
+
 function ToastItem({ toast }: { toast: Toast }) {
   const dismiss = useToastStore((s) => s.dismiss);
   const Icon = ICONS[toast.variant];
+  const action = toast.action;
 
   return (
     <div
-      role="alert"
-      className={`flex items-start gap-2 px-4 py-3 rounded-lg border shadow-lg text-sm ${STYLES[toast.variant]}`}
+      role={toast.variant === 'error' ? 'alert' : 'status'}
+      className={`flex items-start gap-2 px-4 py-3 rounded-lg border shadow-lg text-sm ${
+        action ? ACTION_STYLE : STYLES[toast.variant]
+      }`}
     >
-      <Icon className="w-4 h-4 mt-0.5 shrink-0" />
+      {!action && <Icon className="w-4 h-4 mt-0.5 shrink-0" />}
       <span className="flex-1">{toast.message}</span>
+      {action && (
+        <button
+          className="font-semibold text-primary-300 hover:text-primary-200 focus:outline-hidden focus-visible:underline"
+          onClick={() => {
+            dismiss(toast.id);
+            action.run();
+          }}
+        >
+          {action.label}
+        </button>
+      )}
       <button
         aria-label="Dismiss notification"
         className="p-0.5 rounded-sm hover:bg-black/5"
@@ -43,7 +60,8 @@ export function ToastContainer() {
   return createPortal(
     <div
       aria-live="polite"
-      className="fixed bottom-4 right-4 z-200 flex flex-col gap-2 w-80 max-w-[calc(100vw-2rem)]"
+      // Above the quick-add button in the bottom-right corner.
+      className="fixed bottom-20 right-4 z-200 flex flex-col gap-2 w-80 max-w-[calc(100vw-2rem)]"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />

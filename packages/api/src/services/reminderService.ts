@@ -155,7 +155,7 @@ export async function getDueReminders() {
       isSent: false,
       triggerAt: { lte: now },
       // A reminder for finished work is noise, not a reminder.
-      task: { isCompleted: false },
+      task: { isCompleted: false, deletedAt: null },
       // Bounded retries: after repeated delivery failures, stop — the old
       // behaviour re-notified every 60 seconds forever.
       attempts: { lt: MAX_DELIVERY_ATTEMPTS },

@@ -32,7 +32,7 @@ export async function getProjectSections(projectId: string, userId: string) {
     orderBy: { sortOrder: 'asc' },
     include: {
       _count: {
-        select: { tasks: { where: { isCompleted: false } } },
+        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
       },
     },
   });
@@ -55,7 +55,7 @@ export async function createSection(data: CreateSectionInput, userId: string) {
     },
     include: {
       _count: {
-        select: { tasks: { where: { isCompleted: false } } },
+        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
       },
     },
   });
@@ -77,7 +77,7 @@ export async function updateSection(
     data,
     include: {
       _count: {
-        select: { tasks: { where: { isCompleted: false } } },
+        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
       },
     },
   });

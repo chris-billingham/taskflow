@@ -2,6 +2,7 @@ import { Worker, Queue } from 'bullmq';
 import { createBullMQConnection } from '../config/redis.js';
 import { prisma } from '../config/database.js';
 import { sweepOrphanedAttachments } from '../services/fileService.js';
+import { purgeExpiredTrash } from '../services/taskService.js';
 import { logger } from '../config/logger.js';
 
 const QUEUE_NAME = 'maintenance';
@@ -35,9 +36,12 @@ export function startMaintenanceWorker() {
       // that don't collect keys inline) — reclaim rows + object bytes.
       const swept = await sweepOrphanedAttachments();
 
-      if (tokens.count || invites.count || swept) {
+      // Tasks that have sat in the trash for 30 days are deleted for good.
+      const purged = await purgeExpiredTrash();
+
+      if (tokens.count || invites.count || swept || purged) {
         logger.info(
-          { refreshTokens: tokens.count, invites: invites.count, orphanedAttachments: swept },
+          { refreshTokens: tokens.count, invites: invites.count, orphanedAttachments: swept, trashedTasks: purged },
           'maintenance pruned expired rows',
         );
       }

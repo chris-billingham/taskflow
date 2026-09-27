@@ -255,9 +255,11 @@ export async function requireTaskAccess(
   taskId: string,
   userId: string,
   level: AccessLevel = 'VIEW',
+  options: { inTrash?: boolean } = {},
 ) {
   const task = await prisma.task.findUnique({
-    where: { id: taskId },
+    // inTrash: the task must be in the trash (restore, delete forever).
+    where: options.inTrash ? { id: taskId, deletedAt: { not: null } } : { id: taskId },
     include: {
       project: { select: { id: true, ownerId: true, workspaceId: true } },
     },

@@ -1,9 +1,9 @@
-import { prisma } from '../config/database.js';
+import { prisma, type DbTransaction } from '../config/database.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/index.js';
 import { disconnectUserSockets } from '../websocket/events.js';
 import { deleteObjects } from '../config/storage.js';
-import type { Prisma, SystemRole } from '@prisma/client';
+import type { SystemRole } from '@prisma/client';
 import { logger } from '../config/logger.js';
 
 /**
@@ -16,7 +16,7 @@ import { logger } from '../config/logger.js';
  * provisioning paths cannot drift apart.
  */
 export async function provisionUser(
-  tx: Prisma.TransactionClient,
+  tx: DbTransaction,
   data: {
     email: string;
     passwordHash: string;

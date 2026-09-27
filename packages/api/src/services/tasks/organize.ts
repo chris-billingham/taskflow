@@ -159,8 +159,10 @@ export async function bulkUpdate(
       break;
 
     case 'delete':
-      await prisma.task.deleteMany({
-        where: { id: { in: taskIds } },
+      // To the trash, like a single delete (subtasks go with their parents).
+      await prisma.task.updateMany({
+        where: { OR: [{ id: { in: taskIds } }, { parentId: { in: taskIds } }] },
+        data: { deletedAt: new Date() },
       });
       for (const t of tasks) {
         runSideEffect('logActivity:bulkDelete', () => logActivity({

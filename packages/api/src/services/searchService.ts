@@ -129,6 +129,7 @@ export async function searchTasks(
     -- Expression matches tasks_content_search_idx exactly, so the GIN index applies
     WHERE to_tsvector('english', t.content || ' ' || COALESCE(t.description, ''))
       @@ to_tsquery('english', ${tsQuery})
+    AND t."deletedAt" IS NULL
     AND (t."assigneeId" = ${userId} OR ${projectAccessSql('p', userId)})
     ORDER BY rank DESC, t."createdAt" DESC
     LIMIT ${limit} OFFSET ${offset}
@@ -168,7 +169,7 @@ export async function searchProjects(
         0
       ) AS rank
     FROM projects p
-    LEFT JOIN tasks t ON t."projectId" = p.id AND t."isCompleted" = false
+    LEFT JOIN tasks t ON t."projectId" = p.id AND t."isCompleted" = false AND t."deletedAt" IS NULL
     WHERE to_tsvector('english', p.name || ' ' || COALESCE(p.description, ''))
       @@ to_tsquery('english', ${tsQuery})
     AND p."isArchived" = false
@@ -230,6 +231,7 @@ export async function searchComments(
     AND (
       (
         c."taskId" IS NOT NULL
+        AND t."deletedAt" IS NULL
         AND (
           t."assigneeId" = ${userId}
           OR ${projectAccessSql('tp', userId)}

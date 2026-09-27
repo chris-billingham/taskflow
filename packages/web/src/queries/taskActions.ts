@@ -2,10 +2,18 @@ import { useMemo } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import { reportMutationError } from '@/utils/reportError';
+import { toastUndo } from '@/stores/toastStore';
 import type { CreateTaskInput, MoveTaskInput, QuickAddDue, Task } from '@/types/task';
 import { taskKeys } from './taskKeys';
 import { activityKeys } from './activity';
-import { mergeTask, patchTaskCaches, snapshotTaskCaches, type TaskMapper } from './taskCache';
+import { findCachedTask, mergeTask, patchTaskCaches, snapshotTaskCaches, type TaskMapper } from './taskCache';
+
+/** Pass `{ undo: false }` when the action is itself an undo, or is one of many. */
+export interface ActionOptions {
+  undo?: boolean;
+}
+
+export const trashKeys = { all: ['trash'] as const };
 
 // Task mutations in flight, per client. Caches are refetched only when the
 // last one settles: refetching while another change is still on its way to
@@ -48,12 +56,60 @@ function createTaskActions(qc: QueryClient) {
       if (remaining === 0) {
         void qc.invalidateQueries({ queryKey: taskKeys.all });
         void qc.invalidateQueries({ queryKey: activityKeys.all });
+        void qc.invalidateQueries({ queryKey: trashKeys.all });
       }
     }
   }
 
   const reconcile = (id: string) => (server: Task) =>
     patchTaskCaches(qc, only(id, (task) => mergeTask(task, server)));
+
+  const uncompleteTask = (id: string) =>
+    run({
+      optimistic: only(id, (task) => ({ ...task, isCompleted: false, completedAt: null })),
+      request: async () => (await api.post(`/tasks/${id}/uncomplete`)).data.data as Task,
+      onSuccess: reconcile(id),
+      failure: 'That change could not be saved',
+    });
+
+  const restoreTask = (id: string) =>
+    run({
+      request: async () => (await api.post(`/tasks/${id}/restore`)).data.data as Task,
+      failure: 'The task could not be restored',
+    });
+
+  /** To the trash, with an Undo that restores it. */
+  const deleteTask = async (id: string, options: ActionOptions = {}) => {
+    await run({
+      optimistic: only(id, () => null),
+      request: async () => {
+        await api.delete(`/tasks/${id}`);
+      },
+      failure: 'The task could not be deleted',
+    });
+    if (options.undo !== false) toastUndo('Task moved to trash', () => void restoreTask(id));
+  };
+
+  const moveTask = async (id: string, input: MoveTaskInput, options: ActionOptions = {}) => {
+    const before = findCachedTask(qc, id);
+    const moved = await run({
+      optimistic: only(id, (task) => ({ ...task, ...input }) as Task),
+      request: async () => (await api.post(`/tasks/${id}/move`, input)).data.data as Task,
+      onSuccess: reconcile(id),
+      failure: 'The task could not be moved',
+    });
+    if (options.undo !== false && before) {
+      const where = moved.project?.name ?? (input.projectId && input.projectId !== before.projectId ? 'another project' : null);
+      toastUndo(where ? `Moved to ${where}` : 'Task moved', () =>
+        void moveTask(
+          id,
+          { projectId: before.projectId, sectionId: before.sectionId, parentId: before.parentId },
+          { undo: false },
+        ),
+      );
+    }
+    return moved;
+  };
 
   const updateTask = (id: string, input: Record<string, unknown>) =>
     run({
@@ -81,17 +137,20 @@ function createTaskActions(qc: QueryClient) {
 
     rescheduleTask: (id: string, dueDate: string) => updateTask(id, { dueDate }),
 
-    deleteTask: (id: string) =>
+    deleteTask,
+    restoreTask,
+
+    /** Delete a trashed task for good (no undo). */
+    purgeTask: (id: string) =>
       run({
-        optimistic: only(id, () => null),
         request: async () => {
-          await api.delete(`/tasks/${id}`);
+          await api.delete(`/tasks/${id}/permanent`);
         },
         failure: 'The task could not be deleted',
       }),
 
-    completeTask: (id: string) =>
-      run({
+    completeTask: async (id: string, options: ActionOptions = {}) => {
+      const result = await run({
         optimistic: only(id, (task) => ({
           ...task,
           isCompleted: true,
@@ -104,23 +163,20 @@ function createTaskActions(qc: QueryClient) {
           if (server.id === id) reconcile(id)(server);
         },
         failure: 'The task could not be completed',
-      }),
+      });
+      if (options.undo !== false) {
+        toastUndo('Task completed', () => {
+          // Undoing a recurring completion also takes back the next occurrence.
+          if (result.id !== id) void deleteTask(result.id, { undo: false });
+          void uncompleteTask(id);
+        });
+      }
+      return result;
+    },
 
-    uncompleteTask: (id: string) =>
-      run({
-        optimistic: only(id, (task) => ({ ...task, isCompleted: false, completedAt: null })),
-        request: async () => (await api.post(`/tasks/${id}/uncomplete`)).data.data as Task,
-        onSuccess: reconcile(id),
-        failure: 'That change could not be saved',
-      }),
+    uncompleteTask,
 
-    moveTask: (id: string, input: MoveTaskInput) =>
-      run({
-        optimistic: only(id, (task) => ({ ...task, ...input }) as Task),
-        request: async () => (await api.post(`/tasks/${id}/move`, input)).data.data as Task,
-        onSuccess: reconcile(id),
-        failure: 'The task could not be moved',
-      }),
+    moveTask,
 
     duplicateTask: (id: string) =>
       run({

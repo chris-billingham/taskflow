@@ -2,7 +2,7 @@
 import { prisma } from '../../config/database.js';
 import type { Prisma } from '@prisma/client';
 import { NotFoundError } from '../../errors/index.js';
-import { requireTaskAccess, requireProjectAccess } from '../access.js';
+import { requireTaskAccess, requireProjectAccess, taskAccessWhere } from '../access.js';
 import type { CreateTaskInput, UpdateTaskInput } from '@taskflow/contract';
 import { parseQuickAdd } from '../../utils/quickAddParser.js';
 import { recomputeRelativeReminders } from '../reminderService.js';
@@ -164,41 +164,140 @@ export async function updateTask(
   return task;
 }
 
-export async function deleteTask(id: string, userId: string) {
-  const task = await requireTaskAccess(id, userId, 'EDIT');
-
-  // Attachment rows survive task deletion as orphans (SetNull) — collect the
-  // whole subtree's attachments first so their bytes can be reclaimed.
-  const descendantIds = [id];
+/** The task and every task beneath it (subtasks of subtasks, …). */
+async function withDescendants(id: string, where: Prisma.TaskWhereInput = {}): Promise<string[]> {
+  const ids = [id];
   let frontier = [id];
   while (frontier.length > 0) {
     const children: Array<{ id: string }> = await prisma.task.findMany({
-      where: { parentId: { in: frontier } },
+      where: { parentId: { in: frontier }, ...where },
       select: { id: true },
     });
     frontier = children.map((c) => c.id);
-    descendantIds.push(...frontier);
+    ids.push(...frontier);
   }
-  const attachments = await prisma.attachment.findMany({
-    where: { taskId: { in: descendantIds } },
-    select: { id: true, url: true },
-  });
+  return ids;
+}
 
-  // Cascade delete handles subtasks via Prisma schema
-  await prisma.task.delete({ where: { id } });
-
-  runSideEffect('reclaimAttachments', () => reclaimAttachments(attachments));
+/**
+ * Move a task (and its subtasks) to the trash. It disappears everywhere but
+ * can be restored for 30 days; after that the maintenance job deletes it.
+ * All of them share one deletedAt, which is how restore knows which subtasks
+ * went with it (as opposed to ones trashed separately earlier).
+ */
+export async function deleteTask(id: string, userId: string) {
+  const task = await requireTaskAccess(id, userId, 'EDIT');
+  const ids = await withDescendants(id);
+  await prisma.task.updateMany({ where: { id: { in: ids } }, data: { deletedAt: new Date() } });
 
   runSideEffect('logActivity:DELETED', () => logActivity({
     action: 'DELETED',
     entityType: 'TASK',
     entityId: id,
     userId,
+    taskId: id,
     oldData: { content: task.content, projectId: task.projectId },
   }));
   runSideEffect('broadcastTaskDeleted', () => broadcastTaskDeleted(id, task.projectId));
 
-  return { message: 'Task deleted successfully' };
+  return { message: 'Task moved to trash' };
+}
+
+/**
+ * Bring a task back from the trash, with the subtasks that were trashed with
+ * it. If its parent is still in the trash it comes back as a top-level task,
+ * rather than invisibly under a hidden parent.
+ */
+export async function restoreTask(id: string, userId: string) {
+  const task = await requireTaskAccess(id, userId, 'EDIT', { inTrash: true });
+  const trashedAt = task.deletedAt!;
+  const ids = await withDescendants(id, { deletedAt: trashedAt });
+
+  let parentId = task.parentId;
+  if (parentId) {
+    const parent = await prisma.task.findUnique({ where: { id: parentId }, select: { id: true } });
+    if (!parent) parentId = null;
+  }
+
+  await prisma.$transaction([
+    prisma.task.updateMany({ where: { id: { in: ids } }, data: { deletedAt: null } }),
+    ...(parentId !== task.parentId
+      ? [prisma.task.update({ where: { id }, data: { parentId } })]
+      : []),
+  ]);
+
+  const restored = await prisma.task.findUniqueOrThrow({ where: { id }, include: taskInclude });
+  runSideEffect('logActivity:RESTORED', () => logActivity({
+    action: 'UPDATED',
+    entityType: 'TASK',
+    entityId: id,
+    userId,
+    taskId: id,
+    newData: { restored: true },
+  }));
+  runSideEffect('broadcastTaskCreated', () => broadcastTaskCreated(restored));
+  return restored;
+}
+
+/** Delete a trashed task now, instead of waiting out the 30 days. */
+export async function purgeTask(id: string, userId: string) {
+  await requireTaskAccess(id, userId, 'EDIT', { inTrash: true });
+  await purgeTasks([id]);
+  return { message: 'Task deleted permanently' };
+}
+
+/**
+ * Hard-delete tasks (subtasks cascade) and reclaim their attachments' bytes:
+ * attachment rows outlive their task as orphans (SetNull), so collect them
+ * across the whole subtree first.
+ */
+export async function purgeTasks(ids: string[]) {
+  if (ids.length === 0) return 0;
+  const subtree = (await Promise.all(ids.map((id) => withDescendants(id, { deletedAt: { not: null } })))).flat();
+  const attachments = await prisma.attachment.findMany({
+    where: { taskId: { in: subtree } },
+    select: { id: true, url: true },
+  });
+  const { count } = await prisma.task.deleteMany({ where: { id: { in: ids }, deletedAt: { not: null } } });
+  runSideEffect('reclaimAttachments', () => reclaimAttachments(attachments));
+  return count;
+}
+
+export const TRASH_DAYS = 30;
+
+/**
+ * What the user can see in the trash: tasks trashed on their own, newest
+ * first. Subtasks trashed along with their parent are shown as part of it,
+ * not separately.
+ */
+export async function getTrash(userId: string) {
+  const trashed = await prisma.task.findMany({
+    where: { deletedAt: { not: null }, AND: [taskAccessWhere(userId)] },
+    include: {
+      project: { select: { id: true, name: true, color: true } },
+      parent: { select: { deletedAt: true } },
+    },
+    orderBy: [{ deletedAt: 'desc' }, { id: 'asc' }],
+    take: 500,
+  });
+  return trashed
+    .filter((t) => !t.parent || t.parent.deletedAt?.getTime() !== t.deletedAt?.getTime())
+    .slice(0, 200)
+    .map(({ parent: _parent, ...task }) => ({
+      ...task,
+      deletedAt: task.deletedAt!,
+      purgeAt: new Date(task.deletedAt!.getTime() + TRASH_DAYS * 24 * 60 * 60 * 1000),
+    }));
+}
+
+/** Delete everything that has been in the trash for longer than TRASH_DAYS. */
+export async function purgeExpiredTrash(now = new Date()) {
+  const cutoff = new Date(now.getTime() - TRASH_DAYS * 24 * 60 * 60 * 1000);
+  const expired = await prisma.task.findMany({
+    where: { deletedAt: { lt: cutoff } },
+    select: { id: true },
+  });
+  return purgeTasks(expired.map((t) => t.id));
 }
 
 /**

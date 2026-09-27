@@ -25,7 +25,7 @@ export async function getUserProjects(userId: string) {
       },
       _count: {
         select: {
-          tasks: { where: { isCompleted: false } },
+          tasks: { where: { isCompleted: false, deletedAt: null } },
         },
       },
       children: {
@@ -48,13 +48,13 @@ export async function getProjectById(id: string, userId: string) {
         orderBy: { sortOrder: 'asc' },
         include: {
           _count: {
-            select: { tasks: { where: { isCompleted: false } } },
+            select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
           },
         },
       },
       _count: {
         select: {
-          tasks: { where: { isCompleted: false } },
+          tasks: { where: { isCompleted: false, deletedAt: null } },
         },
       },
       children: {
@@ -103,7 +103,7 @@ export async function createProject(data: CreateProjectInput, userId: string) {
     include: {
       sections: true,
       _count: {
-        select: { tasks: { where: { isCompleted: false } } },
+        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
       },
       children: {
         select: { id: true },
@@ -139,7 +139,7 @@ export async function updateProject(
         orderBy: { sortOrder: 'asc' },
       },
       _count: {
-        select: { tasks: { where: { isCompleted: false } } },
+        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
       },
       children: {
         select: { id: true },
@@ -321,7 +321,7 @@ export async function duplicateProject(
     include: {
       sections: { orderBy: { sortOrder: 'asc' } },
       tasks: {
-        where: { parentId: null },
+        where: { parentId: null, deletedAt: null },
         orderBy: { sortOrder: 'asc' },
       },
     },
@@ -345,6 +345,7 @@ export async function duplicateProject(
     include: {
       taskLabels: { select: { labelId: true, label: { select: { userId: true } } } },
       subtasks: {
+        where: { deletedAt: null },
         orderBy: { sortOrder: 'asc' },
         include: { taskLabels: { select: { labelId: true, label: { select: { userId: true } } } } },
       },
@@ -432,7 +433,7 @@ export async function duplicateProject(
     include: {
       sections: { orderBy: { sortOrder: 'asc' } },
       _count: {
-        select: { tasks: { where: { isCompleted: false } } },
+        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
       },
       children: { select: { id: true } },
     },

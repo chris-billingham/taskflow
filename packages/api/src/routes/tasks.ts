@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import {
   createTaskSchema,
   updateTaskSchema,
@@ -13,6 +14,7 @@ import {
   taskListItemSchema,
   taskDetailSchema,
   bulkResultSchema,
+  trashedTaskSchema,
   messageResponse,
   ok,
   page,
@@ -137,11 +139,60 @@ export async function taskRoutes(fastify: FastifyInstance) {
   app.delete(
     '/:id',
     {
-      schema: { tags, summary: 'Delete a task and its subtasks', params: taskParamsSchema, response: { 200: messageResponse } },
+      schema: {
+        tags,
+        summary: 'Move a task and its subtasks to the trash (restorable for 30 days)',
+        params: taskParamsSchema,
+        response: { 200: messageResponse },
+      },
     },
     async (request) => ({
       success: true as const,
       ...(await taskService.deleteTask(request.params.id, request.user.id)),
+    }),
+  );
+
+  app.get(
+    '/trash',
+    {
+      schema: {
+        tags,
+        summary: 'Tasks in the trash, newest first',
+        response: { 200: ok(z.array(trashedTaskSchema)) },
+      },
+    },
+    async (request) => ({ success: true as const, data: await taskService.getTrash(request.user.id) }),
+  );
+
+  app.post(
+    '/:id/restore',
+    {
+      schema: {
+        tags,
+        summary: 'Restore a task from the trash, with the subtasks trashed with it',
+        params: taskParamsSchema,
+        response: { 200: ok(taskSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await taskService.restoreTask(request.params.id, request.user.id),
+    }),
+  );
+
+  app.delete(
+    '/:id/permanent',
+    {
+      schema: {
+        tags,
+        summary: 'Delete a trashed task permanently',
+        params: taskParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await taskService.purgeTask(request.params.id, request.user.id)),
     }),
   );
 

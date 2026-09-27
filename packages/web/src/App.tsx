@@ -28,6 +28,7 @@ const ResetPassword = lazy(() => import('@/pages/auth/ResetPassword'));
 const VerifyEmail = lazy(() => import('@/pages/auth/VerifyEmail'));
 const Label = lazy(() => import('@/pages/app/Label'));
 const TaskLink = lazy(() => import('@/pages/app/TaskLink'));
+const Trash = lazy(() => import('@/pages/app/Trash'));
 const Filter = lazy(() => import('@/pages/app/Filter'));
 const FiltersLabels = lazy(() => import('@/pages/app/FiltersLabels'));
 const WorkspaceSettingsPage = lazy(() => import('@/pages/settings/Workspace'));
@@ -121,6 +122,7 @@ function App() {
           <Route path="/filters/:id" element={<Filter />} />
           <Route path="/projects/:id" element={<Project />} />
           <Route path="/tasks/:id" element={<TaskLink />} />
+          <Route path="/trash" element={<Trash />} />
           <Route path="/workspace/settings" element={<WorkspaceSettingsPage />} />
         </Route>
 

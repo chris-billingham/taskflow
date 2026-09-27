@@ -80,6 +80,15 @@ export const taskDetailSchema = taskSchema.extend({
 });
 export type TaskDetail = Wire<typeof taskDetailSchema>;
 
+/** GET /tasks/trash: a trashed task and where it came from. */
+export const trashedTaskSchema = taskFieldsSchema.extend({
+  project: z.object({ id, name: z.string(), color: z.string() }),
+  deletedAt: instant,
+  /** When the maintenance job will delete it for good. */
+  purgeAt: instant,
+});
+export type TrashedTask = Wire<typeof trashedTaskSchema>;
+
 /** POST /tasks/bulk. */
 export const bulkResultSchema = z.object({
   success: z.literal(true),

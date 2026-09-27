@@ -34,6 +34,7 @@ import {
   taskDetailSchema,
   taskListItemSchema,
   taskSchema,
+  trashedTaskSchema,
 } from '@taskflow/contract';
 import { prisma } from '../../config/database.js';
 import * as labelService from '../../services/labelService.js';
@@ -160,7 +161,17 @@ describe('real service output matches the API contract', () => {
     });
     conforms(ok(taskSchema), { success: true, data: await taskService.completeTask(taskId, userId) });
     conforms(ok(taskSchema), { success: true, data: await taskService.uncompleteTask(taskId, userId) });
-    conforms(ok(taskSchema), { success: true, data: await taskService.duplicateTask(taskId, userId) });
+    const copy = await taskService.duplicateTask(taskId, userId);
+    conforms(ok(taskSchema), { success: true, data: copy });
+
+    // Trash round trip, on the copy.
+    await taskService.deleteTask(copy.id, userId);
+    const trash = conforms(ok(z.array(trashedTaskSchema)), {
+      success: true,
+      data: await taskService.getTrash(userId),
+    }) as { data: Array<{ id: string; purgeAt: string }> };
+    expect(trash.data.map((t) => t.id)).toContain(copy.id);
+    conforms(ok(taskSchema), { success: true, data: await taskService.restoreTask(copy.id, userId) });
   });
 
   it('views: today and upcoming', async () => {

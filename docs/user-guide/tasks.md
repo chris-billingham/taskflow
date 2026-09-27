@@ -35,6 +35,7 @@ Click the circle to the left of a task.
 - In a project, completed tasks stay in the list, crossed out. Click the circle again to uncomplete.
 - In Today and Upcoming, completed tasks drop out of the view.
 - To see completed tasks across projects, use a saved filter with the query `completed` (see [Labels & Filters](labels-filters.md)).
+- A message with **Undo** appears after you complete a task. Undoing a repeating task also removes the next occurrence it created.
 
 ## Editing a Task
 
@@ -44,7 +45,7 @@ From the list itself you can also:
 - Double-click a task name to rename it inline
 - Hover a task to get quick due date and priority buttons, and a **⋯** menu with **Edit**, **Duplicate** and **Delete**
 
-Deleting from the **⋯** menu happens straight away. Deleting from the task panel asks you to confirm first.
+Deleting moves the task, with its subtasks, to the **Trash** (in the sidebar). A message with **Undo** appears straight away. From the Trash you can restore a task or delete it for good; anything left there is deleted automatically after 30 days. Deleting from the task panel asks you to confirm first.
 
 ## Sub-tasks
 

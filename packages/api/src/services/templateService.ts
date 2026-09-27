@@ -128,11 +128,12 @@ export async function createTemplate(data: CreateTemplateInput, userId: string) 
     include: {
       sections: { orderBy: { sortOrder: 'asc' } },
       tasks: {
-        where: { parentId: null },
+        where: { parentId: null, deletedAt: null },
         orderBy: { sortOrder: 'asc' },
         include: {
           taskLabels: { include: { label: true } },
           subtasks: {
+            where: { deletedAt: null },
             orderBy: { sortOrder: 'asc' },
             include: { taskLabels: { include: { label: true } } },
           },
@@ -330,7 +331,7 @@ export async function applyTemplate(
       where: { id: project.id },
       include: {
         sections: { orderBy: { sortOrder: 'asc' } },
-        _count: { select: { tasks: { where: { isCompleted: false } } } },
+        _count: { select: { tasks: { where: { isCompleted: false, deletedAt: null } } } },
         children: { select: { id: true } },
       },
     });

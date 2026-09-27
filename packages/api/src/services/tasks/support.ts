@@ -33,6 +33,7 @@ export const taskInclude = {
     select: { id: true, name: true, email: true, avatarUrl: true },
   },
   subtasks: {
+    where: { deletedAt: null },
     orderBy: { sortOrder: 'asc' as const },
     include: {
       taskLabels: { include: { label: true } },
@@ -42,7 +43,7 @@ export const taskInclude = {
     },
   },
   _count: {
-    select: { subtasks: true, comments: true },
+    select: { subtasks: { where: { deletedAt: null } }, comments: true },
   },
 };
 
@@ -55,7 +56,7 @@ export const taskListInclude = {
     select: { id: true, name: true, email: true, avatarUrl: true },
   },
   _count: {
-    select: { subtasks: true, comments: true },
+    select: { subtasks: { where: { deletedAt: null } }, comments: true },
   },
 };
 
