@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { Alert } from '@/components/ui/Alert';
 import api from '@/services/api';
+import { useLinkToken } from '@/hooks/useLinkToken';
 
 type Status = 'verifying' | 'success' | 'error';
 
 export default function VerifyEmail() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const token = useLinkToken();
   const [status, setStatus] = useState<Status>('verifying');
   const [message, setMessage] = useState('');
   // Guard against StrictMode double-firing: the token is single-use, so the
@@ -21,7 +21,7 @@ export default function VerifyEmail() {
     requested.current = true;
 
     api
-      .get(`/auth/verify-email?token=${encodeURIComponent(token)}`)
+      .post('/auth/verify-email', { token })
       .then(() => setStatus('success'))
       .catch((err) => {
         setStatus('error');

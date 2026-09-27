@@ -92,7 +92,9 @@ export async function sendVerificationEmail(
   name: string,
   token: string,
 ): Promise<void> {
-  const link = `${appUrl()}/verify-email?token=${encodeURIComponent(token)}`;
+  // Tokens go in the URL fragment: browsers never send it to a server, so it
+  // can't land in Traefik, nginx or API access logs (a query string does).
+  const link = `${appUrl()}/verify-email#token=${encodeURIComponent(token)}`;
   await send(
     to,
     'Verify your Taskflow email address',
@@ -109,7 +111,7 @@ export async function sendPasswordResetEmail(
   name: string,
   token: string,
 ): Promise<void> {
-  const link = `${appUrl()}/reset-password?token=${encodeURIComponent(token)}`;
+  const link = `${appUrl()}/reset-password#token=${encodeURIComponent(token)}`;
   await send(
     to,
     'Reset your Taskflow password',
@@ -127,7 +129,7 @@ export async function sendWorkspaceInviteEmail(
   workspaceName: string,
   token: string,
 ): Promise<void> {
-  const link = `${appUrl()}/join?token=${encodeURIComponent(token)}`;
+  const link = `${appUrl()}/join#token=${encodeURIComponent(token)}`;
   await send(
     to,
     `${inviterName} invited you to "${workspaceName}" on Taskflow`,

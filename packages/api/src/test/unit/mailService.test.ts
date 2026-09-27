@@ -98,7 +98,7 @@ describe('sending', () => {
     expect(msg.to).toBe('user@example.com');
     expect(msg.from).toBe('noreply@taskflow.test');
     expect(msg.text).toContain(
-      'https://tasks.example.com/verify-email?token=raw-token-1',
+      'https://tasks.example.com/verify-email#token=raw-token-1',
     );
   });
 
@@ -106,7 +106,7 @@ describe('sending', () => {
     envState.APP_URL = undefined;
     await sendPasswordResetEmail('user@example.com', 'User', 'raw-token-2');
     expect(sendMailMock.mock.calls[0][0].text).toContain(
-      'https://cors-origin.example.com/reset-password?token=raw-token-2',
+      'https://cors-origin.example.com/reset-password#token=raw-token-2',
     );
   });
 
@@ -119,6 +119,6 @@ describe('sending', () => {
     );
     const html = sendMailMock.mock.calls[0][0].html as string;
     expect(html).not.toContain('<script>alert(1)</script>');
-    expect(html).toContain('/join?token=tok');
+    expect(html).toContain('/join#token=tok');
   });
 });

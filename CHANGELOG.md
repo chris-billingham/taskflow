@@ -25,6 +25,14 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
   audit now has no high or critical findings and CI gates on it. Coverage
   thresholds were re-baselined: Vitest 5 measures by AST and counts files no
   test loads, so its branch/function figures aren't comparable with Vitest 1's.
+- **Sign-in tokens no longer reach access logs.** Verification, password-reset
+  and invite links carried their token in the query string, so Traefik, nginx
+  and the API logged it on every click. Links now use the URL fragment
+  (`#token=…`), which browsers never send to a server; pages read it, scrub it
+  from the address bar, and POST it (`GET /auth/verify-email` is now
+  `POST` with a JSON body). Signed-out invitees keep the token in session
+  storage during sign-in instead of in the login redirect URL. Links already
+  sent with `?token=` still work.
 
 ### Fixed
 

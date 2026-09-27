@@ -237,27 +237,40 @@ describe('POST /api/v1/auth/refresh', () => {
   });
 });
 
-describe('GET /api/v1/auth/verify-email', () => {
+describe('POST /api/v1/auth/verify-email', () => {
   it('returns 200 on valid token', async () => {
     vi.mocked(authService.verifyEmail).mockResolvedValue({
       message: 'Email verified successfully',
     } as never);
 
     const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/auth/verify-email?token=valid-token',
+      method: 'POST',
+      url: '/api/v1/auth/verify-email',
+      payload: { token: 'valid-token' },
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json().success).toBe(true);
+    expect(authService.verifyEmail).toHaveBeenCalledWith('valid-token');
   });
 
-  it('returns 400 when token query param is missing', async () => {
+  it('returns 400 when the token is missing', async () => {
     const response = await app.inject({
-      method: 'GET',
+      method: 'POST',
       url: '/api/v1/auth/verify-email',
+      payload: {},
     });
 
     expect(response.statusCode).toBe(400);
+  });
+
+  it('no longer accepts the token in a GET query string', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/auth/verify-email?token=valid-token',
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(authService.verifyEmail).not.toHaveBeenCalled();
   });
 });

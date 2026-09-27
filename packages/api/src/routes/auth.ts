@@ -4,6 +4,7 @@ import {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
 } from '../schemas/auth.js';
 import * as authService from '../services/authService.js';
 import { UnauthorizedError, ValidationError } from '../errors/index.js';
@@ -110,19 +111,21 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ success: true, ...data });
   });
 
-  app.get('/verify-email', {
+  // POST with the token in the body: as a GET query string it was written to
+  // every access log between the browser and the API.
+  app.post('/verify-email', {
     config: {
-      // Previously the only auth route with no limit — tokens must not be
-      // brute-forceable and the lookup shouldn't be a free DoS lever.
+      // Tokens must not be brute-forceable and the lookup shouldn't be a free
+      // DoS lever.
       rateLimit: { max: rateLimitMax(10), timeWindow: '15 minutes' },
     },
   }, async (request, reply) => {
-    const { token } = request.query as { token?: string };
-    if (!token) {
-      throw new ValidationError('Token is required');
+    const result = verifyEmailSchema.safeParse(request.body);
+    if (!result.success) {
+      throw new ValidationError(result.error.issues[0].message);
     }
 
-    const data = await authService.verifyEmail(token);
+    const data = await authService.verifyEmail(result.data.token);
     return reply.send({ success: true, ...data });
   });
 

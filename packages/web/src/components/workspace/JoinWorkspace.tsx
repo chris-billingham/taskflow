@@ -1,14 +1,39 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useLinkToken } from '@/hooks/useLinkToken';
+
+// Holds an invite token across the sign-in detour. Putting it in the login
+// redirect URL instead would send it to the server logs as a query string.
+const PENDING_INVITE_KEY = 'taskflow.pendingInvite';
+
+function readPendingInvite(): string | null {
+  try {
+    return sessionStorage.getItem(PENDING_INVITE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setPendingInvite(token: string | null): void {
+  try {
+    if (token) sessionStorage.setItem(PENDING_INVITE_KEY, token);
+    else sessionStorage.removeItem(PENDING_INVITE_KEY);
+  } catch {
+    // Storage blocked: the user can open the invite link again after signing in.
+  }
+}
 
 export function JoinWorkspace() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const linkToken = useLinkToken();
+  // Read once: the held copy is cleared as soon as the invite is submitted,
+  // and re-reading it on the next render would turn success into "invalid".
+  const [heldToken] = useState(readPendingInvite);
+  const token = linkToken ?? heldToken;
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
   const acceptInvite = useWorkspaceStore((s) => s.acceptInvite);
@@ -21,10 +46,8 @@ export function JoinWorkspace() {
     if (isLoading) return;
 
     if (!isAuthenticated) {
-      navigate(
-        `/login?redirect=${encodeURIComponent(`/join?token=${token}`)}`,
-        { replace: true },
-      );
+      setPendingInvite(token);
+      navigate(`/login?redirect=${encodeURIComponent('/join')}`, { replace: true });
       return;
     }
 
@@ -38,6 +61,7 @@ export function JoinWorkspace() {
     if (acceptedRef.current) return;
     acceptedRef.current = true;
 
+    setPendingInvite(null);
     acceptInvite(token)
       .then(() => setStatus('success'))
       .catch((err: any) => {
