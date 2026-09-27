@@ -12,6 +12,8 @@ vi.mock('@/components/task/DueDatePicker', () => ({
   DueDateBadge: ({ dueDate }: { dueDate: string | null }) =>
     dueDate ? <span data-testid="due-date-badge">{dueDate}</span> : null,
   DueDatePicker: () => null,
+  DeadlineBadge: ({ deadline }: { deadline?: string | null }) =>
+    deadline ? <span data-testid="deadline-badge">{deadline}</span> : null,
 }));
 
 vi.mock('@/components/task/PriorityPicker', () => ({

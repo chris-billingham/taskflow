@@ -20,7 +20,7 @@ Quick Add and the project-level **+ Add task** understand dates, priorities, `#p
 | Due date | The date the task is due, with an optional time |
 | Reminders | 30 minutes, 1 hour or 1 day before the due date, or at a specific date and time |
 | Repeat | See [Recurring Tasks](#recurring-tasks) |
-| Deadline | A separate hard deadline date |
+| Deadline | The date it must be done by, separate from when you plan to do it. Shown on the task in lists and on the board (red once passed). You get a notice the morning before a deadline and once it has passed. |
 | Priority | 1 (red, highest) → 4 (none) |
 | Labels | One or more of your own labels. You can create a new label from the picker. |
 | Assignee | A member of the project's workspace (in a personal project, only you) |

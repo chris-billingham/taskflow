@@ -51,17 +51,20 @@ async function alreadyNotified(
   type: 'TASK_DUE_SOON' | 'TASK_OVERDUE',
   taskId: string,
   since: Date,
+  about: 'due' | 'deadline' = 'due',
 ): Promise<boolean> {
-  const existing = await prisma.notification.findFirst({
+  const notices = await prisma.notification.findMany({
     where: {
       userId,
       type,
       data: { path: ['taskId'], equals: taskId },
       createdAt: { gte: since },
     },
-    select: { id: true },
+    select: { data: true },
   });
-  return existing !== null;
+  // Deadline notices share the due types (one mute covers both) and are told
+  // apart by data.about; older notices without it were about the due date.
+  return notices.some((n) => ((n.data as { about?: string } | null)?.about ?? 'due') === about);
 }
 
 async function timezoneOf(userId: string, cache: Map<string, string>) {
@@ -82,6 +85,7 @@ interface Candidate {
   content: string;
   projectId: string;
   dueDate: Date | null;
+  deadline: Date | null;
   dueTime: string | null;
   assigneeId: string | null;
   creatorId: string | null;
@@ -96,6 +100,16 @@ async function checkTask(
 ): Promise<'TASK_DUE_SOON' | 'TASK_OVERDUE' | null> {
   const userId = recipientOf(task);
   if (!userId || !task.dueDate) return null;
+  return checkDueDate(task, task.dueDate, userId, now, tzCache);
+}
+
+async function checkDueDate(
+  task: Candidate,
+  dueDate: Date,
+  userId: string,
+  now: Date,
+  tzCache: Map<string, string>,
+): Promise<'TASK_DUE_SOON' | 'TASK_OVERDUE' | null> {
 
   const tz = await timezoneOf(userId, tzCache);
   const { todayStart } = userDayBoundariesUTC(tz, now);
@@ -103,7 +117,7 @@ async function checkTask(
   // Overdue: the due date is behind the user's current calendar day. The
   // notice waits for a civil hour so a task that tips over at local midnight
   // doesn't wake anybody.
-  if (task.dueDate < todayStart) {
+  if (dueDate < todayStart) {
     const announceAt = zonedWallClockToUTC(
       todayStart,
       `${String(OVERDUE_LOCAL_HOUR).padStart(2, '0')}:00`,
@@ -125,10 +139,10 @@ async function checkTask(
   // task is announced on the morning of the day it is due.
   const announceAt = task.dueTime
     ? new Date(
-        zonedWallClockToUTC(task.dueDate, task.dueTime, tz).getTime() - DUE_SOON_WINDOW_MS,
+        zonedWallClockToUTC(dueDate, task.dueTime, tz).getTime() - DUE_SOON_WINDOW_MS,
       )
     : zonedWallClockToUTC(
-        task.dueDate,
+        dueDate,
         `${String(DUE_SOON_LOCAL_HOUR).padStart(2, '0')}:00`,
         tz,
       );
@@ -144,6 +158,48 @@ async function checkTask(
       ? `"${task.content}" is due at ${task.dueTime}`
       : `"${task.content}" is due today`,
     { taskId: task.id, projectId: task.projectId },
+  );
+  return 'TASK_DUE_SOON';
+}
+
+/**
+ * Deadline notices: a heads-up the morning BEFORE the deadline (there's
+ * still a day to act), and one notice once it has passed. They use the due
+ * notification types, so muting due notices mutes these too.
+ */
+async function checkDeadline(
+  task: Candidate,
+  now: Date,
+  tzCache: Map<string, string>,
+): Promise<'TASK_DUE_SOON' | 'TASK_OVERDUE' | null> {
+  const userId = recipientOf(task);
+  if (!userId || !task.deadline) return null;
+  const tz = await timezoneOf(userId, tzCache);
+  const { todayStart } = userDayBoundariesUTC(tz, now);
+
+  if (task.deadline < todayStart) {
+    const announceAt = zonedWallClockToUTC(todayStart, `${String(OVERDUE_LOCAL_HOUR).padStart(2, '0')}:00`, tz);
+    if (now < announceAt) return null;
+    if (await alreadyNotified(userId, 'TASK_OVERDUE', task.id, task.updatedAt, 'deadline')) return null;
+    await notify(userId, 'TASK_OVERDUE', 'Deadline passed', `"${task.content}" has passed its deadline`, {
+      taskId: task.id,
+      projectId: task.projectId,
+      about: 'deadline',
+    });
+    return 'TASK_OVERDUE';
+  }
+
+  const dayBefore = new Date(task.deadline.getTime() - 24 * 60 * 60 * 1000);
+  const announceAt = zonedWallClockToUTC(dayBefore, `${String(DUE_SOON_LOCAL_HOUR).padStart(2, '0')}:00`, tz);
+  if (now < announceAt) return null;
+  if (await alreadyNotified(userId, 'TASK_DUE_SOON', task.id, task.updatedAt, 'deadline')) return null;
+  const isToday = task.deadline.getTime() === todayStart.getTime();
+  await notify(
+    userId,
+    'TASK_DUE_SOON',
+    isToday ? 'Deadline today' : 'Deadline tomorrow',
+    `"${task.content}" has its deadline ${isToday ? 'today' : 'tomorrow'}`,
+    { taskId: task.id, projectId: task.projectId, about: 'deadline' },
   );
   return 'TASK_DUE_SOON';
 }
@@ -165,8 +221,10 @@ export async function runDueTaskCheck(now: Date = new Date()): Promise<{
   let overdue = 0;
 
   // Widest possible net: anything incomplete with a due date at or before
-  // tomorrow. Per-user timezone decides what actually qualifies.
+  // tomorrow, or a deadline a day further out (its notice comes a day early).
+  // Per-user timezone decides what actually qualifies.
   const horizon = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const deadlineHorizon = new Date(now.getTime() + 72 * 60 * 60 * 1000);
   let afterId: string | undefined;
 
   for (;;) {
@@ -174,7 +232,10 @@ export async function runDueTaskCheck(now: Date = new Date()): Promise<{
       where: {
         isCompleted: false,
         parentId: null,
-        dueDate: { not: null, lt: horizon },
+        OR: [
+          { dueDate: { not: null, lt: horizon } },
+          { deadline: { not: null, lt: deadlineHorizon } },
+        ],
         ...(afterId ? { id: { gt: afterId } } : {}),
       },
       select: {
@@ -183,6 +244,7 @@ export async function runDueTaskCheck(now: Date = new Date()): Promise<{
         projectId: true,
         dueDate: true,
         dueTime: true,
+        deadline: true,
         assigneeId: true,
         creatorId: true,
         updatedAt: true,
@@ -192,9 +254,10 @@ export async function runDueTaskCheck(now: Date = new Date()): Promise<{
     });
 
     for (const task of page) {
-      const sent = await checkTask(task, now, tzCache);
-      if (sent === 'TASK_OVERDUE') overdue++;
-      else if (sent === 'TASK_DUE_SOON') dueSoon++;
+      for (const sent of [await checkTask(task, now, tzCache), await checkDeadline(task, now, tzCache)]) {
+        if (sent === 'TASK_OVERDUE') overdue++;
+        else if (sent === 'TASK_DUE_SOON') dueSoon++;
+      }
     }
 
     if (page.length < BATCH_SIZE) break;

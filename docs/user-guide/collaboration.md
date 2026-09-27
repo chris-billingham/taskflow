@@ -74,6 +74,6 @@ In-app notifications appear under the bell icon (top right on desktop, in the he
 At **Settings → Notifications** you can:
 - Turn on **browser push notifications** (your administrator must have configured push for this to work)
 - Turn on **email notifications**, sent immediately or as a daily or weekly digest (needs email set up on the server)
-- Choose which types you want: task assigned, due soon, overdue, comments, @mentions and workspace invites
+- Choose which types you want: task assigned, due soon, overdue, comments, @mentions and workspace invites. Deadline notices (the morning before a deadline, and once it has passed) come under due soon and overdue.
 
 Task reminders are always delivered as browser push.

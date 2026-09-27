@@ -57,6 +57,10 @@ Terms:
 | `today`, `tomorrow`, `overdue`, `no date` | Incomplete tasks due today / due tomorrow / overdue / with no due date |
 | `due: <date>` | Tasks due on a date: `today`, `tomorrow`, `yesterday`, `2025-05-10`, or a range such as `next 7 days` |
 | `due before: <date>`, `due after: <date>` | Tasks due before or after a date |
+| `deadline`, `no deadline` | Open tasks with or without a deadline |
+| `deadline passed` | Open tasks whose deadline has passed |
+| `deadline: <date>` | Tasks with a deadline on a date, or in a range such as `next 7 days` |
+| `deadline before: <date>`, `deadline after: <date>` | Tasks with a deadline before or after a date |
 | `p1`, `p2`, `p3`, `p4` (or `priority 1` … `priority 4`) | Tasks with that priority |
 | `#Project` | Tasks in any project you can see with exactly that name (any case), including team projects. If names clash, your own project wins. |
 | `##Project` | Tasks in any project you can see with that name, including team projects. `##Parent/Child` targets a sub-project. |

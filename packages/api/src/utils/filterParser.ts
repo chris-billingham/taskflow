@@ -219,6 +219,38 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
     return {};
   }
 
+  // Deadline filters: the same shapes as due dates.
+  if (lower === 'deadline') return { deadline: { not: null }, isCompleted: false };
+  if (lower === 'no deadline') return { deadline: null, isCompleted: false };
+  if (lower === 'deadline passed') return { deadline: { lt: ctx.todayStart }, isCompleted: false };
+
+  const deadlineMatch = lower.match(/^deadline:\s*(.+)$/);
+  if (deadlineMatch) {
+    const dateVal = deadlineMatch[1].trim();
+    const nextDays = dateVal.match(/^next\s+(\d+)\s+days?$/);
+    if (nextDays) {
+      return { deadline: { gte: ctx.todayStart, lte: addDays(ctx.todayStart, parseInt(nextDays[1], 10)) } };
+    }
+    const day = dateVal === 'today' ? ctx.todayStart : parseRelativeDate(dateVal, ctx);
+    if (day) {
+      const { start, end } = getDateRange(day);
+      return { deadline: { gte: start, lte: end } };
+    }
+    return MATCH_NONE;
+  }
+
+  const deadlineBefore = lower.match(/^deadline before:\s*(.+)$/);
+  if (deadlineBefore) {
+    const parsed = parseRelativeDate(deadlineBefore[1], ctx);
+    return parsed ? { deadline: { lt: parsed } } : MATCH_NONE;
+  }
+
+  const deadlineAfter = lower.match(/^deadline after:\s*(.+)$/);
+  if (deadlineAfter) {
+    const parsed = parseRelativeDate(deadlineAfter[1], ctx);
+    return parsed ? { deadline: { gt: parsed } } : MATCH_NONE;
+  }
+
   // Priority filters
   if (lower === 'p1' || lower === 'priority 1') return { priority: 1 };
   if (lower === 'p2' || lower === 'priority 2') return { priority: 2 };

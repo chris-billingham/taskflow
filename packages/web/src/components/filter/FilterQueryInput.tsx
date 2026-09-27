@@ -28,6 +28,11 @@ const OPERATORS = [
   { trigger: 'due:', label: 'due: <date>', desc: 'Due on specific date' },
   { trigger: 'due before:', label: 'due before: <date>', desc: 'Due before date' },
   { trigger: 'due after:', label: 'due after: <date>', desc: 'Due after date' },
+  { trigger: 'deadline', label: 'deadline', desc: 'Tasks with a deadline' },
+  { trigger: 'no deadline', label: 'no deadline', desc: 'Tasks without a deadline' },
+  { trigger: 'deadline passed', label: 'deadline passed', desc: 'Open tasks past their deadline' },
+  { trigger: 'deadline:', label: 'deadline: <date>', desc: 'Deadline on a date, or "next 7 days"' },
+  { trigger: 'deadline before:', label: 'deadline before: <date>', desc: 'Deadline before date' },
   { trigger: 'search:', label: 'search: <keyword>', desc: 'Search task content' },
   { trigger: 'created:', label: 'created: <date>', desc: 'Created on date' },
 ];

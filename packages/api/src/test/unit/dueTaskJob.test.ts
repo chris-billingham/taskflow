@@ -13,7 +13,7 @@ vi.mock('../../config/database.js', () => ({
   prisma: {
     task: { findMany: vi.fn() },
     user: { findUnique: vi.fn() },
-    notification: { findFirst: vi.fn() },
+    notification: { findMany: vi.fn() },
   },
 }));
 
@@ -26,7 +26,7 @@ import { prisma } from '../../config/database.js';
 const mockPrisma = prisma as unknown as {
   task: { findMany: ReturnType<typeof vi.fn> };
   user: { findUnique: ReturnType<typeof vi.fn> };
-  notification: { findFirst: ReturnType<typeof vi.fn> };
+  notification: { findMany: ReturnType<typeof vi.fn> };
 };
 
 const UPDATED_AT = new Date('2026-07-20T00:00:00.000Z');
@@ -38,6 +38,7 @@ function task(overrides: Record<string, unknown> = {}) {
     projectId: 'p1',
     dueDate: new Date('2026-07-26T00:00:00.000Z'),
     dueTime: null,
+    deadline: null,
     assigneeId: 'u1',
     creatorId: 'u9',
     updatedAt: UPDATED_AT,
@@ -51,7 +52,7 @@ function setTimezone(tz: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockPrisma.notification.findFirst.mockResolvedValue(null);
+  mockPrisma.notification.findMany.mockResolvedValue([]);
   setTimezone('UTC');
 });
 
@@ -176,7 +177,7 @@ describe('runDueTaskCheck — overdue', () => {
 describe('runDueTaskCheck — deduplication', () => {
   it('says nothing twice for the same task and edit', async () => {
     mockPrisma.task.findMany.mockResolvedValue([task()]);
-    mockPrisma.notification.findFirst.mockResolvedValue({ id: 'existing' });
+    mockPrisma.notification.findMany.mockResolvedValue([{ data: { taskId: 't1' } }]);
 
     const result = await runDueTaskCheck(new Date('2026-07-26T08:00:00.000Z'));
 
@@ -189,7 +190,7 @@ describe('runDueTaskCheck — deduplication', () => {
 
     await runDueTaskCheck(new Date('2026-07-26T08:00:00.000Z'));
 
-    expect(mockPrisma.notification.findFirst).toHaveBeenCalledWith(
+    expect(mockPrisma.notification.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           userId: 'u1',
@@ -247,9 +248,9 @@ describe('runDueTaskCheck — backlog paging', () => {
     mockPrisma.task.findMany
       .mockResolvedValueOnce(stale)
       .mockResolvedValueOnce([fresh]);
-    mockPrisma.notification.findFirst.mockImplementation(
+    mockPrisma.notification.findMany.mockImplementation(
       async (args: { where: { type: string } }) =>
-        args.where.type === 'TASK_OVERDUE' ? { id: 'n' } : null,
+        args.where.type === 'TASK_OVERDUE' ? [{ data: {} }] : [],
     );
 
     const result = await runDueTaskCheck(new Date('2026-07-26T09:30:00.000Z'));
@@ -259,5 +260,35 @@ describe('runDueTaskCheck — backlog paging', () => {
     expect(mockPrisma.task.findMany.mock.calls[1][0].where.id).toEqual({
       gt: stale[stale.length - 1].id,
     });
+  });
+});
+
+describe('runDueTaskCheck — deadlines', () => {
+  it('gives a heads-up the morning before the deadline, and one when it passes', async () => {
+    const t = task({ dueDate: null, deadline: new Date('2026-07-27T00:00:00.000Z') });
+    mockPrisma.task.findMany.mockResolvedValue([t]);
+
+    await runDueTaskCheck(new Date('2026-07-26T07:59:00.000Z'));
+    expect(notifyMock).not.toHaveBeenCalled();
+    await runDueTaskCheck(new Date('2026-07-26T08:00:00.000Z'));
+    expect(notifyMock).toHaveBeenCalledWith('u1', 'TASK_DUE_SOON', 'Deadline tomorrow', expect.any(String), {
+      taskId: 't1',
+      projectId: 'p1',
+      about: 'deadline',
+    });
+
+    notifyMock.mockClear();
+    await runDueTaskCheck(new Date('2026-07-28T09:00:00.000Z'));
+    expect(notifyMock).toHaveBeenCalledWith('u1', 'TASK_OVERDUE', 'Deadline passed', expect.any(String), expect.objectContaining({ about: 'deadline' }));
+  });
+
+  it('a due-date notice does not silence the deadline one (and vice versa)', async () => {
+    const t = task({ deadline: new Date('2026-07-27T00:00:00.000Z') });
+    mockPrisma.task.findMany.mockResolvedValue([t]);
+    // A due-soon notice (no `about`) already went out for this edit.
+    mockPrisma.notification.findMany.mockResolvedValue([{ data: { taskId: 't1' } }]);
+
+    await runDueTaskCheck(new Date('2026-07-26T08:00:00.000Z'));
+    expect(notifyMock.mock.calls.map((c) => c[2])).toEqual(['Deadline tomorrow']);
   });
 });

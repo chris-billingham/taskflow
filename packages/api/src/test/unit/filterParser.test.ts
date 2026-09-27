@@ -254,6 +254,17 @@ describe('parseFilterQuery', () => {
     expect(ors).toContainEqual({ priority: 1 });
   });
 
+  it('filters on deadlines', async () => {
+    expect(await parseFilterQuery('deadline', TEST_USER_ID)).toEqual({ deadline: { not: null }, isCompleted: false });
+    expect(await parseFilterQuery('no deadline', TEST_USER_ID)).toEqual({ deadline: null, isCompleted: false });
+    const passed = await parseFilterQuery('deadline passed', TEST_USER_ID);
+    expect(passed).toMatchObject({ isCompleted: false, deadline: { lt: expect.any(Date) } });
+    const soon = (await parseFilterQuery('deadline: next 3 days', TEST_USER_ID)) as { deadline: { gte: Date; lte: Date } };
+    expect((soon.deadline.lte.getTime() - soon.deadline.gte.getTime()) / 86_400_000).toBe(3);
+    expect(await parseFilterQuery('deadline: gibberish', TEST_USER_ID)).toEqual({ id: { in: [] } });
+    expect(validateFilterQuery('deadline before: 2027-01-01 & p1')).toEqual({ valid: true });
+  });
+
   it('parses "assigned to: me"', async () => {
     const result = await parseFilterQuery('assigned to: me', TEST_USER_ID);
     expect(result).toEqual({ assigneeId: TEST_USER_ID });

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { formatUserDate, formatUserTime } from '@/utils/dateFormat';
 import { Popover } from '@/components/ui/Popover';
-import { Calendar, Sun, ArrowRight, X, Clock } from 'lucide-react';
+import { AlertCircle, Calendar, Sun, ArrowRight, X, Clock } from 'lucide-react';
 
 interface DueDatePickerProps {
   value: string | null;
@@ -246,6 +246,30 @@ export function DueDateBadge({ dueDate, dueTime }: { dueDate: string | null; due
       <Calendar className="w-3 h-3" />
       {label}
       {dueTime && <span>{formatUserTime(dueTime)}</span>}
+    </span>
+  );
+}
+
+/**
+ * A task's deadline (the date it must be done by, as opposed to when it's
+ * planned). Red once it has passed, orange on the day.
+ */
+export function DeadlineBadge({ deadline }: { deadline: string | null | undefined }) {
+  if (!deadline) return null;
+  const date = parseLocalDate(deadline);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const color =
+    date < today
+      ? 'text-red-600 dark:text-red-400'
+      : date.getTime() === today.getTime()
+        ? 'text-orange-600 dark:text-orange-400'
+        : 'text-gray-500 dark:text-gray-400';
+  return (
+    <span className={`flex items-center gap-1 text-xs ${color}`} title="Deadline">
+      <AlertCircle className="w-3 h-3" aria-hidden="true" />
+      <span className="sr-only">Deadline </span>
+      {formatDateDisplay(deadline)}
     </span>
   );
 }

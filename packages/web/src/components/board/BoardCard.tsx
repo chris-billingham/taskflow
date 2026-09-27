@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { User, GitBranch, MessageSquare } from 'lucide-react';
 import { TaskCheckbox } from '@/components/task/TaskCheckbox';
-import { DueDateBadge } from '@/components/task/DueDatePicker';
+import { DeadlineBadge, DueDateBadge } from '@/components/task/DueDatePicker';
 import { LabelBadges } from '@/components/task/LabelPicker';
 import type { Task } from '@/types/task';
 import { useTaskActions } from '@/queries/taskActions';
@@ -97,6 +97,7 @@ export function BoardCard({ task }: BoardCardProps) {
         {task.dueDate && (
           <DueDateBadge dueDate={task.dueDate} dueTime={task.dueTime} />
         )}
+        <DeadlineBadge deadline={task.deadline} />
         <LabelBadges labels={task.taskLabels} />
         {subtaskCount > 0 && (
           <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">

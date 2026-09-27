@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { describeRecurrence, shortRecurrenceLabel } from '@/utils/recurrence';
 import { TaskCheckbox } from './TaskCheckbox';
-import { DueDateBadge } from './DueDatePicker';
+import { DeadlineBadge, DueDateBadge } from './DueDatePicker';
 import { DueDatePicker } from './DueDatePicker';
 import { PriorityPicker } from './PriorityPicker';
 import { LabelBadges } from './LabelPicker';
@@ -240,6 +240,7 @@ export const TaskItem = memo(function TaskItem({
             {task.dueDate && (
               <DueDateBadge dueDate={task.dueDate} dueTime={task.dueTime} />
             )}
+            <DeadlineBadge deadline={task.deadline} />
             {/* A repeating task looked identical to a one-off in every list —
                 completing one silently spawned the next occurrence with no
                 indication that it would. */}
