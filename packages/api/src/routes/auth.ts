@@ -1,14 +1,21 @@
 import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   registerSchema,
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  loginResponse,
+  registerResponse,
+  refreshResponse,
+  registrationStatusSchema,
+  messageResponse,
+  ok,
 } from '@taskflow/contract';
 import * as authService from '../services/authService.js';
 import * as instanceSettings from '../services/instanceSettingsService.js';
-import { UnauthorizedError, ValidationError } from '../errors/index.js';
+import { UnauthorizedError } from '../errors/index.js';
 import { env } from '../config/env.js';
 import { rateLimitMax } from '../config/rateLimits.js';
 
@@ -26,140 +33,189 @@ const refreshCookieOptions = {
   maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
 };
 
-export async function authRoutes(app: FastifyInstance) {
-  app.post('/register', {
-    config: {
-      rateLimit: { max: rateLimitMax(5), timeWindow: '1 hour' },
+// Everything here is reachable without a token.
+const tags = ['Auth'];
+const security: [] = [];
+
+export async function authRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
+
+  app.post(
+    '/register',
+    {
+      config: { rateLimit: { max: rateLimitMax(5), timeWindow: '1 hour' } },
+      schema: {
+        tags,
+        security,
+        summary: 'Create an account (subject to the sign-up policy)',
+        body: registerSchema,
+        response: { 201: registerResponse },
+      },
     },
-  }, async (request, reply) => {
-    const result = registerSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-
-    const registered = await authService.register(result.data);
-    if (registered.verificationRequired) {
-      // Account created, verification email sent; no session until verified.
-      return reply
-        .status(201)
-        .send({ success: true, data: { user: registered.user, verificationRequired: true } });
-    }
-    reply.setCookie(REFRESH_COOKIE, registered.refreshToken, refreshCookieOptions);
-    return reply.status(201).send({
-      success: true,
-      data: { user: registered.user, accessToken: registered.accessToken, verificationRequired: false },
-    });
-  });
-
-  app.post('/login', {
-    config: {
-      rateLimit: { max: rateLimitMax(5), timeWindow: '15 minutes' },
+    async (request, reply) => {
+      const registered = await authService.register(request.body);
+      if (registered.verificationRequired) {
+        // Account created, verification email sent; no session until verified.
+        return reply
+          .status(201)
+          .send({ success: true, data: { user: registered.user, verificationRequired: true } });
+      }
+      reply.setCookie(REFRESH_COOKIE, registered.refreshToken, refreshCookieOptions);
+      return reply.status(201).send({
+        success: true,
+        data: { user: registered.user, accessToken: registered.accessToken, verificationRequired: false },
+      });
     },
-  }, async (request, reply) => {
-    const result = loginSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
+  );
 
-    const { user, accessToken, refreshToken } = await authService.login(
-      result.data.email,
-      result.data.password,
-    );
-    reply.setCookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions);
-    return reply.send({ success: true, data: { user, accessToken } });
-  });
-
-  app.post('/logout', async (request, reply) => {
-    const refreshToken = request.cookies[REFRESH_COOKIE];
-    if (refreshToken) {
-      await authService.logout(refreshToken);
-    }
-    reply.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
-    return reply.send({ success: true, message: 'Logged out successfully' });
-  });
-
-  app.post('/refresh', async (request, reply) => {
-    const refreshToken = request.cookies[REFRESH_COOKIE];
-    if (!refreshToken) {
-      throw new UnauthorizedError('No refresh token');
-    }
-
-    const { accessToken, refreshToken: newRefreshToken } =
-      await authService.refreshTokens(refreshToken);
-    reply.setCookie(REFRESH_COOKIE, newRefreshToken, refreshCookieOptions);
-    return reply.send({ success: true, data: { accessToken } });
-  });
-
-  // Public: lets the sign-in page decide whether to offer "Sign up". `open` is
-  // also true on a brand-new install, whose first account is always allowed.
-  app.get('/registration', async (_request, reply) => {
-    const [mode, open] = await Promise.all([
-      instanceSettings.getRegistrationMode(),
-      instanceSettings.isRegistrationOpen(),
-    ]);
-    return reply.send({ success: true, data: { mode, open } });
-  });
-
-  app.post('/forgot-password', {
-    config: {
-      rateLimit: { max: rateLimitMax(3), timeWindow: '1 hour' },
+  app.post(
+    '/login',
+    {
+      config: { rateLimit: { max: rateLimitMax(5), timeWindow: '15 minutes' } },
+      schema: {
+        tags,
+        security,
+        summary: 'Sign in: returns an access token and sets the refresh cookie',
+        body: loginSchema,
+        response: { 200: loginResponse },
+      },
     },
-  }, async (request, reply) => {
-    const result = forgotPasswordSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-
-    const data = await authService.forgotPassword(result.data.email);
-    return reply.send({ success: true, ...data });
-  });
-
-  app.post('/reset-password', {
-    config: {
-      rateLimit: { max: rateLimitMax(5), timeWindow: '1 hour' },
+    async (request, reply) => {
+      const { user, accessToken, refreshToken } = await authService.login(
+        request.body.email,
+        request.body.password,
+      );
+      reply.setCookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions);
+      return { success: true as const, data: { user, accessToken } };
     },
-  }, async (request, reply) => {
-    const result = resetPasswordSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
+  );
 
-    const data = await authService.resetPassword(
-      result.data.token,
-      result.data.password,
-    );
-    return reply.send({ success: true, ...data });
-  });
+  app.post(
+    '/logout',
+    { schema: { tags, security, summary: 'Sign out: revokes the refresh token', response: { 200: messageResponse } } },
+    async (request, reply) => {
+      const refreshToken = request.cookies[REFRESH_COOKIE];
+      if (refreshToken) {
+        await authService.logout(refreshToken);
+      }
+      reply.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
+      return { success: true as const, message: 'Logged out successfully' };
+    },
+  );
+
+  app.post(
+    '/refresh',
+    {
+      schema: {
+        tags,
+        security,
+        summary: 'Exchange the refresh cookie for a new access token (rotates the cookie)',
+        response: { 200: refreshResponse },
+      },
+    },
+    async (request, reply) => {
+      const refreshToken = request.cookies[REFRESH_COOKIE];
+      if (!refreshToken) {
+        throw new UnauthorizedError('No refresh token');
+      }
+      const { accessToken, refreshToken: newRefreshToken } = await authService.refreshTokens(refreshToken);
+      reply.setCookie(REFRESH_COOKIE, newRefreshToken, refreshCookieOptions);
+      return { success: true as const, data: { accessToken } };
+    },
+  );
+
+  app.get(
+    '/registration',
+    {
+      schema: {
+        tags,
+        security,
+        summary: 'Whether anyone may sign up right now',
+        response: { 200: ok(registrationStatusSchema) },
+      },
+    },
+    async () => {
+      const [mode, open] = await Promise.all([
+        instanceSettings.getRegistrationMode(),
+        instanceSettings.isRegistrationOpen(),
+      ]);
+      return { success: true as const, data: { mode, open } };
+    },
+  );
+
+  app.post(
+    '/forgot-password',
+    {
+      config: { rateLimit: { max: rateLimitMax(3), timeWindow: '1 hour' } },
+      schema: {
+        tags,
+        security,
+        summary: 'Email a password-reset link (the reply never reveals whether the address exists)',
+        body: forgotPasswordSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await authService.forgotPassword(request.body.email)),
+    }),
+  );
+
+  app.post(
+    '/reset-password',
+    {
+      config: { rateLimit: { max: rateLimitMax(5), timeWindow: '1 hour' } },
+      schema: {
+        tags,
+        security,
+        summary: 'Set a new password with a reset token',
+        body: resetPasswordSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await authService.resetPassword(request.body.token, request.body.password)),
+    }),
+  );
 
   // POST with the token in the body: as a GET query string it was written to
   // every access log between the browser and the API.
-  app.post('/verify-email', {
-    config: {
+  app.post(
+    '/verify-email',
+    {
       // Tokens must not be brute-forceable and the lookup shouldn't be a free
       // DoS lever.
-      rateLimit: { max: rateLimitMax(10), timeWindow: '15 minutes' },
+      config: { rateLimit: { max: rateLimitMax(10), timeWindow: '15 minutes' } },
+      schema: {
+        tags,
+        security,
+        summary: 'Confirm an email address with the emailed token',
+        body: verifyEmailSchema,
+        response: { 200: messageResponse },
+      },
     },
-  }, async (request, reply) => {
-    const result = verifyEmailSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
+    async (request) => ({
+      success: true as const,
+      ...(await authService.verifyEmail(request.body.token)),
+    }),
+  );
 
-    const data = await authService.verifyEmail(result.data.token);
-    return reply.send({ success: true, ...data });
-  });
-
-  app.post('/resend-verification', {
-    config: {
-      rateLimit: { max: rateLimitMax(3), timeWindow: '1 hour' },
+  app.post(
+    '/resend-verification',
+    {
+      config: { rateLimit: { max: rateLimitMax(3), timeWindow: '1 hour' } },
+      schema: {
+        tags,
+        security,
+        summary: 'Send a fresh verification link (neutral reply)',
+        body: forgotPasswordSchema,
+        response: { 200: messageResponse },
+      },
     },
-  }, async (request, reply) => {
-    const result = forgotPasswordSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-
-    const data = await authService.resendVerificationEmail(result.data.email);
-    return reply.send({ success: true, ...data });
-  });
+    async (request) => ({
+      success: true as const,
+      ...(await authService.resendVerificationEmail(request.body.email)),
+    }),
+  );
 }

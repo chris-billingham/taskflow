@@ -44,8 +44,9 @@ const SAMPLE_USER = {
   role: 'USER',
   isActive: true,
   emailVerified: true,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  // Services return Dates; the contract serializes them.
+  createdAt: new Date('2026-09-01T09:00:00.000Z'),
+  updatedAt: new Date('2026-09-01T09:00:00.000Z'),
   lastLoginAt: null,
 };
 

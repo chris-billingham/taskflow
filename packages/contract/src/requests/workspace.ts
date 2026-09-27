@@ -28,6 +28,11 @@ export const workspaceMemberParamsSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
 });
 
+export const workspaceInviteParamsSchema = z.object({
+  id: z.string().min(1, 'Workspace ID is required'),
+  inviteId: z.string().min(1, 'Invite ID is required'),
+});
+
 export const joinWorkspaceSchema = z.object({
   token: z.string().min(1, 'Invite token is required'),
 });

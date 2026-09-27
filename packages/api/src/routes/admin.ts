@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { authenticate } from '../middleware/authenticate.js';
-import { requireAdmin } from '../middleware/requireAdmin.js';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   listUsersQuerySchema,
   createUserSchema,
@@ -8,129 +7,173 @@ import {
   setUserStatusSchema,
   adminResetPasswordSchema,
   updateInstanceSettingsSchema,
+  adminUserParamsSchema,
+  adminUserSchema,
+  adminUserPageSchema,
+  adminUserDetailSchema,
+  adminStatsSchema,
+  adminCreatedUserSchema,
+  adminPasswordResetSchema,
+  instanceSettingsSchema,
+  messageResponse,
+  ok,
 } from '@taskflow/contract';
+import { authenticate } from '../middleware/authenticate.js';
+import { requireAdmin } from '../middleware/requireAdmin.js';
 import * as adminService from '../services/adminService.js';
 import * as instanceSettings from '../services/instanceSettingsService.js';
-import { ValidationError } from '../errors/index.js';
 import { rateLimitMax } from '../config/rateLimits.js';
+
+const tags = ['Admin'];
 
 /**
  * Instance administration. Every route here is gated by authenticate (valid
  * token) then requireAdmin (fresh database read of role + isActive).
  */
-export async function adminRoutes(app: FastifyInstance) {
+export async function adminRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
   app.addHook('preHandler', authenticate);
   app.addHook('preHandler', requireAdmin);
 
-  app.get('/stats', async (_request, reply) => {
-    const data = await adminService.getStats();
-    return reply.send({ success: true, data });
-  });
+  app.get(
+    '/stats',
+    { schema: { tags, summary: 'Account counts', response: { 200: ok(adminStatsSchema) } } },
+    async () => ({ success: true as const, data: await adminService.getStats() }),
+  );
 
   // Deployment-wide settings. Only sign-up policy for now.
-  app.get('/settings', async (_request, reply) => {
-    const registrationMode = await instanceSettings.getRegistrationMode();
-    return reply.send({ success: true, data: { registrationMode } });
-  });
+  app.get(
+    '/settings',
+    { schema: { tags, summary: 'Instance settings', response: { 200: ok(instanceSettingsSchema) } } },
+    async () => ({
+      success: true as const,
+      data: { registrationMode: await instanceSettings.getRegistrationMode() },
+    }),
+  );
 
-  app.patch('/settings', async (request, reply) => {
-    const result = updateInstanceSettingsSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-    const registrationMode = await instanceSettings.setRegistrationMode(
-      result.data.registrationMode,
-      request.user.id,
-    );
-    request.log.info({ registrationMode, adminId: request.user.id }, 'registration mode changed');
-    return reply.send({ success: true, data: { registrationMode } });
-  });
+  app.patch(
+    '/settings',
+    {
+      schema: {
+        tags,
+        summary: 'Change instance settings',
+        body: updateInstanceSettingsSchema,
+        response: { 200: ok(instanceSettingsSchema) },
+      },
+    },
+    async (request) => {
+      const registrationMode = await instanceSettings.setRegistrationMode(
+        request.body.registrationMode,
+        request.user.id,
+      );
+      request.log.info({ registrationMode, adminId: request.user.id }, 'registration mode changed');
+      return { success: true as const, data: { registrationMode } };
+    },
+  );
 
-  app.get('/users', async (request, reply) => {
-    const result = listUsersQuerySchema.safeParse(request.query);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-    const data = await adminService.listUsers(result.data);
-    return reply.send({ success: true, data });
-  });
+  app.get(
+    '/users',
+    {
+      schema: {
+        tags,
+        summary: 'Search and page through accounts',
+        querystring: listUsersQuerySchema,
+        response: { 200: ok(adminUserPageSchema) },
+      },
+    },
+    async (request) => ({ success: true as const, data: await adminService.listUsers(request.query) }),
+  );
 
-  app.get('/users/:id', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const data = await adminService.getUserDetail(id);
-    return reply.send({ success: true, data });
-  });
+  app.get(
+    '/users/:id',
+    {
+      schema: {
+        tags,
+        summary: 'An account with its workspaces and counts',
+        params: adminUserParamsSchema,
+        response: { 200: ok(adminUserDetailSchema) },
+      },
+    },
+    async (request) => ({ success: true as const, data: await adminService.getUserDetail(request.params.id) }),
+  );
 
   app.post(
     '/users',
     {
-      config: {
-        rateLimit: {
-          max: rateLimitMax(30),
-          timeWindow: '1 hour',
-        },
+      config: { rateLimit: { max: rateLimitMax(30), timeWindow: '1 hour' } },
+      schema: {
+        tags,
+        summary: 'Create an account (optionally with a generated password, shown once)',
+        body: createUserSchema,
+        response: { 201: ok(adminCreatedUserSchema) },
       },
     },
-    async (request, reply) => {
-      const result = createUserSchema.safeParse(request.body);
-      if (!result.success) {
-        throw new ValidationError(result.error.issues[0].message);
-      }
-      const data = await adminService.createUser(result.data);
-      return reply.status(201).send({ success: true, data });
-    },
+    async (request, reply) =>
+      reply.status(201).send({ success: true, data: await adminService.createUser(request.body) }),
   );
 
-  app.patch('/users/:id/role', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const result = setUserRoleSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-    const data = await adminService.setUserRole(id, result.data.role);
-    return reply.send({ success: true, data });
-  });
+  app.patch(
+    '/users/:id/role',
+    {
+      schema: {
+        tags,
+        summary: 'Make or revoke an admin',
+        params: adminUserParamsSchema,
+        body: setUserRoleSchema,
+        response: { 200: ok(adminUserSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await adminService.setUserRole(request.params.id, request.body.role),
+    }),
+  );
 
-  app.patch('/users/:id/status', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const result = setUserStatusSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-    const data = await adminService.setUserActive(
-      request.user.id,
-      id,
-      result.data.isActive,
-    );
-    return reply.send({ success: true, data });
-  });
+  app.patch(
+    '/users/:id/status',
+    {
+      schema: {
+        tags,
+        summary: 'Suspend or reactivate an account',
+        params: adminUserParamsSchema,
+        body: setUserStatusSchema,
+        response: { 200: ok(adminUserSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await adminService.setUserActive(request.user.id, request.params.id, request.body.isActive),
+    }),
+  );
 
   app.post(
     '/users/:id/password',
     {
-      config: {
-        rateLimit: {
-          max: rateLimitMax(20),
-          timeWindow: '1 hour',
-        },
+      config: { rateLimit: { max: rateLimitMax(20), timeWindow: '1 hour' } },
+      schema: {
+        tags,
+        summary: "Reset an account's password and revoke its sessions",
+        params: adminUserParamsSchema,
+        body: adminResetPasswordSchema.optional(),
+        response: { 200: ok(adminPasswordResetSchema) },
       },
     },
-    async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const result = adminResetPasswordSchema.safeParse(request.body ?? {});
-      if (!result.success) {
-        throw new ValidationError(result.error.issues[0].message);
-      }
-      // The generated password is in this response body and nowhere else —
-      // it is never logged and cannot be retrieved again.
-      const data = await adminService.resetUserPassword(id, result.data.password);
-      return reply.send({ success: true, data });
-    },
+    // The generated password is in this response body and nowhere else — it
+    // is never logged and cannot be retrieved again.
+    async (request) => ({
+      success: true as const,
+      data: await adminService.resetUserPassword(request.params.id, request.body?.password),
+    }),
   );
 
-  app.delete('/users/:id', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const data = await adminService.deleteUser(request.user.id, id);
-    return reply.send({ success: true, ...data });
-  });
+  app.delete(
+    '/users/:id',
+    {
+      schema: { tags, summary: 'Delete an account', params: adminUserParamsSchema, response: { 200: messageResponse } },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await adminService.deleteUser(request.user.id, request.params.id)),
+    }),
+  );
 }

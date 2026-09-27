@@ -17,6 +17,7 @@ import { prisma } from './config/database.js';
 import { Prisma } from '@prisma/client';
 import { jsonSchemaTransform, validatorCompiler } from 'fastify-type-provider-zod';
 import { createContractSerializer } from './utils/contractSerializer.js';
+import { healthSchema } from '@taskflow/contract';
 import { rateLimitMax } from './config/rateLimits.js';
 
 const defaultLogger: FastifyServerOptions['logger'] = {
@@ -261,7 +262,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   async function healthResponse(request: { ip: string }) {
     const { healthy, checks } = await healthCheck();
     return {
-      statusCode: healthy ? 200 : 503,
+      statusCode: healthy ? (200 as const) : (503 as const),
       body: {
         status: healthy ? 'ok' : 'degraded',
         timestamp: new Date().toISOString(),
@@ -270,12 +271,21 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     };
   }
 
-  server.get('/health', async (request, reply) => {
+  const healthRoute = {
+    schema: {
+      tags: ['Health'],
+      summary: 'Liveness and dependency health (public)',
+      security: [],
+      response: { 200: healthSchema, 503: healthSchema },
+    },
+  };
+
+  server.get('/health', healthRoute, async (request, reply) => {
     const { statusCode, body } = await healthResponse(request);
     return reply.status(statusCode).send(body);
   });
 
-  server.get('/api/health', async (request, reply) => {
+  server.get('/api/health', healthRoute, async (request, reply) => {
     const { statusCode, body } = await healthResponse(request);
     return reply.status(statusCode).send(body);
   });

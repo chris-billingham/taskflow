@@ -1,58 +1,62 @@
 import type { FastifyInstance } from 'fastify';
-import { isValidTimeZone } from '../utils/dates.js';
-import { z } from 'zod';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import {
+  changePasswordSchema,
+  updateProfileSchema,
+  meSchema,
+  profileSchema,
+  messageResponse,
+  ok,
+} from '@taskflow/contract';
 import { authenticate } from '../middleware/authenticate.js';
-import { changePasswordSchema } from '@taskflow/contract';
 import * as userService from '../services/userService.js';
-import { ValidationError } from '../errors/index.js';
 
-const updateUserSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  avatarUrl: z.url().nullable().optional(),
-  timezone: z
-    .string()
-    .max(64)
-    .refine(isValidTimeZone, 'Must be a valid IANA timezone (e.g. Europe/London)')
-    .optional(),
-  weekStart: z.number().int().min(0).max(6).optional(),
-  dateFormat: z.string().max(32).nullable().optional(),
-  timeFormat: z.string().max(32).nullable().optional(),
-  theme: z.string().max(32).nullable().optional(),
-});
+const tags = ['Account'];
 
-export async function userRoutes(app: FastifyInstance) {
+export async function userRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
   app.addHook('preHandler', authenticate);
 
-  app.get('/me', async (request, reply) => {
-    const data = await userService.getUserById(request.user.id);
-    return reply.send({ success: true, data });
-  });
+  app.get(
+    '/me',
+    { schema: { tags, summary: 'Your profile and workspaces', response: { 200: ok(meSchema) } } },
+    async (request) => ({ success: true as const, data: await userService.getUserById(request.user.id) }),
+  );
 
-  app.patch('/me', async (request, reply) => {
-    const result = updateUserSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
-    const data = await userService.updateUser(request.user.id, result.data);
-    return reply.send({ success: true, data });
-  });
+  app.patch(
+    '/me',
+    {
+      schema: { tags, summary: 'Update your profile', body: updateProfileSchema, response: { 200: ok(profileSchema) } },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await userService.updateUser(request.user.id, request.body),
+    }),
+  );
 
-  app.patch('/me/password', async (request, reply) => {
-    const result = changePasswordSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
+  app.patch(
+    '/me/password',
+    {
+      schema: {
+        tags,
+        summary: 'Change your password (signs out your other sessions)',
+        body: changePasswordSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await userService.changePassword(
+        request.user.id,
+        request.body.currentPassword,
+        request.body.newPassword,
+      )),
+    }),
+  );
 
-    const data = await userService.changePassword(
-      request.user.id,
-      result.data.currentPassword,
-      result.data.newPassword,
-    );
-    return reply.send({ success: true, ...data });
-  });
-
-  app.delete('/me', async (request, reply) => {
-    const data = await userService.deleteUser(request.user.id);
-    return reply.send({ success: true, ...data });
-  });
+  app.delete(
+    '/me',
+    { schema: { tags, summary: 'Delete your account', response: { 200: messageResponse } } },
+    async (request) => ({ success: true as const, ...(await userService.deleteUser(request.user.id)) }),
+  );
 }

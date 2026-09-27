@@ -1,6 +1,6 @@
 import { z } from 'zod';
+import { systemRoleSchema } from '../entities/account.js';
 
-const systemRoleSchema = z.enum(['USER', 'ADMIN']);
 
 // Passwords an admin sets on someone else's behalf follow the same floor as
 // self-service ones (schemas/auth.ts). The upper bound exists because bcrypt
@@ -47,4 +47,8 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 
 export const updateInstanceSettingsSchema = z.object({
   registrationMode: z.enum(['invite', 'open']),
+});
+
+export const adminUserParamsSchema = z.object({
+  id: z.string().min(1, 'User ID is required'),
 });

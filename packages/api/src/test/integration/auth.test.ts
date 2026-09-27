@@ -36,7 +36,7 @@ afterAll(async () => {
 describe('POST /api/v1/auth/register', () => {
   it('returns 201 with user and tokens on success', async () => {
     vi.mocked(authService.register).mockResolvedValue({
-      user: { id: 'u1', email: 'new@example.com', name: 'New User' },
+      user: { id: 'u1', email: 'new@example.com', name: 'New User', role: 'USER', isActive: true },
       accessToken: 'access-tok',
       refreshToken: 'refresh-tok',
       verificationRequired: false,
@@ -64,7 +64,7 @@ describe('POST /api/v1/auth/register', () => {
 
   it('creates no session when the address must be verified first', async () => {
     vi.mocked(authService.register).mockResolvedValue({
-      user: { id: 'u2', email: 'verify@example.com', name: 'Verify Me' },
+      user: { id: 'u2', email: 'verify@example.com', name: 'Verify Me', role: 'USER', isActive: true },
       verificationRequired: true,
     } as never);
 
@@ -123,7 +123,7 @@ describe('POST /api/v1/auth/register', () => {
 describe('POST /api/v1/auth/login', () => {
   it('returns 200 with user and tokens on valid credentials', async () => {
     vi.mocked(authService.login).mockResolvedValue({
-      user: { id: 'u1', email: 'user@example.com', name: 'User' },
+      user: { id: 'u1', email: 'user@example.com', name: 'User', role: 'USER', isActive: true },
       accessToken: 'access',
       refreshToken: 'refresh',
     } as never);

@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { DEFAULT_TEMPLATES } from '../config/defaultTemplates.js';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
@@ -31,6 +32,16 @@ export interface TemplateData {
   tasks: TemplateTask[];
 }
 
+/**
+ * Template.data is a JSON column, so Prisma types it as any JSON. Everything
+ * that writes it writes TemplateData (createTemplate, the built-in seed).
+ */
+function withTypedData<T extends { data: Prisma.JsonValue }>(
+  template: T,
+): Omit<T, 'data'> & { data: TemplateData } {
+  return template as unknown as Omit<T, 'data'> & { data: TemplateData };
+}
+
 async function verifyWorkspaceMembership(workspaceId: string, userId: string) {
   const member = await prisma.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId } },
@@ -42,29 +53,31 @@ async function verifyWorkspaceMembership(workspaceId: string, userId: string) {
 }
 
 export async function getUserTemplates(userId: string) {
-  return prisma.template.findMany({
+  const templates = await prisma.template.findMany({
     where: { userId },
     include: {
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
+  return templates.map(withTypedData);
 }
 
 export async function getWorkspaceTemplates(workspaceId: string, userId: string) {
   await verifyWorkspaceMembership(workspaceId, userId);
 
-  return prisma.template.findMany({
+  const templates = await prisma.template.findMany({
     where: { workspaceId },
     include: {
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
+  return templates.map(withTypedData);
 }
 
 export async function getPublicTemplates() {
-  return prisma.template.findMany({
+  const templates = await prisma.template.findMany({
     where: { isPublic: true },
     take: 50,
     include: {
@@ -72,6 +85,7 @@ export async function getPublicTemplates() {
     },
     orderBy: { createdAt: 'desc' },
   });
+  return templates.map(withTypedData);
 }
 
 export async function getTemplateById(id: string, userId: string) {
@@ -102,7 +116,7 @@ export async function getTemplateById(id: string, userId: string) {
     }
   }
 
-  return template;
+  return withTypedData(template);
 }
 
 export async function createTemplate(data: CreateTemplateInput, userId: string) {
@@ -172,7 +186,7 @@ export async function createTemplate(data: CreateTemplateInput, userId: string) 
     })),
   };
 
-  return prisma.template.create({
+  const created = await prisma.template.create({
     data: {
       name: data.name,
       description: data.description,
@@ -185,6 +199,7 @@ export async function createTemplate(data: CreateTemplateInput, userId: string) 
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
   });
+  return withTypedData(created);
 }
 
 export async function applyTemplate(
@@ -313,7 +328,7 @@ export async function applyTemplate(
       }
     }
 
-    return tx.project.findUnique({
+    return tx.project.findUniqueOrThrow({
       where: { id: project.id },
       include: {
         sections: { orderBy: { sortOrder: 'asc' } },
@@ -334,13 +349,14 @@ export async function updateTemplate(
   if (!template) throw new NotFoundError('Template not found');
   if (template.userId !== userId) throw new ForbiddenError('You do not own this template');
 
-  return prisma.template.update({
+  const updated = await prisma.template.update({
     where: { id },
     data,
     include: {
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
   });
+  return withTypedData(updated);
 }
 
 export async function deleteTemplate(id: string, userId: string) {

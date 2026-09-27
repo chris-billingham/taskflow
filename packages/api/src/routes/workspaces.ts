@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { authenticate } from '../middleware/authenticate.js';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
@@ -7,246 +8,266 @@ import {
   updateMemberSchema,
   workspaceParamsSchema,
   workspaceMemberParamsSchema,
+  workspaceInviteParamsSchema,
   joinWorkspaceSchema,
   transferOwnershipSchema,
+  workspaceSummarySchema,
+  workspaceSchema,
+  createdWorkspaceSchema,
+  updatedWorkspaceSchema,
+  workspaceMemberSchema,
+  workspaceInviteSchema,
+  joinedWorkspaceSchema,
+  messageResponse,
+  ok,
 } from '@taskflow/contract';
+import { authenticate } from '../middleware/authenticate.js';
 import * as workspaceService from '../services/workspaceService.js';
-import { ValidationError } from '../errors/index.js';
 
-export async function workspaceRoutes(app: FastifyInstance) {
+const tags = ['Workspaces'];
+
+export async function workspaceRoutes(fastify: FastifyInstance) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>();
   app.addHook('preHandler', authenticate);
 
-  // GET /api/v1/workspaces - List user's workspaces
-  app.get('/', async (request, reply) => {
-    const data = await workspaceService.getUserWorkspaces(request.user.id);
-    return reply.send({ success: true, data });
-  });
+  app.get(
+    '/',
+    {
+      schema: { tags, summary: 'Workspaces you belong to', response: { 200: ok(z.array(workspaceSummarySchema)) } },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await workspaceService.getUserWorkspaces(request.user.id),
+    }),
+  );
 
-  // POST /api/v1/workspaces - Create workspace
-  app.post('/', async (request, reply) => {
-    const result = createWorkspaceSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
+  app.post(
+    '/',
+    {
+      schema: {
+        tags,
+        summary: 'Create a workspace (you become its owner)',
+        body: createWorkspaceSchema,
+        response: { 201: ok(createdWorkspaceSchema) },
+      },
+    },
+    async (request, reply) =>
+      reply.status(201).send({
+        success: true,
+        data: await workspaceService.createWorkspace(request.body, request.user.id),
+      }),
+  );
 
-    const data = await workspaceService.createWorkspace(
-      result.data,
-      request.user.id,
-    );
-    return reply.status(201).send({ success: true, data });
-  });
+  app.post(
+    '/join',
+    {
+      schema: {
+        tags,
+        summary: 'Accept an invitation by its token',
+        body: joinWorkspaceSchema,
+        response: { 200: ok(joinedWorkspaceSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await workspaceService.acceptInvite(request.body.token, request.user.id),
+    }),
+  );
 
-  // POST /api/v1/workspaces/join - Accept invite by token
-  app.post('/join', async (request, reply) => {
-    const result = joinWorkspaceSchema.safeParse(request.body);
-    if (!result.success) {
-      throw new ValidationError(result.error.issues[0].message);
-    }
+  app.get(
+    '/:id',
+    {
+      schema: {
+        tags,
+        summary: 'A workspace with its owner and members',
+        params: workspaceParamsSchema,
+        response: { 200: ok(workspaceSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await workspaceService.getWorkspaceById(request.params.id, request.user.id),
+    }),
+  );
 
-    const data = await workspaceService.acceptInvite(
-      result.data.token,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
+  app.patch(
+    '/:id',
+    {
+      schema: {
+        tags,
+        summary: 'Rename or describe a workspace',
+        params: workspaceParamsSchema,
+        body: updateWorkspaceSchema,
+        response: { 200: ok(updatedWorkspaceSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await workspaceService.updateWorkspace(request.params.id, request.body, request.user.id),
+    }),
+  );
 
-  // GET /api/v1/workspaces/:id - Get workspace details
-  app.get('/:id', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
+  app.delete(
+    '/:id',
+    {
+      schema: {
+        tags,
+        summary: 'Delete a workspace and its projects (owner only)',
+        params: workspaceParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await workspaceService.deleteWorkspace(request.params.id, request.user.id)),
+    }),
+  );
 
-    const data = await workspaceService.getWorkspaceById(
-      params.data.id,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
+  app.get(
+    '/:id/members',
+    {
+      schema: {
+        tags,
+        summary: "A workspace's members",
+        params: workspaceParamsSchema,
+        response: { 200: ok(z.array(workspaceMemberSchema)) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await workspaceService.getWorkspaceMembers(request.params.id, request.user.id),
+    }),
+  );
 
-  // PATCH /api/v1/workspaces/:id - Update workspace
-  app.patch('/:id', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
+  app.post(
+    '/:id/invite',
+    {
+      schema: {
+        tags,
+        summary: 'Invite someone by email (admins)',
+        params: workspaceParamsSchema,
+        body: inviteMemberSchema,
+        response: { 201: ok(workspaceInviteSchema) },
+      },
+    },
+    async (request, reply) =>
+      reply.status(201).send({
+        success: true,
+        data: await workspaceService.inviteMember(request.params.id, request.body, request.user.id),
+      }),
+  );
 
-    const body = updateWorkspaceSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
+  app.get(
+    '/:id/invites',
+    {
+      schema: {
+        tags,
+        summary: 'Pending invitations (admins)',
+        params: workspaceParamsSchema,
+        response: { 200: ok(z.array(workspaceInviteSchema)) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await workspaceService.getPendingInvites(request.params.id, request.user.id),
+    }),
+  );
 
-    const data = await workspaceService.updateWorkspace(
-      params.data.id,
-      body.data,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
+  app.post(
+    '/:id/invites/:inviteId/resend',
+    {
+      schema: {
+        tags,
+        summary: 'Resend an invitation with a fresh link and expiry',
+        params: workspaceInviteParamsSchema,
+        response: { 200: ok(workspaceInviteSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await workspaceService.resendInvite(request.params.id, request.params.inviteId, request.user.id),
+    }),
+  );
 
-  // DELETE /api/v1/workspaces/:id - Delete workspace
-  app.delete('/:id', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
+  app.delete(
+    '/:id/invites/:inviteId',
+    {
+      schema: {
+        tags,
+        summary: 'Cancel an invitation',
+        params: workspaceInviteParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await workspaceService.cancelInvite(request.params.id, request.params.inviteId, request.user.id)),
+    }),
+  );
 
-    const data = await workspaceService.deleteWorkspace(
-      params.data.id,
-      request.user.id,
-    );
-    return reply.send({ success: true, ...data });
-  });
+  app.patch(
+    '/:id/members/:userId',
+    {
+      schema: {
+        tags,
+        summary: "Change a member's role",
+        params: workspaceMemberParamsSchema,
+        body: updateMemberSchema,
+        response: { 200: ok(workspaceMemberSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await workspaceService.updateMemberRole(
+        request.params.id,
+        request.params.userId,
+        request.body,
+        request.user.id,
+      ),
+    }),
+  );
 
-  // GET /api/v1/workspaces/:id/members - List members
-  app.get('/:id/members', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
+  app.delete(
+    '/:id/members/:userId',
+    {
+      schema: {
+        tags,
+        summary: 'Remove a member',
+        params: workspaceMemberParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await workspaceService.removeMember(request.params.id, request.params.userId, request.user.id)),
+    }),
+  );
 
-    const data = await workspaceService.getWorkspaceMembers(
-      params.data.id,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
+  app.post(
+    '/:id/leave',
+    {
+      schema: { tags, summary: 'Leave a workspace', params: workspaceParamsSchema, response: { 200: messageResponse } },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await workspaceService.leaveWorkspace(request.params.id, request.user.id)),
+    }),
+  );
 
-  // POST /api/v1/workspaces/:id/invite - Invite member
-  app.post('/:id/invite', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const body = inviteMemberSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await workspaceService.inviteMember(
-      params.data.id,
-      body.data,
-      request.user.id,
-    );
-    return reply.status(201).send({ success: true, data });
-  });
-
-  // GET /api/v1/workspaces/:id/invites - List pending invites
-  app.get('/:id/invites', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const data = await workspaceService.getPendingInvites(
-      params.data.id,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
-
-  // POST /api/v1/workspaces/:id/invites/:inviteId/resend - Resend invite
-  app.post('/:id/invites/:inviteId/resend', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const { inviteId } = request.params as { inviteId: string };
-
-    const data = await workspaceService.resendInvite(
-      params.data.id,
-      inviteId,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
-
-  // DELETE /api/v1/workspaces/:id/invites/:inviteId - Cancel invite
-  app.delete('/:id/invites/:inviteId', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const { inviteId } = request.params as { inviteId: string };
-
-    const data = await workspaceService.cancelInvite(
-      params.data.id,
-      inviteId,
-      request.user.id,
-    );
-    return reply.send({ success: true, ...data });
-  });
-
-  // PATCH /api/v1/workspaces/:id/members/:userId - Update member role
-  app.patch('/:id/members/:userId', async (request, reply) => {
-    const params = workspaceMemberParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const body = updateMemberSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await workspaceService.updateMemberRole(
-      params.data.id,
-      params.data.userId,
-      body.data,
-      request.user.id,
-    );
-    return reply.send({ success: true, data });
-  });
-
-  // DELETE /api/v1/workspaces/:id/members/:userId - Remove member
-  app.delete('/:id/members/:userId', async (request, reply) => {
-    const params = workspaceMemberParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const data = await workspaceService.removeMember(
-      params.data.id,
-      params.data.userId,
-      request.user.id,
-    );
-    return reply.send({ success: true, ...data });
-  });
-
-  // POST /api/v1/workspaces/:id/leave - Leave workspace
-  app.post('/:id/leave', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const data = await workspaceService.leaveWorkspace(
-      params.data.id,
-      request.user.id,
-    );
-    return reply.send({ success: true, ...data });
-  });
-
-  // POST /api/v1/workspaces/:id/transfer - Transfer ownership
-  app.post('/:id/transfer', async (request, reply) => {
-    const params = workspaceParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ValidationError(params.error.issues[0].message);
-    }
-
-    const body = transferOwnershipSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new ValidationError(body.error.issues[0].message);
-    }
-
-    const data = await workspaceService.transferOwnership(
-      params.data.id,
-      body.data.newOwnerId,
-      request.user.id,
-    );
-    return reply.send({ success: true, ...data });
-  });
+  app.post(
+    '/:id/transfer',
+    {
+      schema: {
+        tags,
+        summary: 'Hand ownership to another member',
+        params: workspaceParamsSchema,
+        body: transferOwnershipSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await workspaceService.transferOwnership(request.params.id, request.body.newOwnerId, request.user.id)),
+    }),
+  );
 }

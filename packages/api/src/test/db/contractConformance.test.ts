@@ -3,6 +3,18 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
   activitySchema,
+  adminStatsSchema,
+  adminUserDetailSchema,
+  adminUserPageSchema,
+  createdWorkspaceSchema,
+  meSchema,
+  notificationPreferencesSchema,
+  profileSchema,
+  templateSchema,
+  workspaceInviteSchema,
+  workspaceMemberSchema,
+  workspaceSchema,
+  workspaceSummarySchema,
   attachmentSchema,
   commentSchema,
   notificationListResponse,
@@ -36,6 +48,10 @@ import * as fileService from '../../services/fileService.js';
 import * as activityService from '../../services/activityService.js';
 import * as searchService from '../../services/searchService.js';
 import * as notificationService from '../../services/notificationService.js';
+import * as userService from '../../services/userService.js';
+import * as adminService from '../../services/adminService.js';
+import * as workspaceService from '../../services/workspaceService.js';
+import * as templateService from '../../services/templateService.js';
 
 // Route suites mock the services, so only this file checks the contract
 // against what Prisma really returns: nulls, Dates, nested includes. Each
@@ -219,5 +235,55 @@ describe('real service output matches the API contract', () => {
       data: await notificationService.getUserNotifications(userId, false, 10),
       unreadCount: await notificationService.getUnreadCount(userId),
     });
+  });
+
+  it('account: me, profile update, notification preferences', async () => {
+    conforms(ok(meSchema), { success: true, data: await userService.getUserById(userId) });
+    conforms(ok(profileSchema), {
+      success: true,
+      data: await userService.updateUser(userId, { timezone: 'Europe/London', theme: 'dark' }),
+    });
+    conforms(ok(notificationPreferencesSchema), {
+      success: true,
+      data: await notificationService.getNotificationPreferences(userId),
+    });
+  });
+
+  it('admin: user page, detail, stats', async () => {
+    conforms(ok(adminUserPageSchema), { success: true, data: await adminService.listUsers({ search: RUN }) });
+    conforms(ok(adminUserDetailSchema), { success: true, data: await adminService.getUserDetail(userId) });
+    conforms(ok(adminStatsSchema), { success: true, data: await adminService.getStats() });
+  });
+
+  it('workspaces: create, list, detail, members, invites', async () => {
+    const ws = await workspaceService.createWorkspace({ name: `Team ${RUN}` }, userId);
+    conforms(ok(createdWorkspaceSchema), { success: true, data: ws });
+    conforms(ok(z.array(workspaceSummarySchema)), {
+      success: true,
+      data: await workspaceService.getUserWorkspaces(userId),
+    });
+    conforms(ok(workspaceSchema), { success: true, data: await workspaceService.getWorkspaceById(ws.id, userId) });
+    conforms(ok(z.array(workspaceMemberSchema)), {
+      success: true,
+      data: await workspaceService.getWorkspaceMembers(ws.id, userId),
+    });
+    const invite = await workspaceService.inviteMember(ws.id, { email: `invitee-${RUN}@contract.test`, role: 'MEMBER' }, userId);
+    conforms(ok(workspaceInviteSchema), { success: true, data: invite });
+    conforms(ok(z.array(workspaceInviteSchema)), {
+      success: true,
+      data: await workspaceService.getPendingInvites(ws.id, userId),
+    });
+  });
+
+  it('templates: built-in gallery and a saved project template', async () => {
+    await templateService.ensureDefaultTemplates();
+    const gallery = conforms(ok(z.array(templateSchema)), {
+      success: true,
+      data: await templateService.getPublicTemplates(),
+    }) as { data: unknown[] };
+    expect(gallery.data.length).toBeGreaterThan(0);
+    const saved = await templateService.createTemplate({ name: `Tpl ${RUN}`, projectId }, userId);
+    conforms(ok(templateSchema), { success: true, data: saved });
+    await prisma.template.delete({ where: { id: saved.id } });
   });
 });
