@@ -101,24 +101,18 @@ jobs:
       - name: Build contract
         run: pnpm --filter @taskflow/contract build
 
-      - name: Run API unit + integration tests (with coverage thresholds)
-        run: pnpm --filter @taskflow/api test:coverage
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/taskflow_test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: ci-test-jwt-secret-value-at-least-32-chars
-          JWT_REFRESH_SECRET: ci-test-refresh-secret-must-be-32-chars!
-          NODE_ENV: test
-
       - name: Migrate the CI database
         run: pnpm --filter @taskflow/api exec prisma migrate deploy
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/taskflow_test
 
-      - name: Run DB-backed tests (real Postgres, no mocks)
-        run: pnpm --filter @taskflow/api test:db
+      # Unit, integration and DB-backed suites in one run, so coverage counts
+      # the service code the real-database tests exercise.
+      - name: Run API tests (unit, integration, DB) with coverage thresholds
+        run: pnpm --filter @taskflow/api test:coverage:all
         env:
           TEST_DATABASE_URL: postgresql://test:test@localhost:5432/taskflow_test
+          REDIS_URL: redis://localhost:6379
 
       - name: Run web tests (with coverage thresholds)
         run: pnpm --filter @taskflow/web test:coverage

@@ -59,7 +59,7 @@ pnpm --filter @taskflow/api test             # All tests
 pnpm --filter @taskflow/api test:unit        # Unit tests
 pnpm --filter @taskflow/api test:integration # Route tests (services mocked; no DB or Redis)
 pnpm --filter @taskflow/api test:db          # Service tests against the dev-compose Postgres
-pnpm --filter @taskflow/api test:coverage    # Coverage report
+pnpm --filter @taskflow/api test:coverage:all  # Coverage across unit, integration and DB suites (what CI gates on)
 pnpm --filter @taskflow/api db:migrate       # Apply migrations
 pnpm --filter @taskflow/api db:seed          # Seed sample data
 ```
