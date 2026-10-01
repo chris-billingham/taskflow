@@ -30,6 +30,7 @@ import type { Task } from '@/types/task';
 import { Sheet } from '@/components/ui/Sheet';
 import { IconButton } from '@/components/ui/IconButton';
 import { Markdown } from '@/components/ui/Markdown';
+import { PresenceIndicator } from '@/components/ui/PresenceIndicator';
 
 interface TaskDetailProps {
   task: Task;
@@ -141,6 +142,7 @@ export function TaskDetail({
             )}
             {moving && <MoveTaskDialog isOpen onClose={() => setMoving(false)} task={task} />}
           </div>
+          <PresenceIndicator taskId={task.id} className="ml-auto mr-2 min-w-0" />
           <IconButton label="Close task detail" onClick={onClose}>
             <X className="w-5 h-5" />
           </IconButton>

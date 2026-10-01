@@ -21,5 +21,6 @@ vi.mock('@/services/socket', () => ({
   unsubscribeFromProject: vi.fn(),
   emitTypingStart: vi.fn(),
   emitTypingStop: vi.fn(),
-  emitPresenceUpdate: vi.fn(),
+  viewTask: vi.fn(),
+  leaveTask: vi.fn(),
 }));

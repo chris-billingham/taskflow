@@ -9,6 +9,7 @@ import {
   type MentionMember,
   type MentionQuery,
 } from '@/utils/mentions';
+import { useTypingSignal } from '@/hooks/useTypingSignal';
 
 interface CommentEditorProps {
   onSubmit: (content: string, files: File[]) => Promise<void>;
@@ -20,6 +21,8 @@ interface CommentEditorProps {
   showAttachments?: boolean;
   /** Enables @mention autocomplete against this project's members. */
   projectId?: string;
+  /** Tells others with this task open that you're typing. */
+  typingTaskId?: string;
 }
 
 export function CommentEditor({
@@ -31,7 +34,9 @@ export function CommentEditor({
   autoFocus = false,
   showAttachments = false,
   projectId,
+  typingTaskId,
 }: CommentEditorProps) {
+  const { typing, stop: stopTyping } = useTypingSignal(typingTaskId);
   const [content, setContent] = useState(initialContent);
   const [submitting, setSubmitting] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -81,6 +86,7 @@ export function CommentEditor({
     if (!trimmed || submitting) return;
 
     setSubmitting(true);
+    stopTyping();
     try {
       await onSubmit(trimmed, pendingFiles);
       setContent('');
@@ -158,12 +164,17 @@ export function CommentEditor({
           onChange={(e) => {
             setContent(e.target.value);
             syncMention(e.target.value, e.target.selectionStart ?? e.target.value.length);
+            if (e.target.value) typing();
+            else stopTyping();
           }}
           onClick={(e) => {
             const el = e.currentTarget;
             syncMention(el.value, el.selectionStart ?? el.value.length);
           }}
-          onBlur={() => setMention(null)}
+          onBlur={() => {
+            setMention(null);
+            stopTyping();
+          }}
           onKeyDown={handleKeyDown}
           autoFocus={autoFocus}
           disabled={submitting}

@@ -75,7 +75,7 @@ You get a comment notification when someone comments on a task you created, are 
 
 Changes to tasks, sections, comments and projects appear for everyone else viewing them, without a reload, including when someone reorders tasks or sections. A project shared with you appears in your sidebar straight away. If your connection drops, the app catches up when it reconnects.
 
-Taskflow doesn't show who else is online or viewing a project, and there are no typing indicators.
+When someone else has the same task open, the top of the task panel shows who ("Sam is here too"), and "Sam is typing" appears under the comment box while they write a comment.
 
 ## Activity Log
 

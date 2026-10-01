@@ -6,7 +6,6 @@ vi.mock('../../config/database.js', () => ({
     workspaceMember: { findMany: vi.fn(async () => [{ workspaceId: 'ws-1' }]) },
   },
 }));
-vi.mock('../../websocket/presence.js', () => ({ updatePresence: vi.fn(), removePresence: vi.fn() }));
 
 const socket = {
   rooms: new Set(['sock-id', 'user:u1', 'project:p-kept', 'project:p-lost', 'workspace:ws-old']),

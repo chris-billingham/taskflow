@@ -3,6 +3,7 @@ import { useComments, useCommentActions } from '@/queries/comments';
 import { useAuthStore } from '@/stores/authStore';
 import { CommentEditor } from './CommentEditor';
 import { CommentItem } from './CommentItem';
+import { TypingIndicator } from '@/components/ui/TypingIndicator';
 import api from '@/services/api';
 
 interface CommentListProps {
@@ -34,6 +35,7 @@ export function CommentList({ taskId, projectId }: CommentListProps) {
       <div className="mb-4">
         <CommentEditor
           projectId={projectId}
+          typingTaskId={taskId}
           onSubmit={async (content, files) => {
             const comment = await createComment(content);
             if (files.length > 0) {
@@ -50,6 +52,7 @@ export function CommentList({ taskId, projectId }: CommentListProps) {
           }}
           showAttachments
         />
+        <TypingIndicator taskId={taskId} />
       </div>
 
       {/* Loading state */}

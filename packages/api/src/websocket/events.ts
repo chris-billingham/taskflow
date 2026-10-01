@@ -21,12 +21,15 @@ export const WS_EVENTS = {
   COMMENT_CREATED: 'comment:created',
   COMMENT_UPDATED: 'comment:updated',
   COMMENT_DELETED: 'comment:deleted',
-  PRESENCE_UPDATED: 'presence:updated',
+  // Who has a task open: the panel sends task:view / task:leave, and
+  // everyone in the task's room gets task:viewers.
+  TASK_VIEW: 'task:view',
+  TASK_LEAVE: 'task:leave',
+  TASK_VIEWERS: 'task:viewers',
   TYPING_START: 'typing:start',
   TYPING_STOP: 'typing:stop',
   SUBSCRIBE_PROJECT: 'subscribe:project',
   UNSUBSCRIBE_PROJECT: 'unsubscribe:project',
-  PRESENCE_UPDATE: 'presence:update',
   // Server → client: this socket has joined every room it can currently read,
   // so the client may now reconcile anything broadcast before the join landed.
   // The join is asynchronous, so `connect` alone is too early to be that signal.

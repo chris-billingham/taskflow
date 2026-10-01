@@ -5,8 +5,8 @@ import {
   hasProjectAccess,
   hasWorkspaceAccess,
   projectAccessWhere,
+  requireTaskAccess,
 } from '../services/access.js';
-import { updatePresence, removePresence } from './presence.js';
 import { WS_EVENTS, getIO } from './events.js';
 
 type AuthSocket = Socket & { data: { user: TokenPayload } };
@@ -35,6 +35,33 @@ async function accessibleRooms(userId: string): Promise<string[]> {
 }
 
 const isScopedRoom = (room: string) => room.startsWith('project:') || room.startsWith('workspace:');
+const taskRoom = (taskId: string) => `task:${taskId}`;
+
+async function canSeeTask(taskId: string, userId: string) {
+  try {
+    await requireTaskAccess(taskId, userId, 'VIEW');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Tell everyone with a task open who else has it open. Worked out from the
+ * sockets in the task's room, so it holds across API instances (Redis
+ * adapter) and needs no presence state of its own.
+ */
+async function broadcastViewers(taskId: string) {
+  const io = getIO();
+  if (!io) return;
+  const sockets = await io.in(taskRoom(taskId)).fetchSockets();
+  const users = new Map<string, { id: string; name: string }>();
+  for (const s of sockets) {
+    const u = s.data.user as TokenPayload | undefined;
+    if (u) users.set(u.id, { id: u.id, name: u.name });
+  }
+  io.to(taskRoom(taskId)).emit(WS_EVENTS.TASK_VIEWERS, { taskId, users: [...users.values()] });
+}
 
 /**
  * Bring a user's open sockets in line with what they may read now: join rooms
@@ -51,6 +78,14 @@ export async function refreshUserRooms(userId: string): Promise<void> {
     const stale = [...socket.rooms].filter((room) => isScopedRoom(room) && !allowed.has(room));
     for (const room of stale) socket.leave(room);
     socket.join([...allowed]);
+    // Open tasks they can no longer see: stop showing them as a viewer.
+    for (const room of [...socket.rooms].filter((r) => r.startsWith('task:'))) {
+      const taskId = room.slice('task:'.length);
+      if (!(await canSeeTask(taskId, userId))) {
+        socket.leave(room);
+        void broadcastViewers(taskId);
+      }
+    }
   }
 }
 
@@ -115,42 +150,50 @@ export function registerHandlers(socket: AuthSocket): void {
     socket.leave(`project:${data.projectId}`);
   });
 
-  socket.on(
-    WS_EVENTS.PRESENCE_UPDATE,
-    (data: { workspaceId: string; taskId?: string; projectId?: string }) => {
-      if (!data.workspaceId) return;
-      void (async () => {
-        if (!(await hasWorkspaceAccess(data.workspaceId, user.id, { includeGuests: false }))) return;
-        updatePresence(socket.id, data.workspaceId, {
-          userId: user.id,
-          userName: user.name,
-          taskId: data.taskId,
-          projectId: data.projectId,
-        });
-      })().catch(() => {
+  // Who has a task open: the task panel joins its room while it's showing.
+  socket.on(WS_EVENTS.TASK_VIEW, (data: { taskId: string }) => {
+    if (!data?.taskId || typeof data.taskId !== 'string') return;
+    void (async () => {
+      if (!(await canSeeTask(data.taskId, user.id))) return;
+      await socket.join(taskRoom(data.taskId));
+      await broadcastViewers(data.taskId);
+    })().catch(() => {
+      /* ignore */
+    });
+  });
+
+  socket.on(WS_EVENTS.TASK_LEAVE, (data: { taskId: string }) => {
+    if (!data?.taskId || typeof data.taskId !== 'string') return;
+    void Promise.resolve(socket.leave(taskRoom(data.taskId)))
+      .then(() => broadcastViewers(data.taskId))
+      .catch(() => {
         /* ignore */
       });
-    },
-  );
+  });
 
-  socket.on(WS_EVENTS.TYPING_START, (data: { taskId: string; projectId: string }) => {
-    if (!socket.rooms.has(`project:${data.projectId}`)) return;
-    socket.to(`project:${data.projectId}`).emit(WS_EVENTS.TYPING_START, {
+  // Typing goes only to the others with the same task open.
+  socket.on(WS_EVENTS.TYPING_START, (data: { taskId: string }) => {
+    if (typeof data?.taskId !== 'string' || !socket.rooms.has(taskRoom(data.taskId))) return;
+    socket.to(taskRoom(data.taskId)).emit(WS_EVENTS.TYPING_START, {
       userId: user.id,
       userName: user.name,
       taskId: data.taskId,
     });
   });
 
-  socket.on(WS_EVENTS.TYPING_STOP, (data: { taskId: string; projectId: string }) => {
-    if (!socket.rooms.has(`project:${data.projectId}`)) return;
-    socket.to(`project:${data.projectId}`).emit(WS_EVENTS.TYPING_STOP, {
+  socket.on(WS_EVENTS.TYPING_STOP, (data: { taskId: string }) => {
+    if (typeof data?.taskId !== 'string' || !socket.rooms.has(taskRoom(data.taskId))) return;
+    socket.to(taskRoom(data.taskId)).emit(WS_EVENTS.TYPING_STOP, {
       userId: user.id,
       taskId: data.taskId,
     });
   });
 
-  socket.on('disconnect', () => {
-    removePresence(socket.id);
+  // A closed tab or lost connection leaves its open tasks.
+  socket.on('disconnecting', () => {
+    const openTasks = [...socket.rooms].filter((r) => r.startsWith('task:')).map((r) => r.slice('task:'.length));
+    socket.once('disconnect', () => {
+      for (const taskId of openTasks) void broadcastViewers(taskId);
+    });
   });
 }

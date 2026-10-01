@@ -146,18 +146,20 @@ export function unsubscribeFromProject(projectId: string): void {
   socket?.emit('unsubscribe:project', { projectId });
 }
 
-export function emitTypingStart(taskId: string, projectId: string): void {
-  socket?.emit('typing:start', { taskId, projectId });
+/** Typing goes to the others who have this task open. */
+export function emitTypingStart(taskId: string): void {
+  socket?.emit('typing:start', { taskId });
 }
 
-export function emitTypingStop(taskId: string, projectId: string): void {
-  socket?.emit('typing:stop', { taskId, projectId });
+export function emitTypingStop(taskId: string): void {
+  socket?.emit('typing:stop', { taskId });
 }
 
-export function emitPresenceUpdate(data: {
-  workspaceId: string;
-  taskId?: string;
-  projectId?: string;
-}): void {
-  socket?.emit('presence:update', data);
+/** This task is open here; the server tells everyone with it open who's viewing. */
+export function viewTask(taskId: string): void {
+  socket?.emit('task:view', { taskId });
+}
+
+export function leaveTask(taskId: string): void {
+  socket?.emit('task:leave', { taskId });
 }

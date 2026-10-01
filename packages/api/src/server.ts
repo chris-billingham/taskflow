@@ -3,7 +3,6 @@ import { buildApp } from './app.js';
 import { closeRedis } from './config/redis.js';
 import { initializeWorkers } from './worker.js';
 import { createWebSocketServer } from './websocket/server.js';
-import { stopPresenceCleanup } from './websocket/presence.js';
 import { ensureBucketExists } from './config/storage.js';
 import { initMailer } from './services/mailService.js';
 import { syncAdminsFromEnv } from './services/adminService.js';
@@ -31,7 +30,6 @@ async function shutdown() {
   forceExit.unref();
 
   try {
-    stopPresenceCleanup();
     if (io) await new Promise<void>((resolve) => io!.close(() => resolve()));
     if (workersShutdown) await workersShutdown();
     await server.close();

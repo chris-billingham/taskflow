@@ -21,6 +21,7 @@ export function TypingIndicator({ taskId }: TypingIndicatorProps) {
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
+    const pending = timers.current;
 
     const onTypingStart = ({
       userId,
@@ -80,8 +81,8 @@ export function TypingIndicator({ taskId }: TypingIndicatorProps) {
     return () => {
       socket.off('typing:start', onTypingStart);
       socket.off('typing:stop', onTypingStop);
-      for (const timer of timers.current.values()) clearTimeout(timer);
-      timers.current.clear();
+      for (const timer of pending.values()) clearTimeout(timer);
+      pending.clear();
     };
   }, [taskId, status]);
 
@@ -96,12 +97,12 @@ export function TypingIndicator({ taskId }: TypingIndicatorProps) {
         : `${users.length} people are typing`;
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 px-1 py-0.5">
+    <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 px-1 py-0.5" role="status">
       <span>{label}</span>
-      <span className="flex gap-0.5">
-        <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />
-        <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce [animation-delay:150ms]" />
-        <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce [animation-delay:300ms]" />
+      <span className="flex gap-0.5" aria-hidden="true">
+        <span className="w-1 h-1 rounded-full bg-gray-400 motion-safe:animate-bounce [animation-delay:0ms]" />
+        <span className="w-1 h-1 rounded-full bg-gray-400 motion-safe:animate-bounce [animation-delay:150ms]" />
+        <span className="w-1 h-1 rounded-full bg-gray-400 motion-safe:animate-bounce [animation-delay:300ms]" />
       </span>
     </div>
   );

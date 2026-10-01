@@ -8,11 +8,6 @@ vi.mock('../../config/database.js', () => ({
   },
 }));
 
-// presence.ts starts a module-level cleanup interval — keep it out of unit tests.
-vi.mock('../../websocket/presence.js', () => ({
-  updatePresence: vi.fn(),
-  removePresence: vi.fn(),
-}));
 
 import { prisma } from '../../config/database.js';
 import { registerHandlers } from '../../websocket/handlers.js';
@@ -251,16 +246,17 @@ describe('unsubscribe:project', () => {
 });
 
 describe('typing events', () => {
-  it('drops typing events for rooms the socket has not joined', () => {
+  it('drops typing for a task the socket does not have open', () => {
     const socket = register();
-    socket.handlers.get('typing:start')!({ taskId: 't1', projectId: 'p1' });
+    socket.rooms.add('project:p1');
+    socket.handlers.get('typing:start')!({ taskId: 't1' });
     expect(socket.to).not.toHaveBeenCalled();
   });
 
-  it('relays typing events for joined rooms', () => {
+  it('relays typing only to the others with the task open', () => {
     const socket = register();
-    socket.rooms.add('project:p1');
-    socket.handlers.get('typing:start')!({ taskId: 't1', projectId: 'p1' });
-    expect(socket.to).toHaveBeenCalledWith('project:p1');
+    socket.rooms.add('task:t1');
+    socket.handlers.get('typing:start')!({ taskId: 't1' });
+    expect(socket.to).toHaveBeenCalledWith('task:t1');
   });
 });
