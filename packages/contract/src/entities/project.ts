@@ -10,6 +10,7 @@ export const sectionSchema = z.object({
   projectId: id,
   sortOrder: z.number().int(),
   isCollapsed: z.boolean(),
+  version: z.number().int(),
   createdAt: instant,
   updatedAt: instant,
   /** Incomplete tasks in the section, where the endpoint counts them. */
@@ -31,6 +32,7 @@ export const projectFieldsSchema = z.object({
   isArchived: z.boolean(),
   isInbox: z.boolean(),
   sortOrder: z.number().int(),
+  version: z.number().int(),
   createdAt: instant,
   updatedAt: instant,
 });

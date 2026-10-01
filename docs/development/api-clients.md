@@ -42,6 +42,29 @@ Authorization: Bearer tfp_…
 - Tokens can expire; an expired or revoked one gets 401.
 - Access tokens don't authenticate the websocket. Use a session's access token for realtime.
 
+## Offline sync
+
+`GET /api/v1/sync` returns projects, sections, tasks (with `labelIds`) and labels. Call it without `since` the first time, then with the `cursor` it returned:
+
+```http
+GET /api/v1/sync?since=81234
+```
+
+- **Upsert** every row by id. The same row may come twice; that's normal.
+- **Delete** the ids in `deleted.projects`, `deleted.sections`, `deleted.tasks` and `deleted.labels`.
+- **Prune by access:** `projectIds` lists every project you can see now. Drop projects that aren't in it, with their sections and tasks (keep tasks assigned to you, which you can always see).
+- A task with `deletedAt` set is in the trash.
+- **`reset: true`** means your cursor is older than the deletions the server still remembers (90 days). Drop everything, then apply the response, which is complete.
+- A full sync leaves out tasks completed more than 30 days ago. Later deltas include any task that changes.
+- Store the new `cursor` only after you've applied the whole response.
+
+Sync while the app is open after each realtime event batch or every few minutes, and when it comes back online.
+
+### Editing offline
+
+- **Create with your own id.** `POST /tasks`, `/projects`, `/projects/:id/sections` and `/labels` accept an `id` (16–64 characters of letters, digits, `-` and `_`, e.g. a UUID). Retrying the same create returns the first one rather than a duplicate. An id someone else already used is a 409.
+- **Say which version you edited.** Every project, section, task and label has a `version` that goes up with each change. Send it back as `ifVersion` on `PATCH`. If someone changed the row since, you get **409 `VERSION_CONFLICT`** with the row as it is now in `current`: merge, then retry with its `version`. Leave `ifVersion` out to overwrite regardless.
+
 ## Realtime
 
 Socket.IO at `/socket.io`, with `auth: { token: <accessToken> }`. The server disconnects the socket when that token expires and when its session is signed out; reconnect with a fresh token. See [architecture.md](architecture.md#real-time) for rooms and events.

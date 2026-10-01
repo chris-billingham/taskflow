@@ -2,6 +2,7 @@
 import { prisma } from '../../config/database.js';
 import type { Prisma } from '@prisma/client';
 import { NotFoundError } from '../../errors/index.js';
+import { assertVersion, createOnce } from '../versioning.js';
 import { requireTaskAccess, requireProjectAccess, taskAccessWhere } from '../access.js';
 import type { CreateTaskInput, UpdateTaskInput } from '@taskflow/contract';
 import { parseQuickAdd } from '../../utils/quickAddParser.js';
@@ -43,8 +44,15 @@ export async function createTask(data: CreateTaskInput, userId: string) {
     _max: { sortOrder: true },
   });
 
-  const task = await prisma.task.create({
+  // With a client id, a retry of a create that already landed gets the
+  // task back instead of a duplicate.
+  const { row: task, created } = await createOnce(
+    data.id,
+    () => prisma.task.findFirst({ where: { id: data.id, deletedAt: undefined }, include: taskInclude }),
+    (row) => row.creatorId === userId && row.projectId === data.projectId,
+    () => prisma.task.create({
     data: {
+      ...(data.id && { id: data.id }),
       content: data.content,
       description: data.description,
       projectId: data.projectId,
@@ -67,7 +75,9 @@ export async function createTask(data: CreateTaskInput, userId: string) {
         : undefined,
     },
     include: taskInclude,
-  });
+  }),
+  );
+  if (!created) return task;
 
   runSideEffect('logActivity:CREATED', () => logActivity({
     action: 'CREATED',
@@ -95,7 +105,7 @@ export async function updateTask(
 ) {
   const oldTask = await requireTaskAccess(id, userId, 'EDIT');
 
-  const { labelIds, ...updateData } = data;
+  const { labelIds, ifVersion, ...updateData } = data;
 
   if (labelIds !== undefined && labelIds.length > 0) {
     await assertLabelsInScope(labelIds, await projectLabelScope(oldTask.projectId));
@@ -122,6 +132,10 @@ export async function updateTask(
   // Replace labels and update the task in one transaction so a failure can't
   // leave the task with its labels wiped and nothing put back.
   const task = await prisma.$transaction(async (tx) => {
+    // Before anything else: replacing labels bumps the version too.
+    await assertVersion(tx, 'tasks', id, ifVersion, () =>
+      tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude }),
+    );
     if (labelIds !== undefined) {
       await tx.taskLabel.deleteMany({ where: { taskId: id } });
       if (labelIds.length > 0) {

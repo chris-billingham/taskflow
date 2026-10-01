@@ -1,9 +1,13 @@
-import type { Label } from '@prisma/client';
+import type { Label as LabelRow } from '@prisma/client';
+
+/** A label as queries return it (the sync stamp is omitted globally). */
+type Label = Omit<LabelRow, 'syncTxid'>;
 import { prisma } from '../config/database.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../errors/index.js';
 import type { CreateLabelInput, UpdateLabelInput } from '@taskflow/contract';
 import { requireProjectAccess, requireWorkspaceRole } from './access.js';
 import { projectLabelScope, scopeOfProject, scopeWhere, type LabelScope } from './labelScope.js';
+import { assertVersion, createOnce } from './versioning.js';
 
 // Labels live in a space (yours, or a workspace's). Anyone in a workspace
 // except guests can add, rename and delete its team labels; favourites and
@@ -12,13 +16,13 @@ import { projectLabelScope, scopeOfProject, scopeWhere, type LabelScope } from '
 /** Sorts after anything a person has placed themselves, in the default order. */
 const UNPLACED = 1_000_000;
 
-const settingsFor = (userId: string) => ({
+export const settingsFor = (userId: string) => ({
   userSettings: { where: { userId }, select: { isFavorite: true, sortOrder: true } },
 });
 
 type LabelWithSettings = Label & { userSettings?: { isFavorite: boolean; sortOrder: number | null }[] };
 
-function asSeenBy(label: LabelWithSettings) {
+export function asSeenBy(label: LabelWithSettings) {
   const { userSettings, ...rest } = label;
   const own = userSettings?.[0];
   return {
@@ -94,18 +98,32 @@ async function scopeForNewLabel(data: CreateLabelInput, userId: string): Promise
 
 export async function createLabel(data: CreateLabelInput, userId: string) {
   const scope = await scopeForNewLabel(data, userId);
+  const sameSpace = (row: Label) =>
+    'workspaceId' in scope ? row.workspaceId === scope.workspaceId : row.userId === scope.userId;
+  // A retried create comes back before the name check would refuse it.
+  if (data.id) {
+    const earlier = await prisma.label.findUnique({ where: { id: data.id }, include: settingsFor(userId) });
+    if (earlier && sameSpace(earlier)) return asSeenBy(earlier);
+  }
   await assertNameFree(scope, data.name);
 
   const maxSort = await prisma.label.aggregate({ where: scopeWhere(scope), _max: { sortOrder: true } });
-  const label = await prisma.label.create({
+  const { row: label } = await createOnce(
+    data.id,
+    () => prisma.label.findUnique({ where: { id: data.id }, include: settingsFor(userId) }),
+    sameSpace,
+    () =>
+      prisma.label.create({
     data: {
+      ...(data.id && { id: data.id }),
       name: data.name,
       color: data.color ?? '#6B7280',
       sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
       ...scope,
     },
     include: settingsFor(userId),
-  });
+  }),
+  );
   return asSeenBy(label);
 }
 
@@ -135,7 +153,7 @@ async function findLabel(id: string) {
 
 export async function updateLabel(id: string, data: UpdateLabelInput, userId: string) {
   const label = await findLabel(id);
-  const { isFavorite, sortOrder, ...shared } = data;
+  const { isFavorite, sortOrder, ifVersion, ...shared } = data;
   const changesShared = Object.values(shared).some((v) => v !== undefined);
 
   if (!(await canSee(label, userId))) throw new ForbiddenError('You do not have access to this label');
@@ -155,7 +173,12 @@ export async function updateLabel(id: string, data: UpdateLabelInput, userId: st
   }
 
   const updated = changesShared
-    ? await prisma.label.update({ where: { id }, data: shared, include: settingsFor(userId) })
+    ? await prisma.$transaction(async (tx) => {
+        await assertVersion(tx, 'labels', id, ifVersion, async () =>
+          asSeenBy(await tx.label.findUniqueOrThrow({ where: { id }, include: settingsFor(userId) })),
+        );
+        return tx.label.update({ where: { id }, data: shared, include: settingsFor(userId) });
+      })
     : await prisma.label.findUniqueOrThrow({ where: { id }, include: settingsFor(userId) });
   return asSeenBy(updated);
 }

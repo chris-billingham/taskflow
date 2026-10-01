@@ -14,6 +14,7 @@ export const labelSchema = z.object({
   workspaceId: id.nullable(),
   isFavorite: z.boolean(),
   sortOrder: z.number().int(),
+  version: z.number().int(),
   createdAt: instant,
   updatedAt: instant,
 });

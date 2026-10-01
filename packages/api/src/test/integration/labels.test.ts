@@ -24,6 +24,7 @@ const ROW = {
   color: '#6B7280',
   userId: USER.id,
   workspaceId: null,
+  version: 1,
   isFavorite: false,
   sortOrder: 0,
   createdAt: new Date('2026-09-01T09:00:00.000Z'),

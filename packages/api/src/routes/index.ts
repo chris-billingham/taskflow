@@ -18,6 +18,7 @@ import { templateRoutes } from './templates.js';
 import { attachmentRoutes } from './attachments.js';
 import { adminRoutes } from './admin.js';
 import { sessionRoutes } from './sessions.js';
+import { syncRoutes } from './sync.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
@@ -39,4 +40,5 @@ export async function registerRoutes(app: FastifyInstance) {
   app.register(templateRoutes, { prefix: '/api/v1/templates' });
   app.register(attachmentRoutes, { prefix: '/api/v1' });
   app.register(sessionRoutes, { prefix: '/api/v1' });
+  app.register(syncRoutes, { prefix: '/api/v1/sync' });
 }

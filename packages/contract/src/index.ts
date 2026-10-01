@@ -14,6 +14,7 @@ export * from './entities/notification.js';
 export * from './entities/project.js';
 export * from './entities/reminder.js';
 export * from './entities/search.js';
+export * from './entities/sync.js';
 export * from './entities/task.js';
 export * from './entities/template.js';
 export * from './entities/user.js';

@@ -3,6 +3,7 @@ import { createBullMQConnection } from '../config/redis.js';
 import { prisma } from '../config/database.js';
 import { sweepOrphanedAttachments } from '../services/fileService.js';
 import { purgeExpiredTrash } from '../services/taskService.js';
+import { pruneTombstones } from '../services/deltaSync.js';
 import { logger } from '../config/logger.js';
 
 const QUEUE_NAME = 'maintenance';
@@ -39,9 +40,12 @@ export function startMaintenanceWorker() {
       // Tasks that have sat in the trash for 30 days are deleted for good.
       const purged = await purgeExpiredTrash();
 
-      if (tokens.count || invites.count || swept || purged) {
+      // Sync tombstones older than 90 days; clients older than that resync.
+      const tombstones = await pruneTombstones();
+
+      if (tokens.count || invites.count || swept || purged || tombstones) {
         logger.info(
-          { refreshTokens: tokens.count, invites: invites.count, orphanedAttachments: swept, trashedTasks: purged },
+          { refreshTokens: tokens.count, invites: invites.count, orphanedAttachments: swept, trashedTasks: purged, tombstones },
           'maintenance pruned expired rows',
         );
       }

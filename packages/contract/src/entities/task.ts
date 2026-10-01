@@ -35,6 +35,8 @@ export const taskFieldsSchema = z.object({
   isCompleted: z.boolean(),
   completedAt: instant.nullable(),
   sortOrder: z.number().int(),
+  /** Counts changes; send it back as ifVersion. */
+  version: z.number().int(),
   createdAt: instant,
   updatedAt: instant,
 });

@@ -17,6 +17,7 @@ import {
 } from './syncService.js';
 import { logFailure } from '../config/logger.js';
 import { remapTaskLabels, scopeOfProject } from './labelScope.js';
+import { assertVersion, createOnce } from './versioning.js';
 import {
   projectSettingsInclude,
   sectionSettingsInclude,
@@ -128,8 +129,24 @@ export async function createProject(data: CreateProjectInput, userId: string) {
     _max: { sortOrder: true },
   });
 
-  const project = await prisma.project.create({
+  const createInclude = {
+    ...projectSettingsInclude(userId),
+    sections: { include: sectionSettingsInclude(userId) },
+    _count: {
+      select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
+    },
+    children: {
+      select: { id: true },
+    },
+  };
+  const { row: project, created } = await createOnce(
+    data.id,
+    () => prisma.project.findUnique({ where: { id: data.id }, include: createInclude }),
+    (row) => row.ownerId === userId,
+    () =>
+      prisma.project.create({
     data: {
+      ...(data.id && { id: data.id }),
       name: data.name,
       color: data.color ?? '#3B82F6',
       ownerId: userId,
@@ -139,17 +156,10 @@ export async function createProject(data: CreateProjectInput, userId: string) {
       viewStyle: data.viewStyle ?? 'LIST',
       sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
     },
-    include: {
-      ...projectSettingsInclude(userId),
-      sections: { include: sectionSettingsInclude(userId) },
-      _count: {
-        select: { tasks: { where: { isCompleted: false, deletedAt: null } } },
-      },
-      children: {
-        select: { id: true },
-      },
-    },
-  });
+    include: createInclude,
+  }),
+  );
+  if (!created) return withProjectSettings(project);
 
   logActivity({
     action: 'CREATED',
@@ -171,7 +181,7 @@ export async function updateProject(
 ) {
   // Favourite and order are the caller's own arrangement: anyone who can see
   // the project may change them. Everything else changes it for everyone.
-  const { isFavorite, sortOrder, ...shared } = data;
+  const { isFavorite, sortOrder, ifVersion, ...shared } = data;
   const changesShared = Object.values(shared).some((v) => v !== undefined);
 
   const oldProject = await requireProjectAccess(id, userId, changesShared ? 'ADMIN' : 'VIEW');
@@ -201,7 +211,12 @@ export async function updateProject(
     return withProjectSettings(await prisma.project.findUniqueOrThrow({ where: { id }, include }));
   }
 
-  const project = await prisma.project.update({ where: { id }, data: shared, include });
+  const project = await prisma.$transaction(async (tx) => {
+    await assertVersion(tx, 'projects', id, ifVersion, async () =>
+      withProjectSettings(await tx.project.findUniqueOrThrow({ where: { id }, include })),
+    );
+    return tx.project.update({ where: { id }, data: shared, include });
+  });
 
   logActivity({
     action: 'UPDATED',

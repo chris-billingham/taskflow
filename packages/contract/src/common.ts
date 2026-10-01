@@ -66,6 +66,22 @@ export const emailFrequencySchema = z.enum(['immediate', 'daily', 'weekly']);
 
 export const id = z.string().min(1);
 
+/**
+ * An id chosen by the client for something it's creating, so an offline
+ * create can be retried without making a duplicate: sending the same id
+ * twice returns the first one. Use a UUID or cuid.
+ */
+export const clientId = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{16,64}$/, 'Must be 16-64 letters, digits, - or _ (a UUID or cuid)');
+
+/**
+ * The version of the row the client last saw. If it has changed since, the
+ * update is refused with 409 (and the current row) instead of overwriting
+ * someone else's edit. Omit it to update regardless.
+ */
+export const ifVersion = z.number().int().min(1).optional();
+
 /** Free-form JSON stored as-is. */
 export const json = z.unknown();
 

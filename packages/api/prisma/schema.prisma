@@ -265,6 +265,10 @@ model WorkspaceMember {
   @@unique([workspaceId, userId])
   @@index([workspaceId])
   @@index([userId])
+  // The transaction that last wrote the row (trigger); what /sync filters on.
+  syncTxid  BigInt @default(dbgenerated("txid_current()"))
+
+  @@index([syncTxid])
   @@map("workspace_members")
 }
 
@@ -316,6 +320,13 @@ model Project {
   @@index([ownerId])
   @@index([workspaceId])
   @@index([parentId])
+  // Bumped on every change (trigger). Clients send it back as ifVersion so a
+  // stale edit is refused instead of overwriting a newer one.
+  version   Int    @default(1)
+  // The transaction that last wrote the row (trigger); what /sync filters on.
+  syncTxid  BigInt @default(dbgenerated("txid_current()"))
+
+  @@index([syncTxid])
   @@map("projects")
 }
 
@@ -334,6 +345,10 @@ model ProjectMember {
   @@unique([projectId, userId])
   @@index([projectId])
   @@index([userId])
+  // The transaction that last wrote the row (trigger); what /sync filters on.
+  syncTxid  BigInt @default(dbgenerated("txid_current()"))
+
+  @@index([syncTxid])
   @@map("project_members")
 }
 
@@ -352,6 +367,13 @@ model Section {
   userSettings SectionUserSetting[]
 
   @@index([projectId])
+  // Bumped on every change (trigger). Clients send it back as ifVersion so a
+  // stale edit is refused instead of overwriting a newer one.
+  version   Int    @default(1)
+  // The transaction that last wrote the row (trigger); what /sync filters on.
+  syncTxid  BigInt @default(dbgenerated("txid_current()"))
+
+  @@index([syncTxid])
   @@map("sections")
 }
 
@@ -373,6 +395,10 @@ model ProjectUserSetting {
 
   @@id([userId, projectId])
   @@index([projectId])
+  // The transaction that last wrote the row (trigger); what /sync filters on.
+  syncTxid  BigInt @default(dbgenerated("txid_current()"))
+
+  @@index([syncTxid])
   @@map("project_user_settings")
 }
 
@@ -388,6 +414,10 @@ model SectionUserSetting {
 
   @@id([userId, sectionId])
   @@index([sectionId])
+  // The transaction that last wrote the row (trigger); what /sync filters on.
+  syncTxid  BigInt @default(dbgenerated("txid_current()"))
+
+  @@index([syncTxid])
   @@map("section_user_settings")
 }
 
@@ -444,6 +474,13 @@ model Task {
   @@index([isCompleted])
   @@index([priority])
   @@index([deletedAt])
+  // Bumped on every change (trigger). Clients send it back as ifVersion so a
+  // stale edit is refused instead of overwriting a newer one.
+  version   Int    @default(1)
+  // The transaction that last wrote the row (trigger); what /sync filters on.
+  syncTxid  BigInt @default(dbgenerated("txid_current()"))
+
+  @@index([syncTxid])
   @@map("tasks")
 }
 
@@ -473,6 +510,13 @@ model Label {
   @@unique([workspaceId, name])
   @@index([userId])
   @@index([workspaceId])
+  // Bumped on every change (trigger). Clients send it back as ifVersion so a
+  // stale edit is refused instead of overwriting a newer one.
+  version   Int    @default(1)
+  // The transaction that last wrote the row (trigger); what /sync filters on.
+  syncTxid  BigInt @default(dbgenerated("txid_current()"))
+
+  @@index([syncTxid])
   @@map("labels")
 }
 
@@ -489,6 +533,10 @@ model LabelUserSetting {
 
   @@id([userId, labelId])
   @@index([labelId])
+  // The transaction that last wrote the row (trigger); what /sync filters on.
+  syncTxid  BigInt @default(dbgenerated("txid_current()"))
+
+  @@index([syncTxid])
   @@map("label_user_settings")
 }
 
@@ -697,6 +745,22 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// ─── SyncTombstone ─────────────────────────────────────────────────────────
+
+// A deleted project, section, task or label, written by a trigger so /sync can
+// tell clients to drop it. Pruned after 90 days; a client whose cursor is older
+// than the pruning floor does a full resync.
+model SyncTombstone {
+  id         BigInt   @id @default(autoincrement())
+  entityType String
+  entityId   String
+  syncTxid   BigInt   @default(dbgenerated("txid_current()"))
+  deletedAt  DateTime @default(now())
+
+  @@index([syncTxid])
+  @@map("sync_tombstones")
 }
 
 // ─── InstanceSetting ───────────────────────────────────────────────────────

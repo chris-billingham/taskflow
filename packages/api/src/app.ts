@@ -16,6 +16,7 @@ import { runWithRequestContext } from './utils/requestContext.js';
 import { getRedis } from './config/redis.js';
 import { prisma } from './config/database.js';
 import { Prisma } from '@prisma/client';
+import { VersionConflictError } from './errors/index.js';
 import { jsonSchemaTransform, validatorCompiler } from 'fastify-type-provider-zod';
 import { createContractSerializer } from './utils/contractSerializer.js';
 import { healthSchema } from '@taskflow/contract';
@@ -153,6 +154,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
         success: false,
         error: err.code ?? 'ERROR',
         message: err.message,
+        // A version conflict sends the row as it is now, for the client to merge.
+        ...(error instanceof VersionConflictError && { current: error.current }),
       });
     }
 

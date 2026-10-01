@@ -41,3 +41,15 @@ export class ConflictError extends AppError {
     super(message, 409, 'CONFLICT');
   }
 }
+
+/**
+ * The row changed since the client last saw it (its ifVersion is stale). The
+ * response carries the current row so the client can merge and retry.
+ */
+export class VersionConflictError extends AppError {
+  public readonly current: unknown;
+  constructor(current: unknown, message = 'This was changed by someone else since you loaded it') {
+    super(message, 409, 'VERSION_CONFLICT');
+    this.current = current;
+  }
+}

@@ -17,6 +17,20 @@ function createClient() {
   return new PrismaClient({
     // Prisma 7 talks to Postgres through the node-postgres driver.
     adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    // The sync stamp is a BigInt, which JSON can't carry: it stays out of every
+    // query (and so every response and broadcast) unless asked for, which only
+    // the sync service does.
+    omit: {
+      task: { syncTxid: true },
+      project: { syncTxid: true },
+      section: { syncTxid: true },
+      label: { syncTxid: true },
+      projectUserSetting: { syncTxid: true },
+      sectionUserSetting: { syncTxid: true },
+      labelUserSetting: { syncTxid: true },
+      projectMember: { syncTxid: true },
+      workspaceMember: { syncTxid: true },
+    },
     // Query logging includes BOUND PARAMETER VALUES (password hashes, token
     // hashes) in container logs — opt in explicitly when debugging.
     log:
@@ -35,7 +49,9 @@ function createClient() {
         async $allOperations({ operation, args, query }) {
           if (TASK_READS.has(operation)) {
             const withWhere = args as { where?: Record<string, unknown> };
-            if (withWhere.where?.deletedAt === undefined) {
+            // Mentioning deletedAt at all opts out, including `deletedAt:
+            // undefined`, which means "trashed or not".
+            if (!withWhere.where || !('deletedAt' in withWhere.where)) {
               withWhere.where = { ...withWhere.where, deletedAt: null };
             }
           }

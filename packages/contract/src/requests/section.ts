@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { clientId, ifVersion } from '../common.js';
 
 export const createSectionSchema = z.object({
+  id: clientId.optional(),
   name: z.string().min(1, 'Section name is required').max(200),
   projectId: z.string().min(1, 'Project ID is required'),
   sortOrder: z.number().int().optional(),
@@ -14,6 +16,7 @@ export const projectSectionsParamsSchema = z.object({
 });
 
 export const updateSectionSchema = z.object({
+  ifVersion,
   name: z.string().min(1, 'Section name is required').max(200).optional(),
   sortOrder: z.number().int().optional(),
   isCollapsed: z.boolean().optional(),

@@ -8,6 +8,7 @@ import {
   broadcastSectionDeleted,
   broadcastSectionsReordered,
 } from './syncService.js';
+import { assertVersion, createOnce } from './versioning.js';
 import { saveSectionSettings, sectionSettingsInclude, withSectionSettings } from './userSettings.js';
 
 async function requireSectionAccess(
@@ -55,17 +56,24 @@ export async function createSection(data: CreateSectionInput, userId: string) {
     _max: { sortOrder: true },
   });
 
-  const section = await prisma.section.create({
+  const { row: section, created } = await createOnce(
+    data.id,
+    () => prisma.section.findUnique({ where: { id: data.id }, include: sectionInclude(userId) }),
+    (row) => row.projectId === data.projectId,
+    () =>
+      prisma.section.create({
     data: {
+      ...(data.id && { id: data.id }),
       name: data.name,
       projectId: data.projectId,
       sortOrder: data.sortOrder ?? (maxSort._max.sortOrder ?? 0) + 1,
     },
     include: sectionInclude(userId),
-  });
+  }),
+  );
 
   const result = withSectionSettings(section);
-  broadcastSectionCreated(result);
+  if (created) broadcastSectionCreated(result);
 
   return result;
 }
@@ -77,7 +85,7 @@ export async function updateSection(
 ) {
   // Collapsing is the caller's own view of the section; renaming or moving
   // it changes it for everyone.
-  const { isCollapsed, ...shared } = data;
+  const { isCollapsed, ifVersion, ...shared } = data;
   const changesShared = Object.values(shared).some((v) => v !== undefined);
   await requireSectionAccess(id, userId, changesShared ? 'EDIT' : 'VIEW');
 
@@ -89,7 +97,12 @@ export async function updateSection(
   }
 
   const section = withSectionSettings(
-    await prisma.section.update({ where: { id }, data: shared, include: sectionInclude(userId) }),
+    await prisma.$transaction(async (tx) => {
+      await assertVersion(tx, 'sections', id, ifVersion, async () =>
+        withSectionSettings(await tx.section.findUniqueOrThrow({ where: { id }, include: sectionInclude(userId) })),
+      );
+      return tx.section.update({ where: { id }, data: shared, include: sectionInclude(userId) });
+    }),
   );
   broadcastSectionUpdated(section);
 

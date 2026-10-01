@@ -96,6 +96,16 @@ Socket.IO shares the API's HTTP server (path `/socket.io`). It uses the Redis ad
 - **Presence and typing:** an open task panel sends `task:view` / `task:leave` (`useTaskPresence`); the server, after a task access check, puts the socket in `task:<id>` and sends everyone there `task:viewers`, worked out from the sockets in the room (so it holds across API instances, with no presence state). `typing:start` / `typing:stop` go only to that room. Disconnecting leaves every task room.
 - **Notifications:** `createNotification` emits `notification:created` to the recipient, from the API or the worker, and the bell re-reads at once. A 5-minute poll only covers a missed event.
 
+### Delta sync
+
+Triggers (migration `20261002110000_delta_sync`) stamp `syncTxid = txid_current()` on every insert and update of projects, sections, tasks, labels, the per-user settings tables and memberships, bump `version` on the first four, and write `sync_tombstones` on delete. Adding or removing a task label touches the task. `syncTxid` is omitted from every Prisma query by default (it's a BigInt), so it never reaches a response or a socket.
+
+`GET /sync` (`services/deltaSync.ts`) runs in one REPEATABLE READ transaction and returns rows with `syncTxid >= since`. The new cursor is the snapshot's `xmin`, so a transaction that started earlier but commits later is still picked up next time. Projects that became visible since the cursor (a new project or workspace membership) are sent whole. The maintenance job prunes tombstones after 90 days and records the floor in `instance_settings.sync_floor`; an older cursor gets `reset: true`.
+
+Updates take an optional `ifVersion`: `assertVersion()` (`services/versioning.ts`) locks the row with `SELECT … FOR UPDATE` inside the update's transaction and throws `VersionConflictError` (409, with the current row) on a mismatch. Creates take an optional client id, handled idempotently by `createOnce()`.
+
+The trash extension in `config/database.ts` adds `deletedAt: null` to task reads unless the query's where has a `deletedAt` key; `deletedAt: undefined` means "trashed or not".
+
 ### Background jobs (BullMQ)
 
 Queues are defined in `src/jobs/` and started by `initializeWorkers()` in `src/worker.ts`:

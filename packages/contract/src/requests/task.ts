@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isSupportedRecurrence } from '../logic/recurrence.js';
-import { calendarDateInput, pageQuery } from '../common.js';
+import { calendarDateInput, clientId, ifVersion, pageQuery } from '../common.js';
 
 /** A recurrence rule the server can advance (see logic/recurrence.ts). */
 export const recurrenceRuleSchema = z
@@ -12,6 +12,7 @@ export const recurrenceRuleSchema = z
   );
 
 export const createTaskSchema = z.object({
+  id: clientId.optional(),
   content: z.string().min(1, 'Task content is required').max(500),
   description: z.string().max(10000).optional(),
   projectId: z.string().min(1, 'Project ID is required'),
@@ -29,6 +30,7 @@ export const createTaskSchema = z.object({
 });
 
 export const updateTaskSchema = z.object({
+  ifVersion,
   content: z.string().min(1, 'Task content is required').max(500).optional(),
   description: z.string().max(10000).nullable().optional(),
   sectionId: z.string().nullable().optional(),

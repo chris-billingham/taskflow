@@ -1,10 +1,12 @@
 import { z } from 'zod';
+import { clientId, ifVersion } from '../common.js';
 
 /**
  * Where the label goes: a workspace (a team label), the space of a project
  * (the label that project's tasks can use), or by default your own labels.
  */
 export const createLabelSchema = z.object({
+  id: clientId.optional(),
   name: z.string().min(1, 'Label name is required').max(100),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional(),
   workspaceId: z.string().min(1).optional(),
@@ -17,6 +19,7 @@ export const labelListQuery = z.object({
 });
 
 export const updateLabelSchema = z.object({
+  ifVersion,
   name: z.string().min(1, 'Label name is required').max(100).optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional(),
   isFavorite: z.boolean().optional(),

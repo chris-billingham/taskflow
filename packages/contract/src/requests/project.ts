@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { emailAddress } from '../common.js';
+import { clientId, emailAddress, ifVersion } from '../common.js';
 import { projectRoleSchema } from '../entities/project.js';
 
 export const createProjectSchema = z.object({
+  id: clientId.optional(),
   name: z.string().min(1, 'Project name is required').max(200),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional(),
   workspaceId: z.string().optional(),
@@ -12,6 +13,7 @@ export const createProjectSchema = z.object({
 });
 
 export const updateProjectSchema = z.object({
+  ifVersion,
   name: z.string().min(1, 'Project name is required').max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
   /** Nest under another project in the same workspace, or null for top level. */
