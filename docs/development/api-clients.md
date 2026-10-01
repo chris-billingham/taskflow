@@ -65,6 +65,8 @@ Sync while the app is open after each realtime event batch or every few minutes,
 - **Create with your own id.** `POST /tasks`, `/projects`, `/projects/:id/sections` and `/labels` accept an `id` (16–64 characters of letters, digits, `-` and `_`, e.g. a UUID). Retrying the same create returns the first one rather than a duplicate. An id someone else already used is a 409.
 - **Say which version you edited.** Every project, section, task and label has a `version` that goes up with each change. Send it back as `ifVersion` on `PATCH`. If someone changed the row since, you get **409 `VERSION_CONFLICT`** with the row as it is now in `current`: merge, then retry with its `version`. Leave `ifVersion` out to overwrite regardless.
 
+- **Reorder with a neighbour, not an index.** `POST /tasks/:id/position` with `{ "afterId": "…" }` (or `null` for first) puts one task after another in its list. Only that task changes, so concurrent reorders by different people don't fight. `sortOrder` is fractional: sort by it, then by id.
+
 ## Realtime
 
 Socket.IO at `/socket.io`, with `auth: { token: <accessToken> }`. The server disconnects the socket when that token expires and when its session is signed out; reconnect with a fresh token. See [architecture.md](architecture.md#real-time) for rooms and events.

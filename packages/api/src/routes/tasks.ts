@@ -10,6 +10,7 @@ import {
   quickAddSchema,
   moveTaskSchema,
   reorderTasksSchema,
+  positionTaskSchema,
   taskSchema,
   taskListItemSchema,
   taskDetailSchema,
@@ -103,6 +104,23 @@ export async function taskRoutes(fastify: FastifyInstance) {
     async (request) => ({
       success: true as const,
       ...(await taskService.reorderTasks(request.body.taskIds, request.user.id)),
+    }),
+  );
+
+  app.post(
+    '/:id/position',
+    {
+      schema: {
+        tags,
+        summary: 'Place a task right after another in its list (or first): only this task changes',
+        params: taskParamsSchema,
+        body: positionTaskSchema,
+        response: { 200: ok(taskSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await taskService.positionTask(request.params.id, request.body.afterId, request.user.id),
     }),
   );
 

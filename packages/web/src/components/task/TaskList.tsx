@@ -104,7 +104,7 @@ export function TaskList({ tasks, emptyMessage = 'No tasks yet', externalDnd = f
     const newIds = [...ids];
     newIds.splice(oldIndex, 1);
     newIds.splice(newIndex, 0, active.id as string);
-    void reorderTasks(newIds);
+    void reorderTasks(newIds, active.id as string);
   };
 
   if (containerId) {

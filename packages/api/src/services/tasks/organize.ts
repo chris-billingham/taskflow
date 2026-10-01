@@ -405,3 +405,48 @@ export async function reorderTasks(taskIds: string[], userId: string) {
 
   return { message: 'Tasks reordered successfully' };
 }
+
+/** Below this gap between neighbours, the list is renumbered instead. */
+const MIN_GAP = 1e-6;
+
+/**
+ * Put a task right after `afterId` in its own list (same project, section and
+ * parent), or first when `afterId` is null. Usually one row changes: the task
+ * takes the midpoint between its new neighbours. Only when repeated moves
+ * have worn the gap down to nothing does the list get renumbered.
+ */
+export async function positionTask(id: string, afterId: string | null, userId: string) {
+  const task = await requireTaskAccess(id, userId, 'EDIT');
+  if (afterId === id) throw new ValidationError('A task cannot go after itself');
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const siblings = await tx.task.findMany({
+      where: { projectId: task.projectId, sectionId: task.sectionId, parentId: task.parentId, id: { not: id } },
+      select: { id: true, sortOrder: true },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    });
+    const at = afterId === null ? -1 : siblings.findIndex((s) => s.id === afterId);
+    if (afterId !== null && at === -1) {
+      throw new ValidationError('afterId must be a task in the same list');
+    }
+    const prev = siblings[at]?.sortOrder;
+    const next = siblings[at + 1]?.sortOrder;
+
+    let sortOrder: number;
+    if (prev === undefined) sortOrder = next === undefined ? 0 : next - 1;
+    else if (next === undefined) sortOrder = prev + 1;
+    else if (next - prev > MIN_GAP) sortOrder = (prev + next) / 2;
+    else {
+      // Out of room: space the whole list out again, this task included.
+      const order = [...siblings.slice(0, at + 1).map((s) => s.id), id, ...siblings.slice(at + 1).map((s) => s.id)];
+      for (const [index, taskId] of order.entries()) {
+        if (taskId !== id) await tx.task.update({ where: { id: taskId }, data: { sortOrder: index } });
+      }
+      sortOrder = order.indexOf(id);
+    }
+    return tx.task.update({ where: { id }, data: { sortOrder }, include: taskInclude });
+  });
+
+  runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(updated));
+  return updated;
+}

@@ -113,7 +113,7 @@ export default function Project() {
       const oldIndex = target.indexOf(taskId);
       const newIndex = target.indexOf(String(over.id));
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        await reorderTasks(arrayMove(target, oldIndex, newIndex));
+        await reorderTasks(arrayMove(target, oldIndex, newIndex), taskId);
       }
       return;
     }
@@ -122,7 +122,7 @@ export default function Project() {
     const order = [...target];
     order.splice(at === -1 ? order.length : at, 0, taskId);
     await moveTask(taskId, { sectionId: to.containerId === UNSECTIONED ? null : to.containerId });
-    await reorderTasks(order);
+    await reorderTasks(order, taskId);
   };
 
   if (loading && !project) {

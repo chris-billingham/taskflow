@@ -168,3 +168,50 @@ describe('client-chosen ids', () => {
     await prisma.projectMember.deleteMany({ where: { projectId: home } });
   });
 });
+
+describe('fractional ordering', () => {
+  it('placing a task changes only that task', async () => {
+    const project = (await prisma.project.create({ data: { name: 'Order', ownerId: U.ann.id } })).id;
+    const made: { id: string }[] = [];
+    for (const content of ['A', 'B', 'C']) made.push(await taskService.createTask({ content, projectId: project }, U.ann.id));
+    const before = await prisma.task.findMany({ where: { projectId: project }, select: { id: true, version: true } });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tasks/${made[2].id}/position`,
+      headers: headers('ann'),
+      payload: { afterId: made[0].id },
+    });
+    expect(res.statusCode).toBe(200);
+
+    const order = await prisma.task.findMany({ where: { projectId: project }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] });
+    expect(order.map((t) => t.content)).toEqual(['A', 'C', 'B']);
+    const bumped = order.filter((t) => t.version !== before.find((x) => x.id === t.id)!.version).map((t) => t.content);
+    expect(bumped).toEqual(['C']);
+
+    // First in the list.
+    await taskService.positionTask(made[1].id, null, U.ann.id);
+    expect((await prisma.task.findMany({ where: { projectId: project }, orderBy: { sortOrder: 'asc' } })).map((t) => t.content)).toEqual(['B', 'A', 'C']);
+    await prisma.project.delete({ where: { id: project } });
+  });
+
+  it('renumbers the list once the gap runs out, keeping the order', async () => {
+    const project = (await prisma.project.create({ data: { name: 'Tight', ownerId: U.ann.id } })).id;
+    const a = await taskService.createTask({ content: 'A', projectId: project }, U.ann.id);
+    const b = await taskService.createTask({ content: 'B', projectId: project }, U.ann.id);
+    const c = await taskService.createTask({ content: 'C', projectId: project }, U.ann.id);
+    await prisma.task.update({ where: { id: b.id }, data: { sortOrder: 1 + 1e-9 } });
+    await prisma.task.update({ where: { id: a.id }, data: { sortOrder: 1 } });
+    await taskService.positionTask(c.id, a.id, U.ann.id);
+    const order = await prisma.task.findMany({ where: { projectId: project }, orderBy: { sortOrder: 'asc' } });
+    expect(order.map((t) => t.content)).toEqual(['A', 'C', 'B']);
+    expect(order.map((t) => t.sortOrder)).toEqual([0, 1, 2]);
+    await prisma.project.delete({ where: { id: project } });
+  });
+
+  it('refuses a neighbour from another list', async () => {
+    const task = await taskService.createTask({ content: 'Here', projectId: home }, U.ann.id);
+    const other = await prisma.task.findFirstOrThrow({ where: { projectId: theirs } });
+    await expect(taskService.positionTask(task.id, other.id, U.ann.id)).rejects.toThrow(/same list/);
+  });
+});

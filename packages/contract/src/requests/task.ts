@@ -44,7 +44,7 @@ export const updateTaskSchema = z.object({
   labelIds: z.array(z.string()).optional(),
   isRecurring: z.boolean().optional(),
   recurrenceRule: recurrenceRuleSchema.nullable().optional(),
-  sortOrder: z.number().int().optional(),
+  sortOrder: z.number().finite().optional(),
 });
 
 export const taskParamsSchema = z.object({
@@ -136,3 +136,13 @@ export type BulkTaskInput = z.infer<typeof bulkTaskSchema>;
 export type QuickAddInput = z.infer<typeof quickAddSchema>;
 export type MoveTaskInput = z.infer<typeof moveTaskSchema>;
 export type ReorderTasksInput = z.infer<typeof reorderTasksSchema>;
+
+/**
+ * POST /tasks/:id/position: put the task right after `afterId` in its list
+ * (same project, section and parent), or first when `afterId` is null.
+ * Only this task's row changes.
+ */
+export const positionTaskSchema = z.object({
+  afterId: z.string().min(1).nullable(),
+});
+export type PositionTaskInput = z.infer<typeof positionTaskSchema>;

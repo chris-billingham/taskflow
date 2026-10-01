@@ -240,7 +240,7 @@ export function BoardView({
         const newIndex = taskIds.indexOf(overId);
         if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
           const newOrder = arrayMove(taskIds, oldIndex, newIndex);
-          await onReorderTasks(newOrder);
+          await onReorderTasks(newOrder, activeTaskId);
         }
       }
     },

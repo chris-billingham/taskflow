@@ -34,7 +34,8 @@ export const taskFieldsSchema = z.object({
   priority: z.number().int(),
   isCompleted: z.boolean(),
   completedAt: instant.nullable(),
-  sortOrder: z.number().int(),
+  /** Fractional; order by it, then id. */
+  sortOrder: z.number(),
   /** Counts changes; send it back as ifVersion. */
   version: z.number().int(),
   createdAt: instant,

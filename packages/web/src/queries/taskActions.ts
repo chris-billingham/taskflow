@@ -255,7 +255,28 @@ function createTaskActions(qc: QueryClient) {
         failure: 'The task could not be duplicated',
       }),
 
-    reorderTasks: (taskIds: string[]) => {
+    /**
+     * `taskIds` is the list in its new order. With `movedId` (the task that
+     * was dragged), only that task is placed, after its new neighbour, and
+     * only its row changes; without it the whole order is saved.
+     */
+    reorderTasks: (taskIds: string[], movedId?: string) => {
+      if (movedId && taskIds.includes(movedId)) {
+        const at = taskIds.indexOf(movedId);
+        const afterId = at > 0 ? taskIds[at - 1] : null;
+        const prev = afterId ? findCachedTask(qc, afterId)?.sortOrder : undefined;
+        const next = taskIds[at + 1] ? findCachedTask(qc, taskIds[at + 1])?.sortOrder : undefined;
+        // The same midpoint the server will pick, so the list doesn't jump.
+        const sortOrder =
+          prev === undefined ? (next === undefined ? 0 : next - 1) : next === undefined ? prev + 1 : (prev + next) / 2;
+        return run({
+          optimistic: (task) => (task.id === movedId ? { ...task, sortOrder } : task),
+          request: async () => {
+            await api.post(`/tasks/${movedId}/position`, { afterId });
+          },
+          failure: 'The new order could not be saved',
+        });
+      }
       const order = new Map(taskIds.map((id, index) => [id, index]));
       return run({
         optimistic: (task) =>
