@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isSupportedRecurrence } from '../logic/recurrence.js';
-import { pageQuery } from '../common.js';
+import { calendarDateInput, pageQuery } from '../common.js';
 
 /** A recurrence rule the server can advance (see logic/recurrence.ts). */
 export const recurrenceRuleSchema = z
@@ -17,9 +17,9 @@ export const createTaskSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
   sectionId: z.string().optional(),
   parentId: z.string().optional(),
-  dueDate: z.string().optional(), // ISO date string
+  dueDate: calendarDateInput.optional(),
   dueTime: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be HH:mm format').optional(),
-  deadline: z.string().optional(), // ISO date string
+  deadline: calendarDateInput.optional(),
   duration: z.number().int().min(1).max(1440).optional(), // in minutes
   priority: z.number().int().min(1).max(4).optional(),
   assigneeId: z.string().optional(),
@@ -33,9 +33,9 @@ export const updateTaskSchema = z.object({
   description: z.string().max(10000).nullable().optional(),
   sectionId: z.string().nullable().optional(),
   parentId: z.string().nullable().optional(),
-  dueDate: z.string().nullable().optional(),
+  dueDate: calendarDateInput.nullable().optional(),
   dueTime: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be HH:mm format').nullable().optional(),
-  deadline: z.string().nullable().optional(),
+  deadline: calendarDateInput.nullable().optional(),
   duration: z.number().int().min(1).max(1440).nullable().optional(),
   priority: z.number().int().min(1).max(4).optional(),
   assigneeId: z.string().nullable().optional(),
@@ -64,8 +64,8 @@ export const taskQuerySchema = pageQuery(200).extend({
   priority: z.string().optional(), // comma-separated: "1,2"
   assigneeId: z.string().optional(),
   labels: z.string().optional(), // comma-separated label IDs
-  dueDateFrom: z.string().optional(),
-  dueDateTo: z.string().optional(),
+  dueDateFrom: calendarDateInput.optional(),
+  dueDateTo: calendarDateInput.optional(),
   search: z.string().optional(),
 });
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { id, instant, type Wire } from '../common.js';
+import { calendarDate, id, type Wire } from '../common.js';
 
 export const taskSearchResultSchema = z.object({
   type: z.literal('task'),
@@ -9,7 +9,7 @@ export const taskSearchResultSchema = z.object({
   projectId: id,
   projectName: z.string(),
   projectColor: z.string(),
-  dueDate: instant.nullable(),
+  dueDate: calendarDate.nullable(),
   isCompleted: z.boolean(),
   priority: z.number().int(),
   rank: z.number(),

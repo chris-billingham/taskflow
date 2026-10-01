@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { id, instant, type Wire } from '../common.js';
+import { calendarDate, id, instant, type Wire } from '../common.js';
 import { labelSchema } from './label.js';
 import { userSummarySchema } from './user.js';
 
@@ -21,10 +21,10 @@ export const taskFieldsSchema = z.object({
   creatorId: id.nullable(),
   assigneeId: id.nullable(),
   /** A calendar date, sent as UTC midnight. */
-  dueDate: instant.nullable(),
+  dueDate: calendarDate.nullable(),
   /** Wall-clock HH:mm in the viewer's timezone. */
   dueTime: z.string().nullable(),
-  deadline: instant.nullable(),
+  deadline: calendarDate.nullable(),
   /** Minutes. */
   duration: z.number().int().nullable(),
   isRecurring: z.boolean(),

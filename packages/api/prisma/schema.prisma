@@ -342,9 +342,11 @@ model Task {
   // team tasks from shared projects when their creator left.
   creatorId      String?
   assigneeId     String?
-  dueDate        DateTime?
+  // Calendar days, not instants: "due on 27 Sep" means that day wherever the
+  // user is. dueTime (HH:mm) is a wall-clock time in the user's timezone.
+  dueDate        DateTime? @db.Date
   dueTime        String?   // HH:mm format
-  deadline       DateTime?
+  deadline       DateTime? @db.Date
   duration       Int?      // in minutes
   isRecurring    Boolean   @default(false)
   recurrenceRule String?   // RRULE string

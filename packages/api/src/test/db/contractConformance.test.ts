@@ -145,7 +145,7 @@ describe('real service output matches the API contract', () => {
     const list = conforms(page(taskListItemSchema), { success: true, data: tasks, nextCursor }) as {
       data: Array<{ dueDate: string | null; taskLabels: unknown[] }>;
     };
-    expect(list.data[0].dueDate).toBe('2026-10-01T00:00:00.000Z');
+    expect(list.data[0].dueDate).toBe('2026-10-01');
     expect(list.data[0].taskLabels).toHaveLength(1);
 
     const detail = conforms(ok(taskDetailSchema), {

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { formatUserDate, formatUserTime } from '@/utils/dateFormat';
 import { Popover } from '@/components/ui/Popover';
+import { parseCalendarDate } from '@/utils/calendarDate';
 import { AlertCircle, Calendar, Sun, ArrowRight, X, Clock } from 'lucide-react';
 
 interface DueDatePickerProps {
@@ -16,11 +17,7 @@ function toYMD(dateStr: string): string {
   return dateStr.slice(0, 10);
 }
 
-function parseLocalDate(dateStr: string): Date {
-  const ymd = toYMD(dateStr);
-  const [y, m, d] = ymd.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
+const parseLocalDate = parseCalendarDate;
 
 function formatDateDisplay(dateStr: string | null): string {
   if (!dateStr) return 'No date';

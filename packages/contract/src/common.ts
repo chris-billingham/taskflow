@@ -11,6 +11,27 @@ export const instant = z.codec(z.iso.datetime(), z.date(), {
   encode: (date) => date.toISOString(),
 });
 
+/**
+ * A calendar day (due dates, deadlines). On the wire it is YYYY-MM-DD; on the
+ * server it is a Date at UTC midnight of that day, which is how Postgres DATE
+ * columns come back from Prisma. Clients should read it as a local date, not
+ * pass it to `new Date()`, which would take it as UTC midnight.
+ */
+export const calendarDate = z.codec(z.iso.date(), z.date(), {
+  decode: (day) => new Date(`${day}T00:00:00.000Z`),
+  encode: (date) => date.toISOString().slice(0, 10),
+});
+
+/**
+ * A calendar day in a request: YYYY-MM-DD. A full ISO timestamp is accepted
+ * for older clients and read as the date it was written on.
+ */
+export const calendarDateInput = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}(T.*)?$/, 'Must be a date (YYYY-MM-DD)')
+  .transform((value) => value.slice(0, 10))
+  .pipe(z.iso.date('Must be a real date'));
+
 export const id = z.string().min(1);
 
 /** Free-form JSON stored as-is. */
