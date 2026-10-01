@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { clearPersistedCache, PERSIST_MAX_AGE, queryPersister } from '@/queries/persistence';
 import { createQueryClient } from '@/queries/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { useAuthStore } from '@/stores/authStore';
@@ -70,7 +71,15 @@ function App() {
     if (cachedFor.current === userId) return;
     cachedFor.current = userId;
     queryClient.clear();
+    void clearPersistedCache();
   }, [userId, queryClient]);
+
+  // Back online after starting offline: get a session, then fresh data.
+  useEffect(() => {
+    const onOnline = () => void initialize();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [initialize]);
 
   // At the app root, not in AppLayout. Mounted only there, the theme was never
   // applied on any route AppLayout doesn't wrap — so loading or refreshing any
@@ -98,7 +107,16 @@ function App() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: queryPersister,
+        maxAge: PERSIST_MAX_AGE,
+        // Another account's saved copy is never restored.
+        buster: userId ?? 'signed-out',
+        dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === 'success' },
+      }}
+    >
     <BrowserRouter>
       <Suspense fallback={<RouteFallback />}>
       <Routes>
@@ -160,7 +178,7 @@ function App() {
       </Suspense>
       <ToastContainer />
     </BrowserRouter>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 

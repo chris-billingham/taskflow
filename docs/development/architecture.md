@@ -106,6 +106,10 @@ Updates take an optional `ifVersion`: `assertVersion()` (`services/versioning.ts
 
 The trash extension in `config/database.ts` adds `deletedAt: null` to task reads unless the query's where has a `deletedAt` key; `deletedAt: undefined` means "trashed or not".
 
+### Installable web app
+
+`public/manifest.webmanifest` and the icons make the web app installable. `public/sw.js` (registered at start-up in production builds by `main.tsx`) caches the app shell: pages go network-first and fall back to the cached `/`; hashed `/assets/*` are cached on first use (the ones `index.html` references at install time). It never caches `/api` or `/socket.io`. The TanStack Query cache is persisted to IndexedDB (`queries/persistence.ts`, 3 days, keyed to the signed-in user and cleared on sign-out), so pages you've visited render offline. Starting offline with a remembered user keeps them signed in read-only; going online re-runs `initialize()`. Writes while offline fail and roll back with an offline message. The full local copy from `/sync` is for native clients; the web app doesn't use it yet.
+
 ### Background jobs (BullMQ)
 
 Queues are defined in `src/jobs/` and started by `initializeWorkers()` in `src/worker.ts`:

@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
+import { PERSIST_MAX_AGE } from './persistence';
 
 /**
  * Server data lives in TanStack Query. Websocket events patch and invalidate
@@ -11,6 +12,8 @@ export function createQueryClient(): QueryClient {
       queries: {
         staleTime: 30_000,
         retry: 1,
+        // Kept as long as the saved offline copy, so it can be restored.
+        gcTime: PERSIST_MAX_AGE,
       },
     },
   });

@@ -1,6 +1,6 @@
 # Mobile Usage
 
-Taskflow is a responsive web app. It works in a phone or tablet browser; there's no separate app.
+Taskflow is a responsive web app. It works in a phone or tablet browser, and you can install it to your home screen.
 
 ## Layout
 
@@ -35,8 +35,22 @@ Tap the **+** in the header to open Quick Add. It understands the same words as 
 
 Taskflow works in current mobile browsers such as Safari on iOS and Chrome on Android.
 
-## Installing and Push Notifications
+## Installing
 
-Taskflow isn't an installable app (PWA) yet. It has no web app manifest, so there's no install prompt. You can still add a home-screen bookmark from your browser's menu.
+Taskflow can be installed like an app:
 
-Browser push notifications work in browsers that support web push, once your administrator has configured push. Turn them on at **Settings → Notifications**. On iOS, Safari only offers web push to installed web apps, so push notifications are unlikely to work on an iPhone or iPad yet.
+- **iPhone and iPad (Safari):** tap **Share → Add to Home Screen**.
+- **Android (Chrome):** tap **⋮ → Install app** (or accept the install prompt).
+- **Desktop (Chrome, Edge):** click the install icon at the end of the address bar.
+
+The installed app opens in its own window, starting on Today.
+
+## Offline
+
+Once you've opened Taskflow on a device, it opens without a connection too. It shows what you last loaded on that device (pages you've visited in the last three days) with a banner saying you're offline. You can read, but changes aren't saved until you're back online; a change you try to make offline is undone with a message saying why. Pages you haven't visited won't have anything to show.
+
+Signing out removes the saved copy from the device.
+
+## Push Notifications
+
+Browser push notifications work in browsers that support web push, once your administrator has configured push. Turn them on at **Settings → Notifications**. On iPhone and iPad, Safari only offers web push to web apps installed to the home screen, so install Taskflow first.

@@ -21,6 +21,7 @@ import { useRealTimeSync } from '@/hooks/useRealTimeSync';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { CommandPalette } from '@/components/layout/CommandPalette';
 import { ShortcutsSheet } from '@/components/layout/ShortcutsSheet';
+import { OfflineBanner } from '@/components/layout/OfflineBanner';
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -116,6 +117,7 @@ export function AppLayout() {
           </button>
         </div>
 
+        <OfflineBanner />
         <main className="max-w-5xl mx-auto px-4 py-6">
           <Outlet />
         </main>

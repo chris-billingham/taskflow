@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api, { setAccessToken, refreshAccessToken } from '@/services/api';
 import { browserPreferences } from '@/utils/browserPreferences';
+import { clearPersistedCache } from '@/queries/persistence';
 import { disconnectSocket } from '@/services/socket';
 
 export type SystemRole = 'USER' | 'ADMIN';
@@ -123,6 +124,7 @@ export const useAuthStore = create<AuthState>()(
           ]) {
             localStorage.removeItem(key);
           }
+          await clearPersistedCache();
           window.location.href = '/login';
         }
       },
@@ -166,6 +168,13 @@ export const useAuthStore = create<AuthState>()(
             syncBrowserTimezone(userResponse.data.data, get().updateUser);
           } catch {
             setAccessToken(null);
+            // Offline with a remembered sign-in: carry on read-only with what's
+            // saved on this device; App re-runs this when the connection returns.
+            const remembered = get().user;
+            if (remembered && typeof navigator !== 'undefined' && !navigator.onLine) {
+              set({ user: remembered, isAuthenticated: true, isLoading: false });
+              return;
+            }
             set({ user: null, isAuthenticated: false, isLoading: false });
           }
         })();

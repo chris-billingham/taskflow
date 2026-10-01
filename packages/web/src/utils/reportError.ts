@@ -8,9 +8,10 @@ import { toastError } from '@/stores/toastStore';
  * their change was saved.
  */
 export function reportMutationError(err: unknown, fallback: string): void {
-  const message =
-    (err as { response?: { data?: { message?: string } } })?.response?.data
-      ?.message ?? fallback;
+  const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+  const message = offline
+    ? "You're offline, so that couldn't be saved. Try again when you're back online."
+    : ((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback);
   toastError(message);
   if (err && typeof err === 'object') {
     (err as { __toastShown?: boolean }).__toastShown = true;

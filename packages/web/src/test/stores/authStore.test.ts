@@ -216,4 +216,20 @@ describe('authStore - initialize', () => {
     expect(store.current.user).toBeNull();
     expect(store.current.isLoading).toBe(false);
   });
+
+  it('offline with a remembered sign-in, stays signed in (read-only) instead of signing out', async () => {
+    useAuthStore.setState({ user: MOCK_USER as never, isAuthenticated: false, isLoading: true });
+    mockRefreshAccessToken.mockResolvedValueOnce(null);
+    const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+
+    const store = getStore();
+    await act(async () => {
+      await store.current.initialize();
+    });
+    onLine.mockRestore();
+
+    expect(store.current.isAuthenticated).toBe(true);
+    expect(store.current.user).toEqual(MOCK_USER);
+    expect(store.current.isLoading).toBe(false);
+  });
 });

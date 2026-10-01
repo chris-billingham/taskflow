@@ -13,6 +13,17 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
+// The service worker keeps the app shell available offline (and shows push
+// notifications). Production builds only: in development it would serve
+// stale modules.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* the app works without it, just not offline */
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
