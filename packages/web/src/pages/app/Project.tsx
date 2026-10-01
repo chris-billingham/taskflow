@@ -15,6 +15,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ProjectHeader } from '@/components/project/ProjectHeader';
 import { ShareProjectDialog } from '@/components/project/ShareProjectDialog';
+import { ProjectActivity } from '@/components/activity/ProjectActivity';
 import { SectionList } from '@/components/project/SectionList';
 import { TaskList } from '@/components/task/TaskList';
 import { QuickAdd } from '@/components/task/QuickAdd';
@@ -49,6 +50,7 @@ export default function Project() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   // Top-level tasks in their saved order (a drag reorders them optimistically
   // by sortOrder, ahead of the server's response).
@@ -180,6 +182,7 @@ export default function Project() {
         onArchive={handleArchive}
         onDelete={() => setShowDeleteConfirm(true)}
         onShare={() => setSharing(true)}
+        onShowActivity={() => setShowActivity(true)}
       />
 
       {project.viewStyle === 'CALENDAR' ? (
@@ -270,6 +273,8 @@ export default function Project() {
 
         </DndContext>
       )}
+
+      {showActivity && <ProjectActivity project={project} onClose={() => setShowActivity(false)} />}
 
       {sharing && (
         <ShareProjectDialog

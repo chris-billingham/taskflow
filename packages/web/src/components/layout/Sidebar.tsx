@@ -16,6 +16,7 @@ import {
   Inbox,
   Trash2,
   Archive,
+  UserCheck,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProjects, useProjectActions } from '@/queries/projects';
@@ -135,6 +136,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     ...(inbox ? [{ path: `/projects/${inbox.id}`, label: 'Inbox', icon: Inbox }] : []),
     { path: '/today', label: 'Today', icon: CalendarDays },
     { path: '/upcoming', label: 'Upcoming', icon: CalendarRange },
+    { path: '/assigned', label: 'Assigned to me', icon: UserCheck },
     { path: '/filters-labels', label: 'Filters & Labels', icon: Filter },
     { path: '/trash', label: 'Trash', icon: Trash2 },
   ];

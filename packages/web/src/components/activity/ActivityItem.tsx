@@ -8,6 +8,9 @@ import {
   MessageSquare,
   Archive,
   ArchiveRestore,
+  UserPlus,
+  UserMinus,
+  Share2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { ActivityItem as ActivityItemType } from '@/queries/activity';
@@ -22,6 +25,9 @@ const actionConfig: Record<string, { icon: typeof Plus; color: string; label: st
   COMMENTED: { icon: MessageSquare, color: 'text-blue-400', label: 'commented on' },
   ARCHIVED: { icon: Archive, color: 'text-gray-500 dark:text-gray-400', label: 'archived' },
   UNARCHIVED: { icon: ArchiveRestore, color: 'text-gray-500 dark:text-gray-400', label: 'unarchived' },
+  ASSIGNED: { icon: UserPlus, color: 'text-pink-500', label: 'assigned' },
+  UNASSIGNED: { icon: UserMinus, color: 'text-gray-500 dark:text-gray-400', label: 'unassigned' },
+  SHARED: { icon: Share2, color: 'text-primary-500', label: 'shared' },
 };
 
 function getChangedFields(oldData: Record<string, unknown> | null, newData: Record<string, unknown> | null): string[] {
@@ -34,9 +40,11 @@ function getChangedFields(oldData: Record<string, unknown> | null, newData: Reco
 
 interface ActivityItemProps {
   activity: ActivityItemType;
+  /** In a feed spanning many tasks: name the task instead of "this task". */
+  onOpenTask?: (taskId: string) => void;
 }
 
-export function ActivityItemComponent({ activity }: ActivityItemProps) {
+export function ActivityItemComponent({ activity, onOpenTask }: ActivityItemProps) {
   const config = actionConfig[activity.action] || {
     icon: Plus,
     color: 'text-gray-400 dark:text-gray-500',
@@ -57,9 +65,21 @@ export function ActivityItemComponent({ activity }: ActivityItemProps) {
         <p className="text-xs text-gray-600 dark:text-gray-400">
           <span className="font-medium text-gray-900 dark:text-white">{activity.user.name}</span>
           {' '}{config.label}{' '}
-          <span className="text-gray-500 dark:text-gray-400">
-            this {activity.entityType.toLowerCase()}
-          </span>
+          {onOpenTask && activity.task ? (
+            <button
+              type="button"
+              className="font-medium text-gray-700 dark:text-gray-200 hover:underline"
+              onClick={() => onOpenTask(activity.task!.id)}
+            >
+              {activity.task.content}
+            </button>
+          ) : onOpenTask && activity.entityType === 'PROJECT' ? (
+            <span className="text-gray-500 dark:text-gray-400">the project</span>
+          ) : (
+            <span className="text-gray-500 dark:text-gray-400">
+              this {activity.entityType.toLowerCase()}
+            </span>
+          )}
           {changedFields.length > 0 && (
             <span className="text-gray-400 dark:text-gray-500">
               {' '}&middot; changed {changedFields.join(', ')}

@@ -26,5 +26,7 @@ export const activitySchema = z.object({
   taskId: id.nullable(),
   createdAt: instant,
   user: z.object({ id, name: z.string(), avatarUrl: z.string().nullable() }),
+  /** The task it was about, while it still exists. */
+  task: z.object({ id, content: z.string() }).nullable().optional(),
 });
 export type Activity = Wire<typeof activitySchema>;

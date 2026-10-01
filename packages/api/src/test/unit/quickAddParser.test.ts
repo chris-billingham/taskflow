@@ -19,10 +19,14 @@ vi.mock('../../services/labelService.js', async () => {
   return { getLabels: vi.fn(() => prisma.label.findMany()) };
 });
 
+// The people who can be assigned in the project the task lands in.
+const people = vi.hoisted(() => ({ list: [] as { id: string; name: string; email: string | null; avatarUrl: null }[] }));
+vi.mock('../../services/projectService.js', () => ({ getProjectMembers: vi.fn(async () => people.list) }));
+
 /** Where a quick-added task lands when the text names no project. */
 const INBOX = 'inbox-1';
 
-import { parseQuickAdd } from '../../utils/quickAddParser.js';
+import { matchPerson, parseQuickAdd } from '../../utils/quickAddParser.js';
 import { findProjectByName } from '../../services/access.js';
 import { prisma } from '../../config/database.js';
 
@@ -39,6 +43,7 @@ const TEST_USER_ID = 'user-test';
 const FIXED_DATE = new Date('2024-01-04T12:00:00.000Z');
 
 beforeEach(() => {
+  people.list = [];
   vi.useFakeTimers();
   vi.setSystemTime(FIXED_DATE);
   mockFindProject.mockResolvedValue(null);
@@ -331,5 +336,41 @@ describe('parseQuickAdd - combined parsing', () => {
     expect(result.isRecurring).toBe(true);
     expect(result.projectId).toBe('proj-1');
     expect(result.labelIds).toEqual(['label-1']);
+  });
+});
+
+describe('parseQuickAdd - assignee', () => {
+  const person = (id: string, name: string) => ({ id, name, email: null, avatarUrl: null });
+
+  it('assigns +name to someone in the project, including multi-word names', async () => {
+    people.list = [person('u1', 'Sam Smith'), person('u2', 'Ada Lovelace')];
+    const result = await parseQuickAdd('Review deck +Sam Smith tomorrow', TEST_USER_ID, INBOX);
+    expect(result.assigneeId).toBe('u1');
+    expect(result.content).toBe('Review deck');
+  });
+
+  it('keeps +name in the text when it names nobody there', async () => {
+    people.list = [person('u2', 'Ada Lovelace')];
+    const result = await parseQuickAdd('Ask +Zed about it', TEST_USER_ID, INBOX);
+    expect(result.assigneeId).toBeUndefined();
+    expect(result.content).toBe('Ask +Zed about it');
+  });
+});
+
+describe('matchPerson', () => {
+  const people = [
+    { id: 'me', name: 'Ada Lovelace' },
+    { id: 'u1', name: 'Sam Smith' },
+    { id: 'u2', name: 'Sam Jones' },
+    { id: 'u3', name: 'Grace Hopper' },
+  ];
+  it('takes +me, a full name in any case, or a first name only one person has', () => {
+    expect(matchPerson('me', people, 'me')).toBe('me');
+    expect(matchPerson('sam jones', people, 'me')).toBe('u2');
+    expect(matchPerson('Grace', people, 'me')).toBe('u3');
+  });
+  it('refuses an ambiguous first name, or +me outside the project', () => {
+    expect(matchPerson('Sam', people, 'me')).toBeNull();
+    expect(matchPerson('me', people, 'stranger')).toBeNull();
   });
 });

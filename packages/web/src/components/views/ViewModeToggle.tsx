@@ -9,10 +9,19 @@ const MODES = [
 ] as const;
 
 /** List / board / calendar switch for filter and label pages. */
-export function ViewModeToggle({ value, onChange }: { value: ViewMode; onChange: (mode: ViewMode) => void }) {
+export function ViewModeToggle({
+  value,
+  onChange,
+  modes,
+}: {
+  value: ViewMode;
+  onChange: (mode: ViewMode) => void;
+  /** Offer only some of the views. */
+  modes?: ViewMode[];
+}) {
   return (
     <div className="flex items-center gap-0.5 ml-2" role="group" aria-label="View">
-      {MODES.map(({ mode, label, Icon }) => (
+      {MODES.filter((m) => !modes || modes.includes(m.mode)).map(({ mode, label, Icon }) => (
         <button
           key={mode}
           type="button"

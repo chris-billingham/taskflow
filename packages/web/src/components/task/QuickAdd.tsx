@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, type KeyboardEvent } from 'react';
-import { Plus, Calendar, Clock, Flag, Hash, Repeat, Tag, Timer } from 'lucide-react';
-import { parseQuickAddText, type QuickAddToken } from '@taskflow/contract';
+import { Plus, Calendar, Clock, Flag, Hash, Repeat, Tag, Timer, User as UserIcon } from 'lucide-react';
+import { matchPerson, parseQuickAddText, type QuickAddToken } from '@taskflow/contract';
 import { useProjects } from '@/queries/projects';
 import { useLabels, useLabelActions, useProjectLabels } from '@/queries/labels';
+import { useProjectMembers } from '@/queries/taskExtras';
 import { useAuthStore } from '@/stores/authStore';
 import { describeRecurrence } from '@/utils/recurrence';
 import { formatUserDate, formatUserTime } from '@/utils/dateFormat';
@@ -36,6 +37,7 @@ const TOKEN_STYLES: Record<QuickAddToken['type'], string> = {
   priority: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
   project: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
   label: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  assignee: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
 };
 
 interface Suggestion {
@@ -46,13 +48,15 @@ interface Suggestion {
   create?: boolean;
 }
 
-/** The #project or @label being typed just before the caret, if any. */
-function activeTag(text: string, caret: number): { kind: 'project' | 'label'; start: number; term: string } | null {
+const SIGILS: Record<string, 'project' | 'label' | 'person'> = { '#': 'project', '@': 'label', '+': 'person' };
+
+/** The #project, @label or +person being typed just before the caret, if any. */
+function activeTag(text: string, caret: number): { kind: 'project' | 'label' | 'person'; start: number; term: string } | null {
   let i = caret - 1;
-  while (i >= 0 && !/\s/.test(text[i]) && text[i] !== '#' && text[i] !== '@') i--;
-  if (i < 0 || (text[i] !== '#' && text[i] !== '@')) return null;
+  while (i >= 0 && !/\s/.test(text[i]) && !SIGILS[text[i]]) i--;
+  if (i < 0 || !SIGILS[text[i]]) return null;
   if (i > 0 && !/\s/.test(text[i - 1])) return null;
-  return { kind: text[i] === '#' ? 'project' : 'label', start: i, term: text.slice(i + 1, caret) };
+  return { kind: SIGILS[text[i]], start: i, term: text.slice(i + 1, caret) };
 }
 
 /** 90 → "1h 30m", 45 → "45m", 120 → "2h". */
@@ -115,20 +119,28 @@ export function QuickAdd({
   const projectNames = useMemo(() => projects.map((p) => p.name), [projects]);
   const visibleNames = useMemo(() => visibleLabels.map((l) => l.name), [visibleLabels]);
   // The same parser the server runs, so what's highlighted is what happens.
+  // Names of the people in this box's project, so "+Sam Smith" is one token.
+  const inboxId = projects.find((p) => p.isInbox && p.ownerId === me)?.id;
+  const { members: boxPeople } = useProjectMembers(projectId ?? inboxId);
+  const peopleNames = useMemo(() => boxPeople.map((p) => p.name), [boxPeople]);
   const parsed = useMemo(
-    () => parseQuickAddText(text, new Date(), { projects: projectNames, labels: visibleNames }),
-    [text, projectNames, visibleNames],
+    () => parseQuickAddText(text, new Date(), { projects: projectNames, labels: visibleNames, people: peopleNames }),
+    [text, projectNames, visibleNames, peopleNames],
   );
   // @labels come from the project the task lands in: the one named with #,
   // else this box's project, else the Inbox.
   const namedProject = parsed.projectName
     ? projects.find((p) => p.name.toLowerCase() === parsed.projectName!.toLowerCase())
     : undefined;
-  const inboxId = projects.find((p) => p.isInbox && p.ownerId === me)?.id;
   const targetProjectId = namedProject?.id ?? projectId ?? inboxId;
   const { labels } = useProjectLabels(targetProjectId);
   const labelNames = useMemo(() => labels.map((l) => l.name), [labels]);
+  // +person: the people who can be assigned in that project.
+  const { members: people } = useProjectMembers(targetProjectId);
+  const assigneeId = parsed.assigneeName && me ? matchPerson(parsed.assigneeName, people, me) : null;
+  const assignee = people.find((p) => p.id === assigneeId);
   const isKnown = (token: QuickAddToken) => {
+    if (token.type === 'assignee') return Boolean(assignee);
     if (token.type !== 'project' && token.type !== 'label') return true;
     const names = token.type === 'project' ? projectNames : labelNames;
     return names.some((n) => n.toLowerCase() === token.name!.toLowerCase());
@@ -145,6 +157,12 @@ export function QuickAdd({
         .slice(0, 6)
         .map((p) => ({ key: p.id, label: p.name, insert: `#${p.name}`, color: p.color }));
     }
+    if (tag.kind === 'person') {
+      return people
+        .filter((p) => p.name.toLowerCase().includes(term))
+        .slice(0, 6)
+        .map((p) => ({ key: p.id, label: p.id === me ? `${p.name} (me)` : p.name, insert: `+${p.name}` }));
+    }
     const matches = labels
       .filter((l) => l.name.toLowerCase().includes(term))
       .slice(0, 6)
@@ -153,7 +171,7 @@ export function QuickAdd({
     return term && !exact
       ? [...matches, { key: 'create', label: `Create label “${tag.term}”`, insert: `@${tag.term}`, create: true }]
       : matches;
-  }, [tag, projects, labels]);
+  }, [tag, projects, labels, people, me]);
   const showSuggestions = suggestions.length > 0;
 
   const choose = async (s: Suggestion) => {
@@ -254,7 +272,14 @@ export function QuickAdd({
   const knownLabels = parsed.tokens.filter((t) => t.type === 'label' && isKnown(t)).map((t) => t.name!);
   const repeat = describeRecurrence(parsed.recurrenceRule);
   const hasPreview =
-    parsed.dueDate || parsed.dueTime || parsed.priority || knownProject || knownLabels.length || repeat || parsed.duration;
+    parsed.dueDate ||
+    parsed.dueTime ||
+    parsed.priority ||
+    knownProject ||
+    knownLabels.length ||
+    assignee ||
+    repeat ||
+    parsed.duration;
 
   return (
     <div className={`${inline ? 'border border-gray-200 dark:border-gray-700 rounded-lg' : ''}`}>
@@ -304,7 +329,7 @@ export function QuickAdd({
             <ul
               id="quick-add-suggestions"
               role="listbox"
-              aria-label={tag?.kind === 'project' ? 'Projects' : 'Labels'}
+              aria-label={tag?.kind === 'project' ? 'Projects' : tag?.kind === 'person' ? 'People' : 'Labels'}
               className="absolute left-0 top-full mt-1 z-30 w-64 max-h-60 overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1"
             >
               {suggestions.map((s, i) => (
@@ -326,6 +351,8 @@ export function QuickAdd({
                     <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                   ) : tag?.kind === 'project' ? (
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} aria-hidden="true" />
+                  ) : tag?.kind === 'person' ? (
+                    <UserIcon className="w-3.5 h-3.5 shrink-0 text-gray-400" aria-hidden="true" />
                   ) : (
                     <Tag className="w-3.5 h-3.5 shrink-0" style={{ color: s.color }} aria-hidden="true" />
                   )}
@@ -368,6 +395,12 @@ export function QuickAdd({
                 {label}
               </span>
             ))}
+            {assignee && (
+              <span className="flex items-center gap-1 text-xs text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 px-1.5 py-0.5 rounded-sm">
+                <UserIcon className="w-3 h-3" aria-hidden="true" />
+                {assignee.id === me ? 'Me' : assignee.name}
+              </span>
+            )}
             {repeat && (
               <span className="flex items-center gap-1 text-xs text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 px-1.5 py-0.5 rounded-sm">
                 <Repeat className="w-3 h-3" aria-hidden="true" />

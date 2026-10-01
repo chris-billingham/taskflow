@@ -174,6 +174,22 @@ describe('QuickAdd - highlighting and autocomplete', () => {
     expect(within(details).getByText('errands')).toBeInTheDocument();
   });
 
+  it('suggests people for +, and shows who it will be assigned to', async () => {
+    server.use(
+      http.get(`${API}/projects/:id/members`, () =>
+        HttpResponse.json(ok([{ id: 'u-sam', name: 'Sam Smith', email: null, avatarUrl: null }])),
+      ),
+    );
+    renderPage(<QuickAdd projectId="p-team" onSubmit={vi.fn()} autoFocus />);
+    const input = screen.getByRole('combobox', { name: 'Add task' });
+
+    await userEvent.type(input, 'Ship it +sa');
+    await userEvent.click(await screen.findByRole('option', { name: 'Sam Smith' }));
+    expect(input).toHaveValue('Ship it +Sam Smith ');
+    const details = await screen.findByRole('group', { name: 'Task details from the text' });
+    expect(within(details).getByText('Sam Smith')).toBeInTheDocument();
+  });
+
   it('Escape closes the suggestions without cancelling the box', async () => {
     server.use(http.get(`${API}/projects`, () => HttpResponse.json(ok([makeProject({ id: 'p1', name: 'Work' })]))));
     const onCancel = vi.fn();

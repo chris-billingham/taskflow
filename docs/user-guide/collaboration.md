@@ -57,7 +57,9 @@ Click **Share** at the top of a project to share it with specific people, as lon
 
 ## Task Assignment
 
-Open a task and click the **Assignee** field to pick a workspace member. They get a notification, and their avatar shows on the task in lists. An assignee can always edit their own task, even as a Guest.
+Open a task and click the **Assignee** field to pick someone who can see the project, or type `+name` in Quick Add (`+me` for yourself). They get a notification, and their avatar shows on the task in lists. An assignee can always edit their own task, even as a Guest.
+
+**Assigned to me** in the sidebar lists every open task assigned to you, across projects.
 
 Today and Upcoming show every task you can see, including team tasks assigned to other people.
 
@@ -85,7 +87,7 @@ When someone else has the same task open, the top of the task panel shows who ("
 
 ## Activity Log
 
-The task panel has an **Activity** section showing who changed what and when.
+The task panel has an **Activity** section showing who changed what and when. For a whole project, open the project's **⋯** menu → **Activity**: everything everyone did there, newest first. Click a task's name to open it.
 
 ## Notifications
 

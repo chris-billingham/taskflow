@@ -7,6 +7,10 @@ const activityInclude = {
   user: {
     select: { id: true, name: true, avatarUrl: true },
   },
+  // Which task it was about, for feeds that span a whole project.
+  task: {
+    select: { id: true, content: true },
+  },
 };
 
 interface LogActivityInput {

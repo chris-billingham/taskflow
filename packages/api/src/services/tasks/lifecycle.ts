@@ -446,6 +446,7 @@ export async function quickAddTask(
       dueTime: due.dueTime ?? parsed.dueTime ?? due.defaultDueTime,
       priority: parsed.priority,
       labelIds: parsed.labelIds,
+      assigneeId: parsed.assigneeId,
       duration: parsed.duration,
       isRecurring: parsed.isRecurring,
       recurrenceRule: parsed.recurrenceRule,

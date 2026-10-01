@@ -9,6 +9,7 @@ import {
   Archive,
   Trash2,
   UserPlus,
+  History,
 } from 'lucide-react';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import type { Project } from '@/types/project';
@@ -22,6 +23,7 @@ interface ProjectHeaderProps {
   onArchive: () => void;
   onDelete: () => void;
   onShare: () => void;
+  onShowActivity: () => void;
 }
 
 export function ProjectHeader({
@@ -33,6 +35,7 @@ export function ProjectHeader({
   onArchive,
   onDelete,
   onShare,
+  onShowActivity,
 }: ProjectHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(project.name);
@@ -158,6 +161,9 @@ export function ProjectHeader({
           </button>
 
           <Menu label="Project options" trigger={<MoreHorizontal className="w-4 h-4" />} menuClassName="w-48">
+            <MenuItem icon={History} onSelect={onShowActivity}>
+              Activity
+            </MenuItem>
             <MenuItem icon={Copy} onSelect={onDuplicate}>
               Duplicate project
             </MenuItem>

@@ -12,8 +12,7 @@ import {
   Search,
   Settings,
   Tag,
-  Trash2,
-} from 'lucide-react';
+  Trash2, UserCheck } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { useProjects } from '@/queries/projects';
 import { useFilters } from '@/queries/filters';
@@ -55,6 +54,7 @@ export function CommandPalette({ isOpen, onClose, onQuickAdd, onSearch, onShortc
       ...(inbox ? [{ id: 'inbox', label: 'Inbox', group: 'Go to' as const, icon: Inbox, run: go(`/projects/${inbox.id}`) }] : []),
       { id: 'today', label: 'Today', group: 'Go to', icon: CalendarDays, run: go('/today') },
       { id: 'upcoming', label: 'Upcoming', group: 'Go to', icon: CalendarRange, run: go('/upcoming') },
+      { id: 'assigned', label: 'Assigned to me', group: 'Go to', icon: UserCheck, run: go('/assigned') },
       { id: 'filters-labels', label: 'Filters & Labels', group: 'Go to', icon: Filter, run: go('/filters-labels') },
       { id: 'trash', label: 'Trash', group: 'Go to', icon: Trash2, run: go('/trash') },
       { id: 'settings', label: 'Settings', group: 'Go to', icon: Settings, run: go('/settings') },

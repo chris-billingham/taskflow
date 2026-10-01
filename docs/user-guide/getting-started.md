@@ -35,6 +35,7 @@ If the server has email set up, you'll also get a verification email. Click the 
 - **Inbox**: your default project, pinned at the top of the sidebar. Tasks from Quick Add go here unless you name a project.
 - **Today**: tasks due today, grouped into Morning, Afternoon, Evening and No time, plus any overdue tasks. **Reschedule all** moves every overdue task to today.
 - **Upcoming**: tasks due in the next 14 days, grouped by day, plus overdue tasks and a **No date** section. Drag a task onto another day to reschedule it.
+- **Assigned to me**: every open task assigned to you, in any project, as a list or a board grouped by project, due date or priority.
 - **Filters & Labels**: manage your labels and saved filters.
 - **Favorites**: projects you've starred. Starred labels and filters get their own section below it.
 - **My Projects**: your personal projects, private to you.
@@ -65,7 +66,8 @@ Quick Add understands:
 - **Time**: `at 3pm`, `at 15:00`, `at 3:30pm`
 - **Priority**: `p1` (highest) to `p4` (none), or `!!!`, `!!`, `!`
 - **Project**: `#Project name`: the exact name (any case) of a project you can add tasks to, team projects included. Names with spaces work.
-- **Labels**: `@label name`, one of your labels
+- **Labels**: `@label name`, a label from the space of the project the task goes into
+- **Assignee**: `+name`, someone who can see that project: `+me`, a full name, or a first name only one person there has
 - **Duration**: `for 30m`, `for 2h`, `for 1h30m`
 - **Repeat**: `every day`, `every 2 weeks`, `every month`, `every year`, `every Monday`, `every weekday`
 

@@ -3,19 +3,27 @@ import { buildRecurrence, type WeekdayCode } from './recurrence.js';
 /**
  * Quick Add's shorthand ("Call mum tomorrow at 5pm p1 #Home @phone"), shared
  * by the server (which creates the task) and the web app (which highlights
- * the tokens as you type). Pure: resolving #project and @label names needs
- * the database, so those come back as names and the caller decides which
- * ones are real (unresolved ones stay in the task's text).
+ * the tokens as you type). Pure: resolving #project, @label and +person
+ * names needs the database, so those come back as names and the caller
+ * decides which ones are real (unresolved ones stay in the task's text).
  */
 
-export type QuickAddTokenType = 'priority' | 'project' | 'label' | 'duration' | 'recurrence' | 'time' | 'date';
+export type QuickAddTokenType =
+  | 'priority'
+  | 'project'
+  | 'label'
+  | 'assignee'
+  | 'duration'
+  | 'recurrence'
+  | 'time'
+  | 'date';
 
 export interface QuickAddToken {
   type: QuickAddTokenType;
   /** Position in the original text: text.slice(start, end) is the token. */
   start: number;
   end: number;
-  /** The name after # or @, for project and label tokens. */
+  /** The name after #, @ or +, for project, label and assignee tokens. */
   name?: string;
 }
 
@@ -24,6 +32,8 @@ export interface QuickAddParse {
   priority?: number;
   projectName?: string;
   labelNames: string[];
+  /** Who to assign it to ("+Sam", "+me"). */
+  assigneeName?: string;
   /** Minutes. */
   duration?: number;
   recurrenceRule?: string;
@@ -104,6 +114,8 @@ export interface QuickAddNames {
   projects?: string[];
   /** Names of the user's labels, likewise for "@Waiting on". */
   labels?: string[];
+  /** Names of people who can be assigned, likewise for "+Sam Smith". */
+  people?: string[];
 }
 
 /**
@@ -164,7 +176,7 @@ export function parseQuickAddText(text: string, today: Date, names: QuickAddName
 
   // #project and @label must start a word, so "issue#42" and email
   // addresses stay text.
-  const nameToken = (type: 'project' | 'label', found: { start: number }, known: string[] | undefined) => {
+  const nameToken = (type: 'project' | 'label' | 'assignee', found: { start: number }, known: string[] | undefined) => {
     const end = tokenEnd(text, found.start + 1, known);
     const name = text.slice(found.start + 1, end).replace(/\s+/g, ' ');
     return { type, start: found.start, end, name } as QuickAddToken;
@@ -181,6 +193,14 @@ export function parseQuickAddText(text: string, today: Date, names: QuickAddName
     const token = nameToken('label', label, names.labels);
     tokens.push(token);
     result.labelNames.push(token.name!);
+  }
+  // +person, also at the start of a word ("count +1" only matches if it
+  // names someone; unresolved names stay in the text).
+  const assignee = find(/(?:^|\s)\+([^\s\d]\S*)/, true);
+  if (assignee) {
+    const token = nameToken('assignee', assignee, names.people);
+    tokens.push(token);
+    result.assigneeName = token.name;
   }
 
   const duration = find(/\bfor\s+(?:(\d+)h)?(?:(\d+)m)?\b/i);
@@ -242,4 +262,19 @@ export function textWithoutTokens(text: string, tokens: QuickAddToken[]): string
   }
   out += text.slice(at);
   return out.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Who "+name" means among the people who can be assigned: "+me", a full name
+ * in any case, or a first name only one person has. Anything else is nobody,
+ * so the text stays as typed.
+ */
+export function matchPerson(name: string, people: { id: string; name: string }[], userId: string): string | null {
+  const wanted = name.trim().toLowerCase();
+  if (wanted === 'me') return people.some((p) => p.id === userId) ? userId : null;
+  const full = people.filter((p) => p.name.toLowerCase() === wanted);
+  if (full.length === 1) return full[0].id;
+  if (full.length > 1) return null;
+  const first = people.filter((p) => p.name.split(/\s+/)[0].toLowerCase() === wanted);
+  return first.length === 1 ? first[0].id : null;
 }

@@ -1,8 +1,11 @@
-import { parseQuickAddText, textWithoutTokens } from '@taskflow/contract';
+import { matchPerson, parseQuickAddText, textWithoutTokens } from '@taskflow/contract';
+
+export { matchPerson };
 import { prisma } from '../config/database.js';
 import { findProjectByName, projectAccessWhere } from '../services/access.js';
 import { getLabels } from '../services/labelService.js';
 import { labelIdsByName, projectLabelScope } from '../services/labelScope.js';
+import { getProjectMembers } from '../services/projectService.js';
 import { getUserTimezone, nowAsTzWallClock } from './dates.js';
 
 export interface ParsedTask {
@@ -12,6 +15,7 @@ export interface ParsedTask {
   priority?: number;
   projectId?: string;
   labelIds?: string[];
+  assigneeId?: string;
   duration?: number;
   recurrenceRule?: string;
   isRecurring?: boolean;
@@ -33,14 +37,16 @@ export async function parseQuickAdd(
   // Calendar words ("today", "Friday") mean the USER's calendar day.
   const today = nowAsTzWallClock(await getUserTimezone(userId));
   // Known names let multi-word ones ("#Home Renovation") parse as one token.
-  const [projects, visibleLabels, fallbackLabels] = await Promise.all([
+  const [projects, visibleLabels, fallbackLabels, fallbackPeople] = await Promise.all([
     prisma.project.findMany({ where: { AND: [projectAccessWhere(userId)], isArchived: false }, select: { name: true } }),
     getLabels(userId),
     fallbackProjectId ? getLabels(userId, { projectId: fallbackProjectId }) : Promise.resolve([]),
+    fallbackProjectId ? getProjectMembers(fallbackProjectId, userId) : Promise.resolve([]),
   ]);
   const parsed = parseQuickAddText(text, today, {
     projects: projects.map((p) => p.name),
     labels: [...new Set([...visibleLabels, ...fallbackLabels].map((l) => l.name))],
+    people: fallbackPeople.map((p) => p.name),
   });
   const result: ParsedTask = {
     content: '',
@@ -52,7 +58,9 @@ export async function parseQuickAdd(
     isRecurring: parsed.recurrenceRule ? true : undefined,
   };
 
-  const consumed = parsed.tokens.filter((t) => t.type !== 'project' && t.type !== 'label');
+  // Names are only taken out of the text once they resolve to something.
+  const named = new Set(['project', 'label', 'assignee']);
+  const consumed = parsed.tokens.filter((t) => !named.has(t.type));
 
   const projectToken = parsed.tokens.find((t) => t.type === 'project');
   if (projectToken?.name) {
@@ -78,6 +86,18 @@ export async function parseQuickAdd(
       consumed.push(token);
     }
     if (labelIds.size > 0) result.labelIds = [...labelIds];
+  }
+
+  // +person: someone who can see the project the task lands in.
+  const assigneeToken = parsed.tokens.find((t) => t.type === 'assignee');
+  if (assigneeToken && targetProjectId) {
+    const people =
+      targetProjectId === fallbackProjectId ? fallbackPeople : await getProjectMembers(targetProjectId, userId);
+    const id = matchPerson(assigneeToken.name!, people, userId);
+    if (id) {
+      result.assigneeId = id;
+      consumed.push(assigneeToken);
+    }
   }
 
   result.content = textWithoutTokens(text, consumed);
