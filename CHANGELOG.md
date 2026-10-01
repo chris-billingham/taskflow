@@ -4,6 +4,52 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Phase 5: team collaboration
+
+- **Share a project with specific people.** **Share** at the top of a
+  project adds someone with an account as admin, member, commenter or
+  viewer; admins change roles or remove people, and anyone can leave.
+  Personal projects can be shared (not the Inbox). The person is notified
+  and the project appears in their sidebar straight away.
+- **Workspace guests see only what's shared with them**, as the invite
+  dialog always said; they used to read every team project. They also no
+  longer receive workspace-wide live updates.
+- **A personal space for everyone.** Each account's Inbox and personal
+  projects are its own, with no workspace; workspaces are for teams. The
+  automatic "Personal" workspaces are migrated away (kept and renamed if
+  anyone else had joined). The sidebar shows My Projects, each workspace,
+  and Shared with me; the workspace switcher is gone.
+- **Team labels.** A label belongs to a space: yours, or a workspace's,
+  shared by everyone in it. A task uses its project's labels, so editing a
+  shared task's labels no longer wipes other people's. Existing labels on
+  team tasks became team labels. Moving tasks between spaces carries
+  labels across by name; filters match labels by name everywhere.
+- **Your own arrangement.** Favourites, sidebar order and collapsed
+  sections (and label favourites and order) are per person instead of
+  shared with everyone on the project.
+- **Live notifications.** New notifications appear the moment they're
+  created, including from background jobs (the worker publishes through
+  Redis; Socket.IO uses the Redis adapter). Email and push are sent from a
+  queue with retries, so a slow mail server never holds up an action.
+  Reordering tasks and sections shows up live for others.
+- **See who's here.** The task panel shows who else has the task open,
+  and who is typing a comment.
+- **Assigning work.** `+name` in Quick Add (`+me`, a full name, or a
+  unique first name), an **Assigned to me** view, and a project
+  **Activity** feed.
+- **Leave a workspace, transfer ownership** from workspace settings.
+- **Data model.** Prisma 7 (with the pg driver adapter; the database URL
+  moved to `prisma.config.ts`). Due dates and deadlines are `DATE` columns
+  sent as `YYYY-MM-DD`; display preferences and email frequency are enums;
+  superseded columns are dropped. New setting: `NOTIFICATION_DELIVERY`.
+- **Fixed:**
+  - Deleting an account left its personal projects behind with no owner.
+  - Search results showed the previous day's due date west of UTC.
+  - A project's assignee and @mention list ignored direct collaborators.
+- **CI:** API coverage is now measured across the unit, integration and
+  DB suites together (43% to 81% of statements), with the thresholds
+  raised to match. `nodemailer` 10.0.13 for new advisories.
+
 ### Phase 4: everyday UX
 
 - **Trash and Undo.** Deleting a task moves it and its subtasks to a Trash
