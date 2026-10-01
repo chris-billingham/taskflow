@@ -3,7 +3,7 @@ import { hashPassword, verifyPassword } from '../utils/password.js';
 import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/index.js';
 import { disconnectUserSockets } from '../websocket/events.js';
 import { deleteObjects } from '../config/storage.js';
-import type { SystemRole } from '@prisma/client';
+import type { DateFormat, SystemRole, Theme, TimeFormat } from '@prisma/client';
 import { logger } from '../config/logger.js';
 
 /**
@@ -25,7 +25,7 @@ export async function provisionUser(
     role?: SystemRole;
     emailVerifyToken?: string | null;
     emailVerifyTokenExpiresAt?: Date | null;
-    preferences?: { timezone?: string; weekStart?: number; dateFormat?: string; timeFormat?: string };
+    preferences?: { timezone?: string; weekStart?: number; dateFormat?: DateFormat; timeFormat?: TimeFormat };
   },
 ) {
   const created = await tx.user.create({
@@ -98,9 +98,9 @@ export async function updateUser(
     avatarUrl?: string | null;
     timezone?: string;
     weekStart?: number;
-    dateFormat?: string | null;
-    timeFormat?: string | null;
-    theme?: string | null;
+    dateFormat?: DateFormat | null;
+    timeFormat?: TimeFormat | null;
+    theme?: Theme | null;
   },
 ) {
   const user = await prisma.user.findUnique({ where: { id } });

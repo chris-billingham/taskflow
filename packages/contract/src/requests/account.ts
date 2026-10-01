@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateFormatSchema, emailFrequencySchema, themeSchema, timeFormatSchema } from '../common.js';
 
 export function isValidTimeZone(tz: string): boolean {
   try {
@@ -22,9 +23,9 @@ export const updateProfileSchema = z.object({
     .refine(isValidTimeZone, 'Must be a valid IANA timezone (e.g. Europe/London)')
     .optional(),
   weekStart: z.number().int().min(0).max(6).optional(),
-  dateFormat: z.string().max(50).nullable().optional(),
-  timeFormat: z.string().max(32).nullable().optional(),
-  theme: z.enum(['light', 'dark', 'system']).nullable().optional(),
+  dateFormat: dateFormatSchema.nullable().optional(),
+  timeFormat: timeFormatSchema.nullable().optional(),
+  theme: themeSchema.nullable().optional(),
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
@@ -32,7 +33,7 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 // themselves cannot be globally muted.
 export const updateNotificationPreferencesSchema = z.object({
   emailEnabled: z.boolean().optional(),
-  emailFrequency: z.enum(['immediate', 'daily', 'weekly']).optional(),
+  emailFrequency: emailFrequencySchema.optional(),
   disabledTypes: z
     .array(
       z.enum([

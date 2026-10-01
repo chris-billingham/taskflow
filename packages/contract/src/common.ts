@@ -32,6 +32,38 @@ export const calendarDateInput = z
   .transform((value) => value.slice(0, 10))
   .pipe(z.iso.date('Must be a real date'));
 
+/**
+ * A database enum whose stored values (Prisma @map) aren't valid enum names.
+ * The server works with the names; the wire carries the stored values.
+ */
+function mappedEnum<const N extends string, const W extends string>(pairs: readonly (readonly [N, W])[]) {
+  const names = pairs.map(([name]) => name) as [N, ...N[]];
+  const wires = pairs.map(([, wire]) => wire) as [W, ...W[]];
+  const byWire = new Map<W, N>(pairs.map(([name, wire]) => [wire, name]));
+  const byName = new Map<N, W>(pairs.map(([name, wire]) => [name, wire]));
+  return z.codec(z.enum(wires), z.enum(names), {
+    decode: (wire) => byWire.get(wire)!,
+    encode: (name) => byName.get(name)!,
+  });
+}
+
+/** Date display format, as a date-fns pattern on the wire. */
+export const dateFormatSchema = mappedEnum([
+  ['MONTH_NAME', 'MMM d, yyyy'],
+  ['MONTH_FIRST', 'MM/dd/yyyy'],
+  ['DAY_FIRST', 'dd/MM/yyyy'],
+  ['ISO', 'yyyy-MM-dd'],
+]);
+
+/** 12- or 24-hour clock. */
+export const timeFormatSchema = mappedEnum([
+  ['H12', '12h'],
+  ['H24', '24h'],
+]);
+
+export const themeSchema = z.enum(['light', 'dark', 'system']);
+export const emailFrequencySchema = z.enum(['immediate', 'daily', 'weekly']);
+
 export const id = z.string().min(1);
 
 /** Free-form JSON stored as-is. */

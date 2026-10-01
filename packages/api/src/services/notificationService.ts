@@ -30,7 +30,7 @@ export async function getNotificationPreferences(
   if (!row) return DEFAULT_PREFS;
   return {
     emailEnabled: row.emailEnabled,
-    emailFrequency: row.emailFrequency as NotificationPrefs['emailFrequency'],
+    emailFrequency: row.emailFrequency,
     disabledTypes: row.disabledTypes,
   };
 }
@@ -46,7 +46,7 @@ export async function updateNotificationPreferences(
   });
   return {
     emailEnabled: row.emailEnabled,
-    emailFrequency: row.emailFrequency as NotificationPrefs['emailFrequency'],
+    emailFrequency: row.emailFrequency,
     disabledTypes: row.disabledTypes,
   };
 }

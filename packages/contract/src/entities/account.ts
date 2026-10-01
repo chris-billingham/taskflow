@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { id, instant, ok, type Wire } from '../common.js';
+import { dateFormatSchema, emailFrequencySchema, id, instant, ok, themeSchema, timeFormatSchema, type Wire } from '../common.js';
 import { notificationTypeSchema } from './notification.js';
 
 export const systemRoleSchema = z.enum(['USER', 'ADMIN']);
@@ -51,9 +51,9 @@ export const profileSchema = z.object({
   timezone: z.string(),
   /** 0 = Sunday … 6 = Saturday. */
   weekStart: z.number().int(),
-  dateFormat: z.string().nullable(),
-  timeFormat: z.string().nullable(),
-  theme: z.string().nullable(),
+  dateFormat: dateFormatSchema.nullable(),
+  timeFormat: timeFormatSchema.nullable(),
+  theme: themeSchema.nullable(),
   role: systemRoleSchema,
   isActive: z.boolean(),
   emailVerified: z.boolean(),
@@ -75,7 +75,7 @@ export type Me = Wire<typeof meSchema>;
 
 export const notificationPreferencesSchema = z.object({
   emailEnabled: z.boolean(),
-  emailFrequency: z.enum(['immediate', 'daily', 'weekly']),
+  emailFrequency: emailFrequencySchema,
   /** Muted types, suppressed in-app, by push and by email. */
   disabledTypes: z.array(notificationTypeSchema),
 });

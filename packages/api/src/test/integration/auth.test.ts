@@ -85,7 +85,8 @@ describe('POST /api/v1/auth/register', () => {
     expect(vi.mocked(authService.register).mock.lastCall?.[0].preferences).toEqual({
       timezone: 'Europe/London',
       weekStart: 1,
-      dateFormat: 'dd/MM/yyyy',
+      // Decoded to the stored enum; clients still send and receive dd/MM/yyyy.
+      dateFormat: 'DAY_FIRST',
     });
   });
 

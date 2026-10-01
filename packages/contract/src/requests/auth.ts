@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { emailAddress } from '../common.js';
+import { dateFormatSchema, emailAddress, timeFormatSchema } from '../common.js';
 import { isValidTimeZone } from './account.js';
 
 /**
@@ -9,8 +9,8 @@ import { isValidTimeZone } from './account.js';
 const signUpPreferencesSchema = z.object({
   timezone: z.string().max(64).refine(isValidTimeZone).optional().catch(undefined),
   weekStart: z.union([z.literal(0), z.literal(1), z.literal(6)]).optional().catch(undefined),
-  dateFormat: z.enum(['MMM d, yyyy', 'MM/dd/yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd']).optional().catch(undefined),
-  timeFormat: z.enum(['12h', '24h']).optional().catch(undefined),
+  dateFormat: dateFormatSchema.optional().catch(undefined),
+  timeFormat: timeFormatSchema.optional().catch(undefined),
 });
 
 export const registerSchema = z.object({

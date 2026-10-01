@@ -82,6 +82,32 @@ enum NotificationType {
   REMINDER
 }
 
+// Display preferences. The database stores the format strings the clients
+// use (@map); the API contract translates the names back to them.
+enum DateFormat {
+  MONTH_NAME  @map("MMM d, yyyy")
+  MONTH_FIRST @map("MM/dd/yyyy")
+  DAY_FIRST   @map("dd/MM/yyyy")
+  ISO         @map("yyyy-MM-dd")
+}
+
+enum TimeFormat {
+  H12 @map("12h")
+  H24 @map("24h")
+}
+
+enum Theme {
+  light
+  dark
+  system
+}
+
+enum EmailFrequency {
+  immediate
+  daily
+  weekly
+}
+
 // ─── User ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -92,9 +118,9 @@ model User {
   avatarUrl        String?
   timezone         String    @default("UTC")
   weekStart        Int       @default(0) // 0 = Sunday, 6 = Saturday
-  dateFormat       String?
-  timeFormat       String?
-  theme            String?
+  dateFormat       DateFormat?
+  timeFormat       TimeFormat?
+  theme            Theme?
   defaultProjectId String?
   // Instance-level role. Admins manage accounts deployment-wide; see SystemRole.
   role             SystemRole @default(USER)
@@ -606,7 +632,7 @@ model NotificationPreference {
   id             String             @id @default(cuid())
   userId         String             @unique
   emailEnabled   Boolean            @default(true)
-  emailFrequency String             @default("daily") // immediate | daily | weekly
+  emailFrequency EmailFrequency     @default(daily)
   // Notification types the user has muted (suppressed everywhere: in-app,
   // push and email). REMINDER is deliberately not mutable — reminders are
   // explicitly created by the user per task.
