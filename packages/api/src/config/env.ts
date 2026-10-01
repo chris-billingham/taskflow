@@ -98,6 +98,16 @@ const envSchema = z.object({
   // Push services reject an unroutable contact address, so this is required
   // alongside the keys rather than defaulted to a .local placeholder.
   VAPID_SUBJECT: z.string().optional(),
+  // Apple push (APNs) for the iOS app, with a token-based (.p8) key from the
+  // Apple Developer account. All four are needed; without them iOS devices
+  // simply get no push. APNS_PRIVATE_KEY is the .p8 file's contents (\n
+  // escapes are fine).
+  APNS_KEY_ID: z.string().optional(),
+  APNS_TEAM_ID: z.string().optional(),
+  APNS_PRIVATE_KEY: z.string().optional(),
+  APNS_BUNDLE_ID: z.string().optional(),
+  // Tests only: send to this host instead of Apple's.
+  APNS_HOST: z.string().optional(),
 });
 
 /**

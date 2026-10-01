@@ -8,6 +8,7 @@ import { cursorArgs, toPage } from '../utils/pagination.js';
 import { logger } from '../config/logger.js';
 import { WS_EVENTS, emitToUser } from '../websocket/events.js';
 import { scheduleDelivery } from '../jobs/notificationDelivery.js';
+import { isApnsConfigured, sendApns } from './apns.js';
 
 // ─── Notification Preferences ────────────────────────────────────────────
 
@@ -220,6 +221,27 @@ export async function removePushSubscription(endpoint: string, userId: string) {
   await prisma.pushSubscription.delete({ where: { endpoint } });
 }
 
+/**
+ * Register (or move to this account and session) an iOS device token. A token
+ * belongs to one device, so registering it again replaces the old owner.
+ */
+export async function registerAppleDevice(
+  userId: string,
+  sessionId: string | undefined,
+  input: { token: string; environment: 'SANDBOX' | 'PRODUCTION' },
+) {
+  const token = input.token.toLowerCase();
+  await prisma.appleDevice.upsert({
+    where: { token },
+    create: { userId, token, environment: input.environment, sessionId },
+    update: { userId, environment: input.environment, sessionId },
+  });
+}
+
+export async function removeAppleDevice(userId: string, token: string) {
+  await prisma.appleDevice.deleteMany({ where: { userId, token: token.toLowerCase() } });
+}
+
 export async function getUserPushSubscriptions(userId: string) {
   return prisma.pushSubscription.findMany({ where: { userId } });
 }
@@ -249,6 +271,42 @@ export async function sendPushNotification(
   body: string,
   data?: Record<string, unknown>,
 ) {
+  await Promise.allSettled([sendWebPush(userId, title, body, data), sendApplePush(userId, title, body, data)]);
+}
+
+/** Apple devices, through APNs. */
+async function sendApplePush(userId: string, title: string, body: string, data?: Record<string, unknown>) {
+  if (!isApnsConfigured()) return;
+  const devices = await prisma.appleDevice.findMany({ where: { userId } });
+  if (devices.length === 0) return;
+
+  // A device whose session has ended (signed out, or revoked from another
+  // device) gets nothing more, and is forgotten.
+  const live = new Set(
+    (
+      await prisma.refreshToken.findMany({
+        where: { userId, expiresAt: { gt: new Date() }, sessionId: { in: devices.flatMap((d) => d.sessionId ?? []) } },
+        select: { sessionId: true },
+      })
+    ).map((r) => r.sessionId),
+  );
+  for (const device of devices) {
+    if (device.sessionId && !live.has(device.sessionId)) {
+      await prisma.appleDevice.delete({ where: { id: device.id } }).catch(() => {});
+      continue;
+    }
+    try {
+      const result = await sendApns(device.token, device.environment, { title, body }, data);
+      if (result.dead) await prisma.appleDevice.delete({ where: { id: device.id } }).catch(() => {});
+      else if (!result.ok) logger.warn({ userId, status: result.status, reason: result.reason }, 'APNs delivery failed');
+    } catch (err) {
+      logger.warn({ err, userId }, 'APNs delivery failed');
+    }
+  }
+}
+
+/** Browsers, through Web Push. */
+async function sendWebPush(userId: string, title: string, body: string, data?: Record<string, unknown>) {
   if (!isPushConfigured()) return;
 
   const subscriptions = await getUserPushSubscriptions(userId);

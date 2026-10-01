@@ -11,6 +11,8 @@ import {
   pushSubscriptionSchema,
   vapidKeySchema,
   messageResponse,
+  registerAppleDeviceSchema,
+  appleDeviceParamsSchema,
   ok,
 } from '@taskflow/contract';
 import { env } from '../config/env.js';
@@ -117,6 +119,42 @@ export async function notificationRoutes(fastify: FastifyInstance) {
     async (request) => {
       await notificationService.removePushSubscription(request.body.endpoint, request.user.id);
       return { success: true as const, message: 'Unsubscribed from push notifications' };
+    },
+  );
+
+  // The iOS app registers its APNs token here after each sign-in. Needs a
+  // signed-in session (the device is tied to it), so not an access token.
+  app.post(
+    '/push/apple',
+    {
+      config: { sessionOnly: true },
+      schema: {
+        tags,
+        summary: "Register this iPhone or iPad's APNs device token",
+        body: registerAppleDeviceSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => {
+      await notificationService.registerAppleDevice(request.user.id, request.user.sid, request.body);
+      return { success: true as const, message: 'Registered for push notifications' };
+    },
+  );
+
+  app.delete(
+    '/push/apple/:token',
+    {
+      config: { sessionOnly: true },
+      schema: {
+        tags,
+        summary: 'Stop push notifications to this device',
+        params: appleDeviceParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => {
+      await notificationService.removeAppleDevice(request.user.id, request.params.token);
+      return { success: true as const, message: 'Unregistered from push notifications' };
     },
   );
 }

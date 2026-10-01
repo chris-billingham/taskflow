@@ -149,6 +149,7 @@ model User {
   reminders         Reminder[]
   notifications     Notification[]
   pushSubscriptions PushSubscription[]
+  appleDevices      AppleDevice[]
   notificationPreference NotificationPreference?
   attachments       Attachment[]      @relation("AttachmentUploader")
   templates         Template[]
@@ -733,6 +734,30 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+enum ApnsEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+// An iPhone or iPad the Taskflow app registered for push notifications.
+// Tied to the session that registered it: signing that device out stops
+// its notifications.
+model AppleDevice {
+  id          String          @id @default(cuid())
+  userId      String
+  token       String          @unique
+  environment ApnsEnvironment
+  sessionId   String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@map("apple_devices")
 }
 
 model PushSubscription {

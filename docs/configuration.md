@@ -225,6 +225,18 @@ docker compose -f docker-compose.yml run --rm api npx web-push generate-vapid-ke
 The public key is served to the browser at runtime, so enabling push needs no
 frontend rebuild. Push is the only delivery method reminders currently use.
 
+
+## Apple Push (iOS app)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `APNS_KEY_ID` | No | — | Key ID of an APNs authentication key (.p8) from your Apple Developer account |
+| `APNS_TEAM_ID` | With the key | — | Your Apple Developer team ID |
+| `APNS_PRIVATE_KEY` | With the key | — | The .p8 file's contents; `\n` escapes are fine on one line |
+| `APNS_BUNDLE_ID` | With the key | — | The iOS app's bundle ID (the APNs topic) |
+
+Until all four are set, iOS devices get no push notifications (in-app and email notifications still work). Each device says whether it's a development (sandbox) or release (TestFlight, App Store) build, and is sent to the matching Apple server. A device stops getting notifications when its session is signed out, and is forgotten when Apple reports its token as unregistered.
+
 ## Docker Images
 
 | Variable | Default | Description |

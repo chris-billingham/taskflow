@@ -67,6 +67,17 @@ Sync while the app is open after each realtime event batch or every few minutes,
 
 - **Reorder with a neighbour, not an index.** `POST /tasks/:id/position` with `{ "afterId": "…" }` (or `null` for first) puts one task after another in its list. Only that task changes, so concurrent reorders by different people don't fight. `sortOrder` is fractional: sort by it, then by id.
 
+## Push notifications (iOS)
+
+After signing in, register the APNs device token iOS gave the app (hex), saying which APNs environment the build uses:
+
+```http
+POST /api/v1/push/apple
+{ "token": "a1b2…", "environment": "PRODUCTION" }
+```
+
+Use `SANDBOX` for development builds. The device is tied to the session that registered it: once that session ends (sign-out, or revoked from **Devices & tokens**) it gets no more notifications. Register again after each sign-in, and `DELETE /api/v1/push/apple/:token` if the user turns notifications off. The payload is `{ "aps": { "alert": { "title", "body" }, "sound": "default" }, …data }`, where data carries ids such as `taskId` and `projectId`.
+
 ## Realtime
 
 Socket.IO at `/socket.io`, with `auth: { token: <accessToken> }`. The server disconnects the socket when that token expires and when its session is signed out; reconnect with a fresh token. See [architecture.md](architecture.md#real-time) for rooms and events.

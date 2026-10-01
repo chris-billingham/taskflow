@@ -61,3 +61,12 @@ export const createApiTokenSchema = z.object({
 export type CreateApiTokenInput = z.infer<typeof createApiTokenSchema>;
 
 export const sessionParamsSchema = z.object({ id: z.string().min(1) });
+
+/** POST /push/apple: the APNs device token the app got from iOS (hex). */
+export const registerAppleDeviceSchema = z.object({
+  token: z.string().regex(/^[0-9a-fA-F]{64,200}$/, 'Must be the hex device token from APNs'),
+  /** SANDBOX for development builds, PRODUCTION for TestFlight and the App Store. */
+  environment: z.enum(['SANDBOX', 'PRODUCTION']),
+});
+export type RegisterAppleDeviceInput = z.infer<typeof registerAppleDeviceSchema>;
+export const appleDeviceParamsSchema = z.object({ token: z.string().min(1) });
