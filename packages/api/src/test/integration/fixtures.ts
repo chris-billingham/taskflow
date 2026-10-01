@@ -49,8 +49,6 @@ export function projectFieldsRow(overrides: Record<string, unknown> = {}) {
     isArchived: false,
     isInbox: false,
     sortOrder: 1,
-    isShared: false,
-    shareLink: null,
     createdAt: AT,
     updatedAt: AT,
     ...overrides,

@@ -121,7 +121,6 @@ model User {
   dateFormat       DateFormat?
   timeFormat       TimeFormat?
   theme            Theme?
-  defaultProjectId String?
   // Instance-level role. Admins manage accounts deployment-wide; see SystemRole.
   role             SystemRole @default(USER)
   // Suspended accounts keep all their data but cannot log in or refresh a
@@ -258,12 +257,9 @@ model Project {
   workspaceId String?
   parentId    String?
   viewStyle   ViewStyle @default(LIST)
-  isFavorite  Boolean   @default(false)
   isArchived  Boolean   @default(false)
   isInbox     Boolean   @default(false)
   sortOrder   Int       @default(0)
-  isShared    Boolean   @default(false)
-  shareLink   String?   @unique
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -274,7 +270,6 @@ model Project {
   members   ProjectMember[]
   sections  Section[]
   tasks     Task[]
-  comments  Comment[]       @relation("ProjectComments")
   userSettings ProjectUserSetting[]
 
   @@index([ownerId])
@@ -308,7 +303,6 @@ model Section {
   name        String
   projectId   String
   sortOrder   Int      @default(0)
-  isCollapsed Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -424,8 +418,6 @@ model Label {
   color       String   @default("#6B7280")
   userId      String?
   workspaceId String?
-  // Superseded by label_user_settings (per person); dropped in a later migration.
-  isFavorite  Boolean  @default(false)
   // The default order, for people who haven't arranged their labels.
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
@@ -501,20 +493,17 @@ model Comment {
   content   String   // markdown
   authorId  String
   taskId    String?
-  projectId String?
   parentId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   task        Task?      @relation("TaskComments", fields: [taskId], references: [id], onDelete: Cascade)
-  project     Project?   @relation("ProjectComments", fields: [projectId], references: [id], onDelete: Cascade)
   parent      Comment?   @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
   replies     Comment[]  @relation("CommentThread")
   attachments Attachment[] @relation("CommentAttachments")
 
   @@index([taskId])
-  @@index([projectId])
   @@index([authorId])
   @@index([parentId])
   @@map("comments")

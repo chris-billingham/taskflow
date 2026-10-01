@@ -8,7 +8,6 @@ const commentFields = z.object({
   content: z.string(),
   authorId: id,
   taskId: id.nullable(),
-  projectId: id.nullable(),
   parentId: id.nullable(),
   createdAt: instant,
   updatedAt: instant,

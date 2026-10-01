@@ -52,8 +52,6 @@ export function makeProject(overrides: Partial<Project> = {}): Project {
     isArchived: false,
     isInbox: false,
     sortOrder: 0,
-    isShared: false,
-    shareLink: null,
     createdAt: TIMESTAMP,
     updatedAt: TIMESTAMP,
     sections: [],

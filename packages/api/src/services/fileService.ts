@@ -6,7 +6,6 @@ import { uploadObject, deleteObject, deleteObjects, getObjectStream } from '../c
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import {
   requireTaskAccess,
-  requireProjectAccess,
   type AccessLevel,
 } from './access.js';
 import { ALLOWED_MIME_TYPES } from '@taskflow/contract';
@@ -91,13 +90,11 @@ async function requireCommentAccess(
 ) {
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
-    select: { id: true, taskId: true, projectId: true, authorId: true },
+    select: { id: true, taskId: true, authorId: true },
   });
   if (!comment) throw new NotFoundError('Comment not found');
   if (comment.taskId) {
     await requireTaskAccess(comment.taskId, userId, level);
-  } else if (comment.projectId) {
-    await requireProjectAccess(comment.projectId, userId, level);
   } else if (comment.authorId !== userId) {
     throw new ForbiddenError('You do not have access to this comment');
   }

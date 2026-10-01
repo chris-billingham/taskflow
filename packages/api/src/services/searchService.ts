@@ -211,8 +211,8 @@ export async function searchComments(
       c.content,
       c."taskId",
       t.content AS "taskContent",
-      COALESCE(c."projectId", t."projectId") AS "projectId",
-      COALESCE(cp.name, tp.name) AS "projectName",
+      t."projectId" AS "projectId",
+      tp.name AS "projectName",
       COALESCE(
         ts_rank(
           to_tsvector('english', c.content),
@@ -223,24 +223,15 @@ export async function searchComments(
     FROM comments c
     LEFT JOIN tasks t ON t.id = c."taskId"
     LEFT JOIN projects tp ON tp.id = t."projectId"
-    LEFT JOIN projects cp ON cp.id = c."projectId"
     WHERE to_tsvector('english', c.content) @@ to_tsquery('english', ${tsQuery})
     AND c."parentId" IS NULL
     -- Authorship grants nothing: someone removed from a project no longer
     -- finds its comments (or the task titles and project names beside them).
+    AND c."taskId" IS NOT NULL
+    AND t."deletedAt" IS NULL
     AND (
-      (
-        c."taskId" IS NOT NULL
-        AND t."deletedAt" IS NULL
-        AND (
-          t."assigneeId" = ${userId}
-          OR ${projectAccessSql('tp', userId)}
-        )
-      )
-      OR (
-        c."projectId" IS NOT NULL
-        AND ${projectAccessSql('cp', userId)}
-      )
+      t."assigneeId" = ${userId}
+      OR ${projectAccessSql('tp', userId)}
     )
     ORDER BY rank DESC, c."createdAt" DESC
     LIMIT ${limit} OFFSET ${offset}

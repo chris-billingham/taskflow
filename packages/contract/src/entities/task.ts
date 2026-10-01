@@ -6,7 +6,8 @@ import { userSummarySchema } from './user.js';
 export const taskLabelSchema = z.object({
   taskId: id,
   labelId: id,
-  label: labelSchema,
+  // What a task shows of its labels; favourite and order are each person's own.
+  label: labelSchema.pick({ id: true, name: true, color: true, userId: true, workspaceId: true }),
 });
 
 /** A task's own columns. */
@@ -63,7 +64,6 @@ export const taskCommentPreviewSchema = z.object({
   content: z.string(),
   authorId: id,
   taskId: id.nullable(),
-  projectId: id.nullable(),
   parentId: id.nullable(),
   createdAt: instant,
   updatedAt: instant,

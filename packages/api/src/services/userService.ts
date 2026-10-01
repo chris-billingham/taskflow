@@ -219,20 +219,11 @@ export async function deleteUser(id: string) {
               },
               {
                 comment: {
-                  OR: [
-                    {
-                      task: {
-                        project: {
-                          workspaceId: { in: ownedWorkspaces.map((w) => w.id) },
-                        },
-                      },
+                  task: {
+                    project: {
+                      workspaceId: { in: ownedWorkspaces.map((w) => w.id) },
                     },
-                    {
-                      project: {
-                        workspaceId: { in: ownedWorkspaces.map((w) => w.id) },
-                      },
-                    },
-                  ],
+                  },
                 },
               },
             ]
@@ -303,7 +294,7 @@ export async function exportUserData(id: string) {
     }),
     prisma.comment.findMany({
       where: { authorId: id },
-      select: { id: true, content: true, taskId: true, projectId: true, createdAt: true },
+      select: { id: true, content: true, taskId: true, createdAt: true },
     }),
     prisma.label.findMany({
       where: { userId: id },

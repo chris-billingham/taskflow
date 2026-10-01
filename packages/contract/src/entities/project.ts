@@ -31,8 +31,6 @@ export const projectFieldsSchema = z.object({
   isArchived: z.boolean(),
   isInbox: z.boolean(),
   sortOrder: z.number().int(),
-  isShared: z.boolean(),
-  shareLink: z.string().nullable(),
   createdAt: instant,
   updatedAt: instant,
 });
