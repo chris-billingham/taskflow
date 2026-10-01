@@ -20,6 +20,7 @@ import {
 } from '@taskflow/contract';
 import { authenticate } from '../middleware/authenticate.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
+import { requireSession } from '../middleware/requireSession.js';
 import * as adminService from '../services/adminService.js';
 import * as instanceSettings from '../services/instanceSettingsService.js';
 import { rateLimitMax } from '../config/rateLimits.js';
@@ -33,6 +34,7 @@ const tags = ['Admin'];
 export async function adminRoutes(fastify: FastifyInstance) {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
   app.addHook('preHandler', authenticate);
+  app.addHook('preHandler', requireSession);
   app.addHook('preHandler', requireAdmin);
 
   app.get(

@@ -8,12 +8,14 @@ import {
   Download,
   LayoutTemplate,
   ShieldCheck,
+  MonitorSmartphone,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 
 const items = [
   { to: '/settings/profile', label: 'Profile', icon: User },
   { to: '/settings/account', label: 'Account', icon: Lock },
+  { to: '/settings/devices', label: 'Devices & tokens', icon: MonitorSmartphone },
   { to: '/settings/preferences', label: 'Preferences', icon: Sliders },
   { to: '/settings/notifications', label: 'Notifications', icon: Bell },
   { to: '/settings/templates', label: 'Templates', icon: LayoutTemplate },

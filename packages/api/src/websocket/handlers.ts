@@ -93,6 +93,8 @@ export function registerHandlers(socket: AuthSocket): void {
   const { user } = socket.data;
 
   socket.join(`user:${user.id}`);
+  // So signing this device out can drop its socket too.
+  if (user.sid) socket.join(`session:${user.sid}`);
 
   // Auto-join everything the user can currently see, so realtime works across
   // all views (Today, Upcoming, lists) without the app subscribing per project,

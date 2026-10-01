@@ -6,6 +6,7 @@ import {
   notificationPreferencesSchema,
   profileSchema,
   messageResponse,
+  deleteAccountSchema,
   ok,
 } from '@taskflow/contract';
 import * as notificationService from '../services/notificationService.js';
@@ -77,7 +78,18 @@ export async function settingsRoutes(fastify: FastifyInstance) {
 
   app.delete(
     '/data',
-    { schema: { tags, summary: 'Delete your account and data', response: { 200: messageResponse } } },
-    async (request) => ({ success: true as const, ...(await userService.deleteUser(request.user.id)) }),
+    {
+      config: { sessionOnly: true },
+      schema: {
+        tags,
+        summary: 'Delete your account and data (needs your password)',
+        body: deleteAccountSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => {
+      await userService.confirmPassword(request.user.id, request.body.password);
+      return { success: true as const, ...(await userService.deleteUser(request.user.id)) };
+    },
   );
 }

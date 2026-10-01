@@ -6,6 +6,8 @@ export interface TokenPayload {
   id: string;
   email: string;
   name: string;
+  /** The session (signed-in device) the token belongs to. */
+  sid?: string;
 }
 
 const ACCESS_TOKEN_EXPIRY = '15m';

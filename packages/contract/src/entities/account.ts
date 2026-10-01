@@ -17,8 +17,13 @@ export const authUserSchema = z.object({
 });
 export type AuthUser = Wire<typeof authUserSchema>;
 
-/** POST /auth/login. The refresh token arrives as an httpOnly cookie. */
-export const loginResponse = ok(z.object({ user: authUserSchema, accessToken: z.string() }));
+/**
+ * POST /auth/login. The web app's refresh token arrives as an httpOnly
+ * cookie; an `app` client gets it here instead.
+ */
+export const loginResponse = ok(
+  z.object({ user: authUserSchema, accessToken: z.string(), refreshToken: z.string().optional() }),
+);
 
 /**
  * POST /auth/register. When the instance verifies email addresses there is no
@@ -27,12 +32,47 @@ export const loginResponse = ok(z.object({ user: authUserSchema, accessToken: z.
 export const registerResponse = ok(
   z.discriminatedUnion('verificationRequired', [
     z.object({ user: authUserSchema, verificationRequired: z.literal(true) }),
-    z.object({ user: authUserSchema, accessToken: z.string(), verificationRequired: z.literal(false) }),
+    z.object({
+      user: authUserSchema,
+      accessToken: z.string(),
+      refreshToken: z.string().optional(),
+      verificationRequired: z.literal(false),
+    }),
   ]),
 );
 
-/** POST /auth/refresh (reads and rotates the refresh cookie). */
-export const refreshResponse = ok(z.object({ accessToken: z.string() }));
+/** POST /auth/refresh: rotates the refresh token (cookie for the web, body for apps). */
+export const refreshResponse = ok(z.object({ accessToken: z.string(), refreshToken: z.string().optional() }));
+
+/** A signed-in device, from GET /sessions. */
+export const sessionSchema = z.object({
+  id,
+  name: z.string(),
+  client: z.enum(['WEB', 'APP']),
+  startedAt: instant,
+  lastUsedAt: instant,
+  /** The session making this request. */
+  current: z.boolean(),
+});
+export type Session = Wire<typeof sessionSchema>;
+
+export const apiTokenScopeSchema = z.enum(['READ', 'WRITE']);
+
+/** A personal access token, as listed. The token itself is only shown once. */
+export const apiTokenSchema = z.object({
+  id,
+  name: z.string(),
+  prefix: z.string(),
+  scope: apiTokenScopeSchema,
+  lastUsedAt: instant.nullable(),
+  expiresAt: instant.nullable(),
+  createdAt: instant,
+});
+export type ApiToken = Wire<typeof apiTokenSchema>;
+
+/** POST /tokens: the new token, in full, this one time. */
+export const createdApiTokenSchema = apiTokenSchema.extend({ token: z.string() });
+export type CreatedApiToken = Wire<typeof createdApiTokenSchema>;
 
 /** GET /auth/registration: whether the sign-in page should offer sign-up. */
 export const registrationStatusSchema = z.object({

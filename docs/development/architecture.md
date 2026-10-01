@@ -66,7 +66,9 @@ All routes live under `/api/v1`. `/health` and `/api/health` are public. OpenAPI
 ### Authentication
 
 - Login (and registration) returns a **15-minute access JWT** in the response body. The client keeps it in memory and sends it as `Authorization: Bearer <token>`.
-- It also sets a **30-day refresh JWT** in an httpOnly cookie scoped to `/api/v1/auth`. Refresh tokens are stored as SHA-256 hashes in the `RefreshToken` table.
+- It also issues a **30-day refresh JWT**: in an httpOnly cookie scoped to `/api/v1/auth` for the web app, or in the response body when the client says `"client": "app"` (native apps then send it in the body of `/auth/refresh` and `/auth/logout`). Refresh tokens are stored as SHA-256 hashes in the `RefreshToken` table.
+- Each refresh token row belongs to a **session** (`sessionId`, plus a device name and client kind) that survives rotation. Access tokens carry the session id as `sid`; sockets join `session:<sid>`, so revoking a session (`DELETE /sessions/:id`) also drops that device's live connection.
+- **Personal access tokens** (`ApiToken`, `tfp_…`, stored as SHA-256) authenticate like access tokens in `middleware/authenticate.ts`. `READ` tokens are limited to GET/HEAD; routes with `config: { sessionOnly: true }` and the admin group (`requireSession`) refuse them. See [api-clients.md](api-clients.md).
 - `POST /api/v1/auth/refresh` **rotates** the token: the old row is deleted and a new pair is issued in one transaction. If a refresh token comes in that is valid but not in the table (already used or expired), that counts as **reuse**. All of the user's refresh tokens are revoked and their live sockets are disconnected.
 - Password change or reset, suspension and reuse detection all revoke sessions. `requireAdmin` re-reads the user's role and active status from the database on every admin request.
 - When SMTP is configured and verified at boot, new accounts start unverified. Password login is refused until the email link is used.

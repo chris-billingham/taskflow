@@ -37,6 +37,7 @@ const WorkspaceSettingsPage = lazy(() => import('@/pages/settings/Workspace'));
 const NotificationSettings = lazy(() => import('@/pages/settings/Notifications'));
 const Profile = lazy(() => import('@/pages/settings/Profile'));
 const Account = lazy(() => import('@/pages/settings/Account'));
+const Devices = lazy(() => import('@/pages/settings/Devices'));
 const Preferences = lazy(() => import('@/pages/settings/Preferences'));
 const Integrations = lazy(() => import('@/pages/settings/Integrations'));
 const DataExport = lazy(() => import('@/pages/settings/DataExport'));
@@ -141,6 +142,7 @@ function App() {
           <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
           <Route path="/settings/profile" element={<Profile />} />
           <Route path="/settings/account" element={<Account />} />
+          <Route path="/settings/devices" element={<Devices />} />
           <Route path="/settings/preferences" element={<Preferences />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />
           <Route path="/settings/templates" element={<TemplatesSettings />} />

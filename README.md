@@ -132,7 +132,9 @@ bash scripts/install.sh
 | [Configuration](docs/admin-guide/configuration.md) | All environment variables |
 | [User Management](docs/admin-guide/user-management.md) | Admin role, creating and suspending accounts |
 | [Backup & Restore](docs/admin-guide/backup-restore.md) | Data backup procedures |
+| [Devices & Tokens](docs/user-guide/devices-and-tokens.md) | Signed-in devices, personal access tokens |
 | [Architecture](docs/development/architecture.md) | System design |
+| [Building an API Client](docs/development/api-clients.md) | Sign-in for apps, access tokens |
 | [Development Setup](docs/development/setup.md) | Local dev guide |
 | [API Reference](http://localhost:3001/api/docs) | Interactive OpenAPI docs |
 

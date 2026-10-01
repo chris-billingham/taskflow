@@ -49,3 +49,15 @@ export const updateNotificationPreferencesSchema = z.object({
     .max(7)
     .optional(),
 });
+
+/** POST /tokens. */
+export const createApiTokenSchema = z.object({
+  name: z.string().trim().min(1, 'Give the token a name').max(100),
+  /** READ: GET requests only. WRITE: reading and changing tasks, projects and so on. */
+  scope: z.enum(['READ', 'WRITE']),
+  /** Days until it stops working; omit for no expiry. */
+  expiresInDays: z.number().int().min(1).max(3650).optional(),
+});
+export type CreateApiTokenInput = z.infer<typeof createApiTokenSchema>;
+
+export const sessionParamsSchema = z.object({ id: z.string().min(1) });

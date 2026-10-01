@@ -69,11 +69,12 @@ export default function Account() {
     setDeleting(true);
     setDeleteError('');
     try {
-      await api.delete('/settings/data');
+      await api.delete('/settings/data', { data: { password: deleteConfirm } });
       await logout();
       navigate('/login');
-    } catch {
-      setDeleteError('Failed to delete account. Please try again.');
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setDeleteError(msg ?? 'Your account could not be deleted. Please try again.');
       setDeleting(false);
     }
   };
@@ -142,21 +143,22 @@ export default function Account() {
           </button>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              Type <strong>DELETE</strong> to confirm:
-            </p>
+            <label htmlFor="delete-password" className="block text-sm text-gray-700 dark:text-gray-300">
+              Enter your password to confirm:
+            </label>
             <input
-              type="text"
+              id="delete-password"
+              type="password"
+              autoComplete="current-password"
               value={deleteConfirm}
               onChange={(e) => setDeleteConfirm(e.target.value)}
-              placeholder="DELETE"
               className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-red-500"
             />
             {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
             <div className="flex gap-2">
               <button
                 onClick={handleDeleteAccount}
-                disabled={deleteConfirm !== 'DELETE' || deleting}
+                disabled={!deleteConfirm || deleting}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
                 {deleting ? 'Deleting…' : 'Permanently delete'}

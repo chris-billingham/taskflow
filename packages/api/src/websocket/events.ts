@@ -99,6 +99,11 @@ export function emitToWorkspace(workspaceId: string, event: string, data: unknow
  * with a now-stolen token would otherwise keep streaming the user's data
  * indefinitely — sockets are only re-authenticated at handshake time.
  */
+/** Drop the sockets of one session (a device that was signed out). */
+export function disconnectSessionSockets(sessionId: string): void {
+  (io ?? emitter)?.in(`session:${sessionId}`).disconnectSockets(true);
+}
+
 export function disconnectUserSockets(userId: string): void {
   (io ?? emitter)?.in(`user:${userId}`).disconnectSockets(true);
 }

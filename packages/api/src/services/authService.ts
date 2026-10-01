@@ -26,6 +26,7 @@ import {
   sendPasswordResetEmail,
 } from './mailService.js';
 import { logger } from '../config/logger.js';
+import { deviceNameFromUserAgent } from '../utils/deviceName.js';
 
 const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value).digest('hex');
@@ -40,13 +41,19 @@ function sendInBackground(label: string, fn: () => Promise<void>) {
   });
 }
 
-function tokenPayload(user: {
-  id: string;
-  email: string;
-  name: string;
-}): TokenPayload {
-  return { id: user.id, email: user.email, name: user.name };
+function tokenPayload(user: { id: string; email: string; name: string }, sid: string): TokenPayload {
+  return { id: user.id, email: user.email, name: user.name, sid };
 }
+
+/** The device a sign-in comes from. */
+export interface DeviceInfo {
+  client: 'web' | 'app';
+  /** Given by apps; web sessions are named from the user agent. */
+  deviceName?: string;
+  userAgent?: string;
+}
+
+const SESSION_DAYS = 30;
 
 /**
  * The user object returned alongside a new token pair. `role` is included so
@@ -70,30 +77,43 @@ function publicUser(user: {
   };
 }
 
-async function createTokenPair(user: {
-  id: string;
-  email: string;
-  name: string;
-}) {
-  const payload = tokenPayload(user);
+/**
+ * A new access/refresh pair. Without `session` it starts a new session (a
+ * sign-in); with it, it continues that session (a refresh), keeping its id,
+ * name and start time.
+ */
+async function createTokenPair(
+  user: { id: string; email: string; name: string },
+  device: DeviceInfo,
+  session?: { sessionId: string; name: string | null; sessionStartedAt: Date },
+) {
+  const sessionId = session?.sessionId ?? crypto.randomUUID();
+  const payload = tokenPayload(user, sessionId);
   const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
 
   await prisma.refreshToken.create({
     data: {
       // Only the hash is stored: a leaked backup or DB read must not yield
-      // directly replayable 30-day credentials (reset tokens were already
-      // hashed; refresh tokens now match).
+      // directly replayable 30-day credentials.
       token: sha256(refreshToken),
       userId: user.id,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      sessionId,
+      name: session?.name ?? device.deviceName ?? deviceNameFromUserAgent(device.userAgent),
+      client: device.client === 'app' ? 'APP' : 'WEB',
+      deviceInfo: device.userAgent?.slice(0, 500),
+      sessionStartedAt: session?.sessionStartedAt ?? new Date(),
+      expiresAt: new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000),
     },
   });
 
   return { accessToken, refreshToken };
 }
 
-export async function register(data: RegisterInput) {
+export async function register(
+  data: Omit<RegisterInput, 'client'> & Partial<Pick<RegisterInput, 'client'>>,
+  device: DeviceInfo = { client: data.client ?? 'web', deviceName: data.deviceName },
+) {
   // Checked before the duplicate-email lookup, so a closed instance doesn't
   // tell strangers which addresses already have accounts.
   if (!(await canRegister(data.email))) {
@@ -149,7 +169,7 @@ export async function register(data: RegisterInput) {
     return { user: publicUser(user), verificationRequired: true as const };
   }
 
-  const tokens = await createTokenPair(user);
+  const tokens = await createTokenPair(user, device);
 
   return {
     user: publicUser(user),
@@ -158,7 +178,7 @@ export async function register(data: RegisterInput) {
   };
 }
 
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string, device: DeviceInfo = { client: 'web' }) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
     throw new UnauthorizedError('Invalid email or password');
@@ -189,7 +209,7 @@ export async function login(email: string, password: string) {
     data: { lastLoginAt: new Date() },
   });
 
-  const tokens = await createTokenPair(user);
+  const tokens = await createTokenPair(user, device);
 
   return {
     user: publicUser(user),
@@ -201,7 +221,7 @@ export async function logout(refreshToken: string) {
   await prisma.refreshToken.deleteMany({ where: { token: sha256(refreshToken) } });
 }
 
-export async function refreshTokens(refreshToken: string) {
+export async function refreshTokens(refreshToken: string, device: DeviceInfo = { client: 'web' }) {
   const payload = verifyRefreshToken(refreshToken);
   if (!payload) {
     throw new UnauthorizedError('Invalid refresh token');
@@ -245,10 +265,15 @@ export async function refreshTokens(refreshToken: string) {
       );
     }
 
-    return user;
+    return { user, stored };
   });
 
-  return createTokenPair(result);
+  // The same session carries on, under the same name, on the same kind of client.
+  return createTokenPair(
+    result.user,
+    { ...device, client: result.stored.client === 'APP' ? 'app' : 'web' },
+    result.stored,
+  );
 }
 
 export async function forgotPassword(email: string) {

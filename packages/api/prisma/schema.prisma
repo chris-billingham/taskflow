@@ -136,6 +136,7 @@ model User {
 
   // Relations
   refreshTokens     RefreshToken[]
+  apiTokens         ApiToken[]
   ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
   ownedProjects     Project[]         @relation("ProjectOwner")
@@ -166,19 +167,59 @@ model User {
 
 // ─── RefreshToken ───────────────────────────────────────────────────────────
 
+enum SessionClient {
+  WEB
+  APP
+}
+
+// One signed-in device. Each refresh replaces the row (rotation) but keeps
+// the sessionId, name and start time, so a session can be listed and revoked.
 model RefreshToken {
-  id         String   @id @default(cuid())
+  id               String        @id @default(cuid())
   // sha256 hex of the raw token — never the replayable value itself
-  token      String   @unique
-  userId     String
-  deviceInfo String?
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
+  token            String        @unique
+  userId           String
+  sessionId        String
+  // What the person sees in their sessions list: "iPhone", "Firefox on Windows".
+  name             String?
+  client           SessionClient @default(WEB)
+  // The user agent, for telling similar devices apart.
+  deviceInfo       String?
+  sessionStartedAt DateTime      @default(now())
+  lastUsedAt       DateTime      @default(now())
+  expiresAt        DateTime
+  createdAt        DateTime      @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([sessionId])
   @@map("refresh_tokens")
+}
+
+enum ApiTokenScope {
+  READ
+  WRITE
+}
+
+// A personal access token for scripts and integrations. Only its hash is
+// stored; the token itself is shown once, when it's created.
+model ApiToken {
+  id         String        @id @default(cuid())
+  userId     String
+  name       String
+  tokenHash  String        @unique
+  // The start of the token ("tfp_ab12"), so people can tell tokens apart.
+  prefix     String
+  scope      ApiTokenScope
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("api_tokens")
 }
 
 // ─── Workspace ──────────────────────────────────────────────────────────────

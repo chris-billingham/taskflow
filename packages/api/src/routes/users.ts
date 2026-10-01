@@ -6,6 +6,7 @@ import {
   meSchema,
   profileSchema,
   messageResponse,
+  deleteAccountSchema,
   ok,
 } from '@taskflow/contract';
 import { authenticate } from '../middleware/authenticate.js';
@@ -37,6 +38,7 @@ export async function userRoutes(fastify: FastifyInstance) {
   app.patch(
     '/me/password',
     {
+      config: { sessionOnly: true },
       schema: {
         tags,
         summary: 'Change your password (signs out your other sessions)',
@@ -56,7 +58,13 @@ export async function userRoutes(fastify: FastifyInstance) {
 
   app.delete(
     '/me',
-    { schema: { tags, summary: 'Delete your account', response: { 200: messageResponse } } },
-    async (request) => ({ success: true as const, ...(await userService.deleteUser(request.user.id)) }),
+    {
+      config: { sessionOnly: true },
+      schema: { tags, summary: 'Delete your account (needs your password)', body: deleteAccountSchema, response: { 200: messageResponse } },
+    },
+    async (request) => {
+      await userService.confirmPassword(request.user.id, request.body.password);
+      return { success: true as const, ...(await userService.deleteUser(request.user.id)) };
+    },
   );
 }

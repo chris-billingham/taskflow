@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   registerSchema,
   loginSchema,
+  refreshSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
@@ -53,17 +54,27 @@ export async function authRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const registered = await authService.register(request.body);
+      const { client, deviceName } = request.body;
+      const registered = await authService.register(request.body, {
+        client,
+        deviceName,
+        userAgent: request.headers['user-agent'],
+      });
       if (registered.verificationRequired) {
         // Account created, verification email sent; no session until verified.
         return reply
           .status(201)
           .send({ success: true, data: { user: registered.user, verificationRequired: true } });
       }
-      reply.setCookie(REFRESH_COOKIE, registered.refreshToken, refreshCookieOptions);
+      if (client === 'web') reply.setCookie(REFRESH_COOKIE, registered.refreshToken, refreshCookieOptions);
       return reply.status(201).send({
         success: true,
-        data: { user: registered.user, accessToken: registered.accessToken, verificationRequired: false },
+        data: {
+          user: registered.user,
+          accessToken: registered.accessToken,
+          ...(client === 'app' && { refreshToken: registered.refreshToken }),
+          verificationRequired: false,
+        },
       });
     },
   );
@@ -81,10 +92,15 @@ export async function authRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { user, accessToken, refreshToken } = await authService.login(
-        request.body.email,
-        request.body.password,
-      );
+      const { email, password, client, deviceName } = request.body;
+      const { user, accessToken, refreshToken } = await authService.login(email, password, {
+        client,
+        deviceName,
+        userAgent: request.headers['user-agent'],
+      });
+      // Browsers keep the refresh token in an httpOnly cookie; apps keep it
+      // themselves (e.g. in the iOS keychain).
+      if (client === 'app') return { success: true as const, data: { user, accessToken, refreshToken } };
       reply.setCookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions);
       return { success: true as const, data: { user, accessToken } };
     },
@@ -92,9 +108,17 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   app.post(
     '/logout',
-    { schema: { tags, security, summary: 'Sign out: revokes the refresh token', response: { 200: messageResponse } } },
+    {
+      schema: {
+        tags,
+        security,
+        summary: 'Sign out: revokes the refresh token (the cookie, or an app\'s token in the body)',
+        body: refreshSchema,
+        response: { 200: messageResponse },
+      },
+    },
     async (request, reply) => {
-      const refreshToken = request.cookies[REFRESH_COOKIE];
+      const refreshToken = request.body?.refreshToken ?? request.cookies[REFRESH_COOKIE];
       if (refreshToken) {
         await authService.logout(refreshToken);
       }
@@ -109,16 +133,23 @@ export async function authRoutes(fastify: FastifyInstance) {
       schema: {
         tags,
         security,
-        summary: 'Exchange the refresh cookie for a new access token (rotates the cookie)',
+        summary: 'Exchange a refresh token for a new pair: the cookie for the web app, or an app\'s token sent in the body',
+        body: refreshSchema,
         response: { 200: refreshResponse },
       },
     },
     async (request, reply) => {
-      const refreshToken = request.cookies[REFRESH_COOKIE];
+      // An app sends its token in the body and gets the new one back there.
+      const fromBody = request.body?.refreshToken;
+      const refreshToken = fromBody ?? request.cookies[REFRESH_COOKIE];
       if (!refreshToken) {
         throw new UnauthorizedError('No refresh token');
       }
-      const { accessToken, refreshToken: newRefreshToken } = await authService.refreshTokens(refreshToken);
+      const { accessToken, refreshToken: newRefreshToken } = await authService.refreshTokens(refreshToken, {
+        client: fromBody ? 'app' : 'web',
+        userAgent: request.headers['user-agent'],
+      });
+      if (fromBody) return { success: true as const, data: { accessToken, refreshToken: newRefreshToken } };
       reply.setCookie(REFRESH_COOKIE, newRefreshToken, refreshCookieOptions);
       return { success: true as const, data: { accessToken } };
     },

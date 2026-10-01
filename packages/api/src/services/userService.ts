@@ -1,6 +1,6 @@
 import { prisma, type DbTransaction } from '../config/database.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
-import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/index.js';
+import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from '../errors/index.js';
 import { disconnectUserSockets } from '../websocket/events.js';
 import { deleteObjects } from '../config/storage.js';
 import type { DateFormat, SystemRole, Theme, TimeFormat } from '@prisma/client';
@@ -128,6 +128,15 @@ export async function updateUser(
       updatedAt: true,
     },
   });
+}
+
+/** Throws unless `password` is the user's current password. */
+export async function confirmPassword(id: string, password: string) {
+  const user = await prisma.user.findUnique({ where: { id }, select: { passwordHash: true } });
+  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    // 403, not 401: a 401 would make clients think their session expired.
+    throw new ForbiddenError('That password isn’t right');
+  }
 }
 
 export async function changePassword(
