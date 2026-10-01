@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Settings, Users, FolderKanban, Trash2, UserPlus } from 'lucide-react';
+import { Settings, Users, FolderKanban, Trash2, UserPlus, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   useWorkspace,
   useWorkspaceActions,
@@ -25,6 +26,8 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string | undef
     removeMember,
     cancelInvite,
     resendInvite,
+    leaveWorkspace,
+    transferOwnership,
   } = useWorkspaceActions();
   const isAdminRole = workspace?.role === 'OWNER' || workspace?.role === 'ADMIN';
   const members = useWorkspaceMembers(workspace?.id);
@@ -39,6 +42,9 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string | undef
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [newOwnerId, setNewOwnerId] = useState('');
+  const [confirmTransfer, setConfirmTransfer] = useState(false);
 
   useEffect(() => {
     if (workspace) {
@@ -92,13 +98,37 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string | undef
     }
   };
 
+  const handleLeave = async () => {
+    setConfirmLeave(false);
+    try {
+      await leaveWorkspace(workspace.id);
+      navigate('/today');
+    } catch {
+      // Reported by the action
+    }
+  };
+
+  // The owner hands over to a member or admin (never a guest).
+  const ownerCandidates = members.filter((m) => m.userId !== user?.id && (m.role === 'ADMIN' || m.role === 'MEMBER'));
+  const newOwner = ownerCandidates.find((m) => m.userId === newOwnerId);
+  const handleTransfer = async () => {
+    setConfirmTransfer(false);
+    if (!newOwnerId) return;
+    try {
+      await transferOwnership(workspace.id, newOwnerId);
+      setNewOwnerId('');
+    } catch {
+      // Reported by the action
+    }
+  };
+
   const tabs: { id: SettingsTab; label: string; icon: typeof Settings }[] = [
     { id: 'general', label: 'General', icon: Settings },
     { id: 'members', label: 'Members', icon: Users },
     { id: 'projects', label: 'Projects', icon: FolderKanban },
-    ...(isOwner
-      ? [{ id: 'danger' as const, label: 'Danger zone', icon: Trash2 }]
-      : []),
+    isOwner
+      ? { id: 'danger' as const, label: 'Ownership', icon: Trash2 }
+      : { id: 'danger' as const, label: 'Leave', icon: LogOut },
   ];
 
   return (
@@ -209,8 +239,53 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string | undef
             </div>
           )}
 
+          {activeTab === 'danger' && !isOwner && (
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Leave workspace</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                You'll lose access to its projects. Projects you own here stay with the workspace and pass to
+                its owner, and you're taken off any of its projects shared with you.
+              </p>
+              <Button variant="danger" onClick={() => setConfirmLeave(true)}>
+                Leave workspace
+              </Button>
+            </div>
+          )}
+
           {activeTab === 'danger' && isOwner && (
             <div className="space-y-4">
+              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Transfer ownership</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Make another member the owner. You'll stay on as an admin. To leave the workspace, or to
+                  delete your account, transfer ownership first.
+                </p>
+                {ownerCandidates.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Invite a member or admin first: guests can't own a workspace.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      aria-label="New owner"
+                      value={newOwnerId}
+                      onChange={(e) => setNewOwnerId(e.target.value)}
+                      className="flex-1 min-w-48 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                    >
+                      <option value="">Choose a member…</option>
+                      {ownerCandidates.map((m) => (
+                        <option key={m.userId} value={m.userId}>
+                          {m.user.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button onClick={() => setConfirmTransfer(true)} disabled={!newOwnerId}>
+                      Transfer
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               <div className="p-4 border border-red-200 dark:border-red-900 rounded-lg bg-red-50 dark:bg-red-900/20">
                 <h3 className="text-sm font-semibold text-red-800 mb-2">
                   Delete workspace
@@ -241,6 +316,23 @@ export function WorkspaceSettings({ workspaceId }: { workspaceId: string | undef
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmLeave}
+        title={`Leave ${workspace.name}?`}
+        message="You'll lose access to its projects. Someone will need to invite you again to come back."
+        confirmLabel="Leave"
+        onConfirm={() => void handleLeave()}
+        onCancel={() => setConfirmLeave(false)}
+      />
+      <ConfirmDialog
+        isOpen={confirmTransfer}
+        title="Transfer ownership?"
+        message={`${newOwner?.user.name ?? 'They'} will own ${workspace.name}, and you'll become an admin.`}
+        confirmLabel="Transfer"
+        onConfirm={() => void handleTransfer()}
+        onCancel={() => setConfirmTransfer(false)}
+      />
 
       <InviteMemberModal
         isOpen={showInviteModal}

@@ -112,6 +112,12 @@ describe('workspaceService', () => {
       await expect(workspaceService.transferOwnership(wsId, U.owner, U.owner)).rejects.toBeInstanceOf(ValidationError);
     });
 
+    it('a guest cannot be made owner', async () => {
+      const visitor = await fx.user('visitor');
+      await prisma.workspaceMember.create({ data: { workspaceId: wsId, userId: visitor.id, role: 'GUEST' } });
+      await expect(workspaceService.transferOwnership(wsId, visitor.id, U.owner)).rejects.toBeInstanceOf(ValidationError);
+    });
+
     it('transferring ownership swaps owner and admin', async () => {
       await workspaceService.transferOwnership(wsId, U.member, U.owner);
       const roles = Object.fromEntries(

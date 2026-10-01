@@ -512,6 +512,10 @@ export async function transferOwnership(
   if (!newOwnerMember) {
     throw new NotFoundError('New owner must be a member of the workspace');
   }
+  // Guests only see the projects shared with them; an owner sees everything.
+  if (newOwnerMember.role === 'GUEST') {
+    throw new ValidationError("Guests can't own a workspace. Make them a member first.");
+  }
 
   await prisma.$transaction([
     // Update workspace owner
@@ -530,6 +534,7 @@ export async function transferOwnership(
       data: { role: 'ADMIN' },
     }),
   ]);
+  await refreshUserRooms(newOwnerId);
 
   return { message: 'Ownership transferred successfully' };
 }

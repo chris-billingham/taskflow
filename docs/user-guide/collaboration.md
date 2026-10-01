@@ -29,7 +29,13 @@ The dialog shows an invite link you can copy and send yourself. The invite expir
 
 When someone opens the link, they sign in, or sign up if they don't have an account yet, and join the workspace. New installs are invite-only, but a valid invite lets that email address create an account. See [user management](../admin-guide/user-management.md#who-can-sign-up).
 
-In the Members tab, admins can change a member's role (**Make admin**, **Make member**, **Make guest**) or **Remove** them. Leaving a workspace and transferring ownership exist in the API but have no button in the app yet.
+In the Members tab, admins can change a member's role (**Make admin**, **Make member**, **Make guest**) or **Remove** them.
+
+## Leaving a Workspace
+
+Open the workspace's settings → **Leave** → **Leave workspace**. Projects you own there pass to the workspace owner, and you're taken off any of its projects that were shared with you.
+
+The owner can't leave. Instead, open **Ownership**, choose a member or admin and click **Transfer**. They become the owner and you become an admin. You need to do this before you can leave, or delete your account, if anyone else is in the workspace. Guests can't be made owner.
 
 ## Sharing One Project
 
