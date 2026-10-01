@@ -7,6 +7,7 @@ import {
   labelParamsSchema,
   reorderLabelsSchema,
   labelSchema,
+  labelListQuery,
   messageResponse,
   ok,
 } from '@taskflow/contract';
@@ -21,10 +22,17 @@ export async function labelRoutes(fastify: FastifyInstance) {
 
   app.get(
     '/',
-    { schema: { tags, summary: 'List your labels', response: { 200: ok(z.array(labelSchema)) } } },
+    {
+      schema: {
+        tags,
+        summary: "Your labels and your workspaces' team labels, or the labels one project's tasks can use",
+        querystring: labelListQuery,
+        response: { 200: ok(z.array(labelSchema)) },
+      },
+    },
     async (request) => ({
       success: true as const,
-      data: await labelService.getUserLabels(request.user.id),
+      data: await labelService.getLabels(request.user.id, { projectId: request.query.projectId }),
     }),
   );
 

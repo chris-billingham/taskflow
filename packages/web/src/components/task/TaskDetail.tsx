@@ -318,6 +318,7 @@ export function TaskDetail({
               <div className="flex items-center gap-2">
                 <LabelBadges labels={task.taskLabels} />
                 <LabelPicker
+                  projectId={task.projectId}
                   selectedIds={task.taskLabels.map((tl) => tl.labelId)}
                   onChange={(labelIds) => onUpdate(task.id, { labelIds })}
                 />

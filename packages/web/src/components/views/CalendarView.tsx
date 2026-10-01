@@ -163,6 +163,7 @@ export function CalendarView({
       >
         <div className="p-4">
           <QuickAdd
+            projectId={defaultProjectId}
             onSubmit={handleQuickAddSubmit}
             placeholder="Task name"
             autoFocus

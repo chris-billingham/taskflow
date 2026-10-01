@@ -16,6 +16,7 @@ import {
   broadcastProjectDeleted,
 } from './syncService.js';
 import { logFailure } from '../config/logger.js';
+import { remapTaskLabels, scopeOfProject } from './labelScope.js';
 import {
   projectSettingsInclude,
   sectionSettingsInclude,
@@ -394,9 +395,11 @@ export async function duplicateProject(
       sectionMap.set(section.id, newSection.id);
     }
 
-    // Labels are per-user: only the duplicating user's own labels carry over.
-    const ownLabelIds = (labels: Array<{ labelId: string; label: { userId: string } }>) =>
-      labels.filter((l) => l.label.userId === userId).map((l) => ({ labelId: l.labelId }));
+    // Every label carries over; if the copy is in another space (you
+    // duplicated someone else's shared project into your own), they're
+    // mapped there by name at the end.
+    const ownLabelIds = (labels: Array<{ labelId: string }>) => labels.map((l) => ({ labelId: l.labelId }));
+    const newTaskIds: string[] = [];
 
     for (const task of sourceTasks) {
       const parentLabels = ownLabelIds(task.taskLabels);
@@ -419,11 +422,12 @@ export async function duplicateProject(
           taskLabels: parentLabels.length ? { create: parentLabels } : undefined,
         },
       });
+      newTaskIds.push(newTask.id);
 
       if (task.subtasks.length > 0) {
         for (const sub of task.subtasks) {
           const subLabels = ownLabelIds(sub.taskLabels);
-          await tx.task.create({
+          const newSub = await tx.task.create({
             data: {
               content: sub.content,
               description: sub.description,
@@ -438,10 +442,12 @@ export async function duplicateProject(
               taskLabels: subLabels.length ? { create: subLabels } : undefined,
             },
           });
+          newTaskIds.push(newSub.id);
         }
       }
     }
 
+    await remapTaskLabels(newTaskIds, scopeOfProject(created), tx);
     return created;
   }, { timeout: 30_000 });
 

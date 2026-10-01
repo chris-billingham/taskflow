@@ -153,21 +153,22 @@ describe('QuickAdd - highlighting and autocomplete', () => {
     server.use(
       http.get(`${API}/labels`, () => HttpResponse.json(ok(labels))),
       http.post(`${API}/labels`, async ({ request }) => {
-        const body = (await request.json()) as { name: string };
-        created(body.name);
-        const label = { id: 'l-new', name: body.name, color: '#6B7280', userId: 'u', isFavorite: false, sortOrder: 1, createdAt: '', updatedAt: '' };
+        const body = (await request.json()) as { name: string; projectId?: string };
+        created(body.name, body.projectId);
+        const label = { id: 'l-new', name: body.name, color: '#6B7280', userId: 'u', workspaceId: null, isFavorite: false, sortOrder: 1, createdAt: '', updatedAt: '' };
         labels = [label];
         return HttpResponse.json(ok(label), { status: 201 });
       }),
     );
-    renderPage(<QuickAdd onSubmit={vi.fn()} autoFocus />);
+    renderPage(<QuickAdd projectId="p-home" onSubmit={vi.fn()} autoFocus />);
     const input = screen.getByRole('combobox', { name: 'Add task' });
 
     await userEvent.type(input, 'Ring the bank @errands');
     const option = await screen.findByRole('option', { name: 'Create label “errands”' });
     await userEvent.click(option);
 
-    await waitFor(() => expect(created).toHaveBeenCalledWith('errands'));
+    // Made in the space of the project the task is going to.
+    await waitFor(() => expect(created).toHaveBeenCalledWith('errands', 'p-home'));
     expect(input).toHaveValue('Ring the bank @errands ');
     const details = await screen.findByRole('group', { name: 'Task details from the text' });
     expect(within(details).getByText('errands')).toBeInTheDocument();

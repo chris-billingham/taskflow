@@ -3,12 +3,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../config/database.js', () => ({
   prisma: {
     label: { findMany: vi.fn() },
-    project: { findMany: vi.fn(async () => []) },
+    project: {
+      findMany: vi.fn(async () => []),
+      // The project the task lands in: personal, so its owner's labels apply.
+      findUnique: vi.fn(async () => ({ workspaceId: null, ownerId: 'user-test' })),
+    },
     user: { findUnique: vi.fn() },
   },
 }));
 
 vi.mock('../../services/access.js', () => ({ findProjectByName: vi.fn(), projectAccessWhere: vi.fn(() => ({})) }));
+// Known label names come from the same mocked rows as the space's labels.
+vi.mock('../../services/labelService.js', async () => {
+  const { prisma } = await import('../../config/database.js');
+  return { getLabels: vi.fn(() => prisma.label.findMany()) };
+});
+
+/** Where a quick-added task lands when the text names no project. */
+const INBOX = 'inbox-1';
 
 import { parseQuickAdd } from '../../utils/quickAddParser.js';
 import { findProjectByName } from '../../services/access.js';
@@ -275,7 +287,7 @@ describe('parseQuickAdd - project parsing', () => {
 describe('parseQuickAdd - label parsing', () => {
   it('keeps an unknown @label in the task text instead of dropping it', async () => {
     mockPrisma.label.findMany.mockResolvedValue([{ id: 'l1', name: 'phone' }]);
-    const result = await parseQuickAdd('Call @phone about @unknownthing', TEST_USER_ID);
+    const result = await parseQuickAdd('Call @phone about @unknownthing', TEST_USER_ID, INBOX);
     expect(result.labelIds).toEqual(['l1']);
     expect(result.content).toBe('Call about @unknownthing');
   });
@@ -285,19 +297,19 @@ describe('parseQuickAdd - label parsing', () => {
       { id: 'label-1', name: 'urgent' },
       { id: 'label-2', name: 'work' },
     ]);
-    const result = await parseQuickAdd('Task @urgent @work', TEST_USER_ID);
+    const result = await parseQuickAdd('Task @urgent @work', TEST_USER_ID, INBOX);
     expect(result.labelIds).toEqual(['label-1', 'label-2']);
   });
 
   it('matches labels case-insensitively', async () => {
     mockPrisma.label.findMany.mockResolvedValue([{ id: 'label-9', name: 'Work' }]);
-    const result = await parseQuickAdd('Review deck @work', TEST_USER_ID);
+    const result = await parseQuickAdd('Review deck @work', TEST_USER_ID, INBOX);
     expect(result.labelIds).toEqual(['label-9']);
   });
 
   it('sets no labelIds when labels not found', async () => {
     mockPrisma.label.findMany.mockResolvedValue([]);
-    const result = await parseQuickAdd('Task @unknown', TEST_USER_ID);
+    const result = await parseQuickAdd('Task @unknown', TEST_USER_ID, INBOX);
     expect(result.labelIds).toBeUndefined();
   });
 });

@@ -22,8 +22,9 @@ describe('labelService', () => {
     const a = await labelService.createLabel({ name: 'Errand' }, me);
     const b = await labelService.createLabel({ name: 'Deep work', color: '#112233' }, me);
     expect(a.color).toBe('#6B7280');
+    expect(a).toMatchObject({ userId: me, workspaceId: null });
     expect(b.sortOrder).toBeGreaterThan(a.sortOrder);
-    expect((await labelService.getUserLabels(me)).map((l) => l.name)).toEqual(['Errand', 'Deep work']);
+    expect((await labelService.getLabels(me)).map((l) => l.name)).toEqual(['Errand', 'Deep work']);
   });
 
   it('refuses a duplicate name whatever its case', async () => {
@@ -35,29 +36,29 @@ describe('labelService', () => {
   });
 
   it('allows recasing a label’s own name but not taking another’s', async () => {
-    const [errand, deep] = await labelService.getUserLabels(me);
+    const [errand, deep] = await labelService.getLabels(me);
     await expect(labelService.updateLabel(errand.id, { name: 'ERRAND' }, me)).resolves.toMatchObject({ name: 'ERRAND' });
     await expect(labelService.updateLabel(deep.id, { name: 'errand' }, me)).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it('only the owner can change or delete a label', async () => {
-    const [errand] = await labelService.getUserLabels(me);
+  it('only the owner can change or delete a personal label', async () => {
+    const [errand] = await labelService.getLabels(me);
     await expect(labelService.updateLabel(errand.id, { name: 'Mine now' }, other)).rejects.toBeInstanceOf(ForbiddenError);
     await expect(labelService.deleteLabel(errand.id, other)).rejects.toBeInstanceOf(ForbiddenError);
     await expect(labelService.deleteLabel('missing', me)).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it('reorders, refusing someone else’s labels', async () => {
-    const [a, b] = await labelService.getUserLabels(me);
+    const [a, b] = await labelService.getLabels(me);
     await labelService.reorderLabels([b.id, a.id], me);
-    expect((await labelService.getUserLabels(me)).map((l) => l.id)).toEqual([b.id, a.id]);
-    const [theirs] = await labelService.getUserLabels(other);
+    expect((await labelService.getLabels(me)).map((l) => l.id)).toEqual([b.id, a.id]);
+    const [theirs] = await labelService.getLabels(other);
     await expect(labelService.reorderLabels([a.id, theirs.id], me)).rejects.toBeInstanceOf(ForbiddenError);
   });
 
   it('deleting a label detaches it from tasks', async () => {
     const project = await prisma.project.create({ data: { name: 'L', ownerId: me } });
-    const [label] = await labelService.getUserLabels(me);
+    const [label] = await labelService.getLabels(me);
     const task = await prisma.task.create({
       data: { content: 't', projectId: project.id, creatorId: me, taskLabels: { create: [{ labelId: label.id }] } },
     });

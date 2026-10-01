@@ -1,6 +1,8 @@
 import { parseQuickAddText, textWithoutTokens } from '@taskflow/contract';
 import { prisma } from '../config/database.js';
 import { findProjectByName, projectAccessWhere } from '../services/access.js';
+import { getLabels } from '../services/labelService.js';
+import { labelIdsByName, projectLabelScope } from '../services/labelScope.js';
 import { getUserTimezone, nowAsTzWallClock } from './dates.js';
 
 export interface ParsedTask {
@@ -18,21 +20,27 @@ export interface ParsedTask {
 /**
  * Turn Quick Add text into a task. The shorthand is recognised by the shared
  * parser (@taskflow/contract, also used by the web app to highlight it); this
- * resolves #project and @label against what the user can use. A #word or
- * @word that doesn't name one of theirs stays in the task's text rather than
- * vanishing ("Fix issue #42", "email @support").
+ * resolves #project against the projects the user can add to, and @label
+ * against the labels of the project the task lands in (`fallbackProjectId`
+ * when the text names none). A #word or @word that doesn't name one stays in
+ * the task's text rather than vanishing ("Fix issue #42", "email @support").
  */
-export async function parseQuickAdd(text: string, userId: string): Promise<ParsedTask> {
+export async function parseQuickAdd(
+  text: string,
+  userId: string,
+  fallbackProjectId?: string,
+): Promise<ParsedTask> {
   // Calendar words ("today", "Friday") mean the USER's calendar day.
   const today = nowAsTzWallClock(await getUserTimezone(userId));
   // Known names let multi-word ones ("#Home Renovation") parse as one token.
-  const [projects, userLabels] = await Promise.all([
+  const [projects, visibleLabels, fallbackLabels] = await Promise.all([
     prisma.project.findMany({ where: { AND: [projectAccessWhere(userId)], isArchived: false }, select: { name: true } }),
-    prisma.label.findMany({ where: { userId }, select: { id: true, name: true } }),
+    getLabels(userId),
+    fallbackProjectId ? getLabels(userId, { projectId: fallbackProjectId }) : Promise.resolve([]),
   ]);
   const parsed = parseQuickAddText(text, today, {
     projects: projects.map((p) => p.name),
-    labels: userLabels.map((l) => l.name),
+    labels: [...new Set([...visibleLabels, ...fallbackLabels].map((l) => l.name))],
   });
   const result: ParsedTask = {
     content: '',
@@ -57,9 +65,11 @@ export async function parseQuickAdd(text: string, userId: string): Promise<Parse
   }
 
   const labelTokens = parsed.tokens.filter((t) => t.type === 'label');
-  if (labelTokens.length > 0) {
-    // Matched in code: `mode: 'insensitive'` has no effect on `in` filters.
-    const byName = new Map(userLabels.map((l) => [l.name.toLowerCase(), l.id]));
+  const targetProjectId = result.projectId ?? fallbackProjectId;
+  const scope = labelTokens.length > 0 && targetProjectId ? await projectLabelScope(targetProjectId) : null;
+  if (scope) {
+    // The labels of the space the task lands in, matched by name in any case.
+    const byName = await labelIdsByName(scope, labelTokens.map((t) => ({ name: t.name! })));
     const labelIds = new Set<string>();
     for (const token of labelTokens) {
       const id = byName.get(token.name!.toLowerCase());

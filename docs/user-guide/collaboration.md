@@ -57,9 +57,7 @@ Today and Upcoming show every task you can see, including team tasks assigned to
 
 ## Labels in Shared Projects
 
-Labels are personal: you can only apply your own. Labels other members put on a task are visible to everyone who can see the task.
-
-Changing a task's labels currently replaces **all** of its labels, including ones other members added.
+Projects in a workspace use the workspace's **team labels**, so everyone tags and filters with the same ones. A project shared directly with you uses its owner's labels. See [Labels](labels-filters.md#labels).
 
 ## Comments
 

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Plus, GripVertical, Pencil, Trash2, Check, X, Star } from 'lucide-react';
 import { useLabels, useLabelActions, type Label } from '@/queries/labels';
 import { IconButton } from '@/components/ui/IconButton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useWorkspaces } from '@/queries/workspaces';
 
 const DEFAULT_COLORS = [
   '#6B7280', '#EF4444', '#F59E0B', '#10B981',
@@ -14,7 +15,22 @@ const DEFAULT_COLORS = [
 export function LabelManager() {
   const navigate = useNavigate();
   const { labels } = useLabels();
+  const { workspaces } = useWorkspaces();
   const { createLabel, updateLabel, deleteLabel, reorderLabels } = useLabelActions();
+  // Team labels can be added in workspaces you're more than a guest in.
+  const teamSpaces = workspaces.filter((w) => w.role !== 'GUEST');
+  const [newWhere, setNewWhere] = useState('');
+
+  // Your own labels, then each workspace's team labels.
+  const groups = useMemo(() => {
+    const mine = { key: 'mine', title: 'My labels', labels: labels.filter((l) => !l.workspaceId) };
+    const team = [...workspaces]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((w) => ({ key: w.id, title: `${w.name} labels`, labels: labels.filter((l) => l.workspaceId === w.id) }))
+      .filter((g) => g.labels.length > 0);
+    return [mine, ...team];
+  }, [labels, workspaces]);
+  const groupOf = (id: string) => labels.find((l) => l.id === id)?.workspaceId ?? 'mine';
 
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -30,7 +46,7 @@ export function LabelManager() {
     if (!newName.trim() || creating) return;
     setCreating(true);
     try {
-      await createLabel({ name: newName.trim(), color: newColor });
+      await createLabel({ name: newName.trim(), color: newColor, workspaceId: newWhere || undefined });
       setNewName('');
       setNewColor(DEFAULT_COLORS[0]);
       setShowCreate(false);
@@ -66,6 +82,8 @@ export function LabelManager() {
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     if (!draggedId || draggedId === targetId) return;
+    // Reorder within a group only.
+    if (groupOf(draggedId) !== groupOf(targetId)) return;
 
     const currentIds = labels.map((l) => l.id);
     const draggedIndex = currentIds.indexOf(draggedId);
@@ -104,6 +122,21 @@ export function LabelManager() {
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             autoFocus
           />
+          {teamSpaces.length > 0 && (
+            <select
+              aria-label="Where"
+              className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 mb-2"
+              value={newWhere}
+              onChange={(e) => setNewWhere(e.target.value)}
+            >
+              <option value="">My labels (only you)</option>
+              {teamSpaces.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} (everyone in the workspace)
+                </option>
+              ))}
+            </select>
+          )}
           <div className="flex flex-wrap gap-1.5 mb-3">
             {DEFAULT_COLORS.map((color) => (
               <button
@@ -146,7 +179,17 @@ export function LabelManager() {
         </p>
       ) : (
         <div className="space-y-1">
-          {labels.map((label) => (
+          {groups.map((group) => (
+            <Fragment key={group.key}>
+              {groups.length > 1 && (
+                <h4 className="pt-3 pb-1 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  {group.title}
+                </h4>
+              )}
+              {group.key === 'mine' && group.labels.length === 0 && groups.length > 1 && (
+                <p className="px-2 py-1 text-sm text-gray-400 dark:text-gray-500">None yet</p>
+              )}
+          {group.labels.map((label) => (
             <div
               key={label.id}
               className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group"
@@ -220,13 +263,19 @@ export function LabelManager() {
               )}
             </div>
           ))}
+            </Fragment>
+          ))}
         </div>
       )}
 
       <ConfirmDialog
         isOpen={deleteConfirm !== null}
         title="Delete label?"
-        message="This will remove the label from all tasks. This action cannot be undone."
+        message={
+          labels.find((l) => l.id === deleteConfirm)?.workspaceId
+            ? "This team label will be removed from every task in the workspace, for everyone. This can't be undone."
+            : "This will remove the label from all tasks. This can't be undone."
+        }
         onConfirm={() => {
           if (deleteConfirm) deleteLabel(deleteConfirm);
           setDeleteConfirm(null);

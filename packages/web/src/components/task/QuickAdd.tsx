@@ -2,11 +2,13 @@ import { useState, useRef, useEffect, useLayoutEffect, useMemo, type KeyboardEve
 import { Plus, Calendar, Clock, Flag, Hash, Repeat, Tag, Timer } from 'lucide-react';
 import { parseQuickAddText, type QuickAddToken } from '@taskflow/contract';
 import { useProjects } from '@/queries/projects';
-import { useLabels, useLabelActions } from '@/queries/labels';
+import { useLabels, useLabelActions, useProjectLabels } from '@/queries/labels';
+import { useAuthStore } from '@/stores/authStore';
 import { describeRecurrence } from '@/utils/recurrence';
 import { formatUserDate, formatUserTime } from '@/utils/dateFormat';
 
 interface QuickAddProps {
+  /** The project the box adds to; the Inbox when absent (as on the server). */
   projectId?: string;
   sectionId?: string; // reserved for future section-scoped add
   parentId?: string; // reserved for future subtask add
@@ -73,6 +75,7 @@ function dateLabel(ymd: string): string {
 }
 
 export function QuickAdd({
+  projectId,
   onSubmit,
   placeholder = 'Add task',
   autoFocus,
@@ -100,7 +103,9 @@ export function QuickAdd({
   }, [text]);
 
   const { active: projects } = useProjects();
-  const { labels } = useLabels();
+  const me = useAuthStore((s) => s.user?.id);
+  // Every label name you can use, so multi-word ones tokenise as one.
+  const { labels: visibleLabels } = useLabels();
   const { createLabel } = useLabelActions();
 
   useEffect(() => {
@@ -108,12 +113,21 @@ export function QuickAdd({
   }, [isExpanded]);
 
   const projectNames = useMemo(() => projects.map((p) => p.name), [projects]);
-  const labelNames = useMemo(() => labels.map((l) => l.name), [labels]);
+  const visibleNames = useMemo(() => visibleLabels.map((l) => l.name), [visibleLabels]);
   // The same parser the server runs, so what's highlighted is what happens.
   const parsed = useMemo(
-    () => parseQuickAddText(text, new Date(), { projects: projectNames, labels: labelNames }),
-    [text, projectNames, labelNames],
+    () => parseQuickAddText(text, new Date(), { projects: projectNames, labels: visibleNames }),
+    [text, projectNames, visibleNames],
   );
+  // @labels come from the project the task lands in: the one named with #,
+  // else this box's project, else the Inbox.
+  const namedProject = parsed.projectName
+    ? projects.find((p) => p.name.toLowerCase() === parsed.projectName!.toLowerCase())
+    : undefined;
+  const inboxId = projects.find((p) => p.isInbox && p.ownerId === me)?.id;
+  const targetProjectId = namedProject?.id ?? projectId ?? inboxId;
+  const { labels } = useProjectLabels(targetProjectId);
+  const labelNames = useMemo(() => labels.map((l) => l.name), [labels]);
   const isKnown = (token: QuickAddToken) => {
     if (token.type !== 'project' && token.type !== 'label') return true;
     const names = token.type === 'project' ? projectNames : labelNames;
@@ -146,7 +160,7 @@ export function QuickAdd({
     if (!tag) return;
     if (s.create) {
       try {
-        await createLabel({ name: tag.term });
+        await createLabel({ name: tag.term, projectId: targetProjectId });
       } catch {
         return; // already reported
       }

@@ -14,17 +14,17 @@ import {
   broadcastTaskDeleted,
 } from '../syncService.js';
 import {
-  assertLabelsOwned,
   assertTaskReferences,
   notifyAssignment,
   runSideEffect,
   taskInclude,
 } from './support.js';
+import { assertLabelsInScope, projectLabelScope } from '../labelScope.js';
 
 export async function createTask(data: CreateTaskInput, userId: string) {
   await requireProjectAccess(data.projectId, userId, 'EDIT');
   if (data.labelIds?.length) {
-    await assertLabelsOwned(data.labelIds, userId);
+    await assertLabelsInScope(data.labelIds, await projectLabelScope(data.projectId));
   }
   await assertTaskReferences({
     projectId: data.projectId,
@@ -98,7 +98,7 @@ export async function updateTask(
   const { labelIds, ...updateData } = data;
 
   if (labelIds !== undefined && labelIds.length > 0) {
-    await assertLabelsOwned(labelIds, userId);
+    await assertLabelsInScope(labelIds, await projectLabelScope(oldTask.projectId));
   }
   await assertTaskReferences({
     projectId: oldTask.projectId,
@@ -420,20 +420,21 @@ export async function quickAddTask(
     sectionId?: string;
   } = {},
 ) {
-  const parsed = await parseQuickAdd(text, userId);
-
-  // Use parsed projectId, or default, or user's first project
-  let projectId = parsed.projectId || defaultProjectId;
-  if (!projectId) {
-    const defaultProject = await prisma.project.findFirst({
+  // With no project named in the text or given by the caller, the task goes
+  // to the Inbox. Labels in the text are matched in the destination's space.
+  let fallbackProjectId = defaultProjectId;
+  if (!fallbackProjectId) {
+    const inbox = await prisma.project.findFirst({
       where: { ownerId: userId, isInbox: true },
       select: { id: true },
     });
-    if (!defaultProject) {
+    if (!inbox) {
       throw new NotFoundError('No default project found');
     }
-    projectId = defaultProject.id;
+    fallbackProjectId = inbox.id;
   }
+  const parsed = await parseQuickAdd(text, userId, fallbackProjectId);
+  const projectId = parsed.projectId ?? fallbackProjectId;
 
   return createTask(
     {

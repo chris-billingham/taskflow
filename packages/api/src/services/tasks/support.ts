@@ -63,17 +63,6 @@ export const taskListInclude = {
 // Labels are per-user (Label.userId). Reject label ids that don't exist or
 // belong to another user — otherwise a caller could attach (and, via the task
 // response, read) another user's labels, or hit an opaque 500 on an FK error.
-export async function assertLabelsOwned(labelIds: string[], userId: string) {
-  const unique = [...new Set(labelIds)];
-  if (unique.length === 0) return;
-  const count = await prisma.label.count({
-    where: { id: { in: unique }, userId },
-  });
-  if (count !== unique.length) {
-    throw new ValidationError('One or more labels do not exist or are not yours');
-  }
-}
-
 /**
  * Validate references a task points at. Every one of these is attacker-
  * controlled input that previously went straight into the write:

@@ -1,20 +1,20 @@
 // Moving, reordering and bulk-editing tasks.
 import { prisma } from '../../config/database.js';
 import type { Prisma } from '@prisma/client';
-import { NotFoundError, ValidationError } from '../../errors/index.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../errors/index.js';
 import { requireTaskAccess, requireProjectAccess } from '../access.js';
 import type { BulkTaskInput, MoveTaskInput } from '@taskflow/contract';
 import { logActivity } from '../activityService.js';
 import { broadcastTaskCreated, broadcastTaskUpdated, broadcastTaskDeleted } from '../syncService.js';
 import { recomputeRelativeReminders } from '../reminderService.js';
 import {
-  assertLabelsOwned,
   assertTaskReferences,
   runSideEffect,
   taskInclude,
   verifyBulkTaskAccess,
 } from './support.js';
 import { completeTask } from './completion.js';
+import { labelIdsByName, projectLabelScope, remapTaskLabels, sameScope, scopeOfProject } from '../labelScope.js';
 
 export async function moveTask(
   id: string,
@@ -64,28 +64,31 @@ export async function moveTask(
       data: updateData,
       include: taskInclude,
     });
+    if (!projectChanged) return moved;
 
-    if (projectChanged) {
-      // Subtasks live in their parent's project — bring the whole descendant
-      // tree along (they used to be orphaned in the source project, pointing
-      // at a parent across the boundary). Their sections stay behind.
-      let parentIds = [id];
-      while (parentIds.length > 0) {
-        const children = await tx.task.findMany({
-          where: { parentId: { in: parentIds } },
-          select: { id: true },
-        });
-        if (children.length === 0) break;
-        const childIds = children.map((c) => c.id);
-        await tx.task.updateMany({
-          where: { id: { in: childIds } },
-          data: { projectId: targetProjectId, sectionId: null },
-        });
-        parentIds = childIds;
-      }
+    // Subtasks live in their parent's project — bring the whole descendant
+    // tree along (they used to be orphaned in the source project, pointing
+    // at a parent across the boundary). Their sections stay behind.
+    const movedIds = [id];
+    let parentIds = [id];
+    while (parentIds.length > 0) {
+      const children = await tx.task.findMany({
+        where: { parentId: { in: parentIds } },
+        select: { id: true },
+      });
+      if (children.length === 0) break;
+      const childIds = children.map((c) => c.id);
+      await tx.task.updateMany({
+        where: { id: { in: childIds } },
+        data: { projectId: targetProjectId, sectionId: null },
+      });
+      movedIds.push(...childIds);
+      parentIds = childIds;
     }
 
-    return moved;
+    // Into another space, labels follow by name (created there if needed).
+    await remapTaskLabels(movedIds, await projectLabelScope(targetProjectId, tx), tx);
+    return tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude });
   });
 
   runSideEffect('logActivity:MOVED', () => logActivity({
@@ -223,14 +226,50 @@ export async function bulkUpdate(
     case 'removeLabels': {
       const labelIds = [...new Set(actionData?.labelIds ?? [])];
       if (labelIds.length === 0) break;
-      await assertLabelsOwned(labelIds, userId);
+      // The selection can span spaces, and each task can only carry its own
+      // space's labels, so the chosen labels apply by name: each task gets
+      // (or loses) the label of that name in its project's space.
+      const chosen = await prisma.label.findMany({
+        where: { id: { in: labelIds } },
+        select: { name: true, userId: true, workspaceId: true },
+      });
+      if (chosen.length !== labelIds.length) throw new NotFoundError('One or more labels not found');
+      // Only labels you could pick anyway: yours, your workspaces', or those
+      // of a selected task's project.
+      const myWorkspaces = new Set(
+        (await prisma.workspaceMember.findMany({ where: { userId }, select: { workspaceId: true } })).map((m) => m.workspaceId),
+      );
+      const taskScopes = tasks.map((t) => scopeOfProject(t.project));
+      const usable = (l: (typeof chosen)[number]) =>
+        l.userId === userId ||
+        (l.workspaceId !== null && myWorkspaces.has(l.workspaceId)) ||
+        taskScopes.some((s) => sameScope(s, l.workspaceId ? { workspaceId: l.workspaceId } : { userId: l.userId! }));
+      if (!chosen.every(usable)) throw new ForbiddenError('You cannot use one or more of these labels');
+      const names = [...new Set(chosen.map((l) => l.name.toLowerCase()))];
+
       if (action === 'addLabels') {
-        await prisma.taskLabel.createMany({
-          data: taskIds.flatMap((taskId) => labelIds.map((labelId) => ({ taskId, labelId }))),
-          skipDuplicates: true,
-        });
+        const links: { taskId: string; labelId: string }[] = [];
+        const byProject = new Map<string, string[]>();
+        for (const t of tasks) byProject.set(t.projectId, [...(byProject.get(t.projectId) ?? []), t.id]);
+        for (const [projectId, ids] of byProject) {
+          const project = tasks.find((t) => t.projectId === projectId)!.project;
+          const scope = scopeOfProject(project);
+          if (!scope) continue;
+          const found = await labelIdsByName(scope, names.map((name) => ({ name })));
+          for (const labelId of found.values()) for (const taskId of ids) links.push({ taskId, labelId });
+        }
+        await prisma.taskLabel.createMany({ data: links, skipDuplicates: true });
       } else {
-        await prisma.taskLabel.deleteMany({ where: { taskId: { in: taskIds }, labelId: { in: labelIds } } });
+        const onTasks = await prisma.taskLabel.findMany({
+          where: { taskId: { in: taskIds } },
+          select: { taskId: true, labelId: true, label: { select: { name: true } } },
+        });
+        const doomed = onTasks.filter((l) => names.includes(l.label.name.toLowerCase()));
+        if (doomed.length > 0) {
+          await prisma.taskLabel.deleteMany({
+            where: { OR: doomed.map((l) => ({ taskId: l.taskId, labelId: l.labelId })) },
+          });
+        }
       }
       await emitBulkUpdated(taskIds, 'UPDATED');
       break;
@@ -280,6 +319,7 @@ export async function bulkUpdate(
 
         if (movingProject) {
           // Descendants follow their parents across the project boundary.
+          const movedIds = [...taskIds];
           let parentIds = taskIds;
           while (parentIds.length > 0) {
             const children = await tx.task.findMany({
@@ -292,8 +332,11 @@ export async function bulkUpdate(
               where: { id: { in: childIds } },
               data: { projectId: actionData!.projectId!, sectionId: null },
             });
+            movedIds.push(...childIds);
             parentIds = childIds;
           }
+          // Into another space, labels follow by name.
+          await remapTaskLabels(movedIds, await projectLabelScope(actionData!.projectId!, tx), tx);
         }
       });
       await emitBulkUpdated(taskIds, 'MOVED');

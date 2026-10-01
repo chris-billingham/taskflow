@@ -137,7 +137,8 @@ describe('real service output matches the API contract', () => {
       success: true,
       data: await sectionService.getProjectSections(projectId, userId),
     });
-    conforms(ok(z.array(labelSchema)), { success: true, data: await labelService.getUserLabels(userId) });
+    conforms(ok(z.array(labelSchema)), { success: true, data: await labelService.getLabels(userId) });
+    conforms(ok(z.array(labelSchema)), { success: true, data: await labelService.getLabels(userId, { projectId }) });
   });
 
   it('tasks: page, detail, update, complete/uncomplete, duplicate', async () => {

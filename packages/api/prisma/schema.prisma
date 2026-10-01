@@ -155,6 +155,7 @@ model User {
   activityLogs      ActivityLog[]
   projectSettings   ProjectUserSetting[]
   sectionSettings   SectionUserSetting[]
+  labelSettings     LabelUserSetting[]
 
   @@index([email])
   // The admin console filters on both; also backs the "is there another
@@ -201,7 +202,7 @@ model Workspace {
   members WorkspaceMember[]
   invites WorkspaceInvite[]
   projects Project[]
-  labels  WorkspaceLabel[]
+  labels  Label[]
   templates Template[]      @relation("WorkspaceTemplates")
 
   @@index([ownerId])
@@ -413,39 +414,49 @@ model Task {
 
 // ─── Label ──────────────────────────────────────────────────────────────────
 
+// A label belongs to one space: a person's own (userId) or a workspace's
+// (workspaceId) — exactly one is set (CHECK labels_one_owner). A task can
+// only carry labels from its project's space, so everyone on a team project
+// uses the same labels.
 model Label {
-  id         String   @id @default(cuid())
-  name       String
-  color      String   @default("#6B7280")
-  userId     String
-  isFavorite Boolean  @default(false)
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  taskLabels TaskLabel[]
-
-  @@unique([userId, name])
-  @@index([userId])
-  @@map("labels")
-}
-
-// ─── WorkspaceLabel ─────────────────────────────────────────────────────────
-
-model WorkspaceLabel {
   id          String   @id @default(cuid())
   name        String
   color       String   @default("#6B7280")
-  workspaceId String
+  userId      String?
+  workspaceId String?
+  // Superseded by label_user_settings (per person); dropped in a later migration.
+  isFavorite  Boolean  @default(false)
+  // The default order, for people who haven't arranged their labels.
+  sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user         User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace    Workspace?         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  taskLabels   TaskLabel[]
+  userSettings LabelUserSetting[]
 
+  @@unique([userId, name])
   @@unique([workspaceId, name])
+  @@index([userId])
   @@index([workspaceId])
-  @@map("workspace_labels")
+  @@map("labels")
+}
+
+// How one person arranges a label they can see.
+model LabelUserSetting {
+  userId     String
+  labelId    String
+  isFavorite Boolean  @default(false)
+  sortOrder  Int?
+  updatedAt  DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([userId, labelId])
+  @@index([labelId])
+  @@map("label_user_settings")
 }
 
 // ─── TaskLabel (join table) ─────────────────────────────────────────────────

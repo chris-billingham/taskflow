@@ -2,25 +2,33 @@
 
 ## Labels
 
-Labels are tags you can apply to tasks. Each label has a name and a color. Names are unique regardless of case, so `Urgent` and `urgent` count as the same label.
+Labels are tags you can apply to tasks. Each label has a name and a color.
 
-Labels are **personal**. Each person has their own set, and only you can apply your labels. In a shared project, other members can see labels you've put on a task, but they can't use your labels on their tasks.
+Every label belongs to a space, just like projects:
+
+- **Your labels** are for your own projects. Only you see them in your list, and only you can rename or delete them.
+- **Team labels** belong to a workspace. Everyone in it (except guests) sees the same ones and can add, rename or delete them.
+
+A task can only use labels from its project's space: team labels in a workspace's projects, your labels in your own. In someone else's project that they've shared with you, you use their labels. Within a space, names are unique regardless of case, so `Urgent` and `urgent` count as the same label. Your favorite labels and their order are your own, even for team labels.
 
 ### Creating a Label
 
 1. Open **Filters & Labels** from the sidebar.
 2. Click **Add label**.
-3. Enter a name, pick a color and click **Add**.
+3. Enter a name and pick a color. If you're in a workspace, choose **Where** it goes: your labels, or a workspace's team labels.
+4. Click **Add**.
 
-You can also create a label from a task's label picker by typing a name that doesn't exist yet.
+You can also create a label from a task's label picker, or in Quick Add, by typing a name that doesn't exist yet. It's created in the space of the task's project.
 
 ### Applying Labels
 
-Open a task and click the label button next to **Labels** to pick from your labels. A task can have several labels. In Quick Add, type `@labelname` to apply an existing label.
+Open a task and click the label button next to **Labels** to pick from the labels of its project's space. A task can have several labels. In Quick Add, type `@labelname` to apply a label from the space of the project the task is going into.
+
+When you move a task to a project in another space, its labels go with it by name, and any the new space doesn't have yet are created there. Applying a label to several selected tasks at once uses the label of that name in each task's space; tasks whose space has no such label are left alone.
 
 ### Viewing Tasks by Label
 
-Click a label in **Filters & Labels** to see every task with that label, across all projects. The label page has list, board and calendar views. The board groups tasks by priority, due date, assignee or project; see [grouping a board](projects.md#grouping-a-board). Dragging a card between project columns moves the task to that project.
+Click a label in **Filters & Labels** to see every task with that label, across all projects. Labels match by name, so a label page or an `@label` filter includes same-named labels from every space you can see. The label page has list, board and calendar views. The board groups tasks by priority, due date, assignee or project; see [grouping a board](projects.md#grouping-a-board). Dragging a card between project columns moves the task to that project.
 
 Star a label to show it in the sidebar.
 

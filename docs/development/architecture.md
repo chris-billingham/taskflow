@@ -190,7 +190,7 @@ Task ── Section?, parent Task? (subtasks), TaskLabel → Label, Comment, Att
 Template (project templates), InstanceSetting (e.g. sign-up mode)
 ```
 
-Each user has their own space: an Inbox created at registration plus any personal projects, all with no workspace. Workspaces are for teams only. Favourites, sidebar order and collapsed sections are per person (`ProjectUserSetting`, `SectionUserSetting`). `WorkspaceLabel` exists in the schema but is unused.
+Each user has their own space: an Inbox created at registration plus any personal projects, all with no workspace. Workspaces are for teams only. Favourites, sidebar order and collapsed sections are per person (`ProjectUserSetting`, `SectionUserSetting`, `LabelUserSetting`). A label belongs to one space (`Label.userId` or `Label.workspaceId`, enforced by a CHECK); a task carries only labels from its project's space, and `services/labelScope.ts` holds those rules, including mapping labels by name when a task moves between spaces.
 
 ## Testing
 

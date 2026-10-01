@@ -8,9 +8,26 @@ import { bySortOrder, mutateCachedList, patchById, removeById, reorderByIds } fr
 
 export type { Label };
 
-export const labelKeys = { all: ['labels'] as const };
+export const labelKeys = {
+  all: ['labels'] as const,
+  project: (projectId: string) => ['labels', 'project', projectId] as const,
+};
 
-/** The user's labels, in their order. */
+/**
+ * The labels one project's tasks can use: its workspace's team labels, or
+ * for a personal project its owner's labels (also when it's shared with you).
+ */
+export function useProjectLabels(projectId: string | undefined) {
+  const query = useQuery({
+    queryKey: labelKeys.project(projectId ?? ''),
+    queryFn: async () => (await api.get('/labels', { params: { projectId } })).data.data as Label[],
+    enabled: Boolean(projectId),
+  });
+  const labels = useMemo(() => [...(query.data ?? [])].sort(bySortOrder), [query.data]);
+  return { labels, loading: query.isLoading };
+}
+
+/** Your labels and your workspaces' team labels, in your order. */
 export function useLabels() {
   const query = useQuery({
     queryKey: labelKeys.all,
@@ -35,11 +52,18 @@ export function useLabelActions() {
     const refreshTasks = () => void qc.invalidateQueries({ queryKey: taskKeys.all });
 
     return {
-      createLabel: (input: { name: string; color?: string }) =>
-        mutate({
-          request: async () => (await api.post('/labels', input)).data.data as Label,
-          failure: 'The label could not be created',
-        }),
+      /** In a workspace, in a project's space, or by default among your own. */
+      createLabel: async (input: { name: string; color?: string; workspaceId?: string; projectId?: string }) => {
+        try {
+          return await mutate({
+            request: async () => (await api.post('/labels', input)).data.data as Label,
+            failure: 'The label could not be created',
+          });
+        } finally {
+          // A project's list may hold it too.
+          void qc.invalidateQueries({ queryKey: labelKeys.all });
+        }
+      },
       updateLabel: async (
         id: string,
         input: Partial<Pick<Label, 'name' | 'color' | 'isFavorite' | 'sortOrder'>>,

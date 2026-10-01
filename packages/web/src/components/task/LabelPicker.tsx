@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Tag, Search, Check, Plus } from 'lucide-react';
-import { useLabels, useLabelActions } from '@/queries/labels';
+import { useProjectLabels, useLabelActions } from '@/queries/labels';
 
 interface LabelPickerProps {
+  /** The task's project: its space decides which labels can be used. */
+  projectId: string;
   selectedIds: string[];
   onChange: (labelIds: string[]) => void;
 }
@@ -12,9 +14,9 @@ const DEFAULT_COLORS = [
   '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6',
 ];
 
-export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
+export function LabelPicker({ projectId, selectedIds, onChange }: LabelPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { labels, loading } = useLabels();
+  const { labels, loading } = useProjectLabels(projectId);
   const { createLabel } = useLabelActions();
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
@@ -52,7 +54,7 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
     setCreating(true);
     try {
       const color = DEFAULT_COLORS[labels.length % DEFAULT_COLORS.length];
-      const newLabel = await createLabel({ name: search.trim(), color });
+      const newLabel = await createLabel({ name: search.trim(), color, projectId });
       onChange([...selectedIds, newLabel.id]);
       setSearch('');
     } catch {

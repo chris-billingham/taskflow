@@ -5,7 +5,7 @@ import { buildApp } from '../../app.js';
 import { generateAccessToken } from '../../utils/jwt.js';
 
 vi.mock('../../services/labelService.js', () => ({
-  getUserLabels: vi.fn(),
+  getLabels: vi.fn(),
   createLabel: vi.fn(),
   updateLabel: vi.fn(),
   deleteLabel: vi.fn(),
@@ -23,6 +23,7 @@ const ROW = {
   name: 'errands',
   color: '#6B7280',
   userId: USER.id,
+  workspaceId: null,
   isFavorite: false,
   sortOrder: 0,
   createdAt: new Date('2026-09-01T09:00:00.000Z'),
@@ -40,7 +41,7 @@ afterAll(async () => {
 
 describe('labels routes — contract', () => {
   it('sends dates as ISO strings', async () => {
-    vi.mocked(labelService.getUserLabels).mockResolvedValue([ROW]);
+    vi.mocked(labelService.getLabels).mockResolvedValue([ROW]);
 
     const res = await app.inject({ method: 'GET', url: '/api/v1/labels', headers });
 
@@ -51,8 +52,14 @@ describe('labels routes — contract', () => {
     });
   });
 
+  it('asks for one project’s labels when given a project', async () => {
+    vi.mocked(labelService.getLabels).mockResolvedValue([ROW]);
+    await app.inject({ method: 'GET', url: '/api/v1/labels?projectId=p-1', headers });
+    expect(labelService.getLabels).toHaveBeenLastCalledWith(USER.id, { projectId: 'p-1' });
+  });
+
   it('drops fields the contract does not list', async () => {
-    vi.mocked(labelService.getUserLabels).mockResolvedValue([
+    vi.mocked(labelService.getLabels).mockResolvedValue([
       { ...ROW, internalNote: 'not for clients' } as typeof ROW,
     ]);
 
@@ -62,7 +69,7 @@ describe('labels routes — contract', () => {
   });
 
   it('fails loudly (outside production) when a route breaks its contract', async () => {
-    vi.mocked(labelService.getUserLabels).mockResolvedValue([
+    vi.mocked(labelService.getLabels).mockResolvedValue([
       { ...ROW, isFavorite: 'yes' } as unknown as typeof ROW,
     ]);
 

@@ -10,6 +10,7 @@ import type {
 } from '@taskflow/contract';
 import { logger } from '../config/logger.js';
 import { requireProjectAccess, requireWorkspaceRole } from './access.js';
+import { labelIdsByName } from './labelScope.js';
 
 interface TemplateSubtask {
   content: string;
@@ -223,31 +224,19 @@ export async function applyTemplate(
   // Resolve/create labels BEFORE the transaction: the per-task find-or-create
   // loop inside the transaction held row locks on the user's labels for the
   // whole apply and blew Prisma's 5s default timeout on large templates.
+  // The labels come from the new project's space: the workspace's team
+  // labels, or your own. Names it doesn't have yet are created.
   const labelNames = new Set<string>();
   for (const t of templateData.tasks) {
     for (const name of t.labels) labelNames.add(name);
     for (const st of t.subtasks) for (const name of st.labels) labelNames.add(name);
   }
-  const labelIdByName = new Map<string, string>();
-  if (labelNames.size > 0) {
-    const existing = await prisma.label.findMany({
-      where: { userId, name: { in: [...labelNames] } },
-      select: { id: true, name: true },
-    });
-    for (const l of existing) labelIdByName.set(l.name, l.id);
-    const maxLabelSort = await prisma.label.aggregate({
-      where: { userId },
-      _max: { sortOrder: true },
-    });
-    let nextSort = (maxLabelSort._max.sortOrder ?? 0) + 1;
-    for (const name of labelNames) {
-      if (labelIdByName.has(name)) continue;
-      const label = await prisma.label.create({
-        data: { name, userId, sortOrder: nextSort++ },
-      });
-      labelIdByName.set(name, label.id);
-    }
-  }
+  const byLowerName = await labelIdsByName(
+    data.workspaceId ? { workspaceId: data.workspaceId } : { userId },
+    [...labelNames].map((name) => ({ name })),
+    { create: true },
+  );
+  const labelIdByName = new Map([...labelNames].map((name) => [name, byLowerName.get(name.toLowerCase())!]));
 
   return prisma.$transaction(async (tx) => {
     // Create the new project

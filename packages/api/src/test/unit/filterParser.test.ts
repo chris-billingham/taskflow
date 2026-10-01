@@ -226,10 +226,13 @@ describe('parseFilterQuery', () => {
     expect(mockFindProject).toHaveBeenLastCalledWith(TEST_USER_ID, 'Launch', { parentId: 'proj-parent' });
   });
 
-  it('resolves @labelname to taskLabels filter when label exists', async () => {
-    mockPrisma.label.findMany.mockResolvedValue([{ id: 'label-abc', name: 'Urgent' }]);
+  it('resolves @labelname to that name in every space (team labels, yours, a shared project’s owner’s)', async () => {
+    mockPrisma.label.findMany.mockResolvedValue([
+      { id: 'label-abc', name: 'Urgent' },
+      { id: 'label-team', name: 'urgent' },
+    ]);
     const result = await parseFilterQuery('@urgent', TEST_USER_ID);
-    expect(result).toEqual({ taskLabels: { some: { labelId: 'label-abc' } } });
+    expect(result).toEqual({ taskLabels: { some: { labelId: { in: ['label-abc', 'label-team'] } } } });
   });
 
   it('treats "_" in a label name literally, not as a wildcard', async () => {

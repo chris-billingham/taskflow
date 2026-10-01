@@ -290,19 +290,21 @@ async function parseAtom(atom: string, ctx: ParseContext): Promise<Prisma.TaskWh
   // Label filter: @labelname
   if (atom.startsWith('@')) {
     const labelName = atom.slice(1).trim();
+    // By name, in every space: your "@urgent" means the urgent label of each
+    // project's space (team labels, yours, a shared project's owner's). The
+    // filter only ever returns tasks you can see.
     // Insensitive `equals` is an unescaped ILIKE ("_" and "%" are wildcards),
     // so confirm the exact match in code.
     const candidates = await prisma.label.findMany({
-      where: {
-        name: { equals: labelName, mode: 'insensitive' },
-        userId: ctx.userId,
-      },
+      where: { name: { equals: labelName, mode: 'insensitive' } },
       select: { id: true, name: true },
     });
-    const label = candidates.find((l) => l.name.toLowerCase() === labelName.toLowerCase());
-    if (label) {
+    const ids = candidates
+      .filter((l) => l.name.toLowerCase() === labelName.toLowerCase())
+      .map((l) => l.id);
+    if (ids.length > 0) {
       return {
-        taskLabels: { some: { labelId: label.id } },
+        taskLabels: { some: { labelId: { in: ids } } },
       };
     }
     return MATCH_NONE;
