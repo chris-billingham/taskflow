@@ -33,6 +33,15 @@ export function broadcastProjectDeleted(projectId: string, workspaceId?: string 
   }
 }
 
+/** A project's tasks in a new order (sortOrder = position). */
+export function broadcastTasksReordered(projectId: string, order: { id: string; sortOrder: number }[]): void {
+  emitToProject(projectId, WS_EVENTS.TASKS_REORDERED, { projectId, order });
+}
+
+export function broadcastSectionsReordered(projectId: string): void {
+  emitToProject(projectId, WS_EVENTS.SECTIONS_REORDERED, { projectId });
+}
+
 export function broadcastSectionCreated(section: {
   projectId: string;
   [key: string]: unknown;

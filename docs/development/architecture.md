@@ -85,14 +85,14 @@ All routes live under `/api/v1`. `/health` and `/api/health` are public. OpenAPI
 
 ### Real-time
 
-Socket.IO shares the API's HTTP server (path `/socket.io`).
+Socket.IO shares the API's HTTP server (path `/socket.io`). It uses the Redis adapter, so rooms and broadcasts span every API instance, and the worker publishes through a Redis emitter (`initSocketEmitter()`): background jobs can reach browsers too.
 
 - **Handshake:** the client sends its access token in `auth.token`. The server disconnects the socket when that token expires. The client then reconnects with a fresh token.
-- **Rooms:** each socket joins `user:<id>`, plus `project:<id>` and `workspace:<id>` for every project and workspace it can read. These are looked up at connect time. `subscribe:project` (sent by `useProjectRoom` when a project view mounts) covers projects shared after connecting. The server acks whether the join was allowed.
-- **Events:** task, section and comment changes are emitted to the `project:<id>` room from `services/syncService.ts`. `project:updated` / `project:deleted` also go to the workspace room. The `user:<id>` room is only used to disconnect a user's sockets.
+- **Rooms:** each socket joins `user:<id>`, plus `project:<id>` for every project it can read and `workspace:<id>` for every workspace it belongs to as more than a guest (workspace rooms carry every project's updates; guests only see projects shared with them). These are looked up at connect time, and `refreshUserRooms(userId)` re-syncs a user's open sockets after any change to their access (sharing, roles, removal). `subscribe:project` (sent by `useProjectRoom` when a project view mounts) is a fallback; the server acks whether the join was allowed.
+- **Events:** task, section and comment changes, and task/section reorders, are emitted to the `project:<id>` room from `services/syncService.ts`. `project:updated` / `project:deleted` also go to the workspace room, without anyone's per-user fields (favourite, order, collapse). The `user:<id>` room carries `project:shared` / `project:unshared`, `notification:created` and `notifications:changed`, and is used to disconnect a user's sockets.
 - **Resync:** joining rooms is asynchronous, so the server emits `rooms:ready` once the joins land. The client (`services/socket.ts`) turns `rooms:ready` and each subscribe ack into a coalesced bump of `resyncEpoch` in `socketStore`. `useRealTimeSync` then invalidates every query (active ones refetch at once), and store-backed hooks such as `useProjects` refetch too. That closes the gap for anything broadcast while the socket was disconnected or not yet joined.
 - **Presence and typing:** the server handles `presence:update` and `typing:start`/`typing:stop`, and the web app sends presence updates. `PresenceIndicator` and `TypingIndicator` exist but are never mounted, so neither is visible to users.
-- **Notifications** are not pushed over the socket. The bell polls `/api/v1/notifications` every 30 seconds.
+- **Notifications:** `createNotification` emits `notification:created` to the recipient, from the API or the worker, and the bell re-reads at once. A 5-minute poll only covers a missed event.
 
 ### Background jobs (BullMQ)
 
@@ -104,10 +104,11 @@ Queues are defined in `src/jobs/` and started by `initializeWorkers()` in `src/w
 | `due-task-check` | hourly | Due-soon and overdue notifications, gated on each user's local time |
 | `notification-digest` | hourly | Daily and weekly email digests of unread notifications, sent at the user's local time |
 | `maintenance` | 03:30 UTC daily | Deletes expired refresh tokens and workspace invites |
+| `notification-delivery` | on demand | Email and push for a notification the API created; 4 attempts with backoff |
 
 The process entry point is `src/worker-entry.ts`. In production it runs in the separate `worker` container. In development the API runs the same workers in-process. `RUN_WORKERS_IN_API` controls this: it defaults to on when `NODE_ENV` isn't `production`, and you can set it to `true` for a deployment without a worker container.
 
-Activity logging does not use a queue. Services write `ActivityLog` rows in-process right after the change. Immediate notifications (push and "immediate" email) are also sent in-process by `notificationService`.
+Activity logging does not use a queue. Services write `ActivityLog` rows in-process right after the change. `notify()` saves the in-app notification in the request, then queues its email and push (`jobs/notificationDelivery.ts`), so a slow mail server never holds up the action. If the queue can't be reached, or `NOTIFICATION_DELIVERY=inline` (as in the test suites), they're sent directly.
 
 ### Storage
 

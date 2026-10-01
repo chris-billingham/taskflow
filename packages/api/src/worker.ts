@@ -18,6 +18,7 @@ import {
   startDueTaskWorker,
   scheduleDueTaskChecks,
 } from './jobs/dueTaskJob.js';
+import { startNotificationDeliveryWorker } from './jobs/notificationDelivery.js';
 import { logger } from './config/logger.js';
 
 export async function initializeWorkers() {
@@ -41,6 +42,10 @@ export async function initializeWorkers() {
   await scheduleDueTaskChecks(dueTaskQueue);
   logger.info('Due-task check worker started');
 
+  // Email and push for notifications created by the API
+  const deliveryWorker = startNotificationDeliveryWorker();
+  logger.info('Notification delivery worker started');
+
   // Daily cleanup - expired refresh tokens and invites
   const maintenanceQueue = createMaintenanceQueue();
   const maintenanceWorker = startMaintenanceWorker();
@@ -55,6 +60,7 @@ export async function initializeWorkers() {
       digestWorker.close(),
       dueTaskWorker.close(),
       maintenanceWorker.close(),
+      deliveryWorker.close(),
       reminderQueue.close(),
       digestQueue.close(),
       dueTaskQueue.close(),

@@ -73,7 +73,7 @@ You get a comment notification when someone comments on a task you created, are 
 
 ## Live Updates
 
-Changes to tasks, sections, comments and projects appear for everyone else viewing them, without a reload. If your connection drops, the app catches up when it reconnects.
+Changes to tasks, sections, comments and projects appear for everyone else viewing them, without a reload, including when someone reorders tasks or sections. A project shared with you appears in your sidebar straight away. If your connection drops, the app catches up when it reconnects.
 
 Taskflow doesn't show who else is online or viewing a project, and there are no typing indicators.
 
@@ -83,7 +83,7 @@ The task panel has an **Activity** section showing who changed what and when.
 
 ## Notifications
 
-In-app notifications appear under the bell icon (top right on desktop, in the header on a phone). The list checks for new notifications every 30 seconds.
+In-app notifications appear under the bell icon (top right on desktop, in the header on a phone) the moment they arrive, and reading one updates the count on your other devices too.
 
 At **Settings → Notifications** you can:
 - Turn on **browser push notifications** (your administrator must have configured push for this to work)

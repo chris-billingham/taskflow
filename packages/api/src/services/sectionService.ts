@@ -6,6 +6,7 @@ import {
   broadcastSectionCreated,
   broadcastSectionUpdated,
   broadcastSectionDeleted,
+  broadcastSectionsReordered,
 } from './syncService.js';
 import { saveSectionSettings, sectionSettingsInclude, withSectionSettings } from './userSettings.js';
 
@@ -136,6 +137,7 @@ export async function reorderSections(sectionIds: string[], userId: string) {
   );
 
   await prisma.$transaction(updates);
+  for (const projectId of new Set(sections.map((s) => s.projectId))) broadcastSectionsReordered(projectId);
 
   return { message: 'Sections reordered successfully' };
 }

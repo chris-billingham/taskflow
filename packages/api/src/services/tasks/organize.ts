@@ -5,7 +5,12 @@ import { ForbiddenError, NotFoundError, ValidationError } from '../../errors/ind
 import { requireTaskAccess, requireProjectAccess } from '../access.js';
 import type { BulkTaskInput, MoveTaskInput } from '@taskflow/contract';
 import { logActivity } from '../activityService.js';
-import { broadcastTaskCreated, broadcastTaskUpdated, broadcastTaskDeleted } from '../syncService.js';
+import {
+  broadcastTaskCreated,
+  broadcastTaskUpdated,
+  broadcastTaskDeleted,
+  broadcastTasksReordered,
+} from '../syncService.js';
 import { recomputeRelativeReminders } from '../reminderService.js';
 import {
   assertTaskReferences,
@@ -387,6 +392,16 @@ export async function reorderTasks(taskIds: string[], userId: string) {
      WHERE t.id = v.id`,
     ...params,
   );
+
+  // Everyone else viewing these projects sees the new order straight away.
+  const byProject = new Map<string, { id: string; sortOrder: number }[]>();
+  taskIds.forEach((id, index) => {
+    const projectId = tasks.find((t) => t.id === id)!.projectId;
+    byProject.set(projectId, [...(byProject.get(projectId) ?? []), { id, sortOrder: index }]);
+  });
+  for (const [projectId, order] of byProject) {
+    runSideEffect('broadcastTasksReordered', () => broadcastTasksReordered(projectId, order));
+  }
 
   return { message: 'Tasks reordered successfully' };
 }

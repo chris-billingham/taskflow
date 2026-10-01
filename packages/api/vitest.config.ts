@@ -10,6 +10,8 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**', 'src/test/db/**'],
     setupFiles: ['./src/test/setup.ts'],
     env: {
+      // Send notification email/push in the request: no worker in tests.
+      NOTIFICATION_DELIVERY: 'inline',
       DATABASE_URL: 'postgresql://test:test@localhost:5432/taskflow_test',
       JWT_SECRET: 'test-jwt-secret-value-that-is-at-least-32-chars!',
       JWT_REFRESH_SECRET: 'test-refresh-secret-must-be-at-least-32-chars!',

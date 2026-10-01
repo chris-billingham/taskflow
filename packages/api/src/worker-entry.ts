@@ -1,5 +1,6 @@
 import { env } from './config/env.js';
 import { initializeWorkers } from './worker.js';
+import { initSocketEmitter } from './websocket/events.js';
 import { closeRedis } from './config/redis.js';
 import { prisma } from './config/database.js';
 import { initMailer } from './services/mailService.js';
@@ -54,6 +55,8 @@ async function start() {
     // run in the worker container; locally they appeared to work because the
     // API process runs the same workers in-process and had initialised its own.
     await initMailer(logger);
+    // Jobs create notifications; this sends them live to open browsers.
+    initSocketEmitter();
 
     const workers = await initializeWorkers();
     workersShutdown = workers.shutdown;

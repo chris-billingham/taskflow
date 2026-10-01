@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const envState = vi.hoisted(() => ({
+  NOTIFICATION_DELIVERY: 'inline' as 'inline' | 'queue',
+  REDIS_URL: 'redis://localhost:6379',
   VAPID_PUBLIC_KEY: undefined as string | undefined,
   VAPID_PRIVATE_KEY: undefined as string | undefined,
   VAPID_SUBJECT: 'mailto:test@test.local',
@@ -10,11 +12,26 @@ vi.mock('../../config/env.js', () => ({ env: envState }));
 
 vi.mock('../../config/database.js', () => ({
   prisma: {
-    notification: { create: vi.fn() },
+    notification: { create: vi.fn(), findUnique: vi.fn() },
     notificationPreference: { findUnique: vi.fn(), upsert: vi.fn() },
     user: { findUnique: vi.fn() },
     pushSubscription: { findMany: vi.fn(), delete: vi.fn() },
   },
+}));
+
+// The delivery queue: add() succeeds unless a test says Redis is down.
+const queueAdd = vi.hoisted(() => vi.fn());
+vi.mock('bullmq', () => ({
+  Queue: class {
+    add = queueAdd;
+    close = vi.fn();
+  },
+  Worker: class {},
+}));
+vi.mock('ioredis', () => ({ Redis: class { on = vi.fn(); } }));
+vi.mock('../../websocket/events.js', () => ({
+  WS_EVENTS: { NOTIFICATION_CREATED: 'notification:created', NOTIFICATIONS_CHANGED: 'notifications:changed' },
+  emitToUser: vi.fn(),
 }));
 
 vi.mock('../../services/mailService.js', () => ({
@@ -35,7 +52,7 @@ import { prisma } from '../../config/database.js';
 import { isMailerReady, sendNotificationEmail } from '../../services/mailService.js';
 
 const mockPrisma = prisma as unknown as {
-  notification: { create: ReturnType<typeof vi.fn> };
+  notification: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
   notificationPreference: {
     findUnique: ReturnType<typeof vi.fn>;
     upsert: ReturnType<typeof vi.fn>;
@@ -61,7 +78,17 @@ beforeEach(() => {
   envState.VAPID_PRIVATE_KEY = undefined;
   mockIsMailerReady.mockReturnValue(true);
   mockPrisma.notificationPreference.findUnique.mockResolvedValue(null);
+  envState.NOTIFICATION_DELIVERY = 'inline';
+  queueAdd.mockResolvedValue({});
   mockPrisma.notification.create.mockResolvedValue({ id: 'n1' });
+  // What delivery reads back: the saved notification.
+  mockPrisma.notification.findUnique.mockResolvedValue({
+    userId: 'u1',
+    type: 'TASK_ASSIGNED',
+    title: 'Title',
+    body: 'Body',
+    data: { taskId: 't1' },
+  });
   mockPrisma.user.findUnique.mockResolvedValue({
     email: 'u@example.com',
     name: 'User',
@@ -237,6 +264,27 @@ describe('notify — multi-channel fan-out', () => {
     expect(result).toEqual({ id: 'n1' });
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1);
     expect(sendNotificationMock).toHaveBeenCalledTimes(1);
+    expect(mockSendNotificationEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('hands email and push to the worker when delivery is queued', async () => {
+    const svc = await loadService();
+    envState.NOTIFICATION_DELIVERY = 'queue';
+    await svc.notify('u1', 'TASK_ASSIGNED', 'Title', 'Body');
+    expect(queueAdd).toHaveBeenCalledWith('deliver', { notificationId: 'n1' }, { jobId: 'n1' });
+    expect(mockSendNotificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('sends directly when the queue cannot be reached', async () => {
+    const svc = await loadService();
+    envState.NOTIFICATION_DELIVERY = 'queue';
+    queueAdd.mockRejectedValue(new Error('Connection is closed'));
+    mockPrisma.notificationPreference.findUnique.mockResolvedValue({
+      emailEnabled: true,
+      emailFrequency: 'immediate',
+      disabledTypes: [],
+    });
+    await svc.notify('u1', 'TASK_ASSIGNED', 'Title', 'Body');
     expect(mockSendNotificationEmail).toHaveBeenCalledTimes(1);
   });
 

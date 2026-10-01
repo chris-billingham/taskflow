@@ -13,7 +13,10 @@ interface NotificationList {
   unreadCount: number;
 }
 
-/** The latest notifications and the unread count, re-read every 30 seconds. */
+/**
+ * The latest notifications and the unread count. New ones arrive live over
+ * the socket (useRealTimeSync); the slow poll only covers a missed event.
+ */
 export function useNotifications() {
   const query = useQuery({
     queryKey: notificationKeys.all,
@@ -21,7 +24,7 @@ export function useNotifications() {
       const { data } = await api.get('/notifications', { params: { unreadOnly: false, limit: 50 } });
       return { notifications: data.data, unreadCount: data.unreadCount };
     },
-    refetchInterval: 30_000,
+    refetchInterval: 5 * 60_000,
   });
   return {
     notifications: query.data?.notifications ?? [],

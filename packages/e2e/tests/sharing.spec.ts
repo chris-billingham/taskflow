@@ -42,6 +42,8 @@ test.describe('Sharing a project', () => {
     await friendPage.getByRole('button', { name: /sign in|log in/i }).click();
     await expect(friendPage).toHaveURL(/\/today/);
     await expect(friendPage.getByText(projectName)).toHaveCount(0);
+    // A brand-new account has no notifications yet.
+    await expect(friendPage.getByRole('button', { name: 'Notifications', exact: true })).toBeVisible();
 
     await page.goto('/login');
     await page.getByLabel(/email/i).fill(TEST_USER.email);
@@ -59,6 +61,8 @@ test.describe('Sharing a project', () => {
 
     await expect(friendPage.locator('aside').getByText('Shared with me').first()).toBeVisible();
     await expect(friendPage.locator('aside').getByText(projectName).first()).toBeVisible();
+    // The notification arrives live, well inside the old 30-second poll.
+    await expect(friendPage.getByRole('button', { name: 'Notifications, 1 unread' })).toBeVisible({ timeout: 5000 });
     await friendContext.close();
   });
 });

@@ -25,6 +25,10 @@ const envSchema = z.object({
   // against a production build. Values below 1 are rejected: this can only
   // loosen the shipped limits, never switch them off.
   RATE_LIMIT_MULTIPLIER: z.coerce.number().min(1).max(1000).default(1),
+  // How email and push for a notification are sent: by the worker from a
+  // queue (the default, so a slow mail server never holds up a request), or
+  // inline in the request that caused it (tests, single-process setups).
+  NOTIFICATION_DELIVERY: z.enum(['queue', 'inline']).default('queue'),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.string().default('info'),

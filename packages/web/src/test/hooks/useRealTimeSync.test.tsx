@@ -8,6 +8,7 @@ import { useRealTimeSync } from '@/hooks/useRealTimeSync';
 import { useAuthStore } from '@/stores/authStore';
 import { useSocketStore } from '@/stores/socketStore';
 import { taskKeys } from '@/queries/taskKeys';
+import { notificationKeys } from '@/queries/notifications';
 import type { TaskPage } from '@/queries/taskCache';
 import { createTestQueryClient, resetStores } from '../helpers/renderPage';
 import { makeTask, TEST_USER } from '../msw/fixtures';
@@ -49,6 +50,30 @@ describe('useRealTimeSync', () => {
     const { ids } = setup();
     act(() => handlers.get('task:deleted')!({ taskId: 't1' }));
     expect(ids().map((t) => t.id)).toEqual(['t2']);
+  });
+
+  it('applies a remote reorder', () => {
+    const { ids } = setup();
+    act(() =>
+      handlers.get('tasks:reordered')!({
+        projectId: 'project-1',
+        order: [
+          { id: 't2', sortOrder: 0 },
+          { id: 't1', sortOrder: 1 },
+        ],
+      }),
+    );
+    expect(ids().map((t) => [t.id, t.sortOrder])).toEqual([
+      ['t1', 1],
+      ['t2', 0],
+    ]);
+  });
+
+  it('re-reads the bell the moment a notification arrives', () => {
+    const { qc } = setup();
+    qc.setQueryData(notificationKeys.all, { notifications: [], unreadCount: 0 });
+    act(() => handlers.get('notification:created')!({ id: 'n1', type: 'TASK_ASSIGNED' }));
+    expect(qc.getQueryState(notificationKeys.all)!.isInvalidated).toBe(true);
   });
 
   it('re-reads everything after a reconnect', () => {

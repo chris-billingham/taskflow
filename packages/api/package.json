@@ -34,6 +34,8 @@
     "@fastify/swagger-ui": "^6.1.1",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "^7.10.0",
+    "@socket.io/redis-adapter": "^8.3.0",
+    "@socket.io/redis-emitter": "^5.1.0",
     "@taskflow/contract": "workspace:*",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.81.5",

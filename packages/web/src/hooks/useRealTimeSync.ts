@@ -10,6 +10,7 @@ import type { Project, ProjectSection } from '@/types/project';
 import { patchCachedProject, projectKeys } from '@/queries/projects';
 import { removeComment, updateCachedComments, upsertComment, type Comment } from '@/queries/comments';
 import { activityKeys } from '@/queries/activity';
+import { notificationKeys } from '@/queries/notifications';
 
 export function useRealTimeSync(): void {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -104,6 +105,25 @@ export function useRealTimeSync(): void {
       updateCachedComments(qc, taskId, removeComment(commentId));
     };
 
+    // A notification arrived (or was read on another device): re-read the bell.
+    const onNotifications = () => void qc.invalidateQueries({ queryKey: notificationKeys.all });
+
+    // Someone else reordered a project's tasks or sections.
+    const onTasksReordered = ({ order }: { projectId: string; order: { id: string; sortOrder: number }[] }) => {
+      const position = new Map(order.map((o) => [o.id, o.sortOrder]));
+      patchTaskCaches(qc, (task) =>
+        position.has(task.id) ? { ...task, sortOrder: position.get(task.id)! } : task,
+      );
+    };
+    const onSectionsReordered = ({ projectId }: { projectId: string }) => {
+      void qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      void qc.invalidateQueries({ queryKey: projectKeys.list() });
+    };
+
+    socket.on('notification:created', onNotifications);
+    socket.on('notifications:changed', onNotifications);
+    socket.on('tasks:reordered', onTasksReordered);
+    socket.on('sections:reordered', onSectionsReordered);
     socket.on('task:created', onTaskCreated);
     socket.on('task:updated', onTaskUpdated);
     socket.on('task:deleted', onTaskDeleted);
@@ -121,6 +141,10 @@ export function useRealTimeSync(): void {
 
     return () => {
       if (refreshTimer) clearTimeout(refreshTimer);
+      socket.off('notification:created', onNotifications);
+      socket.off('notifications:changed', onNotifications);
+      socket.off('tasks:reordered', onTasksReordered);
+      socket.off('sections:reordered', onSectionsReordered);
       socket.off('task:created', onTaskCreated);
       socket.off('task:updated', onTaskUpdated);
       socket.off('task:deleted', onTaskDeleted);

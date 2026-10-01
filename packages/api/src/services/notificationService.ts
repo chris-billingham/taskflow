@@ -6,6 +6,8 @@ import { isMailerReady, sendNotificationEmail } from './mailService.js';
 import type { NotificationType } from '@prisma/client';
 import { cursorArgs, toPage } from '../utils/pagination.js';
 import { logger } from '../config/logger.js';
+import { WS_EVENTS, emitToUser } from '../websocket/events.js';
+import { scheduleDelivery } from '../jobs/notificationDelivery.js';
 
 // ─── Notification Preferences ────────────────────────────────────────────
 
@@ -68,7 +70,7 @@ export async function createNotification(
     if (prefs.disabledTypes.includes(type)) return null;
   }
 
-  return prisma.notification.create({
+  const notification = await prisma.notification.create({
     data: {
       userId,
       type,
@@ -77,6 +79,10 @@ export async function createNotification(
       data: data ? JSON.parse(JSON.stringify(data)) : undefined,
     },
   });
+  // Live: the bell updates at once instead of on its next poll. Works from
+  // the worker too (reminders, due-date notices), through Redis.
+  emitToUser(userId, WS_EVENTS.NOTIFICATION_CREATED, { id: notification.id, type });
+  return notification;
 }
 
 /**
@@ -99,10 +105,13 @@ export async function notify(
   const notification = await createNotification(userId, type, title, body, data);
   if (!notification) return null;
 
-  await Promise.allSettled([
-    sendPushNotification(userId, title, body, data),
-    sendEmailNotification(userId, type, { subject: title, summary: body, ...data }),
-  ]);
+  // Email and push go out from the worker, so a slow or unreachable mail
+  // server never holds up the action that caused the notification.
+  try {
+    await scheduleDelivery(notification.id);
+  } catch (err) {
+    logger.error({ err, notificationId: notification.id }, 'notification delivery failed');
+  }
 
   return notification;
 }
@@ -169,10 +178,13 @@ export async function markAsRead(notificationId: string, userId: string) {
     throw new ForbiddenError('Not your notification');
   }
 
-  return prisma.notification.update({
+  const updated = await prisma.notification.update({
     where: { id: notificationId },
     data: { isRead: true, readAt: new Date() },
   });
+  // Other tabs and devices update their unread count.
+  emitToUser(userId, WS_EVENTS.NOTIFICATIONS_CHANGED, {});
+  return updated;
 }
 
 export async function markAllAsRead(userId: string) {
@@ -180,6 +192,7 @@ export async function markAllAsRead(userId: string) {
     where: { userId, isRead: false },
     data: { isRead: true, readAt: new Date() },
   });
+  emitToUser(userId, WS_EVENTS.NOTIFICATIONS_CHANGED, {});
   return { count: result.count };
 }
 

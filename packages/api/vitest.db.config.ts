@@ -11,6 +11,8 @@ export default defineConfig({
     include: ['src/test/db/**/*.test.ts'],
     setupFiles: ['./src/test/db/setup.ts'],
     env: {
+      // Send notification email/push in the request: no worker in tests.
+      NOTIFICATION_DELIVERY: 'inline',
       DATABASE_URL:
         process.env.TEST_DATABASE_URL ??
         'postgresql://taskflow:taskflow@localhost:5432/taskflow',
