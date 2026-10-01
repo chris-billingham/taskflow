@@ -52,6 +52,7 @@ beforeAll(async () => {
     'wsAdmin',
     'wsMember',
     'wsGuest',
+    'sharedGuest',
     'projViewer',
     'projCommenter',
     'projEditor',
@@ -74,6 +75,7 @@ beforeAll(async () => {
           { userId: F.users.wsAdmin, role: 'ADMIN' },
           { userId: F.users.wsMember, role: 'MEMBER' },
           { userId: F.users.wsGuest, role: 'GUEST' },
+          { userId: F.users.sharedGuest, role: 'GUEST' },
           { userId: F.users.leaver, role: 'MEMBER' },
         ],
       },
@@ -92,6 +94,8 @@ beforeAll(async () => {
           { userId: F.users.projCommenter, role: 'COMMENTER' },
           { userId: F.users.projEditor, role: 'MEMBER' },
           { userId: F.users.projAdmin, role: 'ADMIN' },
+          // A workspace guest sees only what's shared with them directly.
+          { userId: F.users.sharedGuest, role: 'COMMENTER' },
         ],
       },
     },
@@ -131,7 +135,10 @@ const PROJECT_MATRIX: Array<[string, boolean, boolean, boolean, boolean]> = [
   ['owner', true, true, true, true],
   ['wsAdmin', true, true, true, true],
   ['wsMember', true, true, true, false],
-  ['wsGuest', true, true, false, false],
+  // Workspace guests get nothing by default...
+  ['wsGuest', false, false, false, false],
+  // ...only what a project shares with them.
+  ['sharedGuest', true, true, false, false],
   ['projViewer', true, false, false, false],
   ['projCommenter', true, true, false, false],
   ['projEditor', true, true, true, false],
@@ -164,10 +171,13 @@ describe('project access matrix', () => {
 
   it('task access follows the project matrix', async () => {
     await expect(
-      requireTaskAccess(F.taskId, F.users.wsGuest, 'COMMENT'),
+      requireTaskAccess(F.taskId, F.users.sharedGuest, 'COMMENT'),
     ).resolves.toBeTruthy();
     await expect(
-      requireTaskAccess(F.taskId, F.users.wsGuest, 'EDIT'),
+      requireTaskAccess(F.taskId, F.users.sharedGuest, 'EDIT'),
+    ).rejects.toThrow(ForbiddenError);
+    await expect(
+      requireTaskAccess(F.taskId, F.users.wsGuest, 'VIEW'),
     ).rejects.toThrow(ForbiddenError);
     await expect(
       requireTaskAccess(F.taskId, F.users.projViewer, 'VIEW'),
@@ -252,17 +262,19 @@ describe('query fragments', () => {
   });
 
   it('projectAccessWhere spans owned, direct-member and workspace projects', async () => {
-    for (const name of ['owner', 'wsGuest', 'projViewer']) {
+    for (const name of ['owner', 'wsMember', 'sharedGuest', 'projViewer']) {
       const projects = await prisma.project.findMany({
         where: { AND: [projectAccessWhere(F.users[name]), { id: F.projectId }] },
         select: { id: true },
       });
       expect(projects, `${name} should list the project`).toHaveLength(1);
     }
-    const none = await prisma.project.findMany({
-      where: { AND: [projectAccessWhere(F.users.outsider), { id: F.projectId }] },
-    });
-    expect(none).toHaveLength(0);
+    for (const name of ['outsider', 'wsGuest']) {
+      const none = await prisma.project.findMany({
+        where: { AND: [projectAccessWhere(F.users[name]), { id: F.projectId }] },
+      });
+      expect(none, `${name} must not list the project`).toHaveLength(0);
+    }
   });
 });
 
@@ -288,8 +300,9 @@ describe('workspace roles', () => {
 
 describe('non-throwing check', () => {
   it('hasProjectAccess mirrors requireProjectAccess', async () => {
-    expect(await hasProjectAccess(F.projectId, F.users.wsGuest, 'VIEW')).toBe(true);
-    expect(await hasProjectAccess(F.projectId, F.users.wsGuest, 'EDIT')).toBe(false);
+    expect(await hasProjectAccess(F.projectId, F.users.sharedGuest, 'VIEW')).toBe(true);
+    expect(await hasProjectAccess(F.projectId, F.users.sharedGuest, 'EDIT')).toBe(false);
+    expect(await hasProjectAccess(F.projectId, F.users.wsGuest, 'VIEW')).toBe(false);
     expect(await hasProjectAccess(F.projectId, F.users.outsider, 'VIEW')).toBe(false);
     expect(await hasProjectAccess('nonexistent-project', F.users.owner)).toBe(false);
   });

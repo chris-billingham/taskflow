@@ -24,6 +24,8 @@ beforeAll(async () => {
   for (const [key, name] of [['a', 'Alpha'], ['b', 'Beta'], ['c', 'Gamma']] as const) {
     P[key] = (await projectService.createProject({ name, workspaceId: wsId }, U.owner)).id;
   }
+  // The workspace guest sees Alpha because it's shared with them.
+  await prisma.projectMember.create({ data: { projectId: P.a, userId: U.guest, role: 'VIEWER' } });
 });
 afterAll(async () => {
   await fx.cleanup();

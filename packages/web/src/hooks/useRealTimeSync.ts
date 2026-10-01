@@ -67,6 +67,13 @@ export function useRealTimeSync(): void {
       void qc.invalidateQueries({ queryKey: projectKeys.list() });
     };
 
+    // A project was shared with you, or you lost it: which projects and
+    // tasks you can see has changed.
+    const onAccessChanged = () => {
+      void qc.invalidateQueries({ queryKey: projectKeys.all });
+      void qc.invalidateQueries({ queryKey: taskKeys.all });
+    };
+
     const onProjectDeleted = ({ projectId }: { projectId: string }) => {
       patchCachedProject(qc, projectId, () => null);
       scheduleRefresh();
@@ -103,6 +110,8 @@ export function useRealTimeSync(): void {
     socket.on('task:completed', onTaskUpdated);
     socket.on('project:updated', onProjectUpdated);
     socket.on('project:deleted', onProjectDeleted);
+    socket.on('project:shared', onAccessChanged);
+    socket.on('project:unshared', onAccessChanged);
     socket.on('section:created', onSectionChanged);
     socket.on('section:updated', onSectionChanged);
     socket.on('section:deleted', onSectionDeleted);
@@ -118,6 +127,8 @@ export function useRealTimeSync(): void {
       socket.off('task:completed', onTaskUpdated);
       socket.off('project:updated', onProjectUpdated);
       socket.off('project:deleted', onProjectDeleted);
+      socket.off('project:shared', onAccessChanged);
+      socket.off('project:unshared', onAccessChanged);
       socket.off('section:created', onSectionChanged);
       socket.off('section:updated', onSectionChanged);
       socket.off('section:deleted', onSectionDeleted);

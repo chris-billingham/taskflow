@@ -12,7 +12,16 @@ let otherProjectId = '';
 beforeAll(async () => {
   for (const name of ['owner', 'member', 'guest', 'outsider']) U[name] = (await fx.user(name)).id;
   const ws = await fx.workspace(U.owner, { [U.member]: 'MEMBER', [U.guest]: 'GUEST' });
-  projectId = (await prisma.project.create({ data: { name: 'Team', ownerId: U.owner, workspaceId: ws.id } })).id;
+  projectId = (
+    await prisma.project.create({
+      data: {
+        name: 'Team',
+        ownerId: U.owner,
+        workspaceId: ws.id,
+        members: { create: { userId: U.guest, role: 'COMMENTER' } },
+      },
+    })
+  ).id;
   otherProjectId = (await prisma.project.create({ data: { name: 'Private', ownerId: U.outsider } })).id;
 });
 afterAll(async () => {

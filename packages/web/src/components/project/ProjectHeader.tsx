@@ -8,6 +8,7 @@ import {
   Copy,
   Archive,
   Trash2,
+  UserPlus,
 } from 'lucide-react';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import type { Project } from '@/types/project';
@@ -20,6 +21,7 @@ interface ProjectHeaderProps {
   onDuplicate: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onShare: () => void;
 }
 
 export function ProjectHeader({
@@ -30,6 +32,7 @@ export function ProjectHeader({
   onDuplicate,
   onArchive,
   onDelete,
+  onShare,
 }: ProjectHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(project.name);
@@ -137,6 +140,15 @@ export function ProjectHeader({
         </div>
 
         <div className="flex items-center gap-1">
+          {!project.isInbox && (
+            <button
+              className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={onShare}
+            >
+              <UserPlus className="w-4 h-4" aria-hidden="true" />
+              Share
+            </button>
+          )}
           <button
             className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={onAddSection}

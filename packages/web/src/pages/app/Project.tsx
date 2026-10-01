@@ -14,6 +14,7 @@ import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ProjectHeader } from '@/components/project/ProjectHeader';
+import { ShareProjectDialog } from '@/components/project/ShareProjectDialog';
 import { SectionList } from '@/components/project/SectionList';
 import { TaskList } from '@/components/task/TaskList';
 import { QuickAdd } from '@/components/task/QuickAdd';
@@ -47,6 +48,7 @@ export default function Project() {
   const { quickAddTask, moveTask, reorderTasks } = useTaskActions();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   // Top-level tasks in their saved order (a drag reorders them optimistically
   // by sortOrder, ahead of the server's response).
@@ -177,6 +179,7 @@ export default function Project() {
         onDuplicate={() => duplicateProject(project.id)}
         onArchive={handleArchive}
         onDelete={() => setShowDeleteConfirm(true)}
+        onShare={() => setSharing(true)}
       />
 
       {project.viewStyle === 'CALENDAR' ? (
@@ -266,6 +269,15 @@ export default function Project() {
           )}
 
         </DndContext>
+      )}
+
+      {sharing && (
+        <ShareProjectDialog
+          isOpen
+          onClose={() => setSharing(false)}
+          project={project}
+          onLeft={() => navigate('/today')}
+        />
       )}
 
       <ConfirmDialog

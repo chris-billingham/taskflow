@@ -54,6 +54,13 @@ beforeAll(async () => {
   await project('foreign', { name: `Foreign ${RUN}`, ownerId: U.outsider });
   await project('shared', { name: `Shared ${RUN}`, ownerId: U.outsider });
   await prisma.projectMember.create({ data: { projectId: P.shared, userId: U.leaver, role: 'MEMBER' } });
+  // The workspace guest sees only the team projects shared with them.
+  await prisma.projectMember.createMany({
+    data: [
+      { projectId: P.team, userId: U.guest, role: 'COMMENTER' },
+      { projectId: P.dupTeam, userId: U.guest, role: 'VIEWER' },
+    ],
+  });
 
   const task = await prisma.task.create({
     data: { content: `Plan the ${WORD}`, projectId: P.team, creatorId: U.teammate },
@@ -98,9 +105,11 @@ describe('findProjectByName', () => {
     expect((await findProjectByName(U.me, `Old ${RUN}`))?.id).toBe(P.activeTeamOld);
   });
 
-  it('respects minLevel: a guest can see but not add to team projects', async () => {
+  it('respects minLevel: a guest can see a team project shared with them, but not add to it', async () => {
     expect((await findProjectByName(U.guest, `Team ${RUN}`))?.id).toBe(P.team);
     expect(await findProjectByName(U.guest, `Team ${RUN}`, { minLevel: 'EDIT' })).toBeNull();
+    // Team projects not shared with them stay hidden.
+    expect(await findProjectByName(U.guest, `old ${RUN}`)).toBeNull();
   });
 });
 

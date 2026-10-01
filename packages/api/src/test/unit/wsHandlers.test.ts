@@ -85,10 +85,16 @@ describe('connection auto-join', () => {
       'project:p1',
       'project:p2',
     ]);
-    // The project query must include workspace projects, not just owned/member.
+    // The project query must include workspace projects, not just owned/member
+    // (for everyone in the workspace except guests).
     const where = mockPrisma.project.findMany.mock.calls[0][0].where;
     expect(where.OR).toContainEqual({
-      workspace: { members: { some: { userId: USER_ID } } },
+      workspace: { members: { some: { userId: USER_ID, role: { not: 'GUEST' } } } },
+    });
+    // Guests don't join workspace rooms, which carry every project's updates.
+    expect(mockPrisma.workspaceMember.findMany.mock.calls[0][0].where).toEqual({
+      userId: USER_ID,
+      role: { not: 'GUEST' },
     });
   });
 

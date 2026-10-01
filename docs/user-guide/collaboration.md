@@ -6,7 +6,7 @@ Workspaces are how a team shares work in Taskflow. Your Inbox and the projects u
 
 - **New workspace** at the bottom of the sidebar creates one and opens its settings, so you can invite people.
 - The gear next to a workspace's name opens its settings. The **+** adds a project to it.
-- You can't share a single project with someone outside the workspace yet.
+- To share a single project with someone outside a workspace, or with a workspace guest, see [Sharing one project](#sharing-one-project).
 
 ## Roles
 
@@ -15,9 +15,7 @@ Workspaces are how a team shares work in Taskflow. Your Inbox and the projects u
 | **Owner** | Everything an Admin can do, plus delete the workspace. There is one owner. |
 | **Admin** | Full control of every team project. Invite and remove members, change roles, edit workspace settings. |
 | **Member** | View and edit every team project, and create new team projects. |
-| **Guest** | View **every** team project in the workspace and comment on tasks. Guests can't edit tasks (except tasks assigned to them) or create projects. |
-
-The invite dialog describes Guest as "access specific shared projects only". That isn't how it works today: a guest can read every team project in the workspace.
+| **Guest** | Sees only the team projects shared with them, with the role they were given there. Guests can't create projects. |
 
 ## Inviting Members
 
@@ -32,6 +30,24 @@ The dialog shows an invite link you can copy and send yourself. The invite expir
 When someone opens the link, they sign in, or sign up if they don't have an account yet, and join the workspace. New installs are invite-only, but a valid invite lets that email address create an account. See [user management](../admin-guide/user-management.md#who-can-sign-up).
 
 In the Members tab, admins can change a member's role (**Make admin**, **Make member**, **Make guest**) or **Remove** them. Leaving a workspace and transferring ownership exist in the API but have no button in the app yet.
+
+## Sharing One Project
+
+Click **Share** at the top of a project to share it with specific people, as long as they already have an account on this Taskflow. Your own projects can be shared too; the Inbox can't. Choose a role for each person:
+
+| Role | What they can do in the project |
+|------|---------------------------------|
+| **Admin** | Edit the project and choose who it's shared with |
+| **Member** | Add, edit and complete tasks |
+| **Commenter** | Read and comment |
+| **Viewer** | Read only |
+
+- They get a notification, and the project appears in their sidebar under **Shared with me** straight away (or in the workspace's section, for workspace guests).
+- In a team project, everyone in the workspace except guests can already see it, so share it with guests or with people outside the workspace. Sharing can raise someone's access in one project (a workspace member can be made its admin), but never lowers it.
+- Admins can change roles or remove people in the same dialog. Removing someone also unassigns them from that project's tasks.
+- Anyone a project is shared with can open **Share** and click **Leave**.
+- People who can only comment or view see others' names, not their email addresses.
+- If you delete your account, your own projects are deleted with it, including ones you shared.
 
 ## Task Assignment
 

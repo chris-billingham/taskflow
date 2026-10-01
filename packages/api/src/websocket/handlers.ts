@@ -7,7 +7,7 @@ import {
   projectAccessWhere,
 } from '../services/access.js';
 import { updatePresence, removePresence } from './presence.js';
-import { WS_EVENTS } from './events.js';
+import { WS_EVENTS, getIO } from './events.js';
 
 type AuthSocket = Socket & { data: { user: TokenPayload } };
 
@@ -16,8 +16,10 @@ type AuthSocket = Socket & { data: { user: TokenPayload } };
 // task/comment/presence broadcast for that project.
 async function accessibleRooms(userId: string): Promise<string[]> {
   const [memberships, projects] = await Promise.all([
+    // Workspace rooms carry every project's updates; guests only see the
+    // projects shared with them, so they get those project rooms instead.
     prisma.workspaceMember.findMany({
-      where: { userId },
+      where: { userId, role: { not: 'GUEST' } },
       select: { workspaceId: true },
     }),
     prisma.project.findMany({
@@ -30,6 +32,26 @@ async function accessibleRooms(userId: string): Promise<string[]> {
     ...memberships.map((m) => `workspace:${m.workspaceId}`),
     ...projects.map((p) => `project:${p.id}`),
   ];
+}
+
+const isScopedRoom = (room: string) => room.startsWith('project:') || room.startsWith('workspace:');
+
+/**
+ * Bring a user's open sockets in line with what they may read now: join rooms
+ * they've just been given (a project shared with them) and leave ones they've
+ * lost. Call after any change to someone's project or workspace access.
+ */
+export async function refreshUserRooms(userId: string): Promise<void> {
+  const io = getIO();
+  if (!io) return;
+  const sockets = await io.in(`user:${userId}`).fetchSockets();
+  if (sockets.length === 0) return;
+  const allowed = new Set(await accessibleRooms(userId));
+  for (const socket of sockets) {
+    const stale = [...socket.rooms].filter((room) => isScopedRoom(room) && !allowed.has(room));
+    for (const room of stale) socket.leave(room);
+    socket.join([...allowed]);
+  }
 }
 
 export function registerHandlers(socket: AuthSocket): void {
@@ -77,7 +99,7 @@ export function registerHandlers(socket: AuthSocket): void {
         if (
           data.workspaceId &&
           typeof data.workspaceId === 'string' &&
-          (await hasWorkspaceAccess(data.workspaceId, user.id))
+          (await hasWorkspaceAccess(data.workspaceId, user.id, { includeGuests: false }))
         ) {
           socket.join(`workspace:${data.workspaceId}`);
         }
@@ -98,7 +120,7 @@ export function registerHandlers(socket: AuthSocket): void {
     (data: { workspaceId: string; taskId?: string; projectId?: string }) => {
       if (!data.workspaceId) return;
       void (async () => {
-        if (!(await hasWorkspaceAccess(data.workspaceId, user.id))) return;
+        if (!(await hasWorkspaceAccess(data.workspaceId, user.id, { includeGuests: false }))) return;
         updatePresence(socket.id, data.workspaceId, {
           userId: user.id,
           userName: user.name,

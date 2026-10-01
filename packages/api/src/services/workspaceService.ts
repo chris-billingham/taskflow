@@ -15,7 +15,7 @@ import type {
 import { logActivity } from './activityService.js';
 import { isMailerReady, sendWorkspaceInviteEmail } from './mailService.js';
 import { notify } from './notificationService.js';
-import { getIO } from '../websocket/events.js';
+import { refreshUserRooms } from '../websocket/handlers.js';
 import { logFailure } from '../config/logger.js';
 
 function generateSlug(name: string): string {
@@ -369,6 +369,7 @@ export async function acceptInvite(token: string, userId: string) {
     }),
     prisma.workspaceInvite.delete({ where: { id: invite.id } }),
   ]);
+  await refreshUserRooms(userId);
 
   return {
     workspace: { ...member.workspace, role: invite.role },
@@ -407,6 +408,8 @@ export async function updateMemberRole(
     data: { role: data.role },
     include: memberInclude,
   });
+  // Becoming (or ceasing to be) a guest changes which projects they can see.
+  await refreshUserRooms(memberId);
 
   return member;
 }
@@ -448,17 +451,7 @@ async function revokeMembership(workspaceId: string, memberId: string) {
   });
 
   // Evict live sockets from the rooms this membership granted.
-  const io = getIO();
-  if (io) {
-    const projectIds = await prisma.project.findMany({
-      where: { workspaceId },
-      select: { id: true },
-    });
-    io.in(`user:${memberId}`).socketsLeave([
-      `workspace:${workspaceId}`,
-      ...projectIds.map((p) => `project:${p.id}`),
-    ]);
-  }
+  await refreshUserRooms(memberId);
 }
 
 export async function removeMember(

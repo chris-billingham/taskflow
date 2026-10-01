@@ -55,7 +55,13 @@ beforeAll(async () => {
   workspaceId = ws.id;
 
   const project = await prisma.project.create({
-    data: { name: `Authz P ${RUN}`, ownerId: U.owner, workspaceId: ws.id },
+    data: {
+      name: `Authz P ${RUN}`,
+      ownerId: U.owner,
+      workspaceId: ws.id,
+      // Workspace guests only see projects shared with them.
+      members: { create: { userId: U.guest, role: 'COMMENTER' } },
+    },
   });
   projectId = project.id;
 

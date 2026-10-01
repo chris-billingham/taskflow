@@ -1,6 +1,7 @@
 import { prisma } from '../config/database.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import {
+  hasProjectAccess,
   requireProjectAccess,
   requireWorkspaceRole,
   projectAccessWhere,
@@ -297,74 +298,34 @@ export async function unarchiveProject(id: string, userId: string) {
   return withProjectSettings(project);
 }
 
+/**
+ * The people who can see a project, for assigning and @mentions: its owner,
+ * the people it's shared with, and its workspace's members except guests.
+ */
 export async function getProjectMembers(projectId: string, userId: string) {
-  const project = await prisma.project.findUnique({
+  await requireProjectAccess(projectId, userId, 'VIEW');
+  const person = { select: { id: true, name: true, email: true, avatarUrl: true } } as const;
+  const project = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
     select: {
-      id: true,
-      ownerId: true,
-      workspaceId: true,
-      owner: {
-        select: { id: true, name: true, email: true, avatarUrl: true },
-      },
-      members: {
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, avatarUrl: true },
-          },
-        },
+      owner: person,
+      members: { select: { user: person } },
+      workspace: {
+        select: { members: { where: { role: { not: 'GUEST' } }, select: { user: person } } },
       },
     },
   });
 
-  if (!project) {
-    throw new NotFoundError('Project not found');
-  }
+  const people = new Map<string, { id: string; name: string; email: string; avatarUrl: string | null }>();
+  if (project.owner) people.set(project.owner.id, project.owner);
+  for (const m of project.workspace?.members ?? []) people.set(m.user.id, m.user);
+  for (const m of project.members) people.set(m.user.id, m.user);
 
-  // For workspace projects, return workspace members
-  if (project.workspaceId) {
-    const wsMember = await prisma.workspaceMember.findUnique({
-      where: {
-        workspaceId_userId: { workspaceId: project.workspaceId, userId },
-      },
-    });
-    if (!wsMember) {
-      throw new ForbiddenError('You do not have access to this project');
-    }
-
-    const wsMembers = await prisma.workspaceMember.findMany({
-      where: { workspaceId: project.workspaceId },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, avatarUrl: true },
-        },
-      },
-    });
-    // GUESTs get names and avatars, not the whole team's email addresses.
-    if (wsMember.role === 'GUEST') {
-      return wsMembers.map((m) => ({ ...m.user, email: null }));
-    }
-    return wsMembers.map((m) => m.user);
-  }
-
-  // For personal/shared projects, verify access and return project members
-  const hasAccess =
-    project.ownerId === userId ||
-    project.members.some((m) => m.userId === userId);
-  if (!hasAccess) {
-    throw new ForbiddenError('You do not have access to this project');
-  }
-
-  // Build list: owner + members, deduplicated
-  const usersMap = new Map<string, { id: string; name: string; email: string; avatarUrl: string | null }>();
-  if (project.owner) {
-    usersMap.set(project.owner.id, project.owner);
-  }
-  for (const m of project.members) {
-    usersMap.set(m.user.id, m.user);
-  }
-
-  return Array.from(usersMap.values());
+  // People who may only comment or view get names and avatars, not the
+  // team's email addresses.
+  const canSeeEmails = await hasProjectAccess(projectId, userId, 'EDIT');
+  const list = [...people.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return canSeeEmails ? list : list.map((p) => ({ ...p, email: null }));
 }
 
 export async function duplicateProject(

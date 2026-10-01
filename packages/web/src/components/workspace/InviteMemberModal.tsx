@@ -144,8 +144,7 @@ export function InviteMemberModal({
                 {canInviteAdmins && (
                   <option value="ADMIN">Admin - Manage members and all projects</option>
                 )}
-                {/* Guests get comment access to every team project (access.ts); project-scoped guests arrive with per-project sharing. */}
-                <option value="GUEST">Guest - View and comment on all team projects</option>
+                <option value="GUEST">Guest - Only the projects shared with them</option>
               </select>
             </div>
 

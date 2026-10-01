@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { emailAddress } from '../common.js';
+import { projectRoleSchema } from '../entities/project.js';
 
 export const createProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required').max(200),
@@ -25,6 +27,21 @@ export const projectParamsSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
 });
 
+export const collaboratorParamsSchema = z.object({
+  id: z.string().min(1, 'Project ID is required'),
+  userId: z.string().min(1),
+});
+
+/** Share a project with someone who has an account, by email address. */
+export const shareProjectSchema = z.object({
+  email: emailAddress('Enter a valid email address'),
+  role: projectRoleSchema.default('MEMBER'),
+});
+
+export const updateCollaboratorSchema = z.object({
+  role: projectRoleSchema,
+});
+
 export const reorderProjectsSchema = z.object({
   projectIds: z.array(z.string()).min(1, 'At least one project ID is required'),
 });
@@ -38,3 +55,5 @@ export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type ProjectParams = z.infer<typeof projectParamsSchema>;
 export type ReorderProjectsInput = z.infer<typeof reorderProjectsSchema>;
 export type DuplicateProjectInput = z.infer<typeof duplicateProjectSchema>;
+export type ShareProjectInput = z.infer<typeof shareProjectSchema>;
+export type UpdateCollaboratorInput = z.infer<typeof updateCollaboratorSchema>;

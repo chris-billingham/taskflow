@@ -9,13 +9,14 @@ import type { ProjectRole, WorkspaceRole } from '@prisma/client';
 // (some ignored workspaces, some granted by creatorId, none checked roles).
 //
 // Semantics:
-// - A project is visible to its owner, its direct members, and every member
-//   of its workspace.
+// - A project is visible to its owner, its direct members (collaborators),
+//   and every member of its workspace except guests.
 // - Levels are ordered VIEW < COMMENT < EDIT < ADMIN. Project roles map
 //   directly (VIEWER/COMMENTER/MEMBER/ADMIN); workspace roles grant a
-//   baseline on all workspace projects (GUEST→COMMENT, MEMBER→EDIT,
-//   ADMIN/OWNER→ADMIN); the project owner is always ADMIN. The highest
-//   applicable grant wins.
+//   baseline on all workspace projects (MEMBER→EDIT, ADMIN/OWNER→ADMIN);
+//   workspace GUESTs get nothing by default and see only the projects
+//   shared with them directly. The project owner is always ADMIN. The
+//   highest applicable grant wins.
 // - A task's assignee can always at least work the task (EDIT on that task),
 //   even if their project role is lower.
 // - Creating a task/comment/etc. does NOT grant standing access: creators
@@ -39,8 +40,8 @@ const PROJECT_ROLE_LEVEL: Record<ProjectRole, AccessLevel> = {
   ADMIN: 'ADMIN',
 };
 
-const WORKSPACE_ROLE_LEVEL: Record<WorkspaceRole, AccessLevel> = {
-  GUEST: 'COMMENT',
+const WORKSPACE_ROLE_LEVEL: Record<WorkspaceRole, AccessLevel | null> = {
+  GUEST: null,
   MEMBER: 'EDIT',
   ADMIN: 'ADMIN',
   OWNER: 'ADMIN',
@@ -71,7 +72,7 @@ export function projectAccessWhere(userId: string): Prisma.ProjectWhereInput {
     OR: [
       { ownerId: userId },
       { members: { some: { userId } } },
-      { workspace: { members: { some: { userId } } } },
+      { workspace: { members: { some: { userId, role: { not: 'GUEST' } } } } },
     ],
   };
 }
@@ -119,6 +120,7 @@ export function projectAccessSql(projectAlias: string, userId: string): Prisma.S
     OR EXISTS (
       SELECT 1 FROM workspace_members wm
       WHERE wm."workspaceId" = ${p}."workspaceId" AND wm."userId" = ${userId}
+        AND wm.role <> 'GUEST'
     )
   )`;
 }
@@ -357,14 +359,20 @@ export async function requireWorkspaceRole(
   return member;
 }
 
-/** Non-throwing workspace membership check. */
+/**
+ * Non-throwing workspace membership check. `includeGuests: false` asks
+ * whether the user sees the whole workspace (its live updates, presence),
+ * which guests don't.
+ */
 export async function hasWorkspaceAccess(
   workspaceId: string,
   userId: string,
+  options: { includeGuests?: boolean } = {},
 ): Promise<boolean> {
   const member = await prisma.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId } },
-    select: { userId: true },
+    select: { role: true },
   });
-  return !!member;
+  if (!member) return false;
+  return options.includeGuests !== false || member.role !== 'GUEST';
 }

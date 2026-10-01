@@ -12,9 +12,15 @@ import {
   memberSummarySchema,
   messageResponse,
   ok,
+  collaboratorParamsSchema,
+  shareProjectSchema,
+  updateCollaboratorSchema,
+  projectCollaboratorSchema,
+  projectSharingSchema,
 } from '@taskflow/contract';
 import { authenticate } from '../middleware/authenticate.js';
 import * as projectService from '../services/projectService.js';
+import * as projectSharing from '../services/projectSharing.js';
 
 const tags = ['Projects'];
 
@@ -186,6 +192,78 @@ export async function projectRoutes(fastify: FastifyInstance) {
     async (request) => ({
       success: true as const,
       ...(await projectService.reorderProjects(request.body.projectIds, request.user.id)),
+    }),
+  );
+
+  app.get(
+    '/:id/collaborators',
+    {
+      schema: {
+        tags,
+        summary: 'Who the project is shared with',
+        params: projectParamsSchema,
+        response: { 200: ok(projectSharingSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await projectSharing.getProjectSharing(request.params.id, request.user.id),
+    }),
+  );
+
+  app.post(
+    '/:id/collaborators',
+    {
+      schema: {
+        tags,
+        summary: 'Share the project with someone, by email (project admins)',
+        params: projectParamsSchema,
+        body: shareProjectSchema,
+        response: { 201: ok(projectCollaboratorSchema) },
+      },
+    },
+    async (request, reply) =>
+      reply.status(201).send({
+        success: true as const,
+        data: await projectSharing.shareProject(request.params.id, request.body, request.user.id),
+      }),
+  );
+
+  app.patch(
+    '/:id/collaborators/:userId',
+    {
+      schema: {
+        tags,
+        summary: "Change a collaborator's role (project admins)",
+        params: collaboratorParamsSchema,
+        body: updateCollaboratorSchema,
+        response: { 200: ok(projectCollaboratorSchema) },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await projectSharing.updateCollaborator(
+        request.params.id,
+        request.params.userId,
+        request.body.role,
+        request.user.id,
+      ),
+    }),
+  );
+
+  app.delete(
+    '/:id/collaborators/:userId',
+    {
+      schema: {
+        tags,
+        summary: 'Stop sharing with someone (project admins), or leave the project yourself',
+        params: collaboratorParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      ...(await projectSharing.removeCollaborator(request.params.id, request.params.userId, request.user.id)),
     }),
   );
 }

@@ -8,6 +8,9 @@ export const WS_EVENTS = {
   TASK_DELETED: 'task:deleted',
   PROJECT_UPDATED: 'project:updated',
   PROJECT_DELETED: 'project:deleted',
+  // To one user: a project was shared with them, or they lost it.
+  PROJECT_SHARED: 'project:shared',
+  PROJECT_UNSHARED: 'project:unshared',
   SECTION_CREATED: 'section:created',
   SECTION_UPDATED: 'section:updated',
   SECTION_DELETED: 'section:deleted',

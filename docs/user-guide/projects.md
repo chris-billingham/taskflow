@@ -79,10 +79,13 @@ Use **Delete** in the project header's **⋯** menu, and confirm. This permanent
 
 **Delete** in the sidebar's **⋯** menu acts immediately, without asking.
 
-## Sharing Projects (Workspaces)
+## Sharing Projects
 
-Projects are shared through workspaces, not one at a time. Each workspace has its own section in the sidebar, and all its members can see its projects. Projects under **My Projects** are private to you.
+There are two ways to share:
 
-To invite someone, click the gear next to the workspace's name → **Members** → **Invite**.
+- **A workspace** shares all its projects with its members. Each workspace has its own section in the sidebar. To invite someone, click the gear next to the workspace's name → **Members** → **Invite**.
+- **Share** at the top of a project shares just that project with specific people, each with a role (admin, member, commenter or viewer). It works for your own projects too, but not for the Inbox.
+
+Projects under **My Projects** are private to you until you share them.
 
 See [collaboration.md](collaboration.md) for roles and team features.

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { id, instant, type Wire } from '../common.js';
+import { memberSummarySchema } from './user.js';
 
 export const viewStyleSchema = z.enum(['LIST', 'BOARD', 'CALENDAR']);
 
@@ -48,3 +49,25 @@ export const projectSchema = projectFieldsSchema.extend({
   ),
 });
 export type Project = Wire<typeof projectSchema>;
+
+export const projectRoleSchema = z.enum(['ADMIN', 'MEMBER', 'COMMENTER', 'VIEWER']);
+export type ProjectRole = Wire<typeof projectRoleSchema>;
+
+/** Someone a project is shared with directly. */
+export const projectCollaboratorSchema = z.object({
+  user: memberSummarySchema,
+  role: projectRoleSchema,
+  addedAt: instant,
+});
+export type ProjectCollaborator = Wire<typeof projectCollaboratorSchema>;
+
+/** Who a project is shared with, for its Share dialog. */
+export const projectSharingSchema = z.object({
+  owner: memberSummarySchema.nullable(),
+  /** The workspace whose members (except guests) all see the project. */
+  workspace: z.object({ id, name: z.string() }).nullable(),
+  collaborators: z.array(projectCollaboratorSchema),
+  /** Whether you may add, change or remove people (project admins). */
+  canManage: z.boolean(),
+});
+export type ProjectSharing = Wire<typeof projectSharingSchema>;
