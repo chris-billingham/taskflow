@@ -8,17 +8,21 @@ import Testing
 /// Answers every request with a canned JSON body and remembers what was sent.
 final class StubTransport: ClientTransport, @unchecked Sendable {
   let json: String
+  let status: HTTPResponse.Status
   var request: HTTPRequest?
   var sentBody: String?
 
-  init(_ json: String) { self.json = json }
+  init(_ json: String, status: HTTPResponse.Status = .ok) {
+    self.json = json
+    self.status = status
+  }
 
   func send(_ request: HTTPRequest, body: HTTPBody?, baseURL: URL, operationID: String) async throws -> (
     HTTPResponse, HTTPBody?
   ) {
     self.request = request
     if let body { sentBody = try await String(collecting: body, upTo: 1 << 20) }
-    return (HTTPResponse(status: .ok, headerFields: [.contentType: "application/json"]), HTTPBody(json))
+    return (HTTPResponse(status: status, headerFields: [.contentType: "application/json"]), HTTPBody(json))
   }
 }
 
@@ -83,4 +87,21 @@ func client(_ transport: StubTransport) -> Client {
   #expect(task.version == 3)
   #expect(task.assigneeId == nil)
   #expect(task.createdAt == Date(timeIntervalSince1970: 1_790_847_000.123))
+}
+
+@Test func aVersionConflictCarriesTheServersCopy() async throws {
+  let transport = StubTransport(
+    #"{"success":false,"error":"VERSION_CONFLICT","message":"Changed elsewhere","current":{"id":"t1","version":3}}"#,
+    status: .conflict)
+  let output = try await client(transport).patchApiV1TasksId(
+    path: .init(id: "t1"), body: .json(.init(ifVersion: 2, content: "Renamed offline")))
+
+  guard case .default(let statusCode, let response) = output else {
+    Issue.record("expected an error response, got \(output)")
+    return
+  }
+  #expect(statusCode == 409)
+  let error = try response.body.json
+  #expect(error.error == "VERSION_CONFLICT")
+  #expect(error.current?.additionalProperties.value["version"] as? Int == 3)
 }

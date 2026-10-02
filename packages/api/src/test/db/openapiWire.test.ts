@@ -19,6 +19,7 @@ let spec: { paths: Record<string, Record<string, any>>; components: { schemas: R
 let ajv: Ajv;
 let headers: Record<string, string>;
 let projectId = '';
+let taskId = '';
 
 beforeAll(async () => {
   app = await buildApp({ logger: false, rateLimitRedis: false, docs: true });
@@ -38,6 +39,7 @@ beforeAll(async () => {
     user.id,
   );
   await taskService.updateTask(task.id, { content: 'Due soon (edited)' }, user.id);
+  taskId = task.id;
 });
 afterAll(async () => {
   await prisma.project.deleteMany({ where: { id: projectId } });
@@ -98,5 +100,24 @@ describe('responses match the OpenAPI document', () => {
   it('projects and today', async () => {
     await matchesDocument('get', '/api/v1/projects', '/api/v1/projects');
     await matchesDocument('get', '/api/v1/views/today', '/api/v1/views/today');
+  });
+
+  it('errors, including a version conflict with the current row', async () => {
+    const validate = ajv.compile({ $ref: 'spec#/components/schemas/ErrorResponse' });
+    const conflict = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/tasks/${taskId}`,
+      headers,
+      payload: { content: 'Stale edit', ifVersion: 1 },
+    });
+    expect(conflict.statusCode).toBe(409);
+    expect(validate(conflict.json()), JSON.stringify(validate.errors)).toBe(true);
+    expect(conflict.json()).toMatchObject({ error: 'VERSION_CONFLICT', current: { id: taskId, version: 2 } });
+    // Every operation documents it.
+    expect(spec.paths['/api/v1/tasks/{id}'].patch.responses.default).toBeDefined();
+
+    const missing = await app.inject({ method: 'GET', url: '/api/v1/tasks/nope', headers });
+    expect(missing.statusCode).toBe(404);
+    expect(validate(missing.json()), JSON.stringify(validate.errors)).toBe(true);
   });
 });

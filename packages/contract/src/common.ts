@@ -153,3 +153,16 @@ export const errorResponse = z.object({
 
 /** What a client receives: the wire (input) side of a schema. */
 export type Wire<T extends z.ZodType> = z.input<T>;
+
+/**
+ * Every error response: `error` is a stable code (VALIDATION_ERROR,
+ * UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, VERSION_CONFLICT,
+ * TOO_MANY_ATTEMPTS…) and `message` says what went wrong in words. A
+ * VERSION_CONFLICT (409) also carries the row as it is now, in `current`.
+ */
+export const errorResponseSchema = z.object({
+  success: z.literal(false),
+  error: z.string(),
+  message: z.string(),
+  current: jsonObject.optional(),
+});

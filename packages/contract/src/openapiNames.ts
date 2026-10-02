@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { errorResponseSchema } from './common.js';
 import { authUserSchema, signedInSchema, twoFactorChallengeSchema, sessionSchema, apiTokenSchema, createdApiTokenSchema, profileSchema, meSchema, notificationPreferencesSchema } from './entities/account.js';
 import { activitySchema } from './entities/activity.js';
 import { attachmentSchema } from './entities/attachment.js';
@@ -18,6 +19,7 @@ import { workspaceSummarySchema, workspaceSchema, workspaceMemberSchema } from '
 // in every operation, so generated clients (the Swift one) get real types:
 // Components.Schemas.Task rather than an anonymous nested struct.
 const names: [z.ZodType, string][] = [
+  [errorResponseSchema, 'ErrorResponse'],
   [authUserSchema, 'AuthUser'],
   [signedInSchema, 'SignedIn'],
   [twoFactorChallengeSchema, 'TwoFactorChallenge'],

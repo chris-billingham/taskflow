@@ -18,7 +18,7 @@ let signIn = try await api.postApiV1AuthLogin(
 let tokens = try signIn.ok.body.json.data
 ```
 
-Create it with `init(taskflowServer:transport:)`: Taskflow's timestamps carry milliseconds, which the generator's default date format rejects. Calendar dates (`dueDate`, `deadline`) are plain `"2026-10-05"` strings, since they have no time zone. Error responses aren't in the document yet, so they arrive as `.undocumented(statusCode:_:)`. Read the body's `error` field: for example `VERSION_CONFLICT`, which also sends the server's copy in `current`.
+Create it with `init(taskflowServer:transport:)`: Taskflow's timestamps carry milliseconds, which the generator's default date format rejects. Calendar dates (`dueDate`, `deadline`) are plain `"2026-10-05"` strings, since they have no time zone. Every operation documents its errors as an `ErrorResponse` (`.default(statusCode:_:)` in Swift): `error` is a stable code such as `VALIDATION_ERROR`, `NOT_FOUND` or `VERSION_CONFLICT`, and `message` says what went wrong. A version conflict (409) also carries the server's copy of the row in `current`, to merge with.
 
 ## Sign-in for apps
 

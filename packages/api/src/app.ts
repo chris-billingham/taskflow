@@ -22,7 +22,11 @@ import { Prisma } from '@prisma/client';
 import { VersionConflictError } from './errors/index.js';
 import { jsonSchemaTransform, jsonSchemaTransformObject, validatorCompiler } from 'fastify-type-provider-zod';
 import { createContractSerializer } from './utils/contractSerializer.js';
-import { healthSchema } from '@taskflow/contract';
+import { healthSchema, errorResponseSchema } from '@taskflow/contract';
+import { z } from 'zod';
+
+// The error response as JSON Schema, for the API document.
+const errorResponseJson = z.toJSONSchema(errorResponseSchema, { target: 'openapi-3.0', io: 'output' }) as Record<string, unknown>;
 import { rateLimitMax } from './config/rateLimits.js';
 
 /** Version of the HTTP API contract (the OpenAPI document), not of a release. */
@@ -138,6 +142,19 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       // with or without the slash, so document the spelling clients expect.
       transform: (route) => {
         const out = jsonSchemaTransform(route);
+        // Every operation can fail the same way: document it, so generated
+        // clients get a typed error (and a version conflict's `current`).
+        // Documentation only; responses are serialized as before.
+        const schema = out.schema as { hide?: boolean; response?: Record<string, unknown> } | undefined;
+        if (schema && !schema.hide) {
+          const success = Object.keys(schema.response ?? {}).some((code) => code.startsWith('2'));
+          schema.response = {
+            // Downloads and the like document no body; keep their 200.
+            ...(!success && { 200: { description: 'Success', type: 'null' } }),
+            ...schema.response,
+            default: { description: 'An error', ...errorResponseJson },
+          };
+        }
         return { ...out, url: route.url.length > 1 ? route.url.replace(/\/$/, '') : route.url };
       },
       // Named contract schemas become shared components (see contract openapiNames.ts).
