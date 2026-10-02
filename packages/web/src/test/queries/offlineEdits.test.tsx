@@ -124,4 +124,40 @@ describe('offline edits', () => {
     expect(task('a')?.isCompleted).toBe(false);
     expect(useOutbox.getState().entries.map((e) => e.url)).toEqual(['/tasks/a/uncomplete']);
   });
+
+  it('several offline changes to one task each expect the version the one before left', async () => {
+    const { actions } = setup();
+    online = false;
+    await act(() => actions().updateTask('a', { content: 'Buy oat milk' }));
+    await act(() => actions().completeTask('a'));
+    await act(() => actions().updateTask('a', { priority: 1 }));
+    const bodies = useOutbox.getState().entries.map((e) => e.body as { ifVersion?: number } | undefined);
+    // Version 3 in the cache; each change bumps it on the server, as here.
+    expect(bodies[0]?.ifVersion).toBe(3);
+    expect(bodies[2]?.ifVersion).toBe(5);
+  });
+
+  it('each queued edit follows on from the version the previous one reached on the server', async () => {
+    const sentVersions: unknown[] = [];
+    let serverVersion = 3;
+    server.use(
+      http.patch(`${API}/tasks/:id`, async ({ request }) => {
+        const body = (await request.json()) as { ifVersion?: number };
+        sentVersions.push(body.ifVersion);
+        if (body.ifVersion !== serverVersion) {
+          return HttpResponse.json({ success: false, error: 'VERSION_CONFLICT', message: 'x', current: {} }, { status: 409 });
+        }
+        serverVersion += 2; // a label change touches the task twice
+        return HttpResponse.json(ok(makeTask({ id: 'a', version: serverVersion })));
+      }),
+    );
+    const { qc, actions } = setup();
+    online = false;
+    await act(() => actions().updateTask('a', { content: 'One' }));
+    await act(() => actions().updateTask('a', { content: 'Two' }));
+    online = true;
+    await act(() => flushOutbox(qc));
+    expect(sentVersions).toEqual([3, 5]);
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
 });

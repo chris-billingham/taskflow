@@ -52,6 +52,14 @@ const inFlight = new WeakMap<QueryClient, number>();
 const only = (id: string, fn: (task: Task) => Task | null): TaskMapper =>
   (task) => (task.id === id ? fn(task) : task);
 
+/**
+ * The server bumps a task's version on every change. Doing the same to the
+ * cached copy keeps the next edit's `ifVersion` right when changes queue up
+ * offline (otherwise a second offline edit to a task looked like someone
+ * else's change); online, the server's reply replaces it anyway.
+ */
+const bumped = (task: Task): Task => ({ ...task, version: (task.version ?? 0) + 1 });
+
 function createTaskActions(qc: QueryClient) {
   /**
    * Run a task change: apply it to every cached copy at once, send it, then
@@ -116,11 +124,11 @@ function createTaskActions(qc: QueryClient) {
 
   const uncompleteTask = (id: string) =>
     run({
-      optimistic: only(id, (task) => ({ ...task, isCompleted: false, completedAt: null })),
+      optimistic: only(id, (task) => bumped({ ...task, isCompleted: false, completedAt: null })),
       request: async () => (await api.post(`/tasks/${id}/uncomplete`)).data.data as Task,
       onSuccess: reconcile(id),
       failure: 'That change could not be saved',
-      queue: { method: 'post', url: `/tasks/${id}/uncomplete`, label: `Reopening ${named(id)}` },
+      queue: { method: 'post', url: `/tasks/${id}/uncomplete`, label: `Reopening ${named(id)}`, taskId: id },
     });
 
   const restoreTask = (id: string) =>
@@ -212,7 +220,7 @@ function createTaskActions(qc: QueryClient) {
     // Sent later, an edit must not overwrite a change made elsewhere since.
     const version = findCachedTask(qc, id)?.version;
     return run({
-      optimistic: only(id, (task) => ({ ...task, ...input }) as Task),
+      optimistic: only(id, (task) => bumped({ ...task, ...input } as Task)),
       request: async () => (await api.patch(`/tasks/${id}`, input)).data.data as Task,
       onSuccess: reconcile(id),
       failure: 'That change could not be saved',
@@ -221,6 +229,7 @@ function createTaskActions(qc: QueryClient) {
         url: `/tasks/${id}`,
         body: version ? { ...input, ifVersion: version } : input,
         label: `Your change to ${named(id)}`,
+        taskId: id,
       },
     });
   };
@@ -268,11 +277,13 @@ function createTaskActions(qc: QueryClient) {
 
     completeTask: async (id: string, options: ActionOptions = {}) => {
       const result = await run({
-        optimistic: only(id, (task) => ({
-          ...task,
-          isCompleted: true,
-          completedAt: new Date().toISOString(),
-        })),
+        optimistic: only(id, (task) =>
+          bumped({
+            ...task,
+            isCompleted: true,
+            completedAt: new Date().toISOString(),
+          }),
+        ),
         request: async () => (await api.post(`/tasks/${id}/complete`)).data.data as Task,
         // A recurring task answers with its next occurrence; the refetch that
         // follows brings that in, and the completed one stays completed.
@@ -280,7 +291,7 @@ function createTaskActions(qc: QueryClient) {
           if (server.id === id) reconcile(id)(server);
         },
         failure: 'The task could not be completed',
-        queue: { method: 'post', url: `/tasks/${id}/complete`, label: `Completing ${named(id)}` },
+        queue: { method: 'post', url: `/tasks/${id}/complete`, label: `Completing ${named(id)}`, taskId: id },
       });
       // No undo for a completion queued offline: it isn't on the server yet.
       if (result && options.undo !== false) {

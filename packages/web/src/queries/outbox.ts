@@ -21,6 +21,8 @@ export interface OutboxEntry {
   label: string;
   /** New tasks don't show in lists until they're saved; the banner lists them. */
   adds?: boolean;
+  /** The task this changes, so later queued changes to it can follow on. */
+  taskId?: string;
   queuedAt: number;
 }
 
@@ -83,11 +85,24 @@ export async function flushOutbox(qc: QueryClient): Promise<void> {
   if (useOutbox.getState().flushing || useOutbox.getState().entries.length === 0) return;
   useOutbox.setState({ flushing: true });
   let sent = 0;
+  // The version each task reached as this queue was sent. A later queued
+  // edit to the same task follows on from it: only the first is checked
+  // against the version this device last saw, which is what catches someone
+  // else's change.
+  const reached = new Map<string, number>();
   try {
     while (useOutbox.getState().entries.length) {
       const [entry, ...rest] = useOutbox.getState().entries;
+      let body = entry.body as Record<string, unknown> | undefined;
+      if (entry.taskId && body && 'ifVersion' in body && reached.has(entry.taskId)) {
+        body = { ...body, ifVersion: reached.get(entry.taskId) };
+      }
       try {
-        await api.request({ method: entry.method, url: entry.url, data: entry.body });
+        const res = await api.request({ method: entry.method, url: entry.url, data: body });
+        const task = (res?.data as { data?: { id?: string; version?: number } } | undefined)?.data;
+        if (entry.taskId && task?.id === entry.taskId && typeof task.version === 'number') {
+          reached.set(entry.taskId, task.version);
+        }
         sent++;
       } catch (err) {
         const status = (err as { response?: { status?: number } }).response?.status;
