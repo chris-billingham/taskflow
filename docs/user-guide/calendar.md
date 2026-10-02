@@ -45,3 +45,14 @@ The calendar only shows tasks that have a due date. To find tasks without one, u
 ## Overdue Tasks
 
 Overdue tasks stay on their original date in the calendar, with no special marking. Task colors show priority, not status. Overdue tasks also appear at the top of **Today** and **Upcoming**, where **Reschedule all** moves them to today.
+
+## Subscribing in Your Calendar App
+
+You can see a project's or a filter's tasks in Apple Calendar, Google Calendar, Outlook or any app that subscribes to calendars by URL.
+
+1. Open the project and choose **Calendar feed** from its **⋯** menu, or open a filter and click the calendar button next to its name.
+2. Click **Open in calendar app**, or **Copy** the link and add it as a subscribed calendar (in Google Calendar: **Other calendars → From URL**).
+
+The feed has the open tasks due from 30 days ago to a year ahead. Tasks with a time appear at that time (for their duration, or half an hour), tasks with only a date are all-day events, and deadlines appear as all-day "Deadline:" events. Calendar apps refresh subscriptions on their own schedule, usually within an hour; Google Calendar can take longer.
+
+The link is private: anyone who has it can see those tasks. **Make a new link** stops the old one working, and **Stop sharing** removes it. **Settings → Integrations** lists all your feeds. A feed stops working if you lose access to its project.

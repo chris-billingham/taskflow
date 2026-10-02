@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { Pencil, Star } from 'lucide-react';
+import { CalendarPlus, Pencil, Star } from 'lucide-react';
+import { CalendarFeedDialog } from '@/components/integrations/CalendarFeedDialog';
 import { Spinner } from '@/components/ui/Spinner';
 import { TaskList } from '@/components/task/TaskList';
 import { CalendarView } from '@/components/views/CalendarView';
@@ -22,6 +23,7 @@ export default function Filter() {
   const { tasks, loading, hasMore, loadingMore, loadMore } = useFilterTasks(filter ? filter.query : null);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
+  const [showFeed, setShowFeed] = useState(false);
 
   // Filter.viewStyle is a persisted column (and was already accepted by the
   // API) but the page kept its own local state, so the saved choice was never
@@ -100,6 +102,8 @@ export default function Filter() {
           <div className="flex items-center gap-2 flex-1">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{filter?.name}</h1>
             <button
+              aria-label="Rename filter"
+              title="Rename filter"
               className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => {
                 if (filter) {
@@ -112,6 +116,8 @@ export default function Filter() {
             </button>
             {filter && (
               <button
+                aria-label={filter.isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+                aria-pressed={filter.isFavorite}
                 className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => updateFilter(filter.id, { isFavorite: !filter.isFavorite })}
               >
@@ -122,10 +128,23 @@ export default function Filter() {
                 )}
               </button>
             )}
+            {filter && (
+              <button
+                aria-label="Calendar feed"
+                title="Calendar feed"
+                className="p-1 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                onClick={() => setShowFeed(true)}
+              >
+                <CalendarPlus className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              </button>
+            )}
             <ViewModeToggle value={viewMode} onChange={setViewMode} />
           </div>
         )}
       </div>
+      {showFeed && filter && (
+        <CalendarFeedDialog target={{ filterId: filter.id }} name={filter.name} onClose={() => setShowFeed(false)} />
+      )}
 
       {/* Query display */}
       {filter && (

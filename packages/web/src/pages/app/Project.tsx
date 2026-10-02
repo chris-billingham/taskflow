@@ -15,6 +15,8 @@ import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ProjectHeader } from '@/components/project/ProjectHeader';
 import { ShareProjectDialog } from '@/components/project/ShareProjectDialog';
+import { CalendarFeedDialog } from '@/components/integrations/CalendarFeedDialog';
+import { WebhooksDialog } from '@/components/integrations/WebhooksDialog';
 import { ProjectActivity } from '@/components/activity/ProjectActivity';
 import { SectionList } from '@/components/project/SectionList';
 import { TaskList } from '@/components/task/TaskList';
@@ -51,6 +53,7 @@ export default function Project() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  const [integration, setIntegration] = useState<'calendar' | 'webhooks' | null>(null);
 
   // Top-level tasks in their saved order (a drag reorders them optimistically
   // by sortOrder, ahead of the server's response).
@@ -183,6 +186,8 @@ export default function Project() {
         onDelete={() => setShowDeleteConfirm(true)}
         onShare={() => setSharing(true)}
         onShowActivity={() => setShowActivity(true)}
+        onCalendarFeed={() => setIntegration('calendar')}
+        onWebhooks={() => setIntegration('webhooks')}
       />
 
       {project.viewStyle === 'CALENDAR' ? (
@@ -275,6 +280,12 @@ export default function Project() {
       )}
 
       {showActivity && <ProjectActivity project={project} onClose={() => setShowActivity(false)} />}
+      {integration === 'calendar' && (
+        <CalendarFeedDialog target={{ projectId: project.id }} name={project.name} onClose={() => setIntegration(null)} />
+      )}
+      {integration === 'webhooks' && (
+        <WebhooksDialog projectId={project.id} name={project.name} onClose={() => setIntegration(null)} />
+      )}
 
       {sharing && (
         <ShareProjectDialog

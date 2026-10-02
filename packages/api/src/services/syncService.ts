@@ -1,15 +1,32 @@
+import type { WebhookEvent } from '@taskflow/contract';
 import { WS_EVENTS, emitToProject, emitToWorkspace } from '../websocket/events.js';
+import { logger } from '../config/logger.js';
+import { publish } from './webhooks.js';
+
+/** Webhooks hear about the same changes as open browsers. */
+function toWebhooks(projectId: string, event: WebhookEvent, data: Record<string, unknown>): void {
+  publish(projectId, event, data).catch((err) => logger.warn({ err, event }, 'could not queue webhook deliveries'));
+}
 
 export function broadcastTaskCreated(task: { projectId: string; [key: string]: unknown }): void {
   emitToProject(task.projectId, WS_EVENTS.TASK_CREATED, { task });
+  toWebhooks(task.projectId, 'task.created', { task });
 }
 
 export function broadcastTaskUpdated(task: { projectId: string; [key: string]: unknown }): void {
   emitToProject(task.projectId, WS_EVENTS.TASK_UPDATED, { task });
+  toWebhooks(task.projectId, 'task.updated', { task });
+}
+
+/** Completing or reopening: an update for browsers, its own event for webhooks. */
+export function broadcastTaskCompletion(task: { projectId: string; isCompleted?: unknown; [key: string]: unknown }): void {
+  emitToProject(task.projectId, WS_EVENTS.TASK_UPDATED, { task });
+  toWebhooks(task.projectId, task.isCompleted ? 'task.completed' : 'task.uncompleted', { task });
 }
 
 export function broadcastTaskDeleted(taskId: string, projectId: string): void {
   emitToProject(projectId, WS_EVENTS.TASK_DELETED, { taskId, projectId });
+  toWebhooks(projectId, 'task.deleted', { taskId, projectId });
 }
 
 export function broadcastProjectUpdated(project: {
@@ -66,6 +83,7 @@ export function broadcastCommentCreated(
   projectId: string,
 ): void {
   emitToProject(projectId, WS_EVENTS.COMMENT_CREATED, { comment });
+  toWebhooks(projectId, 'comment.created', { comment });
 }
 
 export function broadcastCommentUpdated(
@@ -81,4 +99,5 @@ export function broadcastCommentDeleted(
   projectId: string,
 ): void {
   emitToProject(projectId, WS_EVENTS.COMMENT_DELETED, { commentId, taskId });
+  toWebhooks(projectId, 'comment.deleted', { commentId, taskId });
 }

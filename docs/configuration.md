@@ -250,6 +250,14 @@ Until all four are set, iOS devices get no push notifications (in-app and email 
 
 All three of issuer, client ID and secret, or none. The redirect URI to register is `<APP_URL>/api/v1/auth/oidc/callback`. See [Single sign-on](admin-guide/single-sign-on.md).
 
+## Webhooks
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WEBHOOK_ALLOW_PRIVATE_NETWORKS` | `false` | Let webhooks reach private, loopback and link-local addresses (an n8n on your LAN, say). Off, deliveries to them fail with "private or local address", checked after DNS so a hostname can't get round it |
+
+Deliveries are sent by the worker. See [Webhooks](development/webhooks.md).
+
 ## History
 
 The nightly cleanup (03:30 UTC, in the worker) deletes old history. Both tables otherwise grow with nearly every action.

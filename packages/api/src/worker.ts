@@ -19,6 +19,7 @@ import {
   scheduleDueTaskChecks,
 } from './jobs/dueTaskJob.js';
 import { startNotificationDeliveryWorker } from './jobs/notificationDelivery.js';
+import { startWebhookWorker } from './jobs/webhookDelivery.js';
 import { logger } from './config/logger.js';
 import { startHeartbeat } from './services/workerHeartbeat.js';
 
@@ -47,6 +48,10 @@ export async function initializeWorkers() {
   const deliveryWorker = startNotificationDeliveryWorker();
   logger.info('Notification delivery worker started');
 
+  // Webhook deliveries queued by the API
+  const webhookWorker = startWebhookWorker();
+  logger.info('Webhook delivery worker started');
+
   // Daily cleanup - expired refresh tokens and invites
   const maintenanceQueue = createMaintenanceQueue();
   const maintenanceWorker = startMaintenanceWorker();
@@ -66,6 +71,7 @@ export async function initializeWorkers() {
       dueTaskWorker.close(),
       maintenanceWorker.close(),
       deliveryWorker.close(),
+      webhookWorker.close(),
       reminderQueue.close(),
       digestQueue.close(),
       dueTaskQueue.close(),

@@ -20,6 +20,7 @@ import { adminRoutes } from './admin.js';
 import { sessionRoutes } from './sessions.js';
 import { syncRoutes } from './sync.js';
 import { twoFactorRoutes } from './twoFactor.js';
+import { calendarFileRoutes, integrationRoutes } from './integrations.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
@@ -43,4 +44,6 @@ export async function registerRoutes(app: FastifyInstance) {
   app.register(attachmentRoutes, { prefix: '/api/v1' });
   app.register(sessionRoutes, { prefix: '/api/v1' });
   app.register(syncRoutes, { prefix: '/api/v1/sync' });
+  app.register(calendarFileRoutes, { prefix: '/api/v1' });
+  app.register(integrationRoutes, { prefix: '/api/v1' });
 }

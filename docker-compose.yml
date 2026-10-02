@@ -204,6 +204,7 @@ services:
       OIDC_NAME: ${OIDC_NAME:-single sign-on}
       OIDC_SCOPES: ${OIDC_SCOPES:-openid email profile}
       OIDC_TRUST_EMAIL: ${OIDC_TRUST_EMAIL:-false}
+      WEBHOOK_ALLOW_PRIVATE_NETWORKS: ${WEBHOOK_ALLOW_PRIVATE_NETWORKS:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -290,6 +291,8 @@ services:
       # History kept, in days (0 = forever); the nightly cleanup runs here.
       ACTIVITY_RETENTION_DAYS: ${ACTIVITY_RETENTION_DAYS:-365}
       NOTIFICATION_RETENTION_DAYS: ${NOTIFICATION_RETENTION_DAYS:-90}
+      # Webhooks are delivered from here.
+      WEBHOOK_ALLOW_PRIVATE_NETWORKS: ${WEBHOOK_ALLOW_PRIVATE_NETWORKS:-false}
     depends_on:
       postgres:
         condition: service_healthy

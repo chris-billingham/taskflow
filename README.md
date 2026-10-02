@@ -136,6 +136,7 @@ bash scripts/install.sh
 | [Signing In Securely](docs/user-guide/devices-and-tokens.md) | Two-factor sign-in, signed-in devices, personal access tokens |
 | [Architecture](docs/development/architecture.md) | System design |
 | [Building an API Client](docs/development/api-clients.md) | Sign-in for apps, access tokens |
+| [Webhooks](docs/development/webhooks.md) | Events, payloads and checking signatures |
 | [Releasing](docs/development/releasing.md) | Publishing a version: images and release notes |
 | [Development Setup](docs/development/setup.md) | Local dev guide |
 | [API Reference](http://localhost:3001/api/docs) | Interactive OpenAPI docs |

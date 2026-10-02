@@ -3,6 +3,7 @@ import { buildApp } from './app.js';
 import { closeRedis } from './config/redis.js';
 import { initializeWorkers } from './worker.js';
 import { createWebSocketServer } from './websocket/server.js';
+import { initWebhookQueue } from './jobs/webhookDelivery.js';
 import { ensureBucketExists } from './config/storage.js';
 import { initMailer } from './services/mailService.js';
 import { syncAdminsFromEnv } from './services/adminService.js';
@@ -87,6 +88,10 @@ const start = async () => {
     server.log.info(
       `Taskflow API server listening on http://${env.HOST}:${env.API_PORT}`,
     );
+
+    // Changes to projects go out to their webhooks through the worker.
+
+    initWebhookQueue();
 
     io = createWebSocketServer(server.server);
     server.log.info('WebSocket server initialized');

@@ -121,6 +121,10 @@ const envSchema = z.object({
   // Treat an address as verified when the provider sends no email_verified
   // claim at all (some don't). A provider that says false is never trusted.
   OIDC_TRUST_EMAIL: z.enum(['true', 'false']).default('false'),
+  // Let webhooks reach private and local addresses (a LAN n8n, say). Off by
+  // default: otherwise anyone who can make a project can probe the network
+  // the server sits on.
+  WEBHOOK_ALLOW_PRIVATE_NETWORKS: z.enum(['true', 'false']).default('false'),
   // How long history is kept, in days; 0 keeps it forever. Read notifications
   // go after NOTIFICATION_RETENTION_DAYS, unread ones after four times that.
   ACTIVITY_RETENTION_DAYS: z.coerce.number().int().min(0).default(365),

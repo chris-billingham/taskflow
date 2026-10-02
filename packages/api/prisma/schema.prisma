@@ -148,6 +148,8 @@ model User {
   apiTokens         ApiToken[]
   recoveryCodes     RecoveryCode[]
   externalIdentities ExternalIdentity[]
+  calendarFeeds     CalendarFeed[]
+  webhooksCreated   Webhook[]
   ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
   ownedProjects     Project[]         @relation("ProjectOwner")
@@ -268,6 +270,55 @@ model ExternalIdentity {
   @@map("external_identities")
 }
 
+// A private calendar subscription (iCal) to a project's or a filter's dated
+// tasks. The token in the URL is the only credential, so it's long and can be
+// replaced; it grants read-only access to what its owner can see.
+model CalendarFeed {
+  id            String    @id @default(cuid())
+  userId        String
+  token         String    @unique
+  projectId     String?
+  filterId      String?
+  createdAt     DateTime  @default(now())
+  lastFetchedAt DateTime?
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  filter  Filter?  @relation(fields: [filterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@unique([userId, filterId])
+  @@index([userId])
+  @@map("calendar_feeds")
+}
+
+// Sends a project's events (task.created, task.completed…) to a URL as signed
+// JSON. Managed by the project's admins.
+model Webhook {
+  id             String    @id @default(cuid())
+  projectId      String
+  createdById    String?
+  url            String
+  // Signs each delivery (HMAC-SHA256); needed to compute, so kept as is.
+  secret         String
+  events         String[]
+  isActive       Boolean   @default(true)
+  lastDeliveryAt DateTime?
+  // The receiver's HTTP status, or null when it couldn't be reached.
+  lastStatus     Int?
+  lastError      String?
+  // Failed deliveries in a row; the webhook pauses itself at 50.
+  failureCount   Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("webhooks")
+}
+
 // ─── Workspace ──────────────────────────────────────────────────────────────
 
 model Workspace {
@@ -362,6 +413,8 @@ model Project {
   sections  Section[]
   tasks     Task[]
   userSettings ProjectUserSetting[]
+  calendarFeeds CalendarFeed[]
+  webhooks  Webhook[]
 
   @@index([ownerId])
   @@index([workspaceId])
@@ -618,6 +671,7 @@ model Filter {
   updatedAt DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarFeeds CalendarFeed[]
 
   @@index([userId])
   @@map("filters")

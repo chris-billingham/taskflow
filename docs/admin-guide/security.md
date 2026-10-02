@@ -70,6 +70,11 @@ Each trusted hop must also connect from a network listed in
 a client that reaches the API directly can't set its own key by sending
 `X-Forwarded-For`.
 
+## Calendar Feeds and Webhooks
+
+- A calendar feed's URL is its only credential: 32 random characters, read-only, limited to what its owner can still see, and replaceable from the feed dialog. Feeds stop working when their owner is suspended or loses access to the project.
+- Webhook deliveries are signed (HMAC-SHA256 over a timestamp and the body) and never follow redirects. By default they refuse private, loopback, link-local and other internal addresses, checked on the address actually connected to, after DNS; `WEBHOOK_ALLOW_PRIVATE_NETWORKS=true` lifts this. Only a project's admins can add webhooks to it.
+
 ## CORS
 
 `CORS_ORIGIN` should be set to exactly the frontend URL (no wildcard). Example:

@@ -7,6 +7,7 @@ export const QUEUE_NAMES = {
   digests: 'notification-digest',
   dueTasks: 'due-task-check',
   delivery: 'notification-delivery',
+  webhooks: 'webhook-delivery',
   maintenance: 'maintenance',
 } as const;
 

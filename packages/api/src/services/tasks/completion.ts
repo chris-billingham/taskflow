@@ -5,7 +5,7 @@ import { requireTaskAccess } from '../access.js';
 import { getNextOccurrence, advanceRecurrenceRule } from '../../utils/recurrence.js';
 import { computeRelativeTriggerAt } from '../reminderService.js';
 import { logActivity } from '../activityService.js';
-import { broadcastTaskCreated, broadcastTaskUpdated } from '../syncService.js';
+import { broadcastTaskCreated, broadcastTaskCompletion } from '../syncService.js';
 import { runSideEffect, taskInclude } from './support.js';
 
 export async function completeTask(id: string, userId: string) {
@@ -115,7 +115,7 @@ export async function completeTask(id: string, userId: string) {
       taskId: id,
       newData: { content: task.content },
     }));
-    runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(completedTask));
+    runSideEffect('broadcastTaskCompletion', () => broadcastTaskCompletion(completedTask));
     runSideEffect('broadcastTaskCreated', () => broadcastTaskCreated(newTask));
 
     return newTask;
@@ -137,7 +137,7 @@ export async function completeTask(id: string, userId: string) {
       taskId: id,
       newData: { content: task.content },
     }));
-    runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(updated));
+    runSideEffect('broadcastTaskCompletion', () => broadcastTaskCompletion(updated));
   }
 
   return updated;
@@ -160,7 +160,7 @@ export async function uncompleteTask(id: string, userId: string) {
     taskId: id,
     newData: { content: oldTask.content },
   }));
-  runSideEffect('broadcastTaskUpdated', () => broadcastTaskUpdated(task));
+  runSideEffect('broadcastTaskCompletion', () => broadcastTaskCompletion(task));
 
   return task;
 }
