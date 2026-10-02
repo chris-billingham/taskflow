@@ -85,6 +85,16 @@ describe('calendar feeds', () => {
     expect(again.json().data.url).toBe(feedUrl);
   });
 
+  it('two requests at once both get the same feed', async () => {
+    const other = await prisma.project.create({ data: { name: 'Race', ownerId: owner.id } });
+    const both = await Promise.all(
+      [1, 2].map(() => app.inject({ method: 'POST', url: '/api/v1/calendar-feeds', headers: auth(owner), payload: { projectId: other.id } })),
+    );
+    expect(both.map((r) => r.statusCode)).toEqual([200, 200]);
+    expect(both[0].json().data.url).toBe(both[1].json().data.url);
+    await prisma.project.delete({ where: { id: other.id } });
+  });
+
   it('serves dated open tasks as all-day and timed events, with deadlines', async () => {
     const res = await app.inject({ method: 'GET', url: new URL(feedUrl).pathname });
     expect(res.statusCode).toBe(200);

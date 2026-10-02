@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { publicAppUrl } from '../config/env.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
@@ -62,13 +62,21 @@ export async function getOrCreateFeed(userId: string, target: { projectId?: stri
   const where = target.projectId
     ? { userId_projectId: { userId, projectId: target.projectId } }
     : { userId_filterId: { userId, filterId: target.filterId! } };
-  const feed = await prisma.calendarFeed.upsert({
-    where,
-    create: { userId, token: newToken(), projectId: target.projectId ?? null, filterId: target.filterId ?? null },
-    update: {},
-    include: feedInclude,
-  });
-  return present(feed);
+  try {
+    const feed = await prisma.calendarFeed.upsert({
+      where,
+      create: { userId, token: newToken(), projectId: target.projectId ?? null, filterId: target.filterId ?? null },
+      update: {},
+      include: feedInclude,
+    });
+    return present(feed);
+  } catch (err) {
+    // Two requests at once (a double click, or React running an effect
+    // twice in development): upsert isn't atomic, so the slower one hits the
+    // unique constraint. The other just made the feed; return it.
+    if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err;
+    return present(await prisma.calendarFeed.findUniqueOrThrow({ where, include: feedInclude }));
+  }
 }
 
 async function ownFeed(userId: string, id: string) {
