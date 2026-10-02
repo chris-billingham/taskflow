@@ -82,13 +82,18 @@ export async function labelIdsByName(
   if (missing.size === 0) return byLower;
   const max = await db.label.aggregate({ where: scopeWhere(scope), _max: { sortOrder: true } });
   let next = (max._max.sortOrder ?? 0) + 1;
-  for (const [key, w] of missing) {
-    const created = await db.label.create({
-      data: { name: w.name, color: w.color ?? '#6B7280', sortOrder: next++, ...scope },
-      select: { id: true },
-    });
-    byLower.set(key, created.id);
-  }
+  // ON CONFLICT DO NOTHING: another request may be creating the same label
+  // right now (two Quick Adds with a new @label). A plain insert would fail
+  // one of them, and inside a transaction a failed insert aborts the rest.
+  await db.label.createMany({
+    data: [...missing.values()].map((w) => ({ name: w.name, color: w.color ?? '#6B7280', sortOrder: next++, ...scope })),
+    skipDuplicates: true,
+  });
+  const created = await db.label.findMany({
+    where: { ...scopeWhere(scope), name: { in: [...missing.values()].map((w) => w.name) } },
+    select: { id: true, name: true },
+  });
+  for (const label of created) byLower.set(label.name.toLowerCase(), label.id);
   return byLower;
 }
 
