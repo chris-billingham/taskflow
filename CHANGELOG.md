@@ -4,6 +4,26 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-02
+
+- **Keep working offline in the browser.** Completing, reopening, editing
+  and deleting tasks show at once and are saved when you reconnect, in the
+  order you made them; new tasks wait in the offline banner until saved.
+  A task someone else changed meanwhile isn't overwritten: you're told
+  which change wasn't saved. The task panel no longer fails to open
+  offline (it's fetched ahead of time and can't take the page down).
+- **Single sign-on in apps.** Native apps sign in with your organisation's
+  provider through the system browser, using a one-time code and PKCE
+  (`/auth/oidc/start?client=app`, `POST /auth/oidc/token`).
+- **Webhook delivery log.** The Webhooks dialog lists the latest 50
+  delivery attempts with their status or error, and can resend one.
+- **Boards and calendars use the full window width.**
+- **API document:** every operation documents its error response
+  (`ErrorResponse`, with the current row for a version conflict), and
+  unused duplicate schemas are gone (72 components down to 35).
+- **Fixed:** opening a calendar feed, or adding two tasks with the same new
+  `@label`, could fail when two requests arrived at once.
+
 ## [1.0.0] - 2026-10-02
 
 The first published release: images on GHCR (`ghcr.io/chris-billingham/taskflow-api` and `-web`), installed and upgraded with `scripts/install.sh` and `make upgrade`. Installs from before this should run `git pull --ff-only` once, then `make upgrade`, as `docs/admin-guide/upgrading.md` explains.
