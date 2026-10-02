@@ -40,9 +40,18 @@ Run the workflow by hand (**Actions → Release → Run workflow**, or
 `gh workflow run release.yml`). It builds every image for both architectures
 and publishes nothing.
 
-## The first release
+## Package visibility
 
-GHCR creates each package as private on its first publish. After the first
-release, open each package (**Profile → Packages → taskflow-api**, then
-**taskflow-web**), choose **Package settings → Change visibility**, and make
-it public, so servers can pull without signing in.
+The images carry the repository as their source, so GitHub links each package
+to this public repository and publishes it as public; servers pull without
+signing in. To check, an anonymous request for a manifest should answer 200:
+
+```bash
+tok=$(curl -s "https://ghcr.io/token?scope=repository:chris-billingham/taskflow-api:pull" | jq -r .token)
+curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $tok" \
+  -H "Accept: application/vnd.oci.image.index.v1+json" \
+  https://ghcr.io/v2/chris-billingham/taskflow-api/manifests/latest
+```
+
+If it doesn't, open the package (**Profile → Packages**), choose **Package
+settings → Change visibility**, and make it public.
