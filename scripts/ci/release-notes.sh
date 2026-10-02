@@ -16,7 +16,7 @@ notes=$(awk -v v="$version" '
   found { print }
 ' CHANGELOG.md)
 
-if [ -n "${notes//[[:space:]]/}" ]; then
+if grep -q '[^[:space:]]' <<<"$notes"; then
   printf '%s\n' "$notes"
 else
   echo "See [CHANGELOG.md](${blob}/CHANGELOG.md) for what's changed."

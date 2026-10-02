@@ -4,6 +4,10 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-02
+
+The first published release: images on GHCR (`ghcr.io/chris-billingham/taskflow-api` and `-web`), installed and upgraded with `scripts/install.sh` and `make upgrade`. Installs from before this should run `git pull --ff-only` once, then `make upgrade` (see Upgrading, below).
+
 ### Phase 7: self-hosting and integrations
 
 - **Versioned releases.** Pushing a version tag publishes images for amd64
@@ -520,9 +524,10 @@ runs them, and every other suite runs against dev servers.
 ### Changed
 - `/users/me` and the login/register responses now include `role` and `isActive`.
 
-## [1.0.0] — 2025-05-01
+## Before releases — 2025-05-01
 
-Initial release.
+The first version, from before Taskflow published numbered releases (it was
+never tagged). Everything since is in 1.0.0 above.
 
 ### Added
 
