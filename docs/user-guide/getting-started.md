@@ -98,4 +98,5 @@ Your project appears in the sidebar. Click it to open it. To start from a ready-
 - [Working with others](collaboration.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Using Taskflow on a phone](mobile-usage.md)
+- [Importing and exporting](import-export.md)
 - [Signing in securely: two-factor, devices and access tokens](devices-and-tokens.md)

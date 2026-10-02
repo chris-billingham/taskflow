@@ -125,6 +125,9 @@ const envSchema = z.object({
   // default: otherwise anyone who can make a project can probe the network
   // the server sits on.
   WEBHOOK_ALLOW_PRIVATE_NETWORKS: z.enum(['true', 'false']).default('false'),
+  // Largest file accepted for import (a Taskflow export ZIP with attachments,
+  // a Todoist backup, a CSV), in MB.
+  IMPORT_MAX_SIZE_MB: z.coerce.number().int().min(1).max(2048).default(200),
   // How long history is kept, in days; 0 keeps it forever. Read notifications
   // go after NOTIFICATION_RETENTION_DAYS, unread ones after four times that.
   ACTIVITY_RETENTION_DAYS: z.coerce.number().int().min(0).default(365),

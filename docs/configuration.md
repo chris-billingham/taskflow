@@ -250,6 +250,14 @@ Until all four are set, iOS devices get no push notifications (in-app and email 
 
 All three of issuer, client ID and secret, or none. The redirect URI to register is `<APP_URL>/api/v1/auth/oidc/callback`. See [Single sign-on](admin-guide/single-sign-on.md).
 
+## Import
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `IMPORT_MAX_SIZE_MB` | `200` | Largest file accepted by **Settings → Data & Privacy → Import** (a Taskflow export with attachments, a Todoist backup, a CSV). ZIPs may unpack to at most four times this. Attachments inside still follow `MAX_FILE_SIZE_MB` |
+
+If Taskflow sits behind another proxy, its upload limit must allow this size too.
+
 ## Webhooks
 
 | Variable | Default | Description |

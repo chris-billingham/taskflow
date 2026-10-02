@@ -133,6 +133,7 @@ bash scripts/install.sh
 | [User Management](docs/admin-guide/user-management.md) | Admin role, creating and suspending accounts |
 | [Single Sign-On](docs/admin-guide/single-sign-on.md) | Signing in through Authentik, Keycloak or Google Workspace |
 | [Backup & Restore](docs/admin-guide/backup-restore.md) | Data backup procedures |
+| [Importing and Exporting](docs/user-guide/import-export.md) | Your data as a ZIP; imports from Todoist and CSV |
 | [Signing In Securely](docs/user-guide/devices-and-tokens.md) | Two-factor sign-in, signed-in devices, personal access tokens |
 | [Architecture](docs/development/architecture.md) | System design |
 | [Building an API Client](docs/development/api-clients.md) | Sign-in for apps, access tokens |

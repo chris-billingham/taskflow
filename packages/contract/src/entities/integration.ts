@@ -47,3 +47,17 @@ export type Webhook = Wire<typeof webhookSchema>;
 /** Creating a webhook or replacing its secret: the secret, to check signatures with. */
 export const webhookWithSecretSchema = webhookSchema.extend({ secret: z.string() });
 export type WebhookWithSecret = Wire<typeof webhookWithSecretSchema>;
+
+/** POST /settings/import: what was created. */
+export const importSummarySchema = z.object({
+  projects: z.number().int(),
+  sections: z.number().int(),
+  tasks: z.number().int(),
+  comments: z.number().int(),
+  attachments: z.number().int(),
+  labels: z.number().int(),
+  filters: z.number().int(),
+  /** Things that couldn't be imported as they were, e.g. an unreadable date. */
+  warnings: z.array(z.string()),
+});
+export type ImportSummary = Wire<typeof importSummarySchema>;
