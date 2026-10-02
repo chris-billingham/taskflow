@@ -123,6 +123,20 @@ describe('moving across projects', () => {
 });
 
 describe('bulk actions', () => {
+  it('bulk delete takes subtasks to the trash however deep, and bulk restore brings them back', async () => {
+    const parent = await prisma.task.create({ data: { content: 'Parent', projectId, creatorId: me } });
+    const child = await prisma.task.create({ data: { content: 'Child', projectId, creatorId: me, parentId: parent.id } });
+    const grandchild = await prisma.task.create({ data: { content: 'Grandchild', projectId, creatorId: me, parentId: child.id } });
+    const trashed = () =>
+      prisma.task.findMany({ where: { id: { in: [parent.id, child.id, grandchild.id] }, deletedAt: { not: null } }, select: { id: true } });
+
+    await taskService.bulkUpdate({ taskIds: [parent.id], action: 'delete' }, me);
+    expect((await trashed()).length).toBe(3);
+
+    await taskService.bulkUpdate({ taskIds: [parent.id], action: 'restore' }, me);
+    expect((await trashed()).length).toBe(0);
+  });
+
   it('sets and clears due dates, keeping times on a new date', async () => {
     const a = await task('bulk a', { dueDate: new Date('2027-01-01T00:00:00Z'), dueTime: '09:30' });
     const b = await task('bulk b');

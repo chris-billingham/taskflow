@@ -72,6 +72,7 @@ beforeAll(async () => {
   const inbox = await prisma.project.findFirstOrThrow({ where: { ownerId: alice.id, isInbox: true } });
   await prisma.task.create({ data: { content: 'Call the plumber', projectId: inbox.id, creatorId: alice.id } });
   await prisma.filter.create({ data: { name: 'Urgent', query: 'p1', userId: alice.id } });
+  await prisma.task.create({ data: { content: 'Thrown away', projectId: garden.id, creatorId: alice.id, deletedAt: new Date() } });
 });
 afterAll(async () => {
   await prisma.project.deleteMany({ where: { ownerId: { in: [alice.id, bob.id] } } });
@@ -97,6 +98,8 @@ describe('export', () => {
     expect(garden.tasks.find((t: { content: string }) => t.content === 'Buy seeds').parentRef).toBe(tomatoes.ref);
     expect(garden.tasks.find((t: { content: string }) => t.content === 'Water').recurrenceRule).toBe('FREQ=WEEKLY;BYDAY=MO');
     expect(doc.filters).toEqual([{ name: 'Urgent', query: 'p1', color: expect.any(String) }]);
+    // Trashed tasks aren't exported (they'd come back to life on import).
+    expect(garden.tasks.map((t: { content: string }) => t.content)).not.toContain('Thrown away');
   });
 
   it('downloads as a ZIP with the attachments’ files', async () => {

@@ -31,6 +31,8 @@ export async function buildExport(userId: string): Promise<{ document: ExportDoc
       include: {
         sections: { orderBy: { sortOrder: 'asc' } },
         tasks: {
+          // The automatic trash filter doesn't reach nested reads.
+          where: { deletedAt: null },
           orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
           include: {
             taskLabels: { include: { label: { select: { name: true } } } },

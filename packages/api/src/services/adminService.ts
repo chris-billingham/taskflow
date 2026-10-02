@@ -154,8 +154,9 @@ export async function getUserDetail(id: string) {
         select: {
           ownedWorkspaces: true,
           ownedProjects: true,
-          createdTasks: true,
-          assignedTasks: true,
+          // Not counting the trash (nested counts skip the automatic filter).
+          createdTasks: { where: { deletedAt: null } },
+          assignedTasks: { where: { deletedAt: null } },
         },
       },
     },

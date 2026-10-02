@@ -19,6 +19,7 @@ import {
   verifyBulkTaskAccess,
 } from './support.js';
 import { completeTask } from './completion.js';
+import { withDescendants } from './lifecycle.js';
 import { labelIdsByName, projectLabelScope, remapTaskLabels, sameScope, scopeOfProject } from '../labelScope.js';
 
 export async function moveTask(
@@ -173,10 +174,12 @@ export async function bulkUpdate(
       await emitBulkUpdated(taskIds, 'UNCOMPLETED');
       break;
 
-    case 'delete':
-      // To the trash, like a single delete (subtasks go with their parents).
+    case 'delete': {
+      // To the trash, like a single delete: subtasks go with their parents,
+      // however deep, all with one deletedAt so restoring brings them back.
+      const subtree = [...new Set((await Promise.all(taskIds.map((id) => withDescendants(id)))).flat())];
       await prisma.task.updateMany({
-        where: { OR: [{ id: { in: taskIds } }, { parentId: { in: taskIds } }] },
+        where: { id: { in: subtree } },
         data: { deletedAt: new Date() },
       });
       for (const t of tasks) {
@@ -189,6 +192,7 @@ export async function bulkUpdate(
         runSideEffect('broadcastTaskDeleted', () => broadcastTaskDeleted(t.id, t.projectId));
       }
       break;
+    }
 
     case 'restore': {
       // The selection and the subtasks that went to the trash with them.
@@ -196,14 +200,11 @@ export async function bulkUpdate(
         where: { id: { in: taskIds }, deletedAt: { not: null } },
         select: { id: true, deletedAt: true },
       });
-      await prisma.$transaction(
-        trashedAt.map((t) =>
-          prisma.task.updateMany({
-            where: { OR: [{ id: t.id }, { parentId: t.id, deletedAt: t.deletedAt }] },
-            data: { deletedAt: null },
-          }),
-        ),
-      );
+      const subtrees = await Promise.all(trashedAt.map((t) => withDescendants(t.id, { deletedAt: t.deletedAt })));
+      await prisma.task.updateMany({
+        where: { id: { in: [...new Set(subtrees.flat())] } },
+        data: { deletedAt: null },
+      });
       const restored = await prisma.task.findMany({ where: { id: { in: taskIds } }, include: taskInclude });
       for (const t of restored) runSideEffect('broadcastTaskCreated', () => broadcastTaskCreated(t));
       break;

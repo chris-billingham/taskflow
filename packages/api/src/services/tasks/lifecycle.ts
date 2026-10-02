@@ -179,7 +179,8 @@ export async function updateTask(
 }
 
 /** The task and every task beneath it (subtasks of subtasks, …). */
-async function withDescendants(id: string, where: Prisma.TaskWhereInput = {}): Promise<string[]> {
+/** A task's id and every subtask's below it, however deep (live ones unless `where` says otherwise). */
+export async function withDescendants(id: string, where: Prisma.TaskWhereInput = {}): Promise<string[]> {
   const ids = [id];
   let frontier = [id];
   while (frontier.length > 0) {
