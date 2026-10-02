@@ -6,7 +6,7 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [1.0.0] - 2026-10-02
 
-The first published release: images on GHCR (`ghcr.io/chris-billingham/taskflow-api` and `-web`), installed and upgraded with `scripts/install.sh` and `make upgrade`. Installs from before this should run `git pull --ff-only` once, then `make upgrade` (see Upgrading, below).
+The first published release: images on GHCR (`ghcr.io/chris-billingham/taskflow-api` and `-web`), installed and upgraded with `scripts/install.sh` and `make upgrade`. Installs from before this should run `git pull --ff-only` once, then `make upgrade`, as `docs/admin-guide/upgrading.md` explains.
 
 ### Phase 7: self-hosting and integrations
 
