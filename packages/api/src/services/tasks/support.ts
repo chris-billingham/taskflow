@@ -164,7 +164,8 @@ export async function verifyBulkTaskAccess(
   );
 
   for (const task of tasks) {
-    if (task.assigneeId === userId && levelSatisfies('EDIT', level)) continue;
+    // The assignee may work their own task, while they can see its project.
+    if (task.assigneeId === userId && levels.has(task.projectId) && levelSatisfies('EDIT', level)) continue;
     if (levelSatisfies(levels.get(task.projectId), level)) continue;
     throw new ForbiddenError('You do not have access to all specified tasks');
   }

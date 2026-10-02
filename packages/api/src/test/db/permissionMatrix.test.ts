@@ -189,10 +189,12 @@ describe('project access matrix', () => {
 });
 
 describe('assignee grant', () => {
-  it('the assignee can work their task without any membership', async () => {
+  // Assignment raises an existing member's access; it never grants access
+  // to someone who can't see the project (who was removed, say).
+  it('an assignee with no access to the project gets none through the assignment', async () => {
     await expect(
-      requireTaskAccess(F.assignedTaskId, F.users.assignee, 'EDIT'),
-    ).resolves.toBeTruthy();
+      requireTaskAccess(F.assignedTaskId, F.users.assignee, 'VIEW'),
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it('assignment does not leak the rest of the project', async () => {
@@ -253,12 +255,12 @@ describe('query fragments', () => {
     expect(outsiderTasks).toHaveLength(0);
   });
 
-  it('taskAccessWhere includes tasks assigned to an otherwise-unrelated user', async () => {
+  it('taskAccessWhere does not include tasks assigned to someone without project access', async () => {
     const tasks = await prisma.task.findMany({
       where: { AND: [taskAccessWhere(F.users.assignee), { projectId: F.projectId }] },
       select: { id: true },
     });
-    expect(tasks.map((t) => t.id)).toEqual([F.assignedTaskId]);
+    expect(tasks).toEqual([]);
   });
 
   it('projectAccessWhere spans owned, direct-member and workspace projects', async () => {

@@ -18,7 +18,9 @@ import type { ProjectRole, WorkspaceRole } from '@prisma/client';
 //   shared with them directly. The project owner is always ADMIN. The
 //   highest applicable grant wins.
 // - A task's assignee can always at least work the task (EDIT on that task),
-//   even if their project role is lower.
+//   even if their project role is lower, but only while they can see the
+//   project at all. Assignment never grants access on its own: someone
+//   removed from a workspace or project loses their assigned tasks with it.
 // - Creating a task/comment/etc. does NOT grant standing access: creators
 //   lost their membership lose their access (their old creatorId backdoor
 //   let removed members keep read/write on every task they ever created).
@@ -80,7 +82,7 @@ export function projectAccessWhere(userId: string): Prisma.ProjectWhereInput {
 /** Prisma where-fragment: tasks the user can at least VIEW. */
 export function taskAccessWhere(userId: string): Prisma.TaskWhereInput {
   return {
-    OR: [{ assigneeId: userId }, { project: projectAccessWhere(userId) }],
+    project: projectAccessWhere(userId),
   };
 }
 
@@ -271,7 +273,7 @@ export async function requireTaskAccess(
   }
 
   let have = await effectiveProjectLevel(task.project, userId);
-  if (task.assigneeId === userId) {
+  if (have !== null && task.assigneeId === userId) {
     have = maxLevel(have, 'EDIT');
   }
 

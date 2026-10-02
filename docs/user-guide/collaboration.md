@@ -57,7 +57,7 @@ Click **Share** at the top of a project to share it with specific people, as lon
 
 ## Task Assignment
 
-Open a task and click the **Assignee** field to pick someone who can see the project, or type `+name` in Quick Add (`+me` for yourself). They get a notification, and their avatar shows on the task in lists. An assignee can always edit their own task, even as a Guest.
+Open a task and click the **Assignee** field to pick someone who can see the project, or type `+name` in Quick Add (`+me` for yourself). They get a notification, and their avatar shows on the task in lists. An assignee can always edit their own task, even as a viewer or commenter, as long as they can still see the project: someone removed from the project or workspace loses their assigned tasks too.
 
 **Assigned to me** in the sidebar lists every open task assigned to you, across projects.
 
