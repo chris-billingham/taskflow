@@ -18,7 +18,7 @@ import {
 } from '../errors/index.js';
 import type { RegisterInput } from '@taskflow/contract';
 import type { SystemRole } from '@prisma/client';
-import { disconnectUserSockets } from '../websocket/events.js';
+import { disconnectSessionSockets, disconnectUserSockets } from '../websocket/events.js';
 import { isBootstrapAdminEmail } from '../config/env.js';
 import { canRegister } from './instanceSettingsService.js';
 import { provisionUser } from './userService.js';
@@ -265,40 +265,44 @@ export async function logout(refreshToken: string) {
   await prisma.refreshToken.deleteMany({ where: { token: sha256(refreshToken) } });
 }
 
+/** Two refreshes this close together are one client racing itself, not theft. */
+const REUSE_GRACE_MS = 10_000;
+
 export async function refreshTokens(refreshToken: string, device: DeviceInfo = { client: 'web' }) {
   const payload = verifyRefreshToken(refreshToken);
   if (!payload) {
     throw new UnauthorizedError('Invalid refresh token');
   }
 
-  // Use a transaction so the find + delete is atomic, eliminating the race
-  // window where two concurrent requests could both succeed with the same token.
+  // Claim the token atomically: of two requests with the same token, only
+  // one marks it used. Rotated tokens are kept (usedAt) rather than deleted,
+  // so a copy presented later is recognised as reuse, not as unknown.
+  const now = new Date();
   const result = await prisma.$transaction(async (tx) => {
     const stored = await tx.refreshToken.findUnique({
       where: { token: sha256(refreshToken) },
     });
-    if (!stored || stored.expiresAt < new Date()) {
-      // Token missing or expired — possible reuse attack; revoke all user
-      // tokens and kill any live sockets they authenticate.
-      if (payload.id) {
-        await tx.refreshToken.deleteMany({ where: { userId: payload.id } });
-        disconnectUserSockets(payload.id);
-      }
-      throw new UnauthorizedError('Refresh token expired or already used');
+    // Unknown (signed out, revoked from another device) or expired: refused,
+    // without touching anything else.
+    if (!stored || stored.expiresAt < now) return { refused: 'expired' as const };
+    const claimed = await tx.refreshToken.updateMany({
+      where: { id: stored.id, usedAt: null },
+      data: { usedAt: now },
+    });
+    if (claimed.count === 0) {
+      // Already exchanged. Within a few seconds that's two tabs refreshing
+      // at once; later, someone else has a copy of the token, so the whole
+      // session (every token it rotated through) ends.
+      const recent = stored.usedAt && now.getTime() - stored.usedAt.getTime() < REUSE_GRACE_MS;
+      return { refused: recent ? ('concurrent' as const) : ('reused' as const), sessionId: stored.sessionId };
     }
 
-    // Delete before issuing new pair so concurrent reuse fails
-    await tx.refreshToken.delete({ where: { id: stored.id } });
-
     const user = await tx.user.findUnique({ where: { id: stored.userId } });
-    if (!user) throw new UnauthorizedError('User not found');
+    if (!user) return { refused: 'expired' as const };
 
     // A suspension between issuing and renewing must end the session rather
     // than roll it forward for another 30 days.
-    if (!user.isActive) {
-      await tx.refreshToken.deleteMany({ where: { userId: user.id } });
-      throw new UnauthorizedError('This account has been deactivated');
-    }
+    if (!user.isActive) return { refused: 'inactive' as const, userId: user.id };
 
     // Sessions only belong to verified accounts. Registration no longer issues
     // one before verification; this also ends any issued before that change.
@@ -309,8 +313,22 @@ export async function refreshTokens(refreshToken: string, device: DeviceInfo = {
       );
     }
 
-    return { user, stored };
+    return { refused: null, user, stored };
   });
+
+  // Revocations happen outside the transaction: an error thrown inside it
+  // would roll them back (it did, so reuse never ended anything).
+  if (result.refused === 'reused') {
+    await prisma.refreshToken.deleteMany({ where: { sessionId: result.sessionId } });
+    disconnectSessionSockets(result.sessionId);
+    logger.warn({ sessionId: result.sessionId }, 'refresh token reused: session ended');
+    throw new UnauthorizedError('Refresh token already used');
+  }
+  if (result.refused === 'inactive') {
+    await prisma.refreshToken.deleteMany({ where: { userId: result.userId } });
+    throw new UnauthorizedError('This account has been deactivated');
+  }
+  if (result.refused) throw new UnauthorizedError('Refresh token expired or already used');
 
   // The same session carries on, under the same name, on the same kind of client.
   return createTokenPair(

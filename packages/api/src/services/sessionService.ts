@@ -9,7 +9,7 @@ import type { CreateApiTokenInput } from '@taskflow/contract';
 
 export async function listSessions(userId: string, currentSessionId: string | undefined) {
   const rows = await prisma.refreshToken.findMany({
-    where: { userId, expiresAt: { gt: new Date() } },
+    where: { userId, expiresAt: { gt: new Date() }, usedAt: null },
     orderBy: { createdAt: 'desc' },
   });
   // Rotation leaves one row per session; keep the newest if a race left two.

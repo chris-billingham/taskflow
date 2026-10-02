@@ -202,6 +202,9 @@ model RefreshToken {
   sessionStartedAt DateTime      @default(now())
   lastUsedAt       DateTime      @default(now())
   expiresAt        DateTime
+  // Set when this token is exchanged for the next one. It's kept for a day:
+  // presenting it again means it was copied, and its session is ended.
+  usedAt           DateTime?
   createdAt        DateTime      @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

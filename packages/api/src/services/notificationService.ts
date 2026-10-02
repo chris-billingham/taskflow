@@ -285,7 +285,7 @@ async function sendApplePush(userId: string, title: string, body: string, data?:
   const live = new Set(
     (
       await prisma.refreshToken.findMany({
-        where: { userId, expiresAt: { gt: new Date() }, sessionId: { in: devices.flatMap((d) => d.sessionId ?? []) } },
+        where: { userId, expiresAt: { gt: new Date() }, usedAt: null, sessionId: { in: devices.flatMap((d) => d.sessionId ?? []) } },
         select: { sessionId: true },
       })
     ).map((r) => r.sessionId),

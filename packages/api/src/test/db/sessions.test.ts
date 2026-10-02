@@ -146,3 +146,49 @@ describe('deleting your account', () => {
     expect(await prisma.user.count({ where: { email } })).toBe(1);
   });
 });
+
+describe('refresh token reuse', () => {
+  it('a copied token used after its rotation ends that session, and only that one', async () => {
+    await prisma.refreshToken.deleteMany({ where: { user: { email } } });
+    const phone = (await login({ client: 'app', deviceName: 'Phone' })).json().data;
+    const laptop = (await login({ client: 'app', deviceName: 'Laptop' })).json().data;
+
+    const rotated = (await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: phone.refreshToken } })).json().data;
+    // Pretend the exchange was a while ago, beyond the grace for racing tabs.
+    await prisma.refreshToken.updateMany({ where: { usedAt: { not: null } }, data: { usedAt: new Date(Date.now() - 60_000) } });
+
+    const replay = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: phone.refreshToken } });
+    expect(replay.statusCode).toBe(401);
+    // The phone's session is over, the rotated token included...
+    const afterReplay = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: rotated.refreshToken } });
+    expect(afterReplay.statusCode).toBe(401);
+    // ...and the laptop is untouched.
+    const laptopRefresh = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: laptop.refreshToken } });
+    expect(laptopRefresh.statusCode).toBe(200);
+  });
+
+  it('two refreshes at once with the same token don’t end the session', async () => {
+    await prisma.refreshToken.deleteMany({ where: { user: { email } } });
+    const tab = (await login({ client: 'app' })).json().data;
+    const first = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: tab.refreshToken } });
+    const second = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: tab.refreshToken } });
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(401);
+    const next = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: first.json().data.refreshToken } });
+    expect(next.statusCode).toBe(200);
+  });
+
+  it('a device signed out from another device is simply refused', async () => {
+    await prisma.refreshToken.deleteMany({ where: { user: { email } } });
+    const old = (await login({ client: 'app', deviceName: 'Old tablet' })).json().data;
+    const current = (await login({ client: 'app', deviceName: 'Phone' })).json().data;
+    const sessions = (await app.inject({ method: 'GET', url: '/api/v1/sessions', headers: bearer(current.accessToken) })).json().data;
+    const tablet = sessions.find((s: { name: string }) => s.name === 'Old tablet');
+    await app.inject({ method: 'DELETE', url: `/api/v1/sessions/${tablet.id}`, headers: bearer(current.accessToken) });
+
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: old.refreshToken } });
+    expect(res.statusCode).toBe(401);
+    const stillIn = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: { refreshToken: current.refreshToken } });
+    expect(stillIn.statusCode).toBe(200);
+  });
+});

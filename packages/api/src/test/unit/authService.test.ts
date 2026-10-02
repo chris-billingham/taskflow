@@ -15,6 +15,7 @@ vi.mock('../../config/database.js', () => {
       findUnique: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),
+      updateMany: vi.fn(),
     },
     $transaction: vi.fn(),
   };
@@ -88,6 +89,7 @@ const mockPrisma = prisma as unknown as {
     findUnique: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
     deleteMany: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
   };
   $transaction: ReturnType<typeof vi.fn>;
 };
@@ -297,6 +299,8 @@ describe('refreshTokens', () => {
     id: 'stored-rt-id',
     token: 'valid-refresh-token',
     userId: TEST_USER.id,
+    sessionId: 'session-1',
+    usedAt: null as Date | null,
     expiresAt: new Date(Date.now() + 86400000), // 1 day from now
   };
 
@@ -309,6 +313,7 @@ describe('refreshTokens', () => {
     mockPrisma.refreshToken.findUnique.mockResolvedValue(storedToken);
     mockPrisma.user.findUnique.mockResolvedValue(TEST_USER);
     mockPrisma.refreshToken.delete.mockResolvedValue(storedToken);
+    mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.refreshToken.create.mockResolvedValue({ id: 'new-rt' });
     mockGenerateAccessToken.mockReturnValue('new-access-token');
     mockGenerateRefreshToken.mockReturnValue('new-refresh-token');
@@ -340,10 +345,11 @@ describe('refreshTokens', () => {
     expect(created.token).not.toBe('new-refresh-token');
   });
 
-  it('deletes old token before issuing new one (rotation)', async () => {
+  it('marks the old token used, only if nobody else has (rotation)', async () => {
     await refreshTokens('valid-refresh-token');
-    expect(mockPrisma.refreshToken.delete).toHaveBeenCalledWith({
-      where: { id: storedToken.id },
+    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { id: storedToken.id, usedAt: null },
+      data: { usedAt: expect.any(Date) },
     });
   });
 
@@ -367,18 +373,18 @@ describe('refreshTokens', () => {
     expect(mockPrisma.refreshToken.create).not.toHaveBeenCalled();
   });
 
-  it('throws UnauthorizedError when token not found in DB (reuse detection)', async () => {
+  it('refuses an unknown token (signed out or revoked) without ending anything else', async () => {
     mockPrisma.refreshToken.findUnique.mockResolvedValue(null);
     await expect(refreshTokens('valid-refresh-token')).rejects.toThrow(UnauthorizedError);
+    expect(mockPrisma.refreshToken.deleteMany).not.toHaveBeenCalled();
   });
 
-  it('invalidates all tokens on reuse detection', async () => {
-    mockPrisma.refreshToken.findUnique.mockResolvedValue(null);
+  it('ends the session when a token already exchanged is used again', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({ ...storedToken, usedAt: new Date(Date.now() - 60_000) });
+    mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 0 });
     mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 2 });
-    await expect(refreshTokens('reused-token')).rejects.toThrow();
-    expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith({
-      where: { userId: TEST_USER.id },
-    });
+    await expect(refreshTokens('reused-token')).rejects.toThrow(UnauthorizedError);
+    expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith({ where: { sessionId: 'session-1' } });
   });
 
   it('throws UnauthorizedError when token is expired', async () => {

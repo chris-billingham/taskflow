@@ -26,8 +26,9 @@ export function startMaintenanceWorker() {
     async () => {
       // Refresh tokens expire after 30 days but were only ever checked at
       // read time — the table grew one row per login forever.
+      // Exchanged tokens are kept a day to catch a copied one being reused.
       const tokens = await prisma.refreshToken.deleteMany({
-        where: { expiresAt: { lt: new Date() } },
+        where: { OR: [{ expiresAt: { lt: new Date() } }, { usedAt: { lt: new Date(Date.now() - 86_400_000) } }] },
       });
 
       // Expired workspace invites are dead rows nobody can accept.
