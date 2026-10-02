@@ -41,3 +41,4 @@ export * from './requests/task.js';
 export * from './requests/template.js';
 export * from './requests/view.js';
 export * from './requests/workspace.js';
+import './openapiNames.js';

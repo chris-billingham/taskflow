@@ -17,7 +17,7 @@ import { getRedis } from './config/redis.js';
 import { prisma } from './config/database.js';
 import { Prisma } from '@prisma/client';
 import { VersionConflictError } from './errors/index.js';
-import { jsonSchemaTransform, validatorCompiler } from 'fastify-type-provider-zod';
+import { jsonSchemaTransform, jsonSchemaTransformObject, validatorCompiler } from 'fastify-type-provider-zod';
 import { createContractSerializer } from './utils/contractSerializer.js';
 import { healthSchema } from '@taskflow/contract';
 import { rateLimitMax } from './config/rateLimits.js';
@@ -123,7 +123,14 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
         },
         security: [{ bearerAuth: [] }],
       },
-      transform: jsonSchemaTransform,
+      // A plugin's root route is registered as `/api/v1/tasks/`; Fastify answers
+      // with or without the slash, so document the spelling clients expect.
+      transform: (route) => {
+        const out = jsonSchemaTransform(route);
+        return { ...out, url: route.url.length > 1 ? route.url.replace(/\/$/, '') : route.url };
+      },
+      // Named contract schemas become shared components (see contract openapiNames.ts).
+      transformObject: jsonSchemaTransformObject,
     });
 
     await server.register(swaggerUi, {

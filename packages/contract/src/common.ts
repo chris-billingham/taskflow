@@ -17,10 +17,14 @@ export const instant = z.codec(z.iso.datetime(), z.date(), {
  * columns come back from Prisma. Clients should read it as a local date, not
  * pass it to `new Date()`, which would take it as UTC midnight.
  */
-export const calendarDate = z.codec(z.iso.date(), z.date(), {
-  decode: (day) => new Date(`${day}T00:00:00.000Z`),
-  encode: (date) => date.toISOString().slice(0, 10),
-});
+export const calendarDate = z
+  .codec(z.iso.date(), z.date(), {
+    decode: (day) => new Date(`${day}T00:00:00.000Z`),
+    encode: (date) => date.toISOString().slice(0, 10),
+  })
+  // Documented as what goes over the wire (a date), not the server-side Date,
+  // which generated clients would otherwise expect as a full timestamp.
+  .meta({ type: 'string', format: 'date' });
 
 /**
  * A calendar day in a request: YYYY-MM-DD. A full ISO timestamp is accepted
@@ -41,10 +45,13 @@ function mappedEnum<const N extends string, const W extends string>(pairs: reado
   const wires = pairs.map(([, wire]) => wire) as [W, ...W[]];
   const byWire = new Map<W, N>(pairs.map(([name, wire]) => [wire, name]));
   const byName = new Map<N, W>(pairs.map(([name, wire]) => [name, wire]));
-  return z.codec(z.enum(wires), z.enum(names), {
-    decode: (wire) => byWire.get(wire)!,
-    encode: (name) => byName.get(name)!,
-  });
+  return z
+    .codec(z.enum(wires), z.enum(names), {
+      decode: (wire) => byWire.get(wire)!,
+      encode: (name) => byName.get(name)!,
+    })
+    // Documented with the wire values, which is what clients send and get.
+    .meta({ type: 'string', enum: wires });
 }
 
 /** Date display format, as a date-fns pattern on the wire. */
@@ -90,10 +97,12 @@ export const json = z.unknown();
  * snapshots). Prisma types JSON columns as any JSON value, so the server side
  * is `unknown`; clients see an object, and encoding still checks it is one.
  */
-export const jsonObject = z.codec(z.record(z.string(), z.unknown()), z.unknown(), {
-  decode: (value) => value,
-  encode: (value) => value as Record<string, unknown>,
-});
+export const jsonObject = z
+  .codec(z.record(z.string(), z.unknown()), z.unknown(), {
+    decode: (value) => value,
+    encode: (value) => value as Record<string, unknown>,
+  })
+  .meta({ type: 'object', additionalProperties: true });
 
 /**
  * An email address as an account identity: lowercased, so "Alice@Example.com"

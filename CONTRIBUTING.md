@@ -62,7 +62,8 @@ The repo-root `.env.example` is the production template for `docker-compose.yml`
 - All routes must require authentication via `authenticate` middleware (except public auth routes)
 - Use service layer for business logic — routes should only parse input and delegate
 - Throw `AppError` subclasses for known errors; let the global handler catch unknown ones
-- New routes must use the existing Zod schemas in `src/schemas/` or create a new schema file
+- Request and response schemas live in `packages/contract`, shared with the web app
+- After changing a route or its schemas, run `pnpm --filter @taskflow/api openapi:export` and commit `openapi.json`. CI checks it's current, builds the Swift client from it, and fails on changes that would break installed apps (removed routes or fields, changed types); put `[api-break]` in the commit message or PR title when that's intended
 
 ### Frontend (React)
 

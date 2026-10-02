@@ -113,12 +113,17 @@ describe('generated OpenAPI', () => {
   it('documents converted routes from their schemas', async () => {
     const docsApp = await buildApp({ logger: false, rateLimitRedis: false, docs: true });
     await docsApp.ready();
-    const spec = docsApp.swagger() as unknown as { paths: Record<string, Record<string, any>> };
+    const spec = docsApp.swagger() as unknown as {
+      paths: Record<string, Record<string, any>>;
+      components: { schemas: Record<string, any> };
+    };
     await docsApp.close();
 
-    const list = spec.paths['/api/v1/labels/'].get;
-    const item = list.responses['200'].content['application/json'].schema.properties.data.items;
+    const list = spec.paths['/api/v1/labels'].get;
+    const items = list.responses['200'].content['application/json'].schema.properties.data.items;
+    expect(items).toEqual({ $ref: '#/components/schemas/Label' });
+    const item = spec.components.schemas.Label;
     expect(item.properties.createdAt).toMatchObject({ type: 'string', format: 'date-time' });
-    expect(spec.paths['/api/v1/labels/'].post.requestBody).toBeDefined();
+    expect(spec.paths['/api/v1/labels'].post.requestBody).toBeDefined();
   });
 });

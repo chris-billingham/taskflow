@@ -59,6 +59,8 @@ import * as templateService from '../../services/templateService.js';
 // case runs a real service and encodes its result exactly as the route does.
 
 const RUN = randomUUID().slice(0, 8);
+// Tomorrow (UTC), so the task stays in the upcoming view whenever this runs.
+const DUE = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 let userId: string;
 let projectId: string;
 let sectionId: string;
@@ -98,7 +100,7 @@ beforeAll(async () => {
       projectId,
       sectionId,
       labelIds: [labelId],
-      dueDate: '2026-10-01',
+      dueDate: DUE,
       dueTime: '09:30',
       priority: 2,
     },
@@ -146,7 +148,7 @@ describe('real service output matches the API contract', () => {
     const list = conforms(page(taskListItemSchema), { success: true, data: tasks, nextCursor }) as {
       data: Array<{ dueDate: string | null; taskLabels: unknown[] }>;
     };
-    expect(list.data[0].dueDate).toBe('2026-10-01');
+    expect(list.data[0].dueDate).toBe(DUE);
     expect(list.data[0].taskLabels).toHaveLength(1);
 
     const detail = conforms(ok(taskDetailSchema), {

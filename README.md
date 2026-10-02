@@ -196,12 +196,10 @@ taskflow/
 │   │   │   └── schema.prisma   # Database schema
 │   │   └── src/
 │   │       ├── config/         # DB, Redis, S3, env
-│   │       ├── docs/           # OpenAPI spec
 │   │       ├── errors/         # Error classes
 │   │       ├── jobs/           # BullMQ background jobs
 │   │       ├── middleware/     # Auth middleware
 │   │       ├── routes/         # Fastify route handlers
-│   │       ├── schemas/        # Zod validation schemas
 │   │       ├── services/       # Business logic
 │   │       ├── utils/          # Helpers
 │   │       ├── websocket/      # WebSocket server
@@ -215,7 +213,10 @@ taskflow/
 │   │       ├── services/       # API client
 │   │       ├── queries/        # TanStack Query: server data and actions
 │   │       └── stores/         # Zustand: client state
-│   └── shared/                 # Shared TypeScript types
+│   ├── contract/               # Zod schemas shared by the API and web app
+│   └── e2e/                    # Playwright end-to-end tests
+├── clients/swift/              # Swift API client, generated from openapi.json
+├── openapi.json                # The API's OpenAPI document (generated)
 ├── docs/                       # Documentation
 ├── scripts/                    # Install and maintenance scripts
 ├── docker-compose.yml          # Production Compose

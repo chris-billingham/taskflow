@@ -49,6 +49,83 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+  openapi:
+    name: API Document
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @taskflow/api db:generate
+
+      # openapi.json is generated from the route schemas and committed, so a
+      # route change shows up in review and the Swift client builds from it.
+      - name: Check openapi.json is current
+        run: |
+          pnpm --filter @taskflow/api openapi:export
+          git diff --exit-code openapi.json || {
+            echo "::error file=openapi.json::openapi.json is out of date. Run 'pnpm --filter @taskflow/api openapi:export' and commit the result."
+            exit 1
+          }
+
+      # Installed apps keep running old versions, so removing a route or a
+      # response field breaks them. Put [api-break] in the commit message or
+      # pull request title when that's intended.
+      - name: Check for breaking API changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          OVERRIDE: ${{ contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[api-break]') }}
+        run: |
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "No earlier commit to compare with."; exit 0
+          fi
+          git fetch --no-tags --depth=1 origin "$BASE"
+          if ! git show "$BASE:openapi.json" > "$RUNNER_TEMP/base.json" 2>/dev/null; then
+            echo "The earlier commit has no openapi.json."; exit 0
+          fi
+          cp openapi.json "$RUNNER_TEMP/head.json"
+          docker run --rm -v "$RUNNER_TEMP:/w" -w /w \
+            tufin/oasdiff@sha256:8e6abebf4ad2e95e904a56c14825bb4338e185e7a4be4e3cf1b86d31162dfcdd \
+            breaking base.json head.json --fail-on ERR || {
+              if [ "$OVERRIDE" = "true" ]; then echo "::warning::Breaking API change allowed by [api-break]."; exit 0; fi
+              echo "::error file=openapi.json::This change would break installed apps. See the list above."
+              exit 1
+            }
+
+  swift-client:
+    name: Swift Client
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container: swift:6.2-noble
+    defaults:
+      run:
+        working-directory: clients/swift
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: clients/swift/.build
+          key: swift-${{ hashFiles('clients/swift/Package.resolved') }}
+
+      # Generates the client from openapi.json and decodes canned responses
+      # shaped like the API's real ones.
+      - name: Build
+        run: swift build --build-tests
+      - name: Test
+        run: swift test --skip-build
+
   unit-tests:
     name: Unit, Integration & DB Tests
     runs-on: ubuntu-latest
@@ -228,7 +305,7 @@ jobs:
         run: |
           docker run -d --name garage -p 9000:3900 -p 3903:3903 \
             -v "$PWD/docker/garage.toml:/etc/garage.toml:ro" \
-            -e GARAGE_RPC_SECRET=$(openssl rand -hex 32) \
+            -e GARAGE_RPC_SECRET="$(openssl rand -hex 32)" \
             -e GARAGE_DEFAULT_ACCESS_KEY=GK000000000000000000000001 \
             -e GARAGE_DEFAULT_SECRET_KEY=${{ env.DEV_S3_SECRET }} \
             -e GARAGE_DEFAULT_BUCKET=taskflow \

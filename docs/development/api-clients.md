@@ -1,6 +1,24 @@
 # Building an API Client
 
-How a native app, script or integration talks to the Taskflow API. The full reference is the OpenAPI document at `/api/docs` (JSON at `/api/docs/json`).
+How a native app, script or integration talks to the Taskflow API. The full reference is the OpenAPI document: [`openapi.json`](../../openapi.json) in the repository, or `/api/docs` on a running server (JSON at `/api/docs/json`).
+
+## Generated clients
+
+`openapi.json` is generated from the API's route schemas and committed, so any client generator can use it. CI checks that it's current, that real responses match it, and that a change doesn't remove routes or fields or change types that installed apps rely on.
+
+A Swift package lives in [`clients/swift`](../../clients/swift). It runs Apple's [swift-openapi-generator](https://github.com/apple/swift-openapi-generator) at build time, so its types always match the document. Add it to an app with a transport such as [OpenAPIURLSession](https://github.com/apple/swift-openapi-urlsession):
+
+```swift
+import OpenAPIURLSession
+import TaskflowAPI
+
+let api = Client(taskflowServer: URL(string: "https://tasks.example.com")!, transport: URLSessionTransport())
+let signIn = try await api.postApiV1AuthLogin(
+  body: .json(.init(email: email, password: password, client: .app, deviceName: "Sam's iPhone")))
+let tokens = try signIn.ok.body.json.data
+```
+
+Create it with `init(taskflowServer:transport:)`: Taskflow's timestamps carry milliseconds, which the generator's default date format rejects. Calendar dates (`dueDate`, `deadline`) are plain `"2026-10-05"` strings, since they have no time zone. Error responses aren't in the document yet, so they arrive as `.undocumented(statusCode:_:)`. Read the body's `error` field: for example `VERSION_CONFLICT`, which also sends the server's copy in `current`.
 
 ## Sign-in for apps
 
