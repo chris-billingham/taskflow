@@ -98,14 +98,15 @@ CORS_ORIGIN=https://tasks.example.com
 
 ## Dependency Updates
 
-Keep dependencies updated to pick up security patches:
+Security fixes reach an install through releases: run `make upgrade` to move
+to the latest one (see [Upgrading](upgrading.md)), and watch the
+[releases page](https://github.com/chris-billingham/taskflow/releases) for
+notes that call out security fixes.
 
-```bash
-pnpm update --recursive
-pnpm audit
-```
-
-Review and apply security advisories promptly, especially for `fastify`, `jsonwebtoken`, `bcrypt`, and `prisma`.
+Behind the releases, Dependabot proposes dependency and base-image updates
+every week, CI fails on known vulnerabilities in production dependencies
+(`pnpm audit`), and a weekly check fails if any image an install pulls
+(Postgres, Redis, Garage, Traefik, the base images) stops being published.
 
 ## Reporting Vulnerabilities
 

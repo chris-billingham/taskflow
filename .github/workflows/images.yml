@@ -1,0 +1,46 @@
+name: Images
+
+# Every image an install pulls must still exist. MinIO's images were
+# withdrawn upstream and fresh installs could no longer start; this notices
+# that kind of thing within a week, rather than when someone next installs.
+on:
+  schedule:
+    - cron: '17 6 * * 1' # Mondays, after Dependabot's run
+  pull_request:
+    paths: ['docker-compose.yml', 'packages/*/Dockerfile', '.github/workflows/images.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Images are still published
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check every image resolves
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Service images from the compose file (tools profile included), and
+          # the base images the Dockerfiles build on.
+          images=$(TASKFLOW_VERSION=latest docker compose -f docker-compose.yml --env-file .env.example --profile tools config --images)
+          images+=$'\n'$(sed -n 's/^FROM \([^ ]*\).*/\1/p' packages/*/Dockerfile)
+          # Taskflow's own images exist once a release has been published.
+          if ! gh release view --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            images=$(grep -v '/taskflow-' <<<"$images")
+          fi
+          failed=0
+          while read -r image; do
+            [ -n "$image" ] || continue
+            if docker manifest inspect "$image" >/dev/null 2>&1; then
+              echo "ok      $image"
+            else
+              echo "::error::$image can no longer be pulled"
+              failed=1
+            fi
+          done < <(sort -u <<<"$images")
+          exit $failed
