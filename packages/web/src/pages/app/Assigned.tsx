@@ -6,6 +6,7 @@ import { ViewModeToggle, type ViewMode } from '@/components/views/ViewModeToggle
 import { BoardGroupingMenu, GroupedBoard, useBoardGrouping } from '@/components/views/GroupedBoard';
 import { useFilterTasks } from '@/queries/tasks';
 import type { BoardGrouping } from '@/stores/uiStore';
+import { useWideLayout } from '@/hooks/useWideLayout';
 
 const GROUPINGS: BoardGrouping[] = ['project', 'dueDate', 'priority'];
 
@@ -13,6 +14,7 @@ const GROUPINGS: BoardGrouping[] = ['project', 'dueDate', 'priority'];
 export default function Assigned() {
   const { tasks, loading, hasMore, loadingMore, loadMore } = useFilterTasks('assigned to: me & !completed');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  useWideLayout(viewMode !== 'list');
   const [grouping, setGrouping] = useBoardGrouping('assigned', 'project');
 
   return (

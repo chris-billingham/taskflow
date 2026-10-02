@@ -30,6 +30,7 @@ import { useProjectRoom } from '@/hooks/useProjectRoom';
 import { useProjectTasks } from '@/queries/tasks';
 import { useTaskActions } from '@/queries/taskActions';
 import type { Task } from '@/types/task';
+import { useWideLayout } from '@/hooks/useWideLayout';
 
 const UNSECTIONED = '__unsectioned__';
 
@@ -54,6 +55,7 @@ export default function Project() {
   const [sharing, setSharing] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [integration, setIntegration] = useState<'calendar' | 'webhooks' | null>(null);
+  useWideLayout(project?.viewStyle === 'BOARD' || project?.viewStyle === 'CALENDAR');
 
   // Top-level tasks in their saved order (a drag reorders them optimistically
   // by sortOrder, ahead of the server's response).

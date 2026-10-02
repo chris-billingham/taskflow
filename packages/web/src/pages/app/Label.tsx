@@ -11,6 +11,7 @@ import type { BoardGrouping } from '@/stores/uiStore';
 const FILTER_GROUPINGS: BoardGrouping[] = ['priority', 'dueDate', 'assignee', 'project'];
 import { useLabels, useLabelActions } from '@/queries/labels';
 import { useFilterTasks } from '@/queries/tasks';
+import { useWideLayout } from '@/hooks/useWideLayout';
 
 export default function Label() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +24,7 @@ export default function Label() {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  useWideLayout(viewMode !== 'list');
   const [grouping, setGrouping] = useBoardGrouping(`label:${id}`, 'priority');
 
 

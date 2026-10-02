@@ -22,8 +22,11 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { CommandPalette } from '@/components/layout/CommandPalette';
 import { ShortcutsSheet } from '@/components/layout/ShortcutsSheet';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
+import { useLayoutWidth } from '@/hooks/useWideLayout';
 
 export function AppLayout() {
+  // Boards and calendars use the whole width (useWideLayout).
+  const wide = useLayoutWidth((st) => st.wide);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -118,7 +121,7 @@ export function AppLayout() {
         </div>
 
         <OfflineBanner />
-        <main className="max-w-5xl mx-auto px-4 py-6">
+        <main className={`${wide ? 'max-w-none' : 'max-w-5xl'} mx-auto px-4 py-6`}>
           <Outlet />
         </main>
       </div>

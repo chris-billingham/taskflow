@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { CalendarPlus, Pencil, Star } from 'lucide-react';
 import { CalendarFeedDialog } from '@/components/integrations/CalendarFeedDialog';
+import { useWideLayout } from '@/hooks/useWideLayout';
 import { Spinner } from '@/components/ui/Spinner';
 import { TaskList } from '@/components/task/TaskList';
 import { CalendarView } from '@/components/views/CalendarView';
@@ -30,6 +31,7 @@ export default function Filter() {
   // loaded and never written back. Read it from the filter and persist changes.
   const viewMode: ViewMode =
     filter?.viewStyle === 'CALENDAR' ? 'calendar' : filter?.viewStyle === 'BOARD' ? 'board' : 'list';
+  useWideLayout(viewMode !== 'list');
 
   const setViewMode = (mode: ViewMode) => {
     if (!filter) return;
