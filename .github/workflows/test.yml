@@ -69,6 +69,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter @taskflow/api db:generate
 
+      - name: Build contract package
+        run: pnpm --filter @taskflow/contract build
+
       # openapi.json is generated from the route schemas and committed, so a
       # route change shows up in review and the Swift client builds from it.
       - name: Check openapi.json is current

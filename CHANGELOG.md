@@ -4,6 +4,43 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Phase 6: mobile-ready API and sync
+
+- **Install Taskflow as an app.** The web app can be installed from the
+  browser (home screen on iPhone and Android, an app window on desktop).
+  It opens without a connection and shows the projects and tasks it last
+  loaded, kept for 3 days; a banner says when you're offline, and changes
+  made offline explain that they weren't saved.
+- **Signed-in devices.** **Settings → Devices** lists every browser and
+  app signed in to your account, with when each was last used; sign out
+  any of them, or every device but this one.
+- **Personal access tokens** for scripts and integrations, read-only or
+  read and write, created and revoked in the same place. They can't
+  change your password, manage devices or tokens, or use admin pages.
+  Deleting your account now asks for your password.
+- **Sign-in for apps.** Native apps get their refresh token in the
+  response body and send it back to refresh or sign out; a device stays
+  the same session across refreshes.
+- **Delta sync.** `GET /api/v1/sync` returns everything that changed since
+  a cursor, including deletions and projects shared with you since then,
+  so an app can keep an offline copy. Tasks, projects, sections and labels
+  carry a `version`; send `ifVersion` with an edit to get a conflict (with
+  the current row) instead of overwriting someone else's change. Apps can
+  choose ids when creating things, so a retried request never duplicates.
+- **Moving a task updates one row.** Tasks have fractional sort orders and
+  `POST /tasks/:id/position` places one after another, instead of
+  rewriting the order of the whole list.
+- **iOS push notifications** through Apple's push service (APNs), set up
+  with `APNS_*` settings. Notifications for a device stop when it signs
+  out.
+- **OpenAPI document and Swift client.** `openapi.json` is generated from
+  the route schemas and committed, with named schemas. `clients/swift` is
+  a Swift package generated from it. CI checks the document is current,
+  that responses match it, and that changes don't break installed apps,
+  and builds the Swift client.
+- **Fixed:** the API documentation described due dates as timestamps and
+  enums by their internal names, which didn't match what the API sends.
+
 ### Phase 5: team collaboration
 
 - **Share a project with specific people.** **Share** at the top of a
