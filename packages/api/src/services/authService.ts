@@ -215,6 +215,12 @@ export async function login(email: string, password: string, device: DeviceInfo 
   return signIn(user, device);
 }
 
+/** An account that may sign in, or null if it's gone or suspended. */
+export async function findActiveUser(id: string) {
+  const user = await prisma.user.findUnique({ where: { id } });
+  return user && user.isActive ? user : null;
+}
+
 /** Start a session for a user whose identity has been proven. */
 export async function signIn(user: Parameters<typeof publicUser>[0], device: DeviceInfo) {
   await prisma.user.update({

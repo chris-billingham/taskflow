@@ -74,5 +74,10 @@ deactivated account). Provider errors are logged by the API:
 docker compose -f docker-compose.yml logs api | grep "single sign-on"
 ```
 
-Native apps don't support single sign-on yet; people sign in to them with a
-password.
+## Apps
+
+The iOS app signs in with single sign-on too: it opens the provider in the
+system browser and Taskflow sends it back to `taskflow://auth/callback`.
+Nothing needs registering with the provider for this; the provider still
+redirects to Taskflow's own `/api/v1/auth/oidc/callback`. If you build your
+own app, add its redirect URI to `OIDC_APP_REDIRECT_URIS` (comma separated).

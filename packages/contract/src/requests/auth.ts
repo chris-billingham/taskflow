@@ -53,6 +53,13 @@ export const twoFactorLoginSchema = z
   .object({ challengeToken: z.string().min(1), ...secondFactor, ...sessionClient })
   .refine(oneFactor, oneFactorMessage);
 
+/** A native app trading its single sign-on code for tokens (PKCE). */
+export const oidcTokenSchema = z.object({
+  code: z.string().min(1).max(200),
+  codeVerifier: z.string().min(43).max(128),
+  deviceName: z.string().trim().min(1).max(100).optional(),
+});
+
 /** Turning two-factor on needs a code from the newly added app. */
 export const enableTwoFactorSchema = z.object({ code: z.string().trim().min(6).max(10) });
 

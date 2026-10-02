@@ -247,6 +247,7 @@ Until all four are set, iOS devices get no push notifications (in-app and email 
 | `OIDC_NAME` | `single sign-on` | Shown on the login page as "Sign in with …" |
 | `OIDC_SCOPES` | `openid email profile` | Scopes to request |
 | `OIDC_TRUST_EMAIL` | `false` | Treat addresses as verified when the provider sends no `email_verified` claim |
+| `OIDC_APP_REDIRECT_URIS` | `taskflow://auth/callback` | Where native apps may be sent back after single sign-on (exact matches, comma separated) |
 
 All three of issuer, client ID and secret, or none. The redirect URI to register is `<APP_URL>/api/v1/auth/oidc/callback`. See [Single sign-on](admin-guide/single-sign-on.md).
 

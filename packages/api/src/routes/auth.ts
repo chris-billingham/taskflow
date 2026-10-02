@@ -11,6 +11,7 @@ import {
   signedInResponse,
   twoFactorLoginSchema,
   ssoStatusSchema,
+  oidcTokenSchema,
   registerResponse,
   refreshResponse,
   registrationStatusSchema,
@@ -54,6 +55,13 @@ const oidcCookieOptions = {
 /** Only paths on this site, never another origin. */
 const safeRedirect = (value: string | undefined) =>
   value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\') ? value : '/today';
+
+/** The app's redirect URI with these query parameters added. */
+function toApp(app: oidc.AppLogin, params: Record<string, string>): string {
+  const url = new URL(app.redirectUri);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  return url.toString();
+}
 
 type SignedIn = Awaited<ReturnType<typeof authService.completeTwoFactorLogin>>;
 
@@ -174,19 +182,44 @@ export async function authRoutes(fastify: FastifyInstance) {
   );
 
   // Single sign-on happens in the browser by redirects, so these two aren't
-  // in the API document. The login page links to /oidc/start.
+  // in the API document. The login page links to /oidc/start; a native app
+  // opens it in the system browser with client=app (see api-clients.md).
   app.get(
     '/oidc/start',
-    { schema: { hide: true, querystring: z.object({ redirect: z.string().max(2000).optional() }) } },
+    {
+      schema: {
+        hide: true,
+        querystring: z.object({
+          redirect: z.string().max(2000).optional(),
+          client: z.enum(['web', 'app']).default('web'),
+          redirect_uri: z.string().max(500).optional(),
+          code_challenge: z.string().regex(/^[\w-]{43}$/).optional(),
+          code_challenge_method: z.literal('S256').optional(),
+          device_name: z.string().trim().min(1).max(100).optional(),
+        }),
+      },
+    },
     async (request, reply) => {
+      const q = request.query;
+      let appLogin: oidc.AppLogin | undefined;
+      if (q.client === 'app') {
+        if (!q.redirect_uri || !oidc.isAllowedAppRedirect(q.redirect_uri) || !q.code_challenge) {
+          return reply.status(400).send({
+            success: false,
+            error: 'VALIDATION_ERROR',
+            message: 'An app needs an allowed redirect_uri and a code_challenge (S256).',
+          });
+        }
+        appLogin = { redirectUri: q.redirect_uri, challenge: q.code_challenge, deviceName: q.device_name };
+      }
       try {
-        const { url, pending } = await oidc.startLogin(safeRedirect(request.query.redirect));
+        const { url, pending } = await oidc.startLogin(safeRedirect(q.redirect), appLogin);
         reply.setCookie(OIDC_COOKIE, pending, oidcCookieOptions);
         return reply.redirect(url);
       } catch (err) {
-        if (err instanceof oidc.SsoError) return reply.redirect(`/login?sso_error=${err.reason}`);
-        request.log.error({ err }, 'single sign-on: could not reach the provider');
-        return reply.redirect('/login?sso_error=failed');
+        const reason = err instanceof oidc.SsoError ? err.reason : 'failed';
+        if (!(err instanceof oidc.SsoError)) request.log.error({ err }, 'single sign-on: could not reach the provider');
+        return reply.redirect(appLogin ? toApp(appLogin, { error: reason }) : `/login?sso_error=${reason}`);
       }
     },
   );
@@ -195,7 +228,8 @@ export async function authRoutes(fastify: FastifyInstance) {
     const pending = oidc.readPending(request.cookies[OIDC_COOKIE]);
     reply.clearCookie(OIDC_COOKIE, { path: oidcCookieOptions.path });
     const back = pending ? `&redirect=${encodeURIComponent(pending.redirect)}` : '';
-    const fail = (reason: oidc.SsoFailure) => reply.redirect(`/login?sso_error=${reason}${back}`);
+    const fail = (reason: oidc.SsoFailure) =>
+      reply.redirect(pending?.app ? toApp(pending.app, { error: reason }) : `/login?sso_error=${reason}${back}`);
     if (!pending) return fail('expired');
 
     try {
@@ -204,6 +238,16 @@ export async function authRoutes(fastify: FastifyInstance) {
       if (!user.isActive) return fail('suspended');
       // Taskflow's own two-factor sign-in still applies. The challenge goes in
       // the fragment, which browsers never send to a server or log.
+      // An app gets a one-time code for its tokens, or the second-factor
+      // challenge to finish at /auth/login/two-factor.
+      if (pending.app) {
+        return reply.redirect(
+          toApp(
+            pending.app,
+            user.twoFactorEnabledAt ? { challenge: generateChallengeToken(user.id) } : { code: await oidc.createHandoff(user.id, pending.app) },
+          ),
+        );
+      }
       if (user.twoFactorEnabledAt) {
         return reply.redirect(
           `/login?redirect=${encodeURIComponent(pending.redirect)}#two-factor=${generateChallengeToken(user.id)}`,
@@ -218,6 +262,33 @@ export async function authRoutes(fastify: FastifyInstance) {
       return fail('failed');
     }
   });
+
+  app.post(
+    '/oidc/token',
+    {
+      config: { rateLimit: { max: rateLimitMax(10), timeWindow: '15 minutes' } },
+      schema: {
+        tags,
+        security,
+        summary: 'Single sign-on for apps: trade the one-time code from the redirect, with the PKCE verifier, for tokens',
+        body: oidcTokenSchema,
+        response: { 200: signedInResponse },
+      },
+    },
+    async (request) => {
+      const handoff = await oidc.redeemHandoff(request.body.code, request.body.codeVerifier);
+      const user = handoff ? await authService.findActiveUser(handoff.userId) : null;
+      if (!handoff || !user) {
+        throw new UnauthorizedError('That sign-in has expired or was already used. Sign in again.', 'CHALLENGE_EXPIRED');
+      }
+      const { user: signedIn, accessToken, refreshToken } = await authService.signIn(user, {
+        client: 'app',
+        deviceName: request.body.deviceName ?? handoff.deviceName,
+        userAgent: request.headers['user-agent'],
+      });
+      return { success: true as const, data: { user: signedIn, accessToken, refreshToken } };
+    },
+  );
 
   app.post(
     '/logout',

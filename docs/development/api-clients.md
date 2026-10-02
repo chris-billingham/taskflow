@@ -58,6 +58,29 @@ Send `recoveryCode` instead of `code` for a recovery code. The response is the u
 
 Registration takes the same `client` and `deviceName` fields.
 
+### Single sign-on in an app
+
+When the server offers single sign-on (`GET /api/v1/auth/sso` says `enabled`), an app signs in through the system browser and gets a one-time code back on its own URL scheme:
+
+1. Make a PKCE verifier (43–128 random URL-safe characters) and its challenge, `base64url(sha256(verifier))`.
+2. Open `/api/v1/auth/oidc/start?client=app&redirect_uri=taskflow://auth/callback&code_challenge=<challenge>&code_challenge_method=S256&device_name=<name>` in `ASWebAuthenticationSession` (callback scheme `taskflow`). The redirect URI must be one the server allows (`OIDC_APP_REDIRECT_URIS`; `taskflow://auth/callback` by default).
+3. The session ends at the redirect URI with one of:
+   - `code`: trade it within two minutes at `POST /api/v1/auth/oidc/token` with `{ "code": "…", "codeVerifier": "…" }` for the usual `accessToken` and `refreshToken`. Each code works once.
+   - `challenge`: the account uses two-factor sign-in; ask for a code and finish at `/auth/login/two-factor` as above.
+   - `error`: why it didn't work (`not_invited`, `email_unverified`, `suspended`, `expired`, `failed`).
+
+```swift
+let session = ASWebAuthenticationSession(url: startURL, callbackURLScheme: "taskflow") { callback, error in
+  guard let items = callback.flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false)?.queryItems }) else { return }
+  if let code = items.first(where: { $0.name == "code" })?.value {
+    Task {
+      let tokens = try await api.postApiV1AuthOidcToken(body: .json(.init(code: code, codeVerifier: verifier)))
+      // tokens.ok.body.json.data.accessToken / .refreshToken
+    }
+  }
+}
+```
+
 ## Personal access tokens
 
 For scripts and server-to-server integrations, a person can create a token in **Settings → Devices & tokens** (or `POST /api/v1/tokens` while signed in). Tokens start with `tfp_` and are sent the same way:

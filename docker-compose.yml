@@ -204,6 +204,7 @@ services:
       OIDC_NAME: ${OIDC_NAME:-single sign-on}
       OIDC_SCOPES: ${OIDC_SCOPES:-openid email profile}
       OIDC_TRUST_EMAIL: ${OIDC_TRUST_EMAIL:-false}
+      OIDC_APP_REDIRECT_URIS: ${OIDC_APP_REDIRECT_URIS:-taskflow://auth/callback}
       WEBHOOK_ALLOW_PRIVATE_NETWORKS: ${WEBHOOK_ALLOW_PRIVATE_NETWORKS:-false}
       IMPORT_MAX_SIZE_MB: ${IMPORT_MAX_SIZE_MB:-200}
     depends_on:

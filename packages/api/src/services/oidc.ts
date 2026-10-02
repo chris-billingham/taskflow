@@ -1,9 +1,10 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import * as client from 'openid-client';
 import { prisma } from '../config/database.js';
 import { env, isBootstrapAdminEmail, isOidcConfigured, publicAppUrl } from '../config/env.js';
 import { logger } from '../config/logger.js';
+import { getRedis } from '../config/redis.js';
 import { hashPassword } from '../utils/password.js';
 import { canRegister } from './instanceSettingsService.js';
 import { provisionUser } from './userService.js';
@@ -59,24 +60,33 @@ export function resetOidc(): void {
 
 export const redirectUri = () => `${publicAppUrl()}/api/v1/auth/oidc/callback`;
 
+/** A native app signing in: where to send it back, and its PKCE challenge. */
+export interface AppLogin {
+  redirectUri: string;
+  challenge: string;
+  deviceName?: string;
+}
+
 interface PendingLogin {
   state: string;
   nonce: string;
   codeVerifier: string;
   redirect: string;
+  app?: AppLogin;
 }
 
 // The pending sign-in rides in a cookie, signed with a key of its own.
 const pendingKey = () => `${env.JWT_SECRET}:oidc-login`;
 
 /** Where to send the browser, and the cookie value that must come back with it. */
-export async function startLogin(redirect: string): Promise<{ url: string; pending: string }> {
+export async function startLogin(redirect: string, app?: AppLogin): Promise<{ url: string; pending: string }> {
   const config = await configuration();
   const login: PendingLogin = {
     state: client.randomState(),
     nonce: client.randomNonce(),
     codeVerifier: client.randomPKCECodeVerifier(),
     redirect,
+    ...(app && { app }),
   };
   const url = client.buildAuthorizationUrl(config, {
     redirect_uri: redirectUri(),
@@ -182,4 +192,41 @@ export async function resolveUser(claims: Claims) {
   });
   logger.info({ userId: user.id }, 'account created through single sign-on');
   return prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+}
+
+// ── Native apps ─────────────────────────────────────────────────────────────
+// An app signs in through the system browser and is sent back to its own
+// URL scheme with a one-time code. It trades the code, with the verifier
+// for the PKCE challenge it started with, for tokens; another app that
+// intercepts the redirect has the code but not the verifier.
+
+const HANDOFF_TTL_S = 120;
+const handoffKey = (code: string) => `oidc:handoff:${createHash('sha256').update(code).digest('hex')}`;
+
+export function isAllowedAppRedirect(uri: string): boolean {
+  return env.OIDC_APP_REDIRECT_URIS.split(',')
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .includes(uri);
+}
+
+/** A one-time code the app redeems for tokens within two minutes. */
+export async function createHandoff(userId: string, app: AppLogin): Promise<string> {
+  const code = randomBytes(32).toString('base64url');
+  await getRedis().set(
+    handoffKey(code),
+    JSON.stringify({ userId, challenge: app.challenge, deviceName: app.deviceName }),
+    'EX',
+    HANDOFF_TTL_S,
+  );
+  return code;
+}
+
+/** The user a handoff code was made for, if the verifier matches its challenge. Each code works once. */
+export async function redeemHandoff(code: string, verifier: string): Promise<{ userId: string; deviceName?: string } | null> {
+  const raw = await getRedis().getdel(handoffKey(code));
+  if (!raw) return null;
+  const handoff = JSON.parse(raw) as { userId: string; challenge: string; deviceName?: string };
+  const challenge = createHash('sha256').update(verifier).digest('base64url');
+  return challenge === handoff.challenge ? { userId: handoff.userId, deviceName: handoff.deviceName } : null;
 }

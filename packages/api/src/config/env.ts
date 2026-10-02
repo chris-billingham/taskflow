@@ -121,6 +121,9 @@ const envSchema = z.object({
   // Treat an address as verified when the provider sends no email_verified
   // claim at all (some don't). A provider that says false is never trusted.
   OIDC_TRUST_EMAIL: z.enum(['true', 'false']).default('false'),
+  // Where native apps may ask single sign-on to send them back (exact
+  // matches, comma separated). The iOS app uses taskflow://auth/callback.
+  OIDC_APP_REDIRECT_URIS: z.string().default('taskflow://auth/callback'),
   // Let webhooks reach private and local addresses (a LAN n8n, say). Off by
   // default: otherwise anyone who can make a project can probe the network
   // the server sits on.

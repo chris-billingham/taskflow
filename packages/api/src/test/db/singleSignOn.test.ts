@@ -106,8 +106,13 @@ const cookieValue = (setCookie: string | string[] | undefined, name: string) =>
   ([] as string[]).concat(setCookie ?? []).find((c) => c.startsWith(`${name}=`))?.split(';')[0].slice(name.length + 1);
 
 /** Go through the whole sign-in as someone the provider vouches for. */
-async function signInAs(claims: Record<string, unknown>, redirect = '/projects/abc', tamper?: { state?: string; noCookie?: boolean }) {
-  const start = await app.inject({ method: 'GET', url: `/api/v1/auth/oidc/start?redirect=${encodeURIComponent(redirect)}` });
+async function signInAs(
+  claims: Record<string, unknown>,
+  redirect = '/projects/abc',
+  tamper?: { state?: string; noCookie?: boolean },
+  startQuery = `redirect=${encodeURIComponent(redirect)}`,
+) {
+  const start = await app.inject({ method: 'GET', url: `/api/v1/auth/oidc/start?${startQuery}` });
   expect(start.statusCode).toBe(302);
   const authorize = new URL(start.headers.location as string);
   expect(authorize.origin + authorize.pathname).toBe(`${issuer}/authorize`);
@@ -228,5 +233,51 @@ describe('single sign-on', () => {
     expect(me.passwordSet).toBe(true);
     const login = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { email: address('setpw'), password: 'a-brand-new-password' } });
     expect(login.json().data.accessToken).toEqual(expect.any(String));
+  });
+});
+
+describe('single sign-on for apps', () => {
+  const verifier = 'a'.repeat(20) + randomUUID().replaceAll('-', '');
+  const challenge = createHash('sha256').update(verifier).digest('base64url');
+  const appQuery = `client=app&redirect_uri=${encodeURIComponent('taskflow://auth/callback')}&code_challenge=${challenge}&code_challenge_method=S256&device_name=Pat%E2%80%99s%20iPhone`;
+
+  it('sends the app back with a one-time code it trades, with its verifier, for tokens', async () => {
+    const { location } = await signInAs({ sub: randomUUID(), email: address('app'), email_verified: true }, '/today', undefined, appQuery);
+    const back = new URL(location);
+    expect(back.protocol + back.host + back.pathname).toBe('taskflow:auth/callback');
+    const code = back.searchParams.get('code')!;
+
+    const wrong = await app.inject({ method: 'POST', url: '/api/v1/auth/oidc/token', payload: { code, codeVerifier: 'b'.repeat(43) } });
+    expect(wrong.statusCode).toBe(401);
+    // The failed attempt used the code up.
+    const after = await app.inject({ method: 'POST', url: '/api/v1/auth/oidc/token', payload: { code, codeVerifier: verifier } });
+    expect(after.statusCode).toBe(401);
+
+    const second = new URL((await signInAs({ sub: randomUUID(), email: address('app2'), email_verified: true }, '/today', undefined, appQuery)).location);
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/oidc/token', payload: { code: second.searchParams.get('code'), codeVerifier: verifier } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toMatchObject({ user: { email: address('app2') }, accessToken: expect.any(String), refreshToken: expect.any(String) });
+    const session = await prisma.refreshToken.findFirstOrThrow({ where: { user: { email: address('app2') } } });
+    expect(session).toMatchObject({ client: 'APP', name: 'Pat’s iPhone' });
+  });
+
+  it('only sends apps to allowed addresses', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/auth/oidc/start?client=app&redirect_uri=${encodeURIComponent('evil://steal')}&code_challenge=${challenge}`,
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('hands the app the second-factor challenge, and errors, the same way', async () => {
+    const sub = randomUUID();
+    await signInAs({ sub, email: address('app2fa'), email_verified: true });
+    await prisma.user.update({ where: { email: address('app2fa') }, data: { totpSecret: 'JBSWY3DPEHPK3PXP', twoFactorEnabledAt: new Date() } });
+    const back = new URL((await signInAs({ sub, email: address('app2fa'), email_verified: true }, '/today', undefined, appQuery)).location);
+    expect(back.searchParams.get('challenge')).toEqual(expect.any(String));
+    expect(back.searchParams.get('code')).toBeNull();
+
+    const refused = new URL((await signInAs({ sub: randomUUID(), email: address('appx'), email_verified: false }, '/today', undefined, appQuery)).location);
+    expect(refused.searchParams.get('error')).toBe('email_unverified');
   });
 });

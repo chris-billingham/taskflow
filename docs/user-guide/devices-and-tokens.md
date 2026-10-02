@@ -32,7 +32,7 @@ No token can change your password, sign devices out, create or revoke tokens, de
 
 ## Single sign-on
 
-If your Taskflow is connected to your organisation's sign-in (Authentik, Keycloak, Google Workspace and so on), the login page shows **Sign in with …**. Your first sign-in this way creates your account, or links it to an existing one with the same address. To use a password too, choose one under **Settings → Account** within 15 minutes of signing in.
+If your Taskflow is connected to your organisation's sign-in (Authentik, Keycloak, Google Workspace and so on), the login page shows **Sign in with …**. Your first sign-in this way creates your account, or links it to an existing one with the same address. To use a password too, choose one under **Settings → Account** within 15 minutes of signing in. Apps offer the same sign-in.
 
 ## Two-factor sign-in
 
