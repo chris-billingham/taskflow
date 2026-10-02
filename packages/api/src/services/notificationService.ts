@@ -274,8 +274,18 @@ export async function sendPushNotification(
   await Promise.allSettled([sendWebPush(userId, title, body, data), sendApplePush(userId, title, body, data)]);
 }
 
-/** Apple devices, through APNs. */
-async function sendApplePush(userId: string, title: string, body: string, data?: Record<string, unknown>) {
+/**
+ * Apple devices, through APNs. With `rethrow`, a failure worth retrying
+ * (Apple unavailable, a network error) is thrown once every device has been
+ * tried; dead tokens are removed either way.
+ */
+export async function sendApplePush(
+  userId: string,
+  title: string,
+  body: string,
+  data?: Record<string, unknown>,
+  rethrow = false,
+) {
   if (!isApnsConfigured()) return;
   const devices = await prisma.appleDevice.findMany({ where: { userId } });
   if (devices.length === 0) return;
@@ -290,6 +300,7 @@ async function sendApplePush(userId: string, title: string, body: string, data?:
       })
     ).map((r) => r.sessionId),
   );
+  let failure: unknown = null;
   for (const device of devices) {
     if (device.sessionId && !live.has(device.sessionId)) {
       await prisma.appleDevice.delete({ where: { id: device.id } }).catch(() => {});
@@ -298,19 +309,34 @@ async function sendApplePush(userId: string, title: string, body: string, data?:
     try {
       const result = await sendApns(device.token, device.environment, { title, body }, data);
       if (result.dead) await prisma.appleDevice.delete({ where: { id: device.id } }).catch(() => {});
-      else if (!result.ok) logger.warn({ userId, status: result.status, reason: result.reason }, 'APNs delivery failed');
+      else if (!result.ok) {
+        logger.warn({ userId, status: result.status, reason: result.reason }, 'APNs delivery failed');
+        // A bad request won't succeed on a retry; Apple being unavailable might.
+        if (result.status === null || result.status >= 500 || result.status === 429) {
+          failure ??= new Error(`APNs answered ${result.status ?? 'nothing'}`);
+        }
+      }
     } catch (err) {
       logger.warn({ err, userId }, 'APNs delivery failed');
+      failure ??= err;
     }
   }
+  if (rethrow && failure) throw failure;
 }
 
-/** Browsers, through Web Push. */
-async function sendWebPush(userId: string, title: string, body: string, data?: Record<string, unknown>) {
+/** Browsers, through Web Push. `rethrow` as for sendApplePush. */
+export async function sendWebPush(
+  userId: string,
+  title: string,
+  body: string,
+  data?: Record<string, unknown>,
+  rethrow = false,
+) {
   if (!isPushConfigured()) return;
 
   const subscriptions = await getUserPushSubscriptions(userId);
   const payload = JSON.stringify({ title, body, data });
+  let failure: unknown = null;
 
   for (const sub of subscriptions) {
     try {
@@ -327,9 +353,11 @@ async function sendWebPush(userId: string, title: string, body: string, data?: R
           .catch(() => {});
       } else {
         logger.warn({ err, userId }, 'push delivery failed');
+        if (!statusCode || statusCode >= 500 || statusCode === 429) failure ??= err;
       }
     }
   }
+  if (rethrow && failure) throw failure;
 }
 
 // ─── Email Notifications ─────────────────────────────────────────────────
@@ -339,6 +367,8 @@ export async function sendEmailNotification(
   type: NotificationType,
   data: Record<string, unknown>,
   bypassFrequency = false,
+  /** Throw when sending fails, so a queue can retry it. */
+  rethrow = false,
 ) {
   if (!isMailerReady()) return;
 
@@ -379,5 +409,6 @@ export async function sendEmailNotification(
     await sendNotificationEmail(user.email, user.name, subject, body);
   } catch (err) {
     logger.error({ err, userId }, 'notification email failed');
+    if (rethrow) throw err;
   }
 }

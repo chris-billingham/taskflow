@@ -235,6 +235,29 @@ describe('sendPushNotification', () => {
       where: { endpoint: 'https://push/dead' },
     });
   });
+  it('reports a push service outage for a retry, but not a revoked subscription', async () => {
+    envState.VAPID_PUBLIC_KEY = 'pub';
+    envState.VAPID_PRIVATE_KEY = 'priv';
+    const svc = await loadService();
+    mockPrisma.pushSubscription.findMany.mockResolvedValue([{ endpoint: 'https://push/1', p256dh: 'k', auth: 'a' }]);
+    mockPrisma.pushSubscription.delete.mockResolvedValue({});
+
+    sendNotificationMock.mockRejectedValueOnce(Object.assign(new Error('unavailable'), { statusCode: 503 }));
+    await expect(svc.sendWebPush('u1', 't', 'b', {}, true)).rejects.toThrow('unavailable');
+
+    sendNotificationMock.mockRejectedValueOnce(Object.assign(new Error('gone'), { statusCode: 410 }));
+    await expect(svc.sendWebPush('u1', 't', 'b', {}, true)).resolves.toBeUndefined();
+  });
+
+  it('reports a failed email for a retry only when asked', async () => {
+    const svc = await loadService();
+    mockPrisma.notificationPreference.findUnique.mockResolvedValue({ emailEnabled: true, emailFrequency: 'immediate', disabledTypes: [] });
+    mockPrisma.user.findUnique.mockResolvedValue({ email: 'sam@example.com', name: 'Sam' });
+    mockSendNotificationEmail.mockRejectedValue(new Error('ECONNREFUSED'));
+    await expect(svc.sendEmailNotification('u1', 'REMINDER', {})).resolves.toBeUndefined();
+    await expect(svc.sendEmailNotification('u1', 'REMINDER', {}, false, true)).rejects.toThrow('ECONNREFUSED');
+    mockSendNotificationEmail.mockResolvedValue(undefined);
+  });
 });
 
 /**
