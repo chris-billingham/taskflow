@@ -99,3 +99,5 @@ At **Settings → Notifications** you can:
 - Choose which types you want: task assigned, due soon, overdue, comments, @mentions and workspace invites. Deadline notices (the morning before a deadline, and once it has passed) come under due soon and overdue.
 
 Task reminders are always delivered as browser push.
+
+Old notifications are cleared out automatically: by default, read ones after 90 days and unread ones after a year. Your administrator can change this, and the same applies to the activity log (a year by default).

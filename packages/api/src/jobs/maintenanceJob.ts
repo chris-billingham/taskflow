@@ -4,6 +4,7 @@ import { prisma } from '../config/database.js';
 import { sweepOrphanedAttachments } from '../services/fileService.js';
 import { purgeExpiredTrash } from '../services/taskService.js';
 import { pruneTombstones } from '../services/deltaSync.js';
+import { pruneHistory } from '../services/retention.js';
 import { logger } from '../config/logger.js';
 import { QUEUE_NAMES } from './queues.js';
 
@@ -44,9 +45,21 @@ export function startMaintenanceWorker() {
       // Sync tombstones older than 90 days; clients older than that resync.
       const tombstones = await pruneTombstones();
 
-      if (tokens.count || invites.count || swept || purged || tombstones) {
+      // Activity and notifications past their retention (ACTIVITY_ and
+      // NOTIFICATION_RETENTION_DAYS).
+      const history = await pruneHistory();
+
+      if (tokens.count || invites.count || swept || purged || tombstones || history.activity || history.notifications) {
         logger.info(
-          { refreshTokens: tokens.count, invites: invites.count, orphanedAttachments: swept, trashedTasks: purged, tombstones },
+          {
+            refreshTokens: tokens.count,
+            invites: invites.count,
+            orphanedAttachments: swept,
+            trashedTasks: purged,
+            tombstones,
+            activity: history.activity,
+            notifications: history.notifications,
+          },
           'maintenance pruned expired rows',
         );
       }

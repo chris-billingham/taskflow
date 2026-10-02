@@ -237,6 +237,17 @@ frontend rebuild. Push is the only delivery method reminders currently use.
 
 Until all four are set, iOS devices get no push notifications (in-app and email notifications still work). Each device says whether it's a development (sandbox) or release (TestFlight, App Store) build, and is sent to the matching Apple server. A device stops getting notifications when its session is signed out, and is forgotten when Apple reports its token as unregistered.
 
+## History
+
+The nightly cleanup (03:30 UTC, in the worker) deletes old history. Both tables otherwise grow with nearly every action.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ACTIVITY_RETENTION_DAYS` | `365` | Days of project and task activity to keep. `0` keeps it forever |
+| `NOTIFICATION_RETENTION_DAYS` | `90` | Days to keep read notifications. Unread ones are kept four times as long (a year by default). `0` keeps them forever |
+
+The same cleanup also removes expired sign-in sessions and invites, tasks 30 days in the trash, attachments no longer linked to anything, and sync records older than 90 days.
+
 ## Monitoring
 
 | Variable | Default | Description |

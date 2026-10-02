@@ -280,6 +280,9 @@ services:
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # History kept, in days (0 = forever); the nightly cleanup runs here.
+      ACTIVITY_RETENTION_DAYS: ${ACTIVITY_RETENTION_DAYS:-365}
+      NOTIFICATION_RETENTION_DAYS: ${NOTIFICATION_RETENTION_DAYS:-90}
     depends_on:
       postgres:
         condition: service_healthy

@@ -110,6 +110,10 @@ const envSchema = z.object({
   APNS_HOST: z.string().optional(),
   // Required as a Bearer token on GET /metrics when set. /metrics isn't
   // routed through Traefik either way; this guards it inside the network.
+  // How long history is kept, in days; 0 keeps it forever. Read notifications
+  // go after NOTIFICATION_RETENTION_DAYS, unread ones after four times that.
+  ACTIVITY_RETENTION_DAYS: z.coerce.number().int().min(0).default(365),
+  NOTIFICATION_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
   METRICS_TOKEN: z.union([z.literal(''), z.string().min(16, 'METRICS_TOKEN must be at least 16 characters')]).optional(),
 });
 
