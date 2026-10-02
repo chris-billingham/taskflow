@@ -2,7 +2,7 @@
 FROM node:24-alpine AS builder
 WORKDIR /app
 
-# Pin the exact pnpm from package.json's packageManager field (matches CI/dev, pnpm 8).
+# Pin the exact pnpm from package.json's packageManager field.
 RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
 
 # Cache dependency layer
@@ -19,16 +19,17 @@ COPY packages/web/ ./packages/web/
 RUN pnpm --filter @taskflow/contract build
 RUN pnpm --filter @taskflow/web build
 
-# Production stage
-FROM nginx:alpine AS production
+# Production stage: nginx running as an unprivileged user (uid 101), so it
+# listens on 8080 rather than 80.
+FROM nginxinc/nginx-unprivileged:1.30-alpine AS production
 
 COPY packages/web/nginx.conf /etc/nginx/nginx.conf
 COPY packages/web/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=builder /app/packages/web/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://127.0.0.1/index.html || exit 1
+  CMD wget -qO- http://127.0.0.1:8080/index.html || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

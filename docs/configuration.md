@@ -237,14 +237,14 @@ frontend rebuild. Push is the only delivery method reminders currently use.
 
 Until all four are set, iOS devices get no push notifications (in-app and email notifications still work). Each device says whether it's a development (sandbox) or release (TestFlight, App Store) build, and is sent to the matching Apple server. A device stops getting notifications when its session is signed out, and is forgotten when Apple reports its token as unregistered.
 
-## Docker Images
+## Release
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DOCKER_REGISTRY` | `taskflow` | Registry prefix for images |
-| `IMAGE_TAG` | `latest` | Image tag to deploy |
+| `TASKFLOW_VERSION` | set by `install.sh` | The release to run, e.g. `1.2.0`. `local` runs images built from the checkout (`upgrade.sh --build`) |
+| `TASKFLOW_REGISTRY` | `ghcr.io/chris-billingham` | Where the `taskflow-api` and `taskflow-web` images come from |
 
-When `DOCKER_REGISTRY` is set to a real registry (e.g. `ghcr.io/your-org`), `upgrade.sh` will pull images rather than building locally.
+Change `TASKFLOW_VERSION` with `make upgrade` rather than by hand, so the compose file and scripts match the release (see [Upgrading](admin-guide/upgrading.md)). `DOCKER_REGISTRY` and `IMAGE_TAG` from earlier versions are no longer used; `upgrade.sh` removes them.
 
 ## Backups
 

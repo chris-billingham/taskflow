@@ -17,7 +17,7 @@ HTTP-01 challenge, so port 80 must be reachable from the internet.
 ## Quick Install (Recommended)
 
 ```bash
-git clone https://github.com/your-org/taskflow.git
+git clone https://github.com/chris-billingham/taskflow.git
 cd taskflow
 bash scripts/install.sh
 ```
@@ -25,9 +25,8 @@ bash scripts/install.sh
 The installer will:
 - Generate cryptographically secure secrets and write `.env`
 - Prompt for your domain name and Let's Encrypt email
-- Build the Docker images from source
-- Start infrastructure (Postgres, Redis, Garage object storage, Traefik) and run database migrations
-- Start the application and wait for it to become healthy
+- Pull the latest release's images from GHCR (or build from source if no release is published yet), and record the version as `TASKFLOW_VERSION`
+- Start everything, creating the database schema before the API starts, and wait for it to become healthy
 
 Access the app at `https://your-domain.example.com`.
 
@@ -36,7 +35,7 @@ Access the app at `https://your-domain.example.com`.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-org/taskflow.git
+git clone https://github.com/chris-billingham/taskflow.git
 cd taskflow
 ```
 
@@ -81,34 +80,32 @@ SMTP_FROM=noreply@your-domain.example.com
 
 See [configuration.md](configuration.md) for all available variables.
 
-### 3. Build and start services
+### 3. Choose a release and pull its images
 
 > **Always pass `-f docker-compose.yml` in production.** A bare
 > `docker compose up` also merges `docker-compose.override.yml`, which is a
 > DEVELOPMENT override (dev servers, exposed debug ports, self-signed TLS).
 > The `make` targets and scripts do this for you.
 
+Pick a version from the [releases page](https://github.com/chris-billingham/taskflow/releases)
+and check out its files, so the compose file matches the images:
+
 ```bash
+git checkout v1.2.0
+echo "TASKFLOW_VERSION=1.2.0" >> .env
 docker network create traefik
-docker compose -f docker-compose.yml build --parallel
-docker compose -f docker-compose.yml up -d postgres redis garage traefik
+docker compose -f docker-compose.yml pull
 ```
 
-### 4. Run migrations
+### 4. Start
 
-```bash
-docker compose -f docker-compose.yml run --rm \
-  -e DATABASE_URL="postgresql://taskflow:${POSTGRES_PASSWORD}@postgres:5432/taskflow" \
-  api sh -c "npx prisma migrate deploy --schema prisma/schema.prisma"
-```
-
-### 5. Start the application
+The `migrate` service creates the database schema, then the API and worker start:
 
 ```bash
 docker compose -f docker-compose.yml up -d
 ```
 
-### 6. Verify
+### 5. Verify
 
 ```bash
 curl https://your-domain.example.com/health
@@ -141,5 +138,6 @@ internal Docker network — none of them publish host ports in production.
 
 ## Updating
 
-See [upgrading.md](upgrading.md), or run `make upgrade` (backs up first,
-builds, migrates, restarts with automatic rollback on a failed health check).
+Run `make upgrade` for the latest release, or `make upgrade version=1.2.0`.
+It backs up first, pulls the release's images, migrates, and goes back to the
+previous release if the new one doesn't start. See [upgrading.md](upgrading.md).

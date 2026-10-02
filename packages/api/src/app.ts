@@ -9,6 +9,7 @@ import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { env } from './config/env.js';
+import { RELEASE } from './config/version.js';
 import { logger as rootLogger } from './config/logger.js';
 import { buildTrustProxy } from './utils/trustProxy.js';
 import { registerRoutes } from './routes/index.js';
@@ -22,6 +23,7 @@ import { createContractSerializer } from './utils/contractSerializer.js';
 import { healthSchema } from '@taskflow/contract';
 import { rateLimitMax } from './config/rateLimits.js';
 
+/** Version of the HTTP API contract (the OpenAPI document), not of a release. */
 export const API_VERSION = '1.0.0';
 
 export interface BuildAppOptions {
@@ -265,7 +267,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       body: {
         status: healthy ? 'ok' : 'degraded',
         timestamp: new Date().toISOString(),
-        ...(isLoopback(request.ip) ? { version: API_VERSION, checks } : {}),
+        ...(isLoopback(request.ip) ? { version: RELEASE.version, checks } : {}),
       },
     };
   }
@@ -289,13 +291,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     return reply.status(statusCode).send(body);
   });
 
-  // API info route
+  // API info route. No release version here: like /health, it's public.
   server.get('/', async () => {
-    return {
-      name: 'Taskflow API',
-      version: API_VERSION,
-      status: 'running',
-    };
+    return { name: 'Taskflow API', status: 'running' };
   });
 
   return server;

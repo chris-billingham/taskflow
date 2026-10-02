@@ -137,6 +137,10 @@ docs: update installation guide
 4. Link to the related issue if one exists
 5. Request a review once the PR is ready
 
+## Releases
+
+Maintainers publish releases by pushing a version tag; see [docs/development/releasing.md](docs/development/releasing.md).
+
 ## Project Maintainers
 
 PRs are reviewed on a best-effort basis. For urgent issues, tag them `priority`.

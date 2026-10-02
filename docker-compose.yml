@@ -1,3 +1,7 @@
+# Images are the published releases: TASKFLOW_VERSION in .env picks one
+# (scripts/upgrade.sh sets it). `build:` remains so the same file can build
+# from a checkout instead (TASKFLOW_VERSION=local, see scripts/upgrade.sh --build).
+#
 # Bounded container logs: without this the json-file driver grows unbounded
 # and eventually fills the host disk (Traefik access logs + API JSON logs).
 x-logging: &default-logging
@@ -132,11 +136,7 @@ services:
   # it to succeed, so a plain `docker compose up` after pulling new code can
   # never run that code against an old schema.
   migrate:
-    image: ${DOCKER_REGISTRY:-taskflow}/api:${IMAGE_TAG:-latest}
-    # Never pull: the image is built locally by the api service (same tag).
-    # With the default policy a missing image would be fetched from Docker
-    # Hub's `taskflow` namespace, which this project does not own.
-    pull_policy: never
+    image: ${TASKFLOW_REGISTRY:-ghcr.io/chris-billingham}/taskflow-api:${TASKFLOW_VERSION:-latest}
     restart: "no"
     logging: *default-logging
     # The image's own Prisma CLI, called directly: npx would route through npm
@@ -154,7 +154,10 @@ services:
     build:
       context: .
       dockerfile: packages/api/Dockerfile
-    image: ${DOCKER_REGISTRY:-taskflow}/api:${IMAGE_TAG:-latest}
+      args:
+        TASKFLOW_VERSION: ${TASKFLOW_BUILD_VERSION:-local}
+        TASKFLOW_COMMIT: ${TASKFLOW_BUILD_COMMIT:-}
+    image: ${TASKFLOW_REGISTRY:-ghcr.io/chris-billingham}/taskflow-api:${TASKFLOW_VERSION:-latest}
     restart: unless-stopped
     logging: *default-logging
     environment:
@@ -234,7 +237,10 @@ services:
     build:
       context: .
       dockerfile: packages/api/Dockerfile
-    image: ${DOCKER_REGISTRY:-taskflow}/api:${IMAGE_TAG:-latest}
+      args:
+        TASKFLOW_VERSION: ${TASKFLOW_BUILD_VERSION:-local}
+        TASKFLOW_COMMIT: ${TASKFLOW_BUILD_COMMIT:-}
+    image: ${TASKFLOW_REGISTRY:-ghcr.io/chris-billingham}/taskflow-api:${TASKFLOW_VERSION:-latest}
     restart: unless-stopped
     logging: *default-logging
     command: ["node", "dist/worker-entry.js"]
@@ -292,7 +298,7 @@ services:
     build:
       context: .
       dockerfile: packages/web/Dockerfile
-    image: ${DOCKER_REGISTRY:-taskflow}/web:${IMAGE_TAG:-latest}
+    image: ${TASKFLOW_REGISTRY:-ghcr.io/chris-billingham}/taskflow-web:${TASKFLOW_VERSION:-latest}
     restart: unless-stopped
     logging: *default-logging
     depends_on:
@@ -305,7 +311,7 @@ services:
       - traefik.http.routers.web.rule=Host(`${DOMAIN}`)
       - traefik.http.routers.web.entrypoints=websecure
       - traefik.http.routers.web.tls.certresolver=letsencrypt
-      - traefik.http.services.web.loadbalancer.server.port=80
+      - traefik.http.services.web.loadbalancer.server.port=8080
       - traefik.http.routers.web.middlewares=hsts
     deploy:
       resources:

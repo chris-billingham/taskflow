@@ -119,5 +119,5 @@ Change the conflicting port in `.env`:
 
 ## Getting Help
 
-- Check [GitHub Issues](https://github.com/your-org/taskflow/issues)
+- Check [GitHub Issues](https://github.com/chris-billingham/taskflow/issues)
 - Review logs carefully — most errors include a descriptive message

@@ -9,6 +9,8 @@ step()  { echo -e "\n${BLUE}==>${NC} $1"; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
+# shellcheck source=scripts/lib/release.sh
+source "$SCRIPT_DIR/lib/release.sh"
 
 # Pin the production compose file. A bare `docker compose` also merges
 # docker-compose.override.yml (a dev override), which would deploy dev servers,
@@ -30,6 +32,11 @@ fi
 
 if ! command -v openssl &>/dev/null; then
   error "openssl is required for secret generation."
+  exit 1
+fi
+
+if ! command -v curl &>/dev/null; then
+  error "curl is required to look up the latest release."
   exit 1
 fi
 
@@ -108,48 +115,49 @@ source .env
 
 # ── 3. Docker networking ──────────────────────────────────────────────────────
 step "Preparing Docker network"
-docker network create traefik 2>/dev/null && info "Created 'traefik' network" || info "'traefik' network already exists"
+if docker network create traefik >/dev/null 2>&1; then
+  info "Created 'traefik' network"
+else
+  info "'traefik' network already exists"
+fi
 
-# ── 4. Build images ───────────────────────────────────────────────────────────
-# Only api and web: `worker` deliberately shares the api IMAGE, and building both
-# in parallel races two exports onto the same tag — on a cold cache that fails the
-# build outright with `image "...": already exists`. The worker picks up the image
-# api just built.
-step "Building Docker images"
-$COMPOSE build --parallel api web
+# ── 4. Images ─────────────────────────────────────────────────────────────────
+# The latest release's images, or a build from this checkout when there's no
+# release yet (or TASKFLOW_VERSION=local is already set).
+step "Getting Docker images"
+if [ -z "${TASKFLOW_VERSION:-}" ]; then
+  TASKFLOW_VERSION=$(latest_release)
+  if [ -z "$TASKFLOW_VERSION" ]; then
+    warn "No published release found; building from this checkout instead."
+    TASKFLOW_VERSION=local
+  fi
+  set_env TASKFLOW_VERSION "$TASKFLOW_VERSION"
+fi
 
-# ── 5. Start infrastructure ───────────────────────────────────────────────────
-step "Starting infrastructure services"
-$COMPOSE up -d postgres redis garage traefik
+if [ "$TASKFLOW_VERSION" = local ]; then
+  # api and web only: worker and migrate use the api image.
+  TASKFLOW_BUILD_VERSION="$(git describe --tags --always 2>/dev/null || echo local)" \
+    TASKFLOW_BUILD_COMMIT="$(git rev-parse HEAD 2>/dev/null || true)" \
+    $COMPOSE build api web
+else
+  info "Taskflow ${TASKFLOW_VERSION}"
+  $COMPOSE pull
+fi
 
-info "Waiting for PostgreSQL to be ready..."
-until $COMPOSE exec -T postgres pg_isready -U "${POSTGRES_USER:-taskflow}" &>/dev/null; do
-  sleep 2
-done
-info "PostgreSQL is ready"
-
-# ── 6. Run database migrations ────────────────────────────────────────────────
-step "Running database migrations"
-$COMPOSE run --rm \
-  -e DATABASE_URL="postgresql://${POSTGRES_USER:-taskflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-taskflow}" \
-  api \
-  sh -c "npx prisma migrate deploy --schema prisma/schema.prisma"
-
-# ── 7. Start all services ────────────────────────────────────────────────────
-step "Starting all services"
+# ── 5. Start ──────────────────────────────────────────────────────────────────
+# The migrate service creates the database schema before api and worker start.
+step "Starting Taskflow"
 $COMPOSE up -d
 
 info "Waiting for API to be healthy..."
-for i in $(seq 1 30); do
-  if $COMPOSE exec -T api wget -qO- http://127.0.0.1:3001/health &>/dev/null 2>&1; then
-    info "API is healthy"
-    break
-  fi
-  [ "$i" -eq 30 ] && { error "API failed to become healthy"; $COMPOSE logs api; exit 1; }
-  sleep 3
-done
+if ! wait_for_api >/dev/null; then
+  error "API failed to become healthy"
+  $COMPOSE logs api
+  exit 1
+fi
+info "API is healthy"
 
-# ── 8. Done ───────────────────────────────────────────────────────────────────
+# ── 6. Done ───────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║   Taskflow installation complete!    ║${NC}"
@@ -160,4 +168,5 @@ echo ""
 echo "  View logs:   make logs"
 echo "  Status:      make status"
 echo "  Backup:      make backup"
+echo "  Upgrade:     make upgrade"
 echo ""

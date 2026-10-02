@@ -27,8 +27,10 @@ logs:
 status:
 	$(COMPOSE) ps
 
+# Images from this checkout, tagged `local` (set TASKFLOW_VERSION=local in .env
+# to run them). api and web only: worker and migrate use the api image.
 build:
-	$(COMPOSE) build --parallel
+	TASKFLOW_VERSION=local $(COMPOSE) build api web
 
 backup:
 	@bash scripts/backup.sh
@@ -36,13 +38,12 @@ backup:
 restore:
 	@bash scripts/restore.sh $(file)
 
+# The latest release, or a chosen one: make upgrade version=1.2.0
 upgrade:
-	@bash scripts/upgrade.sh
+	@bash scripts/upgrade.sh $(version)
 
 migrate:
-	$(COMPOSE) run --rm \
-		-e DATABASE_URL="postgresql://$${POSTGRES_USER:-taskflow}:$${POSTGRES_PASSWORD}@postgres:5432/$${POSTGRES_DB:-taskflow}" \
-		api sh -c "npx prisma migrate deploy --schema prisma/schema.prisma"
+	$(COMPOSE) run --rm migrate
 
 shell-api:
 	$(COMPOSE) exec api sh

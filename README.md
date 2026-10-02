@@ -67,7 +67,7 @@ app manifest), and **leaving a workspace or transferring ownership** from the UI
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/your-org/taskflow.git
+git clone https://github.com/chris-billingham/taskflow.git
 cd taskflow
 pnpm install
 ```
@@ -135,6 +135,7 @@ bash scripts/install.sh
 | [Devices & Tokens](docs/user-guide/devices-and-tokens.md) | Signed-in devices, personal access tokens |
 | [Architecture](docs/development/architecture.md) | System design |
 | [Building an API Client](docs/development/api-clients.md) | Sign-in for apps, access tokens |
+| [Releasing](docs/development/releasing.md) | Publishing a version: images and release notes |
 | [Development Setup](docs/development/setup.md) | Local dev guide |
 | [API Reference](http://localhost:3001/api/docs) | Interactive OpenAPI docs |
 

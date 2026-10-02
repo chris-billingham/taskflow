@@ -16,7 +16,7 @@ A domain name with DNS A record pointing to your server's public IP is required 
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-org/taskflow.git
+git clone https://github.com/chris-billingham/taskflow.git
 cd taskflow
 
 # 2. Run the installer (interactive)
@@ -29,9 +29,8 @@ open https://your-domain.example.com
 The installer will:
 - Generate cryptographically secure secrets
 - Create the Traefik Docker network
-- Build application images
-- Start all services
-- Run database migrations
+- Pull the latest release's images (or build from source if no release is published yet)
+- Start all services, creating the database schema first
 
 ## Manual Setup
 
@@ -50,16 +49,13 @@ cp .env.example .env
 # Create Docker network for Traefik
 docker network create traefik
 
-# Build images
-docker compose -f docker-compose.yml build --parallel
+# Choose a release (https://github.com/chris-billingham/taskflow/releases)
+# and check out its files
+git checkout v1.2.0
+echo "TASKFLOW_VERSION=1.2.0" >> .env
 
-# Start infrastructure
-docker compose -f docker-compose.yml up -d postgres redis garage traefik
-
-# Run migrations
-make migrate
-
-# Start everything
+# Pull the images and start; the migrate service creates the schema first
+docker compose -f docker-compose.yml pull
 docker compose -f docker-compose.yml up -d
 ```
 
@@ -191,14 +187,11 @@ docker compose -f docker-compose.yml ps
 ## Upgrade
 
 ```bash
-bash scripts/upgrade.sh
+make upgrade                 # the latest release
+make upgrade version=1.2.0   # a chosen one
 ```
 
-The upgrade script:
-1. Creates a pre-upgrade backup
-2. Pulls/builds new images
-3. Runs any pending migrations
-4. Performs a rolling restart (worker → api → web) to minimise downtime
+The upgrade checks out the release, takes a backup, pulls its images, applies migrations and restarts, and goes back to the previous release if the new one doesn't start. See [Upgrading](admin-guide/upgrading.md).
 
 ## Troubleshooting
 

@@ -12,8 +12,7 @@ WORKDIR /app
 # `prisma generate` resolves the right engine, and at runtime so it loads.
 RUN apk add --no-cache openssl
 
-# Pin the exact pnpm from package.json's packageManager field. Installing pnpm@9
-# globally against a v6 lockfile + --frozen-lockfile diverges from CI/dev (pnpm 8).
+# Pin the exact pnpm from package.json's packageManager field, as CI and dev use.
 RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
 
 # Cache dependency layer
@@ -80,10 +79,15 @@ RUN apk add --no-cache openssl
 RUN addgroup -g 1001 -S taskflow && adduser -S taskflow -u 1001 -G taskflow
 WORKDIR /app
 
-COPY --from=builder /build/deploy .
-
-RUN chown -R taskflow:taskflow /app
+COPY --from=builder --chown=taskflow:taskflow /build/deploy .
 USER taskflow
+
+# The release this image is, reported by /health and the admin console. Set
+# by the release workflow; a source build reports `dev`. Last, so a new
+# version doesn't invalidate the layers above.
+ARG TASKFLOW_VERSION=dev
+ARG TASKFLOW_COMMIT=
+ENV TASKFLOW_VERSION=$TASKFLOW_VERSION TASKFLOW_COMMIT=$TASKFLOW_COMMIT
 
 EXPOSE 3001
 

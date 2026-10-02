@@ -36,6 +36,8 @@ write_env() {
     -e "s|^REGISTRATION_MODE=.*|REGISTRATION_MODE=open|" \
     "$ENV_FILE" > "$tmp"
   mv "$tmp" "$ENV_FILE"
+  # Build these images here rather than pull a release.
+  echo "TASKFLOW_VERSION=ci" >> "$ENV_FILE"
   # The end-to-end suite logs in dozens of times from one IP; production
   # limits (5 logins per 15 minutes) are covered by the API's unit tests.
 }
@@ -58,10 +60,15 @@ case "${1:-}" in
     [ -f "$ENV_FILE" ] || write_env
     docker network inspect traefik >/dev/null 2>&1 || docker network create traefik >/dev/null
     # api and web only: worker and migrate reuse the api image.
-    $COMPOSE build api web
+    TASKFLOW_BUILD_VERSION=ci-build $COMPOSE build api web
     $COMPOSE up -d
     wait_for https://localhost/health "API (via Traefik)"
     wait_for https://localhost/ "Web app (via Traefik)"
+    # The version baked in at build time reaches the running API.
+    $COMPOSE exec -T api wget -qO- http://127.0.0.1:3001/health | grep -q '"version":"ci-build"' || {
+      echo "The API doesn't report the version it was built with" >&2
+      exit 1
+    }
     $COMPOSE ps --format '{{.Service}}: {{.Status}}'
     ;;
   logs)

@@ -1,40 +1,62 @@
 # Upgrading
 
-> **Recommended:** run `make upgrade` (or `bash scripts/upgrade.sh`). It pulls
-> the latest source, takes a pre-upgrade backup, preserves the running images
-> as a `:rollback` tag, migrates, and automatically rolls back to the previous
-> images if the health check fails. The manual steps below are the fallback.
+Taskflow is published as numbered releases, listed on the
+[releases page](https://github.com/chris-billingham/taskflow/releases) with
+what changed in each. `TASKFLOW_VERSION` in `.env` is the release you run.
 
-## Standard Upgrade Procedure
+```bash
+make upgrade                    # the latest release
+make upgrade version=1.2.0      # a chosen release
+```
 
-These are the same steps `scripts/upgrade.sh` runs, minus the automatic
-rollback. (A plain `docker compose up -d` also applies pending migrations now:
-the `migrate` service runs first and the API and worker wait for it. The
-explicit step below keeps migration failures visible before anything restarts.)
+(`bash scripts/upgrade.sh [version]` does the same.) The upgrade:
+
+1. checks out that release's tag, so `docker-compose.yml` and the scripts match its images;
+2. takes a backup;
+3. sets `TASKFLOW_VERSION` and pulls the release's images (nothing is built on the server);
+4. restarts; the `migrate` service applies database migrations before the API and worker start;
+5. waits for the API to report the new version, and goes back to the previous release if it doesn't.
+
+Images come from `ghcr.io/chris-billingham/taskflow-api` and `taskflow-web`,
+for `linux/amd64` and `linux/arm64`. To check which release is running:
+
+```bash
+docker compose -f docker-compose.yml exec api wget -qO- http://127.0.0.1:3001/health
+```
+
+### Coming from an install before versioned releases
+
+Installs from before 1.0 built their images on the server, and their
+`upgrade.sh` pulls `main` rather than a release. Update the checkout once,
+then upgrade as usual:
+
+```bash
+git pull --ff-only
+make upgrade
+```
+
+### Running your own build
+
+`bash scripts/upgrade.sh --build` builds images from the current checkout and
+sets `TASKFLOW_VERSION=local`. It's for testing changes; go back to a release
+with `make upgrade`.
+
+## Upgrading by hand
+
+These are the steps `scripts/upgrade.sh` runs, without the automatic rollback:
 
 ```bash
 # 1. Back up first
 make backup
 
-# 2. Note the commit you are on, so you can return to it
-git rev-parse HEAD
+# 2. Check out the release's files
+git fetch --tags && git checkout v1.2.0
 
-# 3. Pull latest code
-git pull --ff-only
+# 3. Choose the release and pull its images
+sed -i.bak 's/^TASKFLOW_VERSION=.*/TASKFLOW_VERSION=1.2.0/' .env
+docker compose -f docker-compose.yml pull
 
-# 4. Build the new images from source
-#    (Only if you set DOCKER_REGISTRY to a registry you publish to: replace this
-#    with `docker compose -f docker-compose.yml pull api web worker`. Never pull
-#    with the default DOCKER_REGISTRY=taskflow — that name resolves to Docker
-#    Hub, where the project does not own the `taskflow` namespace.)
-docker compose -f docker-compose.yml build api web
-
-# 5. Run migrations with the NEW image, before any container is recreated
-#    (`exec` into the running api would apply the OLD image's migrations)
-docker compose -f docker-compose.yml run --rm api \
-  sh -c "npx prisma migrate deploy --schema prisma/schema.prisma"
-
-# 6. Restart with the new images
+# 4. Restart; migrations run first
 docker compose -f docker-compose.yml up -d
 ```
 
@@ -86,20 +108,17 @@ its Socket.IO rooms and presence in process memory, so a second API container
 would silently split clients between two servers that never see each other's
 events. Expect the brief restart window above.
 
-## Rollback
+## Going back to an earlier release
 
-If the upgrade introduces a regression, return to the commit you noted in
-step 2 and restore the pre-upgrade backup (migrations are not reversible):
+`scripts/upgrade.sh` goes back by itself if the new version doesn't start.
+To go back later, run `make upgrade version=<the earlier release>`.
+Migrations aren't reversed, so if the earlier release can't run on the newer
+database, restore the backup taken before the upgrade as well:
 
 ```bash
-docker compose -f docker-compose.yml down
-git checkout <previous-commit>
-make restore
-docker compose -f docker-compose.yml up -d --build
+make upgrade version=1.1.0
+make restore file=backups/<the pre-upgrade archive>.tar.gz
 ```
-
-`scripts/upgrade.sh` does the image half of this automatically if the new
-version fails its health check.
 
 ## Breaking Changes
 
@@ -107,10 +126,10 @@ Check [CHANGELOG.md](../../CHANGELOG.md) before each upgrade. Breaking changes a
 
 ## Database Migrations
 
-Migrations run automatically during `docker compose -f docker-compose.yml exec api npx prisma migrate deploy`. They are applied in order and cannot be rolled back automatically — this is why a backup before upgrading is essential.
+The `migrate` service applies pending migrations every time the stack starts, before the API and worker. They are applied in order and can't be rolled back automatically, which is why every upgrade takes a backup first. `make migrate` runs them on their own.
 
 To view migration status:
 
 ```bash
-docker compose -f docker-compose.yml exec api npx prisma migrate status
+docker compose -f docker-compose.yml exec api ./node_modules/.bin/prisma migrate status
 ```

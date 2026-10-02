@@ -10,7 +10,7 @@
 
 ```bash
 # 1. Clone
-git clone https://github.com/your-org/taskflow.git
+git clone https://github.com/chris-billingham/taskflow.git
 cd taskflow
 
 # 2. Install dependencies
