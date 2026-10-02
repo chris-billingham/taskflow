@@ -9,6 +9,7 @@ import { activityKeys } from './activity';
 import { projectKeys } from './projects';
 import type { Project } from '@/types/project';
 import { findCachedTask, mergeTask, patchTaskCaches, snapshotTaskCaches, type TaskMapper } from './taskCache';
+import { enqueue, isNetworkError, type OutboxEntry } from './outbox';
 
 export type BulkAction =
   | 'complete'
@@ -63,17 +64,30 @@ function createTaskActions(qc: QueryClient) {
     request: () => Promise<T>;
     onSuccess?: (result: T) => void;
     failure: string;
-  }): Promise<T> {
+    /**
+     * How to send this change later if there's no connection: it stays on
+     * screen and is queued (see outbox.ts). Changes without it fail offline.
+     */
+    queue?: Omit<OutboxEntry, 'id' | 'queuedAt'>;
+  }): Promise<T | undefined> {
     inFlight.set(qc, (inFlight.get(qc) ?? 0) + 1);
+    let queued = false;
+    const queueIt = async () => {
+      await enqueue(options.queue!);
+      queued = true;
+      return undefined;
+    };
     try {
       await qc.cancelQueries({ queryKey: taskKeys.all });
       const snapshot = snapshotTaskCaches(qc);
       if (options.optimistic) patchTaskCaches(qc, options.optimistic);
+      if (options.queue && !navigator.onLine) return await queueIt();
       try {
         const result = await options.request();
         options.onSuccess?.(result);
         return result;
       } catch (err) {
+        if (options.queue && isNetworkError(err)) return await queueIt();
         for (const [key, data] of snapshot) qc.setQueryData(key, data);
         reportMutationError(err, options.failure);
         throw err;
@@ -81,7 +95,9 @@ function createTaskActions(qc: QueryClient) {
     } finally {
       const remaining = (inFlight.get(qc) ?? 1) - 1;
       inFlight.set(qc, remaining);
-      if (remaining === 0) {
+      // A queued change isn't on the server yet: refetching would show the
+      // old value over it until the queue is sent.
+      if (remaining === 0 && !queued) {
         void qc.invalidateQueries({ queryKey: taskKeys.all });
         void qc.invalidateQueries({ queryKey: activityKeys.all });
         void qc.invalidateQueries({ queryKey: trashKeys.all });
@@ -92,12 +108,19 @@ function createTaskActions(qc: QueryClient) {
   const reconcile = (id: string) => (server: Task) =>
     patchTaskCaches(qc, only(id, (task) => mergeTask(task, server)));
 
+  /** "“Buy milk”", for messages about a queued change. */
+  const named = (id: string) => {
+    const content = findCachedTask(qc, id)?.content;
+    return content ? `“${content}”` : 'A task';
+  };
+
   const uncompleteTask = (id: string) =>
     run({
       optimistic: only(id, (task) => ({ ...task, isCompleted: false, completedAt: null })),
       request: async () => (await api.post(`/tasks/${id}/uncomplete`)).data.data as Task,
       onSuccess: reconcile(id),
       failure: 'That change could not be saved',
+      queue: { method: 'post', url: `/tasks/${id}/uncomplete`, label: `Reopening ${named(id)}` },
     });
 
   const restoreTask = (id: string) =>
@@ -108,14 +131,17 @@ function createTaskActions(qc: QueryClient) {
 
   /** To the trash, with an Undo that restores it. */
   const deleteTask = async (id: string, options: ActionOptions = {}) => {
-    await run({
+    const deleted = await run({
       optimistic: only(id, () => null),
       request: async () => {
         await api.delete(`/tasks/${id}`);
+        return true;
       },
       failure: 'The task could not be deleted',
+      queue: { method: 'delete', url: `/tasks/${id}`, label: `Deleting ${named(id)}` },
     });
-    if (options.undo !== false) toastUndo('Task moved to trash', () => void restoreTask(id));
+    // Undo needs the server; a deletion queued offline has none yet.
+    if (deleted && options.undo !== false) toastUndo('Task moved to trash', () => void restoreTask(id));
   };
 
   /** "Work", "Work / Next week" or "No section", for the move toast. */
@@ -182,26 +208,46 @@ function createTaskActions(qc: QueryClient) {
     });
   };
 
-  const updateTask = (id: string, input: Record<string, unknown>) =>
-    run({
+  const updateTask = (id: string, input: Record<string, unknown>) => {
+    // Sent later, an edit must not overwrite a change made elsewhere since.
+    const version = findCachedTask(qc, id)?.version;
+    return run({
       optimistic: only(id, (task) => ({ ...task, ...input }) as Task),
       request: async () => (await api.patch(`/tasks/${id}`, input)).data.data as Task,
       onSuccess: reconcile(id),
       failure: 'That change could not be saved',
+      queue: {
+        method: 'patch',
+        url: `/tasks/${id}`,
+        body: version ? { ...input, ifVersion: version } : input,
+        label: `Your change to ${named(id)}`,
+      },
     });
+  };
 
   return {
-    createTask: (input: CreateTaskInput) =>
-      run({
-        request: async () => (await api.post('/tasks', input)).data.data as Task,
+    createTask: (input: CreateTaskInput) => {
+      // Its id is chosen here, so sending it again later can't add it twice.
+      const body = { ...input, id: crypto.randomUUID() };
+      return run({
+        request: async () => (await api.post('/tasks', body)).data.data as Task,
         failure: 'The task could not be added',
-      }),
+        queue: { method: 'post', url: '/tasks', body, label: `Adding “${input.content}”`, adds: true },
+      });
+    },
 
     quickAddTask: (text: string, projectId?: string, context?: QuickAddContext) =>
       run({
         request: async () =>
           (await api.post('/tasks/quick-add', { text, projectId, ...context })).data.data as Task,
         failure: 'The task could not be added',
+        queue: {
+          method: 'post',
+          url: '/tasks/quick-add',
+          body: { text, projectId, ...context },
+          label: `Adding “${text}”`,
+          adds: true,
+        },
       }),
 
     updateTask,
@@ -234,8 +280,10 @@ function createTaskActions(qc: QueryClient) {
           if (server.id === id) reconcile(id)(server);
         },
         failure: 'The task could not be completed',
+        queue: { method: 'post', url: `/tasks/${id}/complete`, label: `Completing ${named(id)}` },
       });
-      if (options.undo !== false) {
+      // No undo for a completion queued offline: it isn't on the server yet.
+      if (result && options.undo !== false) {
         toastUndo('Task completed', () => {
           // Undoing a recurring completion also takes back the next occurrence.
           if (result.id !== id) void deleteTask(result.id, { undo: false });

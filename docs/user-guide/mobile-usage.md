@@ -47,9 +47,17 @@ The installed app opens in its own window, starting on Today.
 
 ## Offline
 
-Once you've opened Taskflow on a device, it opens without a connection too. It shows what you last loaded on that device (pages you've visited in the last three days) with a banner saying you're offline. You can read, but changes aren't saved until you're back online; a change you try to make offline is undone with a message saying why. Pages you haven't visited won't have anything to show.
+Once you've opened Taskflow on a device, it opens without a connection too. It shows what you last loaded on that device (pages you've visited in the last three days) with a banner saying you're offline. Pages you haven't visited won't have anything to show.
 
-Signing out removes the saved copy from the device.
+You can keep working offline:
+
+- **Completing, reopening, editing and deleting tasks** take effect on screen straight away.
+- **New tasks** (Quick Add, or **Add task** in a project) are listed in the banner, "waiting to be added", and appear in their lists once they're saved.
+- The banner counts the changes waiting. They're saved, in the order you made them, as soon as you're back online, even if you closed the app in between.
+
+If someone else changed a task while you were offline, your change to it isn't saved over theirs; Taskflow tells you which change that was. Moving tasks, bulk changes, reordering and duplicating need a connection.
+
+Signing out removes the saved copy and any changes still waiting from the device.
 
 ## Push Notifications
 

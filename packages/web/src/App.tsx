@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { clearPersistedCache, PERSIST_MAX_AGE, queryPersister } from '@/queries/persistence';
+import { clearOutbox, flushOutbox, loadOutbox, useOutbox } from '@/queries/outbox';
 import { createQueryClient } from '@/queries/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { useAuthStore } from '@/stores/authStore';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { AppLayout } from '@/layouts/AppLayout';
+import { AppLayout, loadTaskPanel } from '@/layouts/AppLayout';
 import { SettingsLayout } from '@/layouts/SettingsLayout';
 import { Spinner } from '@/components/ui/Spinner';
 import { ToastContainer } from '@/components/ui/ToastContainer';
@@ -27,12 +28,14 @@ const Register = lazy(() => import('@/pages/auth/Register'));
 const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/pages/auth/ResetPassword'));
 const VerifyEmail = lazy(() => import('@/pages/auth/VerifyEmail'));
-const Label = lazy(() => import('@/pages/app/Label'));
+const loadLabel = () => import('@/pages/app/Label');
+const Label = lazy(loadLabel);
 const TaskLink = lazy(() => import('@/pages/app/TaskLink'));
 const Trash = lazy(() => import('@/pages/app/Trash'));
 const ArchivedProjects = lazy(() => import('@/pages/app/ArchivedProjects'));
 const Assigned = lazy(() => import('@/pages/app/Assigned'));
-const Filter = lazy(() => import('@/pages/app/Filter'));
+const loadFilter = () => import('@/pages/app/Filter');
+const Filter = lazy(loadFilter);
 const FiltersLabels = lazy(() => import('@/pages/app/FiltersLabels'));
 const WorkspaceSettingsPage = lazy(() => import('@/pages/settings/Workspace'));
 const NotificationSettings = lazy(() => import('@/pages/settings/Notifications'));
@@ -72,14 +75,36 @@ function App() {
     cachedFor.current = userId;
     queryClient.clear();
     void clearPersistedCache();
+    void clearOutbox();
   }, [userId, queryClient]);
 
-  // Back online after starting offline: get a session, then fresh data.
+  // Changes made offline (this user's), sent once there's a session.
   useEffect(() => {
-    const onOnline = () => void initialize();
+    void loadOutbox(userId).then(() => {
+      if (userId && navigator.onLine) void flushOutbox(queryClient);
+    });
+  }, [userId, queryClient]);
+
+  // Try again every 30 seconds while changes are waiting and we're online
+  // (the server was briefly unavailable, say).
+  const waiting = useOutbox((s) => s.entries.length > 0);
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setInterval(() => {
+      if (navigator.onLine && useAuthStore.getState().isAuthenticated) void flushOutbox(queryClient);
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [waiting, queryClient]);
+
+  // Back online: get a session, send what was changed offline, then fresh data.
+  useEffect(() => {
+    const onOnline = () =>
+      void initialize().then(() => {
+        if (useAuthStore.getState().isAuthenticated) void flushOutbox(queryClient);
+      });
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
-  }, [initialize]);
+  }, [initialize, queryClient]);
 
   // At the app root, not in AppLayout. Mounted only there, the theme was never
   // applied on any route AppLayout doesn't wrap — so loading or refreshing any
@@ -92,11 +117,16 @@ function App() {
     initialize();
   }, [initialize]);
 
-  // Warm the other daily views while the browser is idle.
+  // Warm the other daily views, and the task panel, while the browser is
+  // idle. Besides being quicker, it means the service worker has them cached
+  // before they're needed offline.
   useEffect(() => {
     const prefetch = () => {
       void loadUpcoming();
       void loadProject();
+      void loadTaskPanel();
+      void loadFilter();
+      void loadLabel();
     };
     if ('requestIdleCallback' in window) {
       const id = window.requestIdleCallback(prefetch, { timeout: 5000 });

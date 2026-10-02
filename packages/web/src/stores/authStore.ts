@@ -140,6 +140,9 @@ export const useAuthStore = create<AuthState>()(
             localStorage.removeItem(key);
           }
           await clearPersistedCache();
+          // Changes queued offline go too (imported lazily: the queue
+          // imports the API client, which imports this store).
+          await import('@/queries/outbox').then((m) => m.clearOutbox()).catch(() => {});
           window.location.href = '/login';
         }
       },

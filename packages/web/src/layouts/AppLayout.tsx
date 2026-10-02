@@ -9,9 +9,17 @@ import { SyncStatus } from '@/components/ui/SyncStatus';
 import { SearchModal } from '@/components/search/SearchModal';
 // The panel (comments, Markdown, attachments, pickers) loads the first time a
 // task is opened, not with the app.
-const TaskPanel = lazy(() =>
-  import('@/components/task/TaskPanel').then((m) => ({ default: m.TaskPanel })),
-);
+/** Shown when a task is opened but the panel's code couldn't be loaded. */
+function PanelUnavailable() {
+  return (
+    <div role="alert" className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-700">
+      Task details can't be opened without a connection yet. Try again once you're back online.
+    </div>
+  );
+}
+
+export const loadTaskPanel = () => import('@/components/task/TaskPanel');
+const TaskPanel = lazy(() => loadTaskPanel().then((m) => ({ default: m.TaskPanel })));
 import { useTaskActions } from '@/queries/taskActions';
 import { OpenTaskProvider } from '@/hooks/useTaskPanel';
 import { BulkActionBar } from '@/components/task/BulkActionBar';
@@ -23,15 +31,19 @@ import { CommandPalette } from '@/components/layout/CommandPalette';
 import { ShortcutsSheet } from '@/components/layout/ShortcutsSheet';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { useLayoutWidth } from '@/hooks/useWideLayout';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useOnline } from '@/hooks/useOnline';
 
 export function AppLayout() {
+  const [searchParams] = useSearchParams();
+  const openTaskId = searchParams.get('task');
+  const online = useOnline();
   // Boards and calendars use the whole width (useWideLayout).
   const wide = useLayoutWidth((st) => st.wide);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const { quickAddTask } = useTaskActions();
-  const [searchParams] = useSearchParams();
   const taskOpen = searchParams.has('task');
 
   // A selection belongs to the page it was made on.
@@ -126,11 +138,16 @@ export function AppLayout() {
         </main>
       </div>
 
-      {/* The open task (?task= in the URL), over whichever page is showing */}
+      {/* The open task (?task= in the URL), over whichever page is showing.
+          Its own error boundary: if the panel's code can't load (offline,
+          before it was ever opened), that's said here instead of the whole
+          app failing. Keyed so opening another task, or reconnecting, retries. */}
       {taskOpen && (
-        <Suspense fallback={null}>
-          <TaskPanel />
-        </Suspense>
+        <ErrorBoundary key={`${openTaskId}:${online}`} fallback={<PanelUnavailable />}>
+          <Suspense fallback={null}>
+            <TaskPanel />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       <BulkActionBar />
