@@ -4,6 +4,46 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Phase 7: self-hosting and integrations
+
+- **Versioned releases.** Pushing a version tag publishes images for amd64
+  and arm64 to `ghcr.io/chris-billingham/taskflow-api` and `-web`, and a
+  GitHub release with its notes. Servers no longer build images:
+  `TASKFLOW_VERSION` in `.env` picks the release, `install.sh` uses the
+  latest, and `make upgrade [version=1.2.0]` checks out that release,
+  backs up, pulls, migrates, checks the new version is running, and goes
+  back to the previous one if it isn't. `DOCKER_REGISTRY` and `IMAGE_TAG`
+  are gone. The web image runs nginx as an unprivileged user.
+- **Know when something is wrong.** Admin console **System** panel: the
+  release, database, Redis, background worker (from a heartbeat), queue
+  depth, and failed jobs, which can be run again or discarded.
+  `/health/live` and `/health/ready`, a Prometheus `/metrics` endpoint
+  (optionally behind `METRICS_TOKEN`), and a worker healthcheck that
+  notices a lost Redis connection or a stuck process.
+- **Two-factor sign-in** with an authenticator app and ten single-use
+  recovery codes. Admins can turn it off for someone who lost their phone.
+  The login response can now be a challenge (`twoFactorRequired`), with
+  `POST /auth/login/two-factor` as the second step.
+- **Single sign-on** with OpenID Connect (Authentik, Keycloak, Google
+  Workspace…), following the sign-up policy and still asking for
+  Taskflow's own second factor. Accounts made this way can choose a
+  password later.
+- **Calendar feeds:** a private iCal link per project or filter for
+  Apple, Google or Outlook calendars.
+- **Webhooks:** a project's admins can send its task and comment events
+  to n8n, Zapier or scripts, signed with HMAC-SHA256, retried, and kept
+  away from private addresses unless allowed.
+- **Import and export.** Export is now a ZIP of everything in your
+  projects, attachments included, that any Taskflow can import. Imports
+  also read Todoist CSVs and backups, and plain CSVs.
+- **History is pruned:** activity after a year and read notifications
+  after 90 days by default (`ACTIVITY_RETENTION_DAYS`,
+  `NOTIFICATION_RETENTION_DAYS`).
+- **CI** checks every Monday that each image an install pulls is still
+  published.
+- **Fixed:** labels not linked to their fields on the Account page and in
+  inputs without a name, and unnamed icon buttons on filter pages.
+
 ### Phase 6: mobile-ready API and sync
 
 - **Install Taskflow as an app.** The web app can be installed from the
