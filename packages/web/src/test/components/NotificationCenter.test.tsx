@@ -55,4 +55,29 @@ describe('NotificationCenter', () => {
     await waitFor(() => expect(allRead).toBe(true));
     expect(screen.getAllByRole('button', { name: 'Notifications' })).toHaveLength(2);
   });
+
+  it('opens the join page for a workspace invite', async () => {
+    server.use(
+      http.get(`${API}/notifications`, () =>
+        HttpResponse.json(
+          ok(
+            [
+              {
+                ...notification('n1', 'Workspace invitation'),
+                type: 'WORKSPACE_INVITE',
+                data: { workspaceId: 'w1', inviteToken: 'tok-1' },
+              },
+            ],
+            { nextCursor: null, unreadCount: 1 },
+          ),
+        ),
+      ),
+      http.post(`${API}/notifications/mark-read`, () => HttpResponse.json({ success: true })),
+    );
+    const { user } = renderPage(<NotificationCenter />);
+
+    await user.click(await screen.findByRole('button', { name: /notifications/i }));
+    await user.click(await screen.findByText('Workspace invitation'));
+    await waitFor(() => expect(screen.getByTestId('current-url').textContent).toBe('/join'));
+  });
 });

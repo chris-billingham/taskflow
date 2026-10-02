@@ -11,11 +11,6 @@ import api from '@/services/api';
 import { toastError } from '@/stores/toastStore';
 
 // Server-side NotificationType enum values for the mutable types.
-//
-// PROJECT_SHARED is deliberately absent: there is no per-project sharing in the
-// product (ProjectMember rows are read but never written — access comes from
-// workspace membership), so nothing can ever emit it. The server still accepts
-// the value so anyone who muted it before it was hidden can still save.
 const NOTIFICATION_TYPES = [
   { key: 'TASK_ASSIGNED', label: 'Task assigned to you', description: 'When someone assigns a task to you' },
   { key: 'TASK_DUE_SOON', label: 'Task due soon', description: 'When a task you own is due today, or within the hour if it has a time' },
@@ -23,6 +18,7 @@ const NOTIFICATION_TYPES = [
   { key: 'COMMENT_ON_TASK', label: 'Comment on your task', description: 'When someone comments on a task you created, are assigned, or replied to' },
   { key: 'MENTION_IN_COMMENT', label: '@mention in comment', description: 'When someone writes @your-name in a comment' },
   { key: 'WORKSPACE_INVITE', label: 'Workspace invite', description: 'When you receive a workspace invitation' },
+  { key: 'PROJECT_SHARED', label: 'Project shared with you', description: 'When someone shares a project with you' },
 ] as const;
 
 type NotificationTypeKey = (typeof NOTIFICATION_TYPES)[number]['key'];

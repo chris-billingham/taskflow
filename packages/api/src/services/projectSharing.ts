@@ -2,7 +2,7 @@ import type { ProjectRole } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import { hasProjectAccess, requireProjectAccess } from './access.js';
-import { createNotification } from './notificationService.js';
+import { notify } from './notificationService.js';
 import { logActivity } from './activityService.js';
 import { logFailure } from '../config/logger.js';
 import { refreshUserRooms } from '../websocket/handlers.js';
@@ -67,7 +67,7 @@ export async function shareProject(projectId: string, input: ShareProjectInput, 
   emitToUser(invitee.id, WS_EVENTS.PROJECT_SHARED, { projectId });
 
   const actor = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-  createNotification(
+  notify(
     invitee.id,
     'PROJECT_SHARED',
     `${actor?.name ?? 'Someone'} shared “${project.name}” with you`,

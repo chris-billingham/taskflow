@@ -32,7 +32,10 @@ export function NotificationCenter() {
 
     // Navigate based on notification data
     const data = notification.data as Record<string, string> | null;
-    if (data?.taskId && data?.projectId) {
+    if (notification.type === 'WORKSPACE_INVITE' && data?.inviteToken) {
+      // The same page the emailed link opens, which accepts the invite.
+      navigate(`/join#token=${encodeURIComponent(data.inviteToken)}`);
+    } else if (data?.taskId && data?.projectId) {
       navigate(`/projects/${data.projectId}?task=${data.taskId}`);
     } else if (data?.projectId) {
       navigate(`/projects/${data.projectId}`);
