@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   registerSchema,
@@ -8,6 +8,8 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
   loginResponse,
+  signedInResponse,
+  twoFactorLoginSchema,
   registerResponse,
   refreshResponse,
   registrationStatusSchema,
@@ -33,6 +35,15 @@ const refreshCookieOptions = {
   path: '/api/v1/auth',
   maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
 };
+
+type SignedIn = Awaited<ReturnType<typeof authService.completeTwoFactorLogin>>;
+
+/** Browsers keep the refresh token in an httpOnly cookie; apps keep it themselves (e.g. the iOS keychain). */
+function sendSignedIn(reply: FastifyReply, client: 'web' | 'app', { user, accessToken, refreshToken }: SignedIn) {
+  if (client === 'app') return { success: true as const, data: { user, accessToken, refreshToken } };
+  reply.setCookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions);
+  return { success: true as const, data: { user, accessToken } };
+}
 
 // Everything here is reachable without a token.
 const tags = ['Auth'];
@@ -86,23 +97,44 @@ export async function authRoutes(fastify: FastifyInstance) {
       schema: {
         tags,
         security,
-        summary: 'Sign in: returns an access token and sets the refresh cookie',
+        summary:
+          'Sign in: returns an access token and sets the refresh cookie, or a challenge when the account uses two-factor sign-in',
         body: loginSchema,
         response: { 200: loginResponse },
       },
     },
     async (request, reply) => {
       const { email, password, client, deviceName } = request.body;
-      const { user, accessToken, refreshToken } = await authService.login(email, password, {
+      const result = await authService.login(email, password, {
         client,
         deviceName,
         userAgent: request.headers['user-agent'],
       });
-      // Browsers keep the refresh token in an httpOnly cookie; apps keep it
-      // themselves (e.g. in the iOS keychain).
-      if (client === 'app') return { success: true as const, data: { user, accessToken, refreshToken } };
-      reply.setCookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions);
-      return { success: true as const, data: { user, accessToken } };
+      if ('twoFactorRequired' in result) return { success: true as const, data: result };
+      return sendSignedIn(reply, client, result);
+    },
+  );
+
+  app.post(
+    '/login/two-factor',
+    {
+      config: { rateLimit: { max: rateLimitMax(10), timeWindow: '15 minutes' } },
+      schema: {
+        tags,
+        security,
+        summary: 'Sign in, step two: the challenge from /auth/login and a code from the authenticator app (or a recovery code)',
+        body: twoFactorLoginSchema,
+        response: { 200: signedInResponse },
+      },
+    },
+    async (request, reply) => {
+      const { challengeToken, code, recoveryCode, client, deviceName } = request.body;
+      const result = await authService.completeTwoFactorLogin(
+        challengeToken,
+        { code, recoveryCode },
+        { client, deviceName, userAgent: request.headers['user-agent'] },
+      );
+      return sendSignedIn(reply, client, result);
     },
   );
 

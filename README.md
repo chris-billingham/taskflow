@@ -132,7 +132,7 @@ bash scripts/install.sh
 | [Configuration](docs/admin-guide/configuration.md) | All environment variables |
 | [User Management](docs/admin-guide/user-management.md) | Admin role, creating and suspending accounts |
 | [Backup & Restore](docs/admin-guide/backup-restore.md) | Data backup procedures |
-| [Devices & Tokens](docs/user-guide/devices-and-tokens.md) | Signed-in devices, personal access tokens |
+| [Signing In Securely](docs/user-guide/devices-and-tokens.md) | Two-factor sign-in, signed-in devices, personal access tokens |
 | [Architecture](docs/development/architecture.md) | System design |
 | [Building an API Client](docs/development/api-clients.md) | Sign-in for apps, access tokens |
 | [Releasing](docs/development/releasing.md) | Publishing a version: images and release notes |

@@ -57,6 +57,12 @@ export async function deleteUser(id: string): Promise<void> {
   await api.delete(`/admin/users/${id}`);
 }
 
+/** For someone who lost their phone and recovery codes; their password still applies. */
+export async function resetTwoFactor(id: string): Promise<string> {
+  const { data } = await api.delete(`/admin/users/${id}/two-factor`);
+  return data.message;
+}
+
 /** Pulls the server's message out of an axios error, with a usable fallback. */
 export function adminErrorMessage(err: unknown, fallback: string): string {
   const message = (err as { response?: { data?: { message?: string } } })?.response?.data

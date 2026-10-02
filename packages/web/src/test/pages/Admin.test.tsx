@@ -41,6 +41,7 @@ const ADMIN_USER: AdminUser = {
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
   lastLoginAt: '2026-07-20T00:00:00Z',
+  twoFactorEnabledAt: null,
 };
 
 const REGULAR_USER: AdminUser = {

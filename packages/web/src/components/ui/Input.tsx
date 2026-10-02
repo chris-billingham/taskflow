@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, forwardRef, ReactNode } from 'react';
+import { InputHTMLAttributes, forwardRef, ReactNode, useId } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -8,8 +8,9 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, icon, className = '', ...props }, ref) => {
-    // Use provided id, or fall back to name for label association
-    const inputId = props.id ?? props.name;
+    // The label needs an id to point at: the given one, the name, or a generated one.
+    const generatedId = useId();
+    const inputId = props.id ?? props.name ?? generatedId;
 
     return (
       <div className="w-full">

@@ -6,6 +6,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../errors/index.j
 import { disconnectUserSockets } from '../websocket/events.js';
 import { deleteUser as deleteAccount, provisionUser } from './userService.js';
 import type { Prisma, SystemRole } from '@prisma/client';
+import * as twoFactor from './twoFactor.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Instance administration: the account lifecycle for the whole deployment.
@@ -32,6 +33,7 @@ const ADMIN_USER_SELECT = {
   createdAt: true,
   updatedAt: true,
   lastLoginAt: true,
+  twoFactorEnabledAt: true,
 } satisfies Prisma.UserSelect;
 
 // Unambiguous alphabet: no O/0, I/l/1 — these get read aloud and retyped.
@@ -358,6 +360,16 @@ export async function deleteUser(actorId: string, targetId: string) {
  * Addresses with no account are reported, not created: registration still has
  * to happen first, and isBootstrapAdminEmail makes that sign-up an admin.
  */
+/**
+ * Turn off someone's two-factor sign-in, for when they've lost both their
+ * phone and their recovery codes. Their password still applies.
+ */
+export async function resetTwoFactor(targetId: string) {
+  const user = await getUserOrThrow(targetId);
+  await twoFactor.disable(targetId);
+  return { message: `Two-factor sign-in is off for ${user.name}. They can sign in with their password and set it up again.` };
+}
+
 export async function syncAdminsFromEnv(
   adminEmails: string[] = env.ADMIN_EMAILS,
   log?: { info: (msg: string) => void; warn: (msg: string) => void },

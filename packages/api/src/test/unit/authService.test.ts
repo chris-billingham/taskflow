@@ -222,6 +222,7 @@ describe('login', () => {
 
   it('returns user and tokens on valid credentials', async () => {
     const result = await login('test@example.com', 'correct-password');
+    if ('twoFactorRequired' in result) throw new Error('unexpected two-factor challenge');
     expect(result.user.email).toBe('test@example.com');
     expect(result.accessToken).toBe('access-token');
     expect(result.refreshToken).toBe('refresh-token');

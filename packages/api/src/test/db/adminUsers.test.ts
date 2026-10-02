@@ -109,6 +109,7 @@ describe('createUser', () => {
     });
 
     const result = await login(email, temporaryPassword as string);
+    if ('twoFactorRequired' in result) throw new Error('unexpected two-factor challenge');
     expect(result.user.email).toBe(email);
     expect(result.accessToken).toEqual(expect.any(String));
   });
@@ -145,6 +146,7 @@ describe('suspension', () => {
     const password = temporaryPassword as string;
 
     const session = await login(email, password);
+    if ('twoFactorRequired' in session) throw new Error('unexpected two-factor challenge');
     const created = await prisma.user.findUniqueOrThrow({ where: { email } });
     expect(await prisma.refreshToken.count({ where: { userId: created.id } })).toBe(1);
 

@@ -73,6 +73,7 @@ admins). From there you can:
 | **Suspend** | Blocks sign-in, deletes every refresh token, drops live sockets. Keeps all data. Reversible. |
 | **Reactivate** | Restores sign-in with the same password. |
 | **Reset password** | Sets a new password and revokes all that user's sessions. Generated passwords are shown once. |
+| **Turn off two-factor** | For someone who lost their phone and recovery codes (accounts with two-factor sign-in show **2FA**). Their password still applies, and they can set it up again. Make sure the request really comes from them first. |
 | **Delete** | Permanently removes the account. Irreversible. |
 
 ### Temporary passwords

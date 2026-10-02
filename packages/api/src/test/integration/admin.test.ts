@@ -48,6 +48,7 @@ const SAMPLE_USER = {
   createdAt: new Date('2026-09-01T09:00:00.000Z'),
   updatedAt: new Date('2026-09-01T09:00:00.000Z'),
   lastLoginAt: null,
+  twoFactorEnabledAt: null,
 };
 
 let app: FastifyInstance;

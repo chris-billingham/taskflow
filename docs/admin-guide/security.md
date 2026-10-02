@@ -44,8 +44,9 @@ Traefik middleware. See [installation.md](installation.md).
 - Access tokens expire after 15 minutes; websocket sessions are force-disconnected when their token expires
 - Refresh tokens expire after 30 days, are stored in httpOnly `SameSite=Strict` cookies (native apps hold theirs themselves), are rotated on every use (reuse detection revokes all sessions), and are stored server-side only as sha256 hashes
 - People can see and sign out their devices, and create personal access tokens (read-only or read-write, optionally expiring, stored as sha256 hashes). Tokens can't change passwords, manage sessions or tokens, delete accounts or reach the admin console
+- Two-factor sign-in (TOTP, RFC 6238) with ten single-use recovery codes. After the password, `/auth/login` returns a five-minute challenge instead of a session; a code then completes the sign-in. Codes can't be replayed (the last accepted time step is stored), and ten wrong codes in 15 minutes lock that account's second step for 15 minutes, whatever the address. Setting up, replacing recovery codes and turning it off all need the password; turning it off also needs a code. TOTP secrets are stored in the database (recovery codes only as sha256 hashes), so treat database backups as sensitive
 - Deleting an account requires the account's password
-- Rate limits: global 300 requests/minute per IP, plus stricter budgets on auth routes (login 5/15min, register 5/h, password reset 3/h, verify-email 10/15min) and uploads (60/10min). Limits are Redis-backed, so they survive restarts and are shared across processes. `RATE_LIMIT_MULTIPLIER` scales them all (minimum 1), for teams that share one office IP
+- Rate limits: global 300 requests/minute per IP, plus stricter budgets on auth routes (login 5/15min, two-factor step 10/15min, register 5/h, password reset 3/h, verify-email 10/15min) and uploads (60/10min). Limits are Redis-backed, so they survive restarts and are shared across processes. `RATE_LIMIT_MULTIPLIER` scales them all (minimum 1), for teams that share one office IP
 
 ### `TRUST_PROXY_HOPS` and rate limiting
 

@@ -96,3 +96,64 @@ describe('Login — sign-up link', () => {
     expect(screen.getByRole('link', { name: 'Sign up' })).toBeInTheDocument();
   });
 });
+
+describe('Login — two-factor sign-in', () => {
+  const SIGNED_IN = {
+    user: { id: 'u1', email: 'sam@example.com', name: 'Sam', role: 'USER', isActive: true },
+    accessToken: 'access',
+  };
+
+  function serveTwoFactor(secondStep: (body: Record<string, string>) => unknown) {
+    mockApi.post.mockImplementation(async (url: string, body: Record<string, string>) => {
+      if (url === '/auth/login') return { data: { success: true, data: { twoFactorRequired: true, challengeToken: 'challenge' } } };
+      if (url === '/auth/login/two-factor') return secondStep(body);
+      return { data: { success: true } };
+    });
+  }
+
+  it('asks for a code after the password and signs in with it', async () => {
+    serveTwoFactor(() => ({ data: { success: true, data: SIGNED_IN } }));
+    const user = await submit('sam@example.com');
+    await user.type(await screen.findByLabelText('Code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/auth/login/two-factor', { challengeToken: 'challenge', code: '123456' }),
+    );
+  });
+
+  it('accepts a recovery code instead', async () => {
+    serveTwoFactor(() => ({ data: { success: true, data: SIGNED_IN } }));
+    const user = await submit('sam@example.com');
+    await user.click(await screen.findByRole('button', { name: 'Use a recovery code instead' }));
+    await user.type(screen.getByLabelText('Recovery code'), 'abcde-23456');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/auth/login/two-factor', {
+        challengeToken: 'challenge',
+        recoveryCode: 'abcde-23456',
+      }),
+    );
+  });
+
+  it('says when a code is wrong and lets you try again', async () => {
+    serveTwoFactor(() => {
+      throw { response: { status: 401, data: { error: 'INVALID_TWO_FACTOR_CODE', message: "That code isn't right." } } };
+    });
+    const user = await submit('sam@example.com');
+    await user.type(await screen.findByLabelText('Code'), '000000');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
+    expect(await screen.findByText("That code isn't right.")).toBeInTheDocument();
+    expect(screen.getByLabelText('Code')).toHaveValue('');
+  });
+
+  it('goes back to the password when the challenge has expired', async () => {
+    serveTwoFactor(() => {
+      throw { response: { status: 401, data: { error: 'CHALLENGE_EXPIRED', message: 'That sign-in took too long. Enter your password again.' } } };
+    });
+    const user = await submit('sam@example.com');
+    await user.type(await screen.findByLabelText('Code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
+    expect(await screen.findByText(/took too long/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+  });
+});

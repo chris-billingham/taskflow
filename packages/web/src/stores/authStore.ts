@@ -28,7 +28,9 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /** Resolves to a challenge when the account uses two-factor sign-in; finish with completeTwoFactor. */
+  login: (email: string, password: string) => Promise<{ challengeToken: string } | null>;
+  completeTwoFactor: (challengeToken: string, factor: { code?: string; recoveryCode?: string }) => Promise<void>;
   /** Resolves to whether the address must be verified before signing in. */
   register: (
     name: string,
@@ -77,10 +79,21 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (email: string, password: string) => {
         const { data } = await api.post('/auth/login', { email, password });
+        if (data.data.twoFactorRequired) return { challengeToken: data.data.challengeToken as string };
         const { user, accessToken } = data.data;
 
         setAccessToken(accessToken);
         // Refresh token is set as an httpOnly cookie by the server
+        set({ user, isAuthenticated: true, isLoading: false });
+        syncBrowserTimezone(user, get().updateUser);
+        return null;
+      },
+
+      completeTwoFactor: async (challengeToken, factor) => {
+        const { data } = await api.post('/auth/login/two-factor', { challengeToken, ...factor });
+        const { user, accessToken } = data.data;
+
+        setAccessToken(accessToken);
         set({ user, isAuthenticated: true, isLoading: false });
         syncBrowserTimezone(user, get().updateUser);
       },

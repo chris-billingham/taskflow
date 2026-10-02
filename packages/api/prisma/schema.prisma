@@ -133,10 +133,17 @@ model User {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   lastLoginAt      DateTime?
+  // Two-factor sign-in (TOTP). The secret is stored during setup and takes
+  // effect once twoFactorEnabledAt is set. totpLastStep is the time step of
+  // the last code accepted, so the same code can't be used twice.
+  totpSecret         String?
+  twoFactorEnabledAt DateTime?
+  totpLastStep       Int?
 
   // Relations
   refreshTokens     RefreshToken[]
   apiTokens         ApiToken[]
+  recoveryCodes     RecoveryCode[]
   ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
   ownedProjects     Project[]         @relation("ProjectOwner")
@@ -221,6 +228,21 @@ model ApiToken {
 
   @@index([userId])
   @@map("api_tokens")
+}
+
+// One-time codes for signing in when the authenticator app isn't available.
+// Stored as sha256 (they're random, not passwords); each works once.
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("recovery_codes")
 }
 
 // ─── Workspace ──────────────────────────────────────────────────────────────

@@ -132,6 +132,16 @@ export default function Admin() {
       }
     });
 
+  const handleResetTwoFactor = (user: AdminUser) =>
+    withBusy(user.id, async () => {
+      try {
+        pushToast(await adminApi.resetTwoFactor(user.id), 'success');
+        await refresh();
+      } catch (err) {
+        pushToast(adminApi.adminErrorMessage(err, 'Failed to turn off two-factor sign-in'), 'error');
+      }
+    });
+
   const handleDelete = (user: AdminUser) =>
     withBusy(user.id, async () => {
       try {
@@ -251,6 +261,7 @@ export default function Admin() {
                 onToggleRole={handleToggleRole}
                 onToggleActive={handleToggleActive}
                 onResetPassword={handleResetPassword}
+                onResetTwoFactor={handleResetTwoFactor}
                 onDelete={setPendingDelete}
               />
             ))}

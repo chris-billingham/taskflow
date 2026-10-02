@@ -14,6 +14,7 @@ export const adminUserSchema = z.object({
   createdAt: instant,
   updatedAt: instant,
   lastLoginAt: instant.nullable(),
+  twoFactorEnabledAt: instant.nullable(),
 });
 export type AdminUser = Wire<typeof adminUserSchema>;
 

@@ -53,3 +53,27 @@ export function verifyRefreshToken(token: string): TokenPayload | null {
     return null;
   }
 }
+
+// Signed with a key of its own, so a sign-in challenge can never pass as an
+// access token (or the reverse).
+const challengeKey = () => `${env.JWT_SECRET}:two-factor-challenge`;
+const CHALLENGE_EXPIRY = '5m';
+
+/** Proof that someone just entered the right password, pending their second factor. */
+export function generateChallengeToken(userId: string): string {
+  return jwt.sign({ purpose: 'two-factor' }, challengeKey(), {
+    subject: userId,
+    expiresIn: CHALLENGE_EXPIRY,
+    algorithm: JWT_ALGORITHM,
+  });
+}
+
+/** The user id a challenge token was issued for, or null if invalid or expired. */
+export function verifyChallengeToken(token: string): string | null {
+  try {
+    const payload = jwt.verify(token, challengeKey(), { algorithms: [JWT_ALGORITHM] }) as jwt.JwtPayload;
+    return payload.purpose === 'two-factor' && payload.sub ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}

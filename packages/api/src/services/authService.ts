@@ -3,6 +3,8 @@ import { prisma } from '../config/database.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import {
   generateAccessToken,
+  generateChallengeToken,
+  verifyChallengeToken,
   generateRefreshToken,
   verifyRefreshToken,
   type TokenPayload,
@@ -27,6 +29,7 @@ import {
 } from './mailService.js';
 import { logger } from '../config/logger.js';
 import { deviceNameFromUserAgent } from '../utils/deviceName.js';
+import * as twoFactor from './twoFactor.js';
 
 const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value).digest('hex');
@@ -204,6 +207,15 @@ export async function login(email: string, password: string, device: DeviceInfo 
     );
   }
 
+  // The password was right; the second factor comes next.
+  if (user.twoFactorEnabledAt) {
+    return { twoFactorRequired: true as const, challengeToken: generateChallengeToken(user.id) };
+  }
+
+  return signIn(user, device);
+}
+
+async function signIn(user: Parameters<typeof publicUser>[0], device: DeviceInfo) {
   await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
@@ -215,6 +227,31 @@ export async function login(email: string, password: string, device: DeviceInfo 
     user: publicUser(user),
     ...tokens,
   };
+}
+
+/** Step two for an account with two-factor sign-in: the challenge from step one, plus a code. */
+export async function completeTwoFactorLogin(
+  challengeToken: string,
+  factor: { code?: string; recoveryCode?: string },
+  device: DeviceInfo = { client: 'web' },
+) {
+  const userId = verifyChallengeToken(challengeToken);
+  if (!userId) {
+    throw new UnauthorizedError('That sign-in took too long. Enter your password again.', 'CHALLENGE_EXPIRED');
+  }
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  // Re-checked: the account may have been suspended, or two-factor turned
+  // off, in the minutes since the password was entered.
+  if (!user || !user.isActive || !user.twoFactorEnabledAt) {
+    throw new UnauthorizedError('That sign-in took too long. Enter your password again.', 'CHALLENGE_EXPIRED');
+  }
+  if (!(await twoFactor.verifySecondFactor(user.id, factor))) {
+    throw new UnauthorizedError(
+      factor.recoveryCode ? "That recovery code isn't right, or has been used." : "That code isn't right.",
+      'INVALID_TWO_FACTOR_CODE',
+    );
+  }
+  return signIn(user, device);
 }
 
 export async function logout(refreshToken: string) {

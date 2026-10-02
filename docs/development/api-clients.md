@@ -33,6 +33,17 @@ Content-Type: application/json
 
 The response carries `accessToken` (valid 15 minutes) and `refreshToken` (valid 30 days, single use). Store the refresh token somewhere safe, such as the iOS keychain.
 
+If the account uses two-factor sign-in, the response is a challenge instead: `{ "twoFactorRequired": true, "challengeToken": "…" }`. Ask for a code and send it within five minutes, with the same `client` and `deviceName`:
+
+```http
+POST /api/v1/auth/login/two-factor
+Content-Type: application/json
+
+{ "challengeToken": "…", "code": "123456", "client": "app", "deviceName": "Pat's iPhone" }
+```
+
+Send `recoveryCode` instead of `code` for a recovery code. The response is the usual `accessToken` and `refreshToken`. A wrong code gets `401` with `INVALID_TWO_FACTOR_CODE` (ask again); `CHALLENGE_EXPIRED` means starting over with the password; `429` means too many wrong codes. In the Swift client, the login response's `data` has `value1` (a `SignedIn`) or `value2` (a `TwoFactorChallenge`) set.
+
 - Send `Authorization: Bearer <accessToken>` on every request.
 - When a request returns 401, exchange the refresh token for a new pair and retry once:
 

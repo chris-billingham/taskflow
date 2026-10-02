@@ -21,9 +21,45 @@ export type AuthUser = Wire<typeof authUserSchema>;
  * POST /auth/login. The web app's refresh token arrives as an httpOnly
  * cookie; an `app` client gets it here instead.
  */
-export const loginResponse = ok(
-  z.object({ user: authUserSchema, accessToken: z.string(), refreshToken: z.string().optional() }),
-);
+export const signedInSchema = z.object({ user: authUserSchema, accessToken: z.string(), refreshToken: z.string().optional() });
+export type SignedIn = Wire<typeof signedInSchema>;
+
+/**
+ * The password was right, and the account uses two-factor sign-in: send a
+ * code (or a recovery code) with this token to POST /auth/login/two-factor
+ * within five minutes.
+ */
+export const twoFactorChallengeSchema = z.object({
+  twoFactorRequired: z.literal(true),
+  challengeToken: z.string(),
+});
+export type TwoFactorChallenge = Wire<typeof twoFactorChallengeSchema>;
+
+export const loginResponse = ok(z.union([signedInSchema, twoFactorChallengeSchema]));
+
+/** POST /auth/login/two-factor: signed in, as from a login without two-factor. */
+export const signedInResponse = ok(signedInSchema);
+
+/** GET /auth/two-factor */
+export const twoFactorStatusSchema = z.object({
+  enabled: z.boolean(),
+  enabledAt: instant.nullable(),
+  recoveryCodesLeft: z.number().int(),
+});
+export type TwoFactorStatus = Wire<typeof twoFactorStatusSchema>;
+
+/** POST /auth/two-factor/setup: the secret to add to an authenticator app. */
+export const twoFactorSetupSchema = z.object({
+  secret: z.string(),
+  otpauthUrl: z.string(),
+  /** The otpauth URL as a QR code: an SVG data URL. */
+  qrCode: z.string(),
+});
+export type TwoFactorSetup = Wire<typeof twoFactorSetupSchema>;
+
+/** Shown once, when two-factor is turned on or the codes are replaced. */
+export const recoveryCodesSchema = z.object({ recoveryCodes: z.array(z.string()) });
+export type RecoveryCodes = Wire<typeof recoveryCodesSchema>;
 
 /**
  * POST /auth/register. When the instance verifies email addresses there is no

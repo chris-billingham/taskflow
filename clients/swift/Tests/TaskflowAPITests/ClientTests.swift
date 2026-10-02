@@ -41,7 +41,17 @@ func client(_ transport: StubTransport) -> Client {
   let sent = try JSONSerialization.jsonObject(with: Data(transport.sentBody!.utf8)) as! [String: String]
   #expect(sent["client"] == "app")
   #expect(sent["deviceName"] == "Sam's iPhone")
-  #expect(try output.ok.body.json.data.refreshToken == "refresh")
+  #expect(try output.ok.body.json.data.value1?.refreshToken == "refresh")
+}
+
+@Test func twoFactorAccountsGetAChallengeInstead() async throws {
+  let transport = StubTransport(#"{"success":true,"data":{"twoFactorRequired":true,"challengeToken":"challenge"}}"#)
+  let output = try await client(transport).postApiV1AuthLogin(
+    body: .json(.init(email: "sam@example.com", password: "secret", client: .app)))
+
+  let data = try output.ok.body.json.data
+  #expect(data.value1 == nil)
+  #expect(data.value2?.challengeToken == "challenge")
 }
 
 @Test func syncDecodesTheWireFormat() async throws {

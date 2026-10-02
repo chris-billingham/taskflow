@@ -19,9 +19,11 @@ import { attachmentRoutes } from './attachments.js';
 import { adminRoutes } from './admin.js';
 import { sessionRoutes } from './sessions.js';
 import { syncRoutes } from './sync.js';
+import { twoFactorRoutes } from './twoFactor.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/api/v1/auth' });
+  app.register(twoFactorRoutes, { prefix: '/api/v1/auth/two-factor' });
   app.register(userRoutes, { prefix: '/api/v1/users' });
   app.register(adminRoutes, { prefix: '/api/v1/admin' });
   app.register(workspaceRoutes, { prefix: '/api/v1/workspaces' });

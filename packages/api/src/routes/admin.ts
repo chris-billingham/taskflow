@@ -229,6 +229,23 @@ export async function adminRoutes(fastify: FastifyInstance) {
   );
 
   app.delete(
+    '/users/:id/two-factor',
+    {
+      schema: {
+        tags,
+        summary: "Turn off an account's two-factor sign-in (lost phone and recovery codes)",
+        params: adminUserParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => {
+      const result = await adminService.resetTwoFactor(request.params.id);
+      request.log.info({ targetId: request.params.id, adminId: request.user.id }, 'two-factor sign-in reset by admin');
+      return { success: true as const, ...result };
+    },
+  );
+
+  app.delete(
     '/users/:id',
     {
       schema: { tags, summary: 'Delete an account', params: adminUserParamsSchema, response: { 200: messageResponse } },

@@ -46,6 +46,42 @@
           "isActive"
         ]
       },
+      "SignedInInput": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AuthUserInput"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "accessToken"
+        ]
+      },
+      "TwoFactorChallengeInput": {
+        "type": "object",
+        "properties": {
+          "twoFactorRequired": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "challengeToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "twoFactorRequired",
+          "challengeToken"
+        ]
+      },
       "SessionInput": {
         "type": "object",
         "properties": {
@@ -2980,6 +3016,44 @@
           "name",
           "role",
           "isActive"
+        ],
+        "additionalProperties": false
+      },
+      "SignedIn": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AuthUser"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "accessToken"
+        ],
+        "additionalProperties": false
+      },
+      "TwoFactorChallenge": {
+        "type": "object",
+        "properties": {
+          "twoFactorRequired": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "challengeToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "twoFactorRequired",
+          "challengeToken"
         ],
         "additionalProperties": false
       },
@@ -6042,7 +6116,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "summary": "Sign in: returns an access token and sets the refresh cookie",
+        "summary": "Sign in: returns an access token and sets the refresh cookie, or a challenge when the account uses two-factor sign-in",
         "tags": [
           "Auth"
         ],
@@ -6100,23 +6174,91 @@
                       ]
                     },
                     "data": {
-                      "type": "object",
-                      "properties": {
-                        "user": {
-                          "$ref": "#/components/schemas/AuthUser"
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/SignedIn"
                         },
-                        "accessToken": {
-                          "type": "string"
-                        },
-                        "refreshToken": {
-                          "type": "string"
+                        {
+                          "$ref": "#/components/schemas/TwoFactorChallenge"
                         }
-                      },
-                      "required": [
-                        "user",
-                        "accessToken"
-                      ],
-                      "additionalProperties": false
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login/two-factor": {
+      "post": {
+        "summary": "Sign in, step two: the challenge from /auth/login and a code from the authenticator app (or a recovery code)",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "challengeToken": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "code": {
+                    "type": "string",
+                    "maxLength": 10
+                  },
+                  "recoveryCode": {
+                    "type": "string",
+                    "maxLength": 32
+                  },
+                  "client": {
+                    "default": "web",
+                    "type": "string",
+                    "enum": [
+                      "web",
+                      "app"
+                    ]
+                  },
+                  "deviceName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "challengeToken"
+                ]
+              }
+            }
+          }
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SignedIn"
                     }
                   },
                   "required": [
@@ -6506,6 +6648,333 @@
           }
         },
         "security": [],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/two-factor": {
+      "get": {
+        "summary": "Whether two-factor sign-in is on",
+        "tags": [
+          "Two-factor"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "enabledAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "recoveryCodesLeft": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "enabledAt",
+                        "recoveryCodesLeft"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/two-factor/setup": {
+      "post": {
+        "summary": "Start setting up: a new secret for an authenticator app",
+        "tags": [
+          "Two-factor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "secret": {
+                          "type": "string"
+                        },
+                        "otpauthUrl": {
+                          "type": "string"
+                        },
+                        "qrCode": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "secret",
+                        "otpauthUrl",
+                        "qrCode"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/two-factor/enable": {
+      "post": {
+        "summary": "Turn on with a code from the app; returns recovery codes, shown once",
+        "tags": [
+          "Two-factor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 10
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "recoveryCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "recoveryCodes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/two-factor/recovery-codes": {
+      "post": {
+        "summary": "Replace the recovery codes; the old ones stop working",
+        "tags": [
+          "Two-factor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "recoveryCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "recoveryCodes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/two-factor/disable": {
+      "post": {
+        "summary": "Turn off: needs the password and a current code or recovery code",
+        "tags": [
+          "Two-factor"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "code": {
+                    "type": "string",
+                    "maxLength": 10
+                  },
+                  "recoveryCode": {
+                    "type": "string",
+                    "maxLength": 32
+                  }
+                },
+                "required": [
+                  "password"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Default Response",
@@ -7410,6 +7879,11 @@
                                 "nullable": true,
                                 "type": "string",
                                 "format": "date-time"
+                              },
+                              "twoFactorEnabledAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time"
                               }
                             },
                             "required": [
@@ -7422,7 +7896,8 @@
                               "emailVerified",
                               "createdAt",
                               "updatedAt",
-                              "lastLoginAt"
+                              "lastLoginAt",
+                              "twoFactorEnabledAt"
                             ],
                             "additionalProperties": false
                           }
@@ -7669,6 +8144,11 @@
                           "type": "string",
                           "format": "date-time"
                         },
+                        "twoFactorEnabledAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time"
+                        },
                         "timezone": {
                           "type": "string"
                         },
@@ -7764,6 +8244,7 @@
                         "createdAt",
                         "updatedAt",
                         "lastLoginAt",
+                        "twoFactorEnabledAt",
                         "timezone",
                         "workspaceMemberships",
                         "_count"
@@ -7923,6 +8404,11 @@
                           "nullable": true,
                           "type": "string",
                           "format": "date-time"
+                        },
+                        "twoFactorEnabledAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time"
                         }
                       },
                       "required": [
@@ -7935,7 +8421,8 @@
                         "emailVerified",
                         "createdAt",
                         "updatedAt",
-                        "lastLoginAt"
+                        "lastLoginAt",
+                        "twoFactorEnabledAt"
                       ],
                       "additionalProperties": false
                     }
@@ -8043,6 +8530,11 @@
                           "nullable": true,
                           "type": "string",
                           "format": "date-time"
+                        },
+                        "twoFactorEnabledAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time"
                         }
                       },
                       "required": [
@@ -8055,7 +8547,8 @@
                         "emailVerified",
                         "createdAt",
                         "updatedAt",
-                        "lastLoginAt"
+                        "lastLoginAt",
+                        "twoFactorEnabledAt"
                       ],
                       "additionalProperties": false
                     }
@@ -8141,6 +8634,53 @@
                   "required": [
                     "success",
                     "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}/two-factor": {
+      "delete": {
+        "summary": "Turn off an account's two-factor sign-in (lost phone and recovery codes)",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
                   ],
                   "additionalProperties": false
                 }

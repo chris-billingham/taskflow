@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, KeyRound } from 'lucide-react';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +20,81 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
+/** Step two for an account with two-factor sign-in. */
+function SecondFactor({
+  challengeToken,
+  onSignedIn,
+  onExpired,
+}: {
+  challengeToken: string;
+  onSignedIn: () => void;
+  onExpired: (message: string) => void;
+}) {
+  const completeTwoFactor = useAuthStore((s) => s.completeTwoFactor);
+  const [useRecovery, setUseRecovery] = useState(false);
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!value.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await completeTwoFactor(challengeToken, useRecovery ? { recoveryCode: value } : { code: value });
+      onSignedIn();
+    } catch (err: any) {
+      const data = err.response?.data;
+      if (data?.error === 'CHALLENGE_EXPIRED') return onExpired(data.message);
+      setError(data?.message || 'That code isn’t right.');
+      setValue('');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      {error && (
+        <Alert variant="error" onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        {useRecovery
+          ? 'Enter one of the recovery codes you saved when you set up two-factor sign-in. Each works once.'
+          : 'Enter the 6-digit code from your authenticator app.'}
+      </p>
+      <Input
+        key={useRecovery ? 'recovery' : 'code'}
+        label={useRecovery ? 'Recovery code' : 'Code'}
+        autoFocus
+        autoComplete="one-time-code"
+        inputMode={useRecovery ? 'text' : 'numeric'}
+        placeholder={useRecovery ? 'abcde-23456' : '123456'}
+        icon={<KeyRound className="w-4 h-4" />}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+      <Button type="submit" isLoading={submitting} className="w-full">
+        Verify
+      </Button>
+      <button
+        type="button"
+        className="w-full text-center text-sm text-primary-500 hover:text-primary-600"
+        onClick={() => {
+          setUseRecovery(!useRecovery);
+          setValue('');
+          setError('');
+        }}
+      >
+        {useRecovery ? 'Use a code from your app instead' : 'Use a recovery code instead'}
+      </button>
+    </form>
+  );
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -29,6 +104,8 @@ export default function Login() {
   // failure the user can fix from here, by asking for a fresh link.
   const [unverified, setUnverified] = useState(false);
   const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  // Set once the password is right on an account with two-factor sign-in.
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const registrationOpen = useRegistrationOpen();
   // Someone arriving from an invite link may sign up even when sign-up is
   // closed; the server checks the invitation.
@@ -56,7 +133,8 @@ export default function Login() {
       setError('');
       setUnverified(false);
       setResendState('idle');
-      await login(formData.email, formData.password);
+      const challenge = await login(formData.email, formData.password);
+      if (challenge) return setChallengeToken(challenge.challengeToken);
       navigate(redirect || '/today', { replace: true });
     } catch (err: any) {
       setUnverified(err.response?.data?.error === 'EMAIL_NOT_VERIFIED');
@@ -74,6 +152,21 @@ export default function Login() {
     }
     setResendState('sent');
   };
+
+  if (challengeToken) {
+    return (
+      <AuthLayout title="Two-factor sign-in" subtitle="One more step to sign in">
+        <SecondFactor
+          challengeToken={challengeToken}
+          onSignedIn={() => navigate(redirect || '/today', { replace: true })}
+          onExpired={(message) => {
+            setChallengeToken(null);
+            setError(message);
+          }}
+        />
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to your account">

@@ -39,6 +39,28 @@ export const loginSchema = z.object({
   ...sessionClient,
 });
 
+const secondFactor = {
+  /** Six digits from the authenticator app. */
+  code: z.string().trim().max(10).optional(),
+  /** One of the recovery codes, used up once accepted. */
+  recoveryCode: z.string().trim().max(32).optional(),
+};
+const oneFactor = (v: { code?: string; recoveryCode?: string }) => !!v.code !== !!v.recoveryCode;
+const oneFactorMessage = { message: 'Enter a code from your authenticator app, or a recovery code' };
+
+/** Step two of signing in to an account with two-factor sign-in. */
+export const twoFactorLoginSchema = z
+  .object({ challengeToken: z.string().min(1), ...secondFactor, ...sessionClient })
+  .refine(oneFactor, oneFactorMessage);
+
+/** Turning two-factor on needs a code from the newly added app. */
+export const enableTwoFactorSchema = z.object({ code: z.string().trim().min(6).max(10) });
+
+/** Turning it off needs the password and a current second factor. */
+export const disableTwoFactorSchema = z
+  .object({ password: z.string().min(1, 'Password is required'), ...secondFactor })
+  .refine(oneFactor, oneFactorMessage);
+
 /** /auth/refresh and /auth/logout: apps send their refresh token here; the web app sends none (it's in the cookie). */
 // Fastify hands over an empty body as null.
 export const refreshSchema = z.object({ refreshToken: z.string().min(1).optional() }).nullish();
@@ -47,6 +69,9 @@ export const refreshSchema = z.object({ refreshToken: z.string().min(1).optional
 export const deleteAccountSchema = z.object({
   password: z.string().min(1, 'Enter your password to confirm'),
 });
+
+/** Security changes (setting up two-factor, new recovery codes) ask for the password again. */
+export const passwordConfirmationSchema = deleteAccountSchema;
 
 export const forgotPasswordSchema = z.object({
   email: emailAddress('Invalid email address'),
@@ -68,6 +93,7 @@ export const changePasswordSchema = z.object({
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type TwoFactorLoginInput = z.infer<typeof twoFactorLoginSchema>;
 export type RefreshInput = z.infer<typeof refreshSchema>;
 export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

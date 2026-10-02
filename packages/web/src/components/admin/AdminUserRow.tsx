@@ -8,6 +8,7 @@ import {
   UserCheck,
   Trash2,
   ArrowUpDown,
+  ShieldOff,
 } from 'lucide-react';
 import type { AdminUser } from '@/services/admin';
 import { formatUserDate } from '@/utils/dateFormat';
@@ -24,6 +25,7 @@ export interface AdminUserRowProps {
   onToggleRole: (user: AdminUser) => void;
   onToggleActive: (user: AdminUser) => void;
   onResetPassword: (user: AdminUser) => void;
+  onResetTwoFactor: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
 }
 
@@ -34,6 +36,7 @@ export function AdminUserRow({
   onToggleRole,
   onToggleActive,
   onResetPassword,
+  onResetTwoFactor,
   onDelete,
 }: AdminUserRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -93,6 +96,15 @@ export function AdminUserRow({
           Last seen {formatDate(user.lastLoginAt)}
         </span>
 
+        {user.twoFactorEnabledAt && (
+          <span
+            className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/50 dark:text-green-400"
+            title="Signs in with a code from an authenticator app"
+          >
+            2FA
+          </span>
+        )}
+
         {!user.isActive && (
           <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-950/50">
             Suspended
@@ -141,6 +153,16 @@ export function AdminUserRow({
                 <KeyRound className="h-4 w-4" />
                 Reset password
               </button>
+
+              {user.twoFactorEnabledAt && (
+                <button
+                  onClick={run(() => onResetTwoFactor(user))}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700"
+                >
+                  <ShieldOff className="h-4 w-4" />
+                  Turn off two-factor
+                </button>
+              )}
 
               {canSuspend && (
                 <button
