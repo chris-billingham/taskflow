@@ -47,6 +47,28 @@ export interface BuildAppOptions {
   docs?: boolean;
 }
 
+/**
+ * Drop component schemas no operation reaches. Each named contract schema is
+ * also emitted in an input form (`TaskInput`…); only responses use them, so
+ * those were dead weight in the document and in generated clients.
+ */
+function pruneUnusedSchemas<T>(document: T): T {
+  const doc = document as { paths?: unknown; components?: { schemas?: Record<string, unknown> } };
+  const schemas = doc.components?.schemas;
+  if (!schemas) return document;
+  const refs = (value: unknown) => [...JSON.stringify(value).matchAll(/#\/components\/schemas\/([\w.-]+)/g)].map((m) => m[1]);
+  const reached = new Set<string>();
+  const queue = refs(doc.paths);
+  while (queue.length) {
+    const name = queue.pop()!;
+    if (reached.has(name) || !schemas[name]) continue;
+    reached.add(name);
+    queue.push(...refs(schemas[name]));
+  }
+  for (const name of Object.keys(schemas)) if (!reached.has(name)) delete schemas[name];
+  return document;
+}
+
 /** Constant-time check of an `Authorization: Bearer <token>` header. */
 function bearerMatches(header: string | undefined, token: string): boolean {
   const given = Buffer.from(header?.startsWith('Bearer ') ? header.slice(7) : '');
@@ -158,7 +180,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
         return { ...out, url: route.url.length > 1 ? route.url.replace(/\/$/, '') : route.url };
       },
       // Named contract schemas become shared components (see contract openapiNames.ts).
-      transformObject: jsonSchemaTransformObject,
+      transformObject: (documentObject) => pruneUnusedSchemas(jsonSchemaTransformObject(documentObject)),
     });
 
     await server.register(swaggerUi, {
