@@ -108,6 +108,9 @@ const envSchema = z.object({
   APNS_BUNDLE_ID: z.string().optional(),
   // Tests only: send to this host instead of Apple's.
   APNS_HOST: z.string().optional(),
+  // Required as a Bearer token on GET /metrics when set. /metrics isn't
+  // routed through Traefik either way; this guards it inside the network.
+  METRICS_TOKEN: z.union([z.literal(''), z.string().min(16, 'METRICS_TOKEN must be at least 16 characters')]).optional(),
 });
 
 /**

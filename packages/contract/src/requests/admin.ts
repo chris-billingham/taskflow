@@ -53,3 +53,8 @@ export const updateInstanceSettingsSchema = z.object({
 export const adminUserParamsSchema = z.object({
   id: z.string().min(1, 'User ID is required'),
 });
+
+export const adminJobParamsSchema = z.object({
+  queue: z.string().min(1).max(64),
+  id: z.string().min(1).max(200),
+});

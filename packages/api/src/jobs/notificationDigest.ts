@@ -4,8 +4,9 @@ import { prisma } from '../config/database.js';
 import { sendEmailNotification } from '../services/notificationService.js';
 import { isValidTimeZone } from '../utils/dates.js';
 import { logger } from '../config/logger.js';
+import { QUEUE_NAMES } from './queues.js';
 
-const QUEUE_NAME = 'notification-digest';
+const QUEUE_NAME = QUEUE_NAMES.digests;
 
 // Local hour at which a user receives their digest.
 const DIGEST_LOCAL_HOUR = 8;

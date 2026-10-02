@@ -10,6 +10,7 @@ import { CredentialReveal } from '@/components/admin/CredentialReveal';
 import * as adminApi from '@/services/admin';
 import type { AdminUser, AdminStats } from '@/services/admin';
 import { SignupSettings } from '@/components/admin/SignupSettings';
+import { SystemStatus } from '@/components/admin/SystemStatus';
 
 const PAGE_SIZE = 25;
 
@@ -202,6 +203,8 @@ export default function Admin() {
       )}
 
       <SignupSettings />
+
+      <SystemStatus />
 
       {credential && (
         <CredentialReveal

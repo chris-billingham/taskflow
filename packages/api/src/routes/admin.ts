@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
@@ -15,6 +16,9 @@ import {
   adminCreatedUserSchema,
   adminPasswordResetSchema,
   instanceSettingsSchema,
+  adminSystemSchema,
+  adminFailedJobSchema,
+  adminJobParamsSchema,
   messageResponse,
   ok,
 } from '@taskflow/contract';
@@ -23,6 +27,7 @@ import { requireAdmin } from '../middleware/requireAdmin.js';
 import { requireSession } from '../middleware/requireSession.js';
 import * as adminService from '../services/adminService.js';
 import * as instanceSettings from '../services/instanceSettingsService.js';
+import * as systemStatus from '../services/systemStatus.js';
 import { rateLimitMax } from '../config/rateLimits.js';
 
 const tags = ['Admin'];
@@ -41,6 +46,61 @@ export async function adminRoutes(fastify: FastifyInstance) {
     '/stats',
     { schema: { tags, summary: 'Account counts', response: { 200: ok(adminStatsSchema) } } },
     async () => ({ success: true as const, data: await adminService.getStats() }),
+  );
+
+  // The running release, dependencies, worker and queues.
+  app.get(
+    '/system',
+    { schema: { tags, summary: 'Release, dependency and queue status', response: { 200: ok(adminSystemSchema) } } },
+    async () => ({ success: true as const, data: await systemStatus.systemStatus() }),
+  );
+
+  app.get(
+    '/jobs/failed',
+    {
+      schema: {
+        tags,
+        summary: 'Background jobs that ran out of attempts',
+        response: { 200: ok(z.array(adminFailedJobSchema)) },
+      },
+    },
+    async () => ({ success: true as const, data: await systemStatus.failedJobs() }),
+  );
+
+  app.post(
+    '/jobs/:queue/:id/retry',
+    {
+      schema: {
+        tags,
+        summary: 'Run a failed job again',
+        params: adminJobParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => {
+      const { queue, id } = request.params;
+      await systemStatus.retryFailedJob(queue, id);
+      request.log.info({ queue, jobId: id, adminId: request.user.id }, 'failed job retried');
+      return { success: true as const, message: 'Job queued to run again' };
+    },
+  );
+
+  app.delete(
+    '/jobs/:queue/:id',
+    {
+      schema: {
+        tags,
+        summary: 'Discard a failed job',
+        params: adminJobParamsSchema,
+        response: { 200: messageResponse },
+      },
+    },
+    async (request) => {
+      const { queue, id } = request.params;
+      await systemStatus.removeFailedJob(queue, id);
+      request.log.info({ queue, jobId: id, adminId: request.user.id }, 'failed job discarded');
+      return { success: true as const, message: 'Job discarded' };
+    },
   );
 
   // Deployment-wide settings. Only sign-up policy for now.

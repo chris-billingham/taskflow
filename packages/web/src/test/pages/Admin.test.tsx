@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import '../mocks/api';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { mockApi } from '../mocks/api';
 
 vi.mock('@/services/admin', async () => {
   const actual = await vi.importActual<typeof import('@/services/admin')>(
@@ -68,11 +69,30 @@ function signIn(role: 'ADMIN' | 'USER') {
 // through it, so the harness needs it to assert on what the admin actually sees.
 const renderPage = () =>
   render(
-    <MemoryRouter>
-      <Admin />
-      <ToastContainer />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter>
+        <Admin />
+        <ToastContainer />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
+
+const SYSTEM = {
+  version: '1.2.0',
+  commit: 'abcdef1234567890',
+  database: 'ok',
+  redis: 'ok',
+  worker: { status: 'error', lastSeen: null, version: null },
+  queues: [{ name: 'notification-delivery', waiting: 3, active: 0, delayed: 1, failed: 1 }],
+};
+const FAILED_JOB = {
+  queue: 'notification-delivery',
+  id: '42',
+  name: 'deliver',
+  reason: 'SMTP server said no',
+  attempts: 5,
+  failedAt: '2026-10-01T09:00:00.000Z',
+};
 
 beforeEach(() => {
   signIn('ADMIN');
@@ -94,6 +114,12 @@ beforeEach(() => {
     unverified: 0,
   });
   vi.mocked(adminApi.fetchSettings).mockResolvedValue({ registrationMode: 'invite' });
+  mockApi.get.mockImplementation(async (url: string) => {
+    if (url === '/admin/system') return { data: { success: true, data: SYSTEM } };
+    if (url === '/admin/jobs/failed') return { data: { success: true, data: [FAILED_JOB] } };
+    throw new Error(`unexpected GET ${url}`);
+  });
+  mockApi.post.mockResolvedValue({ data: { success: true, message: 'ok' } });
 });
 
 describe('admin console access', () => {
@@ -332,5 +358,23 @@ describe('Admin sign-up settings', () => {
 
     await waitFor(() => expect(inviteOnly).toBeChecked());
     expect(await screen.findByText(/sign-up settings/i)).toBeInTheDocument();
+  });
+});
+
+describe('Admin system status', () => {
+  it('shows the release, a worker that has stopped, queue depth and failed jobs', async () => {
+    renderPage();
+    expect(await screen.findByText('Taskflow 1.2.0')).toBeInTheDocument();
+    expect(screen.getByText(/hasn’t reported in/i)).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: 'Email and push delivery' })).toBeInTheDocument();
+    expect(await screen.findByText('SMTP server said no')).toBeInTheDocument();
+  });
+
+  it('runs a failed job again', async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Run deliver again' }));
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith('/admin/jobs/notification-delivery/42/retry'),
+    );
   });
 });

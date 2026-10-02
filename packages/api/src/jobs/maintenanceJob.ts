@@ -5,8 +5,9 @@ import { sweepOrphanedAttachments } from '../services/fileService.js';
 import { purgeExpiredTrash } from '../services/taskService.js';
 import { pruneTombstones } from '../services/deltaSync.js';
 import { logger } from '../config/logger.js';
+import { QUEUE_NAMES } from './queues.js';
 
-const QUEUE_NAME = 'maintenance';
+const QUEUE_NAME = QUEUE_NAMES.maintenance;
 
 export function createMaintenanceQueue() {
   return new Queue(QUEUE_NAME, {

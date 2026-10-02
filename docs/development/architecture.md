@@ -122,7 +122,7 @@ Queues are defined in `src/jobs/` and started by `initializeWorkers()` in `src/w
 | `maintenance` | 03:30 UTC daily | Deletes expired refresh tokens and workspace invites |
 | `notification-delivery` | on demand | Email and push for a notification the API created; 4 attempts with backoff |
 
-The process entry point is `src/worker-entry.ts`. In production it runs in the separate `worker` container. In development the API runs the same workers in-process. `RUN_WORKERS_IN_API` controls this: it defaults to on when `NODE_ENV` isn't `production`, and you can set it to `true` for a deployment without a worker container.
+The process entry point is `src/worker-entry.ts`. In production it runs in the separate `worker` container. In development the API runs the same workers in-process. `RUN_WORKERS_IN_API` controls this: it defaults to on when `NODE_ENV` isn't `production`, and you can set it to `true` for a deployment without a worker container. Whichever process runs the workers records a heartbeat every 15 seconds (the Redis key `taskflow:worker:heartbeat` and the file `/tmp/taskflow-worker-heartbeat`), read by the admin System panel, `/metrics` and the worker container's healthcheck. The queue names are in `src/jobs/queues.ts`.
 
 Activity logging does not use a queue. Services write `ActivityLog` rows in-process right after the change. `notify()` saves the in-app notification in the request, then queues its email and push (`jobs/notificationDelivery.ts`), so a slow mail server never holds up the action. If the queue can't be reached, or `NOTIFICATION_DELIVERY=inline` (as in the test suites), they're sent directly.
 

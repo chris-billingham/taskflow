@@ -75,3 +75,39 @@ export const adminPasswordResetSchema = z.object({
 export const instanceSettingsSchema = z.object({
   registrationMode: z.enum(['invite', 'open']),
 });
+
+const checkResult = z.enum(['ok', 'error']);
+
+/** GET /admin/system: the running release and the state of what it depends on. */
+export const adminSystemSchema = z.object({
+  version: z.string(),
+  commit: z.string().nullable(),
+  database: checkResult,
+  redis: checkResult,
+  worker: z.object({
+    status: checkResult,
+    lastSeen: instant.nullable(),
+    version: z.string().nullable(),
+  }),
+  queues: z.array(
+    z.object({
+      name: z.string(),
+      waiting: z.number().int(),
+      active: z.number().int(),
+      delayed: z.number().int(),
+      failed: z.number().int(),
+    }),
+  ),
+});
+export type AdminSystem = Wire<typeof adminSystemSchema>;
+
+/** A background job that ran out of attempts. */
+export const adminFailedJobSchema = z.object({
+  queue: z.string(),
+  id: z.string(),
+  name: z.string(),
+  reason: z.string(),
+  attempts: z.number().int(),
+  failedAt: instant.nullable(),
+});
+export type AdminFailedJob = Wire<typeof adminFailedJobSchema>;

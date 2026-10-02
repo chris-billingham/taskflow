@@ -16,6 +16,9 @@ export default defineConfig({
       DATABASE_URL:
         process.env.TEST_DATABASE_URL ??
         'postgresql://taskflow:taskflow@localhost:5432/taskflow',
+      // Redis database 1, so test jobs never reach a dev server's in-process
+      // workers (database 0).
+      REDIS_URL: process.env.TEST_REDIS_URL ?? 'redis://localhost:6379/1',
       JWT_SECRET: 'db-test-jwt-secret-0123456789abcdef00',
       JWT_REFRESH_SECRET: 'db-test-refresh-secret-0123456789abcd',
       NODE_ENV: 'test',

@@ -5,12 +5,13 @@ import { prisma } from '../config/database.js';
 import { createBullMQConnection } from '../config/redis.js';
 import { logger } from '../config/logger.js';
 import { sendEmailNotification, sendPushNotification } from '../services/notificationService.js';
+import { QUEUE_NAMES } from './queues.js';
 
 // Email and push for a notification, sent by the worker. The in-app
 // notification is saved (and shown live) in the request itself; only the
 // slow, failure-prone sending happens here, with retries.
 
-const QUEUE_NAME = 'notification-delivery';
+const QUEUE_NAME = QUEUE_NAMES.delivery;
 
 let producer: Queue | null = null;
 

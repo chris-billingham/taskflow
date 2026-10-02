@@ -196,6 +196,7 @@ services:
       RATE_LIMIT_MULTIPLIER: ${RATE_LIMIT_MULTIPLIER:-1}
       REGISTRATION_MODE: ${REGISTRATION_MODE:-invite}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -245,11 +246,13 @@ services:
     logging: *default-logging
     command: ["node", "dist/worker-entry.js"]
     healthcheck:
-      # Process-liveness: the worker exposes no port; a wedged event loop is
-      # caught because node can't spawn the probe once it deadlocks hard.
-      test: ["CMD-SHELL", "pgrep -f worker-entry || exit 1"]
+      # The worker touches this file every 15 seconds, after recording its
+      # heartbeat in Redis; a stale file means jobs aren't running (Redis lost,
+      # event loop stuck, or the process gone).
+      test: ["CMD-SHELL", "[ -n \"$$(find /tmp/taskflow-worker-heartbeat -mmin -1 2>/dev/null)\" ]"]
       interval: 30s
       timeout: 5s
+      start_period: 30s
       retries: 3
     environment:
       NODE_ENV: production

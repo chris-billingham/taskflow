@@ -11,8 +11,9 @@ import {
   sendEmailNotification,
 } from '../services/notificationService.js';
 import { logger } from '../config/logger.js';
+import { QUEUE_NAMES } from './queues.js';
 
-const QUEUE_NAME = 'reminder-check';
+const QUEUE_NAME = QUEUE_NAMES.reminders;
 
 export function createReminderQueue() {
   return new Queue(QUEUE_NAME, {

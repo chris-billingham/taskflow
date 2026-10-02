@@ -237,6 +237,12 @@ frontend rebuild. Push is the only delivery method reminders currently use.
 
 Until all four are set, iOS devices get no push notifications (in-app and email notifications still work). Each device says whether it's a development (sandbox) or release (TestFlight, App Store) build, and is sent to the matching Apple server. A device stops getting notifications when its session is signed out, and is forgotten when Apple reports its token as unregistered.
 
+## Monitoring
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `METRICS_TOKEN` | — | When set (16+ characters), `GET /metrics` requires `Authorization: Bearer <token>`. `/metrics` is never routed through Traefik |
+
 ## Release
 
 | Variable | Default | Description |

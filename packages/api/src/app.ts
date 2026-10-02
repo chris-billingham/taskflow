@@ -10,12 +10,14 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { env } from './config/env.js';
 import { RELEASE } from './config/version.js';
+import { checkDependencies } from './services/systemStatus.js';
+import { renderMetrics } from './services/metrics.js';
+import { timingSafeEqual } from 'node:crypto';
 import { logger as rootLogger } from './config/logger.js';
 import { buildTrustProxy } from './utils/trustProxy.js';
 import { registerRoutes } from './routes/index.js';
 import { runWithRequestContext } from './utils/requestContext.js';
 import { getRedis } from './config/redis.js';
-import { prisma } from './config/database.js';
 import { Prisma } from '@prisma/client';
 import { VersionConflictError } from './errors/index.js';
 import { jsonSchemaTransform, jsonSchemaTransformObject, validatorCompiler } from 'fastify-type-provider-zod';
@@ -39,6 +41,13 @@ export interface BuildAppOptions {
   rateLimitRedis?: Redis | false;
   /** Serve Swagger UI at /api/docs. Defaults to development or ENABLE_API_DOCS. */
   docs?: boolean;
+}
+
+/** Constant-time check of an `Authorization: Bearer <token>` header. */
+function bearerMatches(header: string | undefined, token: string): boolean {
+  const given = Buffer.from(header?.startsWith('Bearer ') ? header.slice(7) : '');
+  const expected = Buffer.from(token);
+  return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
 /**
@@ -215,30 +224,6 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   // Register routes
   await server.register(registerRoutes);
 
-  // Health check route
-  async function healthCheck() {
-    const checks: Record<string, 'ok' | 'error'> = {};
-    let healthy = true;
-
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      checks.database = 'ok';
-    } catch {
-      checks.database = 'error';
-      healthy = false;
-    }
-
-    try {
-      await getRedis().ping();
-      checks.redis = 'ok';
-    } catch {
-      checks.redis = 'error';
-      healthy = false;
-    }
-
-    return { healthy, checks };
-  }
-
   /**
    * Health is reachable without authentication — Traefik routes /health publicly
    * so an external uptime monitor can reach it, and the container healthcheck
@@ -261,7 +246,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   }
 
   async function healthResponse(request: { ip: string }) {
-    const { healthy, checks } = await healthCheck();
+    const { healthy, checks } = await checkDependencies();
     return {
       statusCode: healthy ? (200 as const) : (503 as const),
       body: {
@@ -275,20 +260,43 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   const healthRoute = {
     schema: {
       tags: ['Health'],
-      summary: 'Liveness and dependency health (public)',
+      summary: 'Readiness: the API and its database and Redis (public)',
       security: [],
       response: { 200: healthSchema, 503: healthSchema },
     },
   };
 
-  server.get('/health', healthRoute, async (request, reply) => {
-    const { statusCode, body } = await healthResponse(request);
-    return reply.status(statusCode).send(body);
-  });
+  // Ready to serve: answers only when the database and Redis do. /health and
+  // /api/health are the same check under the names monitors already use.
+  for (const url of ['/health', '/health/ready', '/api/health']) {
+    server.get(url, healthRoute, async (request, reply) => {
+      const { statusCode, body } = await healthResponse(request);
+      return reply.status(statusCode).send(body);
+    });
+  }
 
-  server.get('/api/health', healthRoute, async (request, reply) => {
-    const { statusCode, body } = await healthResponse(request);
-    return reply.status(statusCode).send(body);
+  // Alive: the process answers HTTP. Nothing external is checked, so a
+  // database outage never makes a supervisor restart a healthy API.
+  server.get(
+    '/health/live',
+    {
+      schema: {
+        tags: ['Health'],
+        summary: 'Liveness: the API process answers (public)',
+        security: [],
+        response: { 200: healthSchema },
+      },
+    },
+    async () => ({ status: 'ok' as const, timestamp: new Date().toISOString() }),
+  );
+
+  // Prometheus scrape target. Not routed through Traefik; METRICS_TOKEN, when
+  // set, guards it from other containers on the same networks.
+  server.get('/metrics', { schema: { hide: true } }, async (request, reply) => {
+    if (env.METRICS_TOKEN && !bearerMatches(request.headers.authorization, env.METRICS_TOKEN)) {
+      return reply.status(401).send({ success: false, error: 'UNAUTHORIZED', message: 'Metrics token required' });
+    }
+    return reply.type('text/plain; version=0.0.4; charset=utf-8').send(await renderMetrics());
   });
 
   // API info route. No release version here: like /health, it's public.

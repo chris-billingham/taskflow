@@ -20,6 +20,7 @@ import {
 } from './jobs/dueTaskJob.js';
 import { startNotificationDeliveryWorker } from './jobs/notificationDelivery.js';
 import { logger } from './config/logger.js';
+import { startHeartbeat } from './services/workerHeartbeat.js';
 
 export async function initializeWorkers() {
   logger.info('Initializing BullMQ workers...');
@@ -52,9 +53,13 @@ export async function initializeWorkers() {
   await scheduleMaintenanceJobs(maintenanceQueue);
   logger.info('Maintenance worker started');
 
+  // Tells the admin console, /metrics and the container healthcheck that jobs run.
+  const stopHeartbeat = startHeartbeat();
+
   // Graceful shutdown handler
   const shutdown = async () => {
     logger.info('Shutting down workers...');
+    stopHeartbeat();
     await Promise.all([
       reminderWorker.close(),
       digestWorker.close(),

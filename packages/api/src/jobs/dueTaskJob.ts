@@ -4,8 +4,9 @@ import { prisma } from '../config/database.js';
 import { notify } from '../services/notificationService.js';
 import { isValidTimeZone, userDayBoundariesUTC, zonedWallClockToUTC } from '../utils/dates.js';
 import { logger } from '../config/logger.js';
+import { QUEUE_NAMES } from './queues.js';
 
-const QUEUE_NAME = 'due-task-check';
+const QUEUE_NAME = QUEUE_NAMES.dueTasks;
 
 // Date-only tasks have no instant to count down to, so their notices go out at
 // a civil hour in the owner's own timezone rather than at UTC midnight.
