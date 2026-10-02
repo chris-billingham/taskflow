@@ -190,6 +190,11 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
+      # Apple push for the iOS app (all four, or none); see docs/configuration.md.
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      APNS_PRIVATE_KEY: ${APNS_PRIVATE_KEY:-}
+      APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-}
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       TRUST_PROXY_ADDRS: ${TRUST_PROXY_ADDRS:-loopback,linklocal,uniquelocal}
@@ -289,6 +294,11 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@${DOMAIN}}
+      # Apple push for the iOS app (all four, or none); see docs/configuration.md.
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      APNS_PRIVATE_KEY: ${APNS_PRIVATE_KEY:-}
+      APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # History kept, in days (0 = forever); the nightly cleanup runs here.
       ACTIVITY_RETENTION_DAYS: ${ACTIVITY_RETENTION_DAYS:-365}
