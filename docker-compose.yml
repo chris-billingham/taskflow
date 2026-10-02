@@ -197,6 +197,13 @@ services:
       REGISTRATION_MODE: ${REGISTRATION_MODE:-invite}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_TOKEN: ${METRICS_TOKEN:-}
+      # Single sign-on (OpenID Connect); see docs/admin-guide/single-sign-on.md.
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_NAME: ${OIDC_NAME:-single sign-on}
+      OIDC_SCOPES: ${OIDC_SCOPES:-openid email profile}
+      OIDC_TRUST_EMAIL: ${OIDC_TRUST_EMAIL:-false}
     depends_on:
       postgres:
         condition: service_healthy

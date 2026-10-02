@@ -87,7 +87,8 @@ export const verifyEmailSchema = z.object({
 });
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required'),
+  /** Not needed by a single sign-on account choosing its first password. */
+  currentPassword: z.string().min(1, 'Current password is required').optional(),
   newPassword: z.string().min(8, 'New password must be at least 8 characters'),
 });
 

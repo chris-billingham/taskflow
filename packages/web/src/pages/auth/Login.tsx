@@ -11,6 +11,7 @@ import { Alert } from '@/components/ui/Alert';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import { useRegistrationOpen } from '@/hooks/useRegistrationOpen';
+import { useSsoStatus } from '@/hooks/useSsoStatus';
 import { readPendingInvite } from '@/utils/pendingInvite';
 
 const loginSchema = z.object({
@@ -19,6 +20,18 @@ const loginSchema = z.object({
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
+
+// Why single sign-on sent someone back here (the API's ?sso_error=).
+const SSO_ERRORS: Record<string, string> = {
+  not_invited:
+    'This Taskflow is invite-only, and there’s no account or invitation for your address. Ask an administrator.',
+  email_unverified: 'Your single sign-on provider hasn’t verified your email address, so Taskflow can’t use it.',
+  no_email: 'Your single sign-on provider didn’t share an email address with Taskflow.',
+  suspended: 'This account has been deactivated. Contact your administrator.',
+  expired: 'That sign-in took too long. Try again.',
+  not_configured: 'Single sign-on isn’t set up on this Taskflow.',
+  failed: 'Single sign-on didn’t work. Try again, or sign in with your password.',
+};
 
 /** Step two for an account with two-factor sign-in. */
 function SecondFactor({
@@ -99,13 +112,24 @@ export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const login = useAuthStore((s) => s.login);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    const code = searchParams.get('sso_error');
+    return code ? (SSO_ERRORS[code] ?? SSO_ERRORS.failed) : '';
+  });
   // Set when login fails only because the address is unverified — the one
   // failure the user can fix from here, by asking for a fresh link.
   const [unverified, setUnverified] = useState(false);
   const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
   // Set once the password is right on an account with two-factor sign-in.
-  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  // A single sign-on account with two-factor arrives with the challenge in
+  // the URL fragment.
+  const [challengeToken, setChallengeToken] = useState<string | null>(() => {
+    const match = window.location.hash.match(/^#two-factor=(.+)$/);
+    if (!match) return null;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    return match[1];
+  });
+  const sso = useSsoStatus();
   const registrationOpen = useRegistrationOpen();
   // Someone arriving from an invite link may sign up even when sign-up is
   // closed; the server checks the invitation.
@@ -223,6 +247,22 @@ export default function Login() {
         <Button type="submit" isLoading={isSubmitting} className="w-full">
           Sign in
         </Button>
+
+        {sso?.enabled && (
+          <>
+            <div className="flex items-center gap-3 text-xs text-gray-400" aria-hidden>
+              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+              or
+              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+            </div>
+            <a
+              href={`/api/v1/auth/oidc/start?redirect=${encodeURIComponent(redirect || '/today')}`}
+              className="flex w-full items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              Sign in with {sso.name}
+            </a>
+          </>
+        )}
 
         {offerSignUp ? (
           <p className="text-center text-sm text-gray-600 dark:text-gray-400">

@@ -20,6 +20,8 @@ export async function provisionUser(
   data: {
     email: string;
     passwordHash: string;
+    /** False for single sign-on accounts, whose passwordHash is a random placeholder. */
+    passwordSet?: boolean;
     name: string;
     emailVerified: boolean;
     role?: SystemRole;
@@ -32,6 +34,7 @@ export async function provisionUser(
     data: {
       email: data.email,
       passwordHash: data.passwordHash,
+      ...(data.passwordSet === false ? { passwordSet: false } : {}),
       name: data.name,
       emailVerified: data.emailVerified,
       emailVerifyToken: data.emailVerifyToken ?? null,
@@ -71,6 +74,7 @@ export async function getUserById(id: string) {
       role: true,
       isActive: true,
       emailVerified: true,
+      passwordSet: true,
       createdAt: true,
       updatedAt: true,
       workspaceMemberships: {
@@ -132,33 +136,54 @@ export async function updateUser(
 
 /** Throws unless `password` is the user's current password. */
 export async function confirmPassword(id: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { id }, select: { passwordHash: true } });
+  const user = await prisma.user.findUnique({ where: { id }, select: { passwordHash: true, passwordSet: true } });
+  if (user && !user.passwordSet) {
+    throw new ForbiddenError('Set a password first, in Settings → Account.', 'PASSWORD_NOT_SET');
+  }
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     // 403, not 401: a 401 would make clients think their session expired.
     throw new ForbiddenError('That password isn’t right');
   }
 }
 
+/** How recently a single sign-on account must have signed in to choose its first password. */
+const FIRST_PASSWORD_WINDOW_MS = 15 * 60_000;
+
 export async function changePassword(
   id: string,
-  currentPassword: string,
+  currentPassword: string | undefined,
   newPassword: string,
+  sessionId?: string,
 ) {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) {
     throw new NotFoundError('User not found');
   }
 
-  const valid = await verifyPassword(currentPassword, user.passwordHash);
-  if (!valid) {
-    throw new UnauthorizedError('Current password is incorrect');
+  if (user.passwordSet) {
+    const valid = !!currentPassword && (await verifyPassword(currentPassword, user.passwordHash));
+    if (!valid) {
+      throw new UnauthorizedError('Current password is incorrect');
+    }
+  } else {
+    // A single sign-on account has no password to confirm with, so it must
+    // have just signed in instead.
+    const session = sessionId
+      ? await prisma.refreshToken.findFirst({ where: { userId: id, sessionId }, select: { sessionStartedAt: true } })
+      : null;
+    if (!session || Date.now() - session.sessionStartedAt.getTime() > FIRST_PASSWORD_WINDOW_MS) {
+      throw new ForbiddenError(
+        'Sign out and sign in again with single sign-on, then set your password within 15 minutes.',
+        'REAUTH_REQUIRED',
+      );
+    }
   }
 
   const passwordHash = await hashPassword(newPassword);
 
   await prisma.user.update({
     where: { id },
-    data: { passwordHash },
+    data: { passwordHash, passwordSet: true },
   });
 
   // Invalidate all refresh tokens and kill live sockets — anything holding

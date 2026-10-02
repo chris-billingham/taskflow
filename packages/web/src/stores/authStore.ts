@@ -18,6 +18,8 @@ interface User {
   timeFormat?: string | null;
   theme?: string | null;
   emailVerified?: boolean;
+  /** False for single sign-on accounts that haven't chosen a password yet. */
+  passwordSet?: boolean;
   // Instance-level role. Only /users/me populates it, so treat a missing
   // value as USER — the server enforces the real check regardless.
   role?: SystemRole;

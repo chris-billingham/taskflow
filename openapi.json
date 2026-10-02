@@ -390,6 +390,9 @@
             "format": "date-time",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           },
+          "passwordSet": {
+            "type": "boolean"
+          },
           "workspaceMemberships": {
             "type": "array",
             "items": {
@@ -447,6 +450,7 @@
           "emailVerified",
           "createdAt",
           "updatedAt",
+          "passwordSet",
           "workspaceMemberships"
         ]
       },
@@ -3357,6 +3361,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "passwordSet": {
+            "type": "boolean"
+          },
           "workspaceMemberships": {
             "type": "array",
             "items": {
@@ -3416,6 +3423,7 @@
           "emailVerified",
           "createdAt",
           "updatedAt",
+          "passwordSet",
           "workspaceMemberships"
         ],
         "additionalProperties": false
@@ -6273,6 +6281,57 @@
         }
       }
     },
+    "/api/v1/auth/sso": {
+      "get": {
+        "summary": "Whether single sign-on is available, and its name",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "name": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "summary": "Sign out: revokes the refresh token (the cookie, or an app's token in the body)",
@@ -7209,7 +7268,6 @@
                   }
                 },
                 "required": [
-                  "currentPassword",
                   "newPassword"
                 ]
               }

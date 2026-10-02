@@ -52,6 +52,7 @@ export async function userRoutes(fastify: FastifyInstance) {
         request.user.id,
         request.body.currentPassword,
         request.body.newPassword,
+        request.user.sid,
       )),
     }),
   );

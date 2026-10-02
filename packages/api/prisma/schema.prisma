@@ -139,11 +139,15 @@ model User {
   totpSecret         String?
   twoFactorEnabledAt DateTime?
   totpLastStep       Int?
+  // False for accounts created through single sign-on until they choose a
+  // password; passwordHash then holds an unusable random value.
+  passwordSet        Boolean   @default(true)
 
   // Relations
   refreshTokens     RefreshToken[]
   apiTokens         ApiToken[]
   recoveryCodes     RecoveryCode[]
+  externalIdentities ExternalIdentity[]
   ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
   ownedProjects     Project[]         @relation("ProjectOwner")
@@ -243,6 +247,25 @@ model RecoveryCode {
 
   @@index([userId])
   @@map("recovery_codes")
+}
+
+// An account at the single sign-on provider (OIDC), linked to a Taskflow
+// account. Matched by the provider's subject, which never changes, rather
+// than by email, which can.
+model ExternalIdentity {
+  id         String    @id @default(cuid())
+  userId     String
+  provider   String
+  subject    String
+  email      String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([userId])
+  @@map("external_identities")
 }
 
 // ─── Workspace ──────────────────────────────────────────────────────────────

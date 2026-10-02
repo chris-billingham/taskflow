@@ -131,6 +131,7 @@ bash scripts/install.sh
 | [Installation](docs/admin-guide/installation.md) | Production setup |
 | [Configuration](docs/admin-guide/configuration.md) | All environment variables |
 | [User Management](docs/admin-guide/user-management.md) | Admin role, creating and suspending accounts |
+| [Single Sign-On](docs/admin-guide/single-sign-on.md) | Signing in through Authentik, Keycloak or Google Workspace |
 | [Backup & Restore](docs/admin-guide/backup-restore.md) | Data backup procedures |
 | [Signing In Securely](docs/user-guide/devices-and-tokens.md) | Two-factor sign-in, signed-in devices, personal access tokens |
 | [Architecture](docs/development/architecture.md) | System design |

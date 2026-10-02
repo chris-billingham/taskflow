@@ -110,6 +110,17 @@ const envSchema = z.object({
   APNS_HOST: z.string().optional(),
   // Required as a Bearer token on GET /metrics when set. /metrics isn't
   // routed through Traefik either way; this guards it inside the network.
+  // Single sign-on (OpenID Connect): Authentik, Keycloak, Google Workspace…
+  // The provider's redirect URI is <APP_URL>/api/v1/auth/oidc/callback.
+  OIDC_ISSUER: z.union([z.literal(''), z.url()]).optional(),
+  OIDC_CLIENT_ID: z.string().optional(),
+  OIDC_CLIENT_SECRET: z.string().optional(),
+  // The button reads "Sign in with <OIDC_NAME>".
+  OIDC_NAME: z.string().default('single sign-on'),
+  OIDC_SCOPES: z.string().default('openid email profile'),
+  // Treat an address as verified when the provider sends no email_verified
+  // claim at all (some don't). A provider that says false is never trusted.
+  OIDC_TRUST_EMAIL: z.enum(['true', 'false']).default('false'),
   // How long history is kept, in days; 0 keeps it forever. Read notifications
   // go after NOTIFICATION_RETENTION_DAYS, unread ones after four times that.
   ACTIVITY_RETENTION_DAYS: z.coerce.number().int().min(0).default(365),
@@ -134,6 +145,11 @@ function checkRequiredCombinations(
         'S3_ACCESS_KEY and S3_SECRET_KEY are required in production (there is no default — the old minioadmin fallback shipped well-known credentials)',
       );
     }
+  }
+
+  const oidc = [env.OIDC_ISSUER, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET];
+  if (oidc.some(Boolean) && !oidc.every(Boolean)) {
+    errors.push('Single sign-on needs all of OIDC_ISSUER, OIDC_CLIENT_ID and OIDC_CLIENT_SECRET');
   }
 
   if (env.SMTP_HOST && !env.SMTP_FROM) {
@@ -182,6 +198,16 @@ export const env = loadEnv();
 export type Env = z.infer<typeof envSchema>;
 
 /** Whether this API process should also run the background job workers. */
+/** The web app's public origin, for links in email and redirect URIs. */
+export function publicAppUrl(): string {
+  return (env.APP_URL ?? env.CORS_ORIGIN).replace(/\/+$/, '');
+}
+
+/** Whether single sign-on is configured. */
+export function isOidcConfigured(): boolean {
+  return !!(env.OIDC_ISSUER && env.OIDC_CLIENT_ID && env.OIDC_CLIENT_SECRET);
+}
+
 export function shouldRunWorkersInApi(): boolean {
   if (env.RUN_WORKERS_IN_API !== undefined) {
     return env.RUN_WORKERS_IN_API === 'true';

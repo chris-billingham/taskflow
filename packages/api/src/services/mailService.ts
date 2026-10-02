@@ -1,5 +1,5 @@
 import nodemailer, { type Transporter } from 'nodemailer';
-import { env } from '../config/env.js';
+import { env, publicAppUrl } from '../config/env.js';
 import { logger } from '../config/logger.js';
 
 // Email delivery is optional for self-hosted deployments. The critical
@@ -61,9 +61,7 @@ export function _resetMailerForTests(): void {
   ready = false;
 }
 
-function appUrl(): string {
-  return (env.APP_URL ?? env.CORS_ORIGIN).replace(/\/+$/, '');
-}
+const appUrl = publicAppUrl;
 
 async function send(to: string, subject: string, text: string, html: string) {
   if (!ready || !transporter) {

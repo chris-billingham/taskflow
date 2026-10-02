@@ -215,7 +215,8 @@ export async function login(email: string, password: string, device: DeviceInfo 
   return signIn(user, device);
 }
 
-async function signIn(user: Parameters<typeof publicUser>[0], device: DeviceInfo) {
+/** Start a session for a user whose identity has been proven. */
+export async function signIn(user: Parameters<typeof publicUser>[0], device: DeviceInfo) {
   await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
@@ -359,7 +360,7 @@ export async function resetPassword(token: string, newPassword: string) {
 
   await prisma.user.update({
     where: { id: userId },
-    data: { passwordHash },
+    data: { passwordHash, passwordSet: true },
   });
 
   // Invalidate the reset token

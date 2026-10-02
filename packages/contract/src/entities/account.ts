@@ -40,6 +40,10 @@ export const loginResponse = ok(z.union([signedInSchema, twoFactorChallengeSchem
 /** POST /auth/login/two-factor: signed in, as from a login without two-factor. */
 export const signedInResponse = ok(signedInSchema);
 
+/** GET /auth/sso: whether the login page offers single sign-on, and what to call it. */
+export const ssoStatusSchema = z.object({ enabled: z.boolean(), name: z.string().nullable() });
+export type SsoStatus = Wire<typeof ssoStatusSchema>;
+
 /** GET /auth/two-factor */
 export const twoFactorStatusSchema = z.object({
   enabled: z.boolean(),
@@ -140,6 +144,8 @@ export type Profile = Wire<typeof profileSchema>;
 
 /** GET /users/me: your profile plus the workspaces you belong to. */
 export const meSchema = profileSchema.extend({
+  /** False for accounts made through single sign-on until they choose a password. */
+  passwordSet: z.boolean(),
   workspaceMemberships: z.array(
     z.object({
       role: workspaceRoleSchema,

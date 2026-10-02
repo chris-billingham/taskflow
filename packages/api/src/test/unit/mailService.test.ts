@@ -10,7 +10,10 @@ const envState = vi.hoisted(() => ({
   CORS_ORIGIN: 'https://cors-origin.example.com',
 }));
 
-vi.mock('../../config/env.js', () => ({ env: envState }));
+vi.mock('../../config/env.js', () => ({
+  env: envState,
+  publicAppUrl: () => (envState.APP_URL ?? envState.CORS_ORIGIN).replace(/\/+$/, ''),
+}));
 
 const sendMailMock = vi.hoisted(() => vi.fn());
 const verifyMock = vi.hoisted(() => vi.fn());

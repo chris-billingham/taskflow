@@ -157,3 +157,48 @@ describe('Login — two-factor sign-in', () => {
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 });
+
+describe('Login — single sign-on', () => {
+  function serveSso(enabled: boolean) {
+    mockApi.get.mockImplementation(async (url: string) => {
+      if (url === '/auth/registration') return { data: { success: true, data: { mode: 'invite', open: false } } };
+      if (url === '/auth/sso') return { data: { success: true, data: { enabled, name: enabled ? 'Authentik' : null } } };
+      throw new Error(`unexpected GET ${url}`);
+    });
+  }
+  const renderAt = (path: string) =>
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Login />
+      </MemoryRouter>,
+    );
+
+  it('offers the provider by name, keeping where to go next', async () => {
+    serveSso(true);
+    renderAt('/login?redirect=/projects/p1');
+    const link = await screen.findByRole('link', { name: 'Sign in with Authentik' });
+    expect(link).toHaveAttribute('href', '/api/v1/auth/oidc/start?redirect=%2Fprojects%2Fp1');
+  });
+
+  it('shows no button when it isn’t set up', async () => {
+    serveSso(false);
+    renderAt('/login');
+    await waitFor(() => expect(mockApi.get).toHaveBeenCalledWith('/auth/sso'));
+    expect(screen.queryByRole('link', { name: /Sign in with/ })).not.toBeInTheDocument();
+  });
+
+  it('explains why single sign-on sent you back', async () => {
+    serveSso(true);
+    renderAt('/login?sso_error=not_invited');
+    expect(await screen.findByText(/there’s no account or invitation for your address/)).toBeInTheDocument();
+  });
+
+  it('asks for the second factor when it arrives with a challenge', async () => {
+    serveSso(true);
+    window.history.replaceState(null, '', '/login#two-factor=sso-challenge');
+    renderAt('/login');
+    expect(await screen.findByLabelText('Code')).toBeInTheDocument();
+    expect(window.location.hash).toBe('');
+    window.history.replaceState(null, '', '/');
+  });
+});

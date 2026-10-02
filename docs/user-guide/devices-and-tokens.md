@@ -30,6 +30,10 @@ The list shows each token's first characters, its access, and when it was last u
 
 No token can change your password, sign devices out, create or revoke tokens, delete your account or use the admin console. Those always need you to sign in.
 
+## Single sign-on
+
+If your Taskflow is connected to your organisation's sign-in (Authentik, Keycloak, Google Workspace and so on), the login page shows **Sign in with …**. Your first sign-in this way creates your account, or links it to an existing one with the same address. To use a password too, choose one under **Settings → Account** within 15 minutes of signing in.
+
 ## Two-factor sign-in
 
 With two-factor sign-in on, Taskflow asks for a 6-digit code from an authenticator app (such as 1Password, Google Authenticator or Authy) after your password, so a stolen password alone can't get into your account.

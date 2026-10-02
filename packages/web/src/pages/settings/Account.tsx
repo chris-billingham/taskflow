@@ -7,6 +7,9 @@ import { TwoFactorSettings } from '@/components/settings/TwoFactorSettings';
 export default function Account() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
+  const updateUser = useAuthStore((s) => s.updateUser);
+  // Accounts made through single sign-on start without a password.
+  const passwordSet = useAuthStore((s) => s.user?.passwordSet) !== false;
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -26,7 +29,8 @@ export default function Account() {
     if (newPassword.length < 8) { setPwError('Password must be at least 8 characters'); return; }
     setPwSaving(true);
     try {
-      await api.patch('/users/me/password', { currentPassword, newPassword });
+      await api.patch('/users/me/password', passwordSet ? { currentPassword, newPassword } : { newPassword });
+      if (!passwordSet) updateUser({ passwordSet: true });
       setPwSuccess(true);
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
       setTimeout(() => setPwSuccess(false), 3000);
@@ -58,17 +62,27 @@ export default function Account() {
 
       {/* Change password */}
       <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Change password</h3>
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          {passwordSet ? 'Change password' : 'Set a password'}
+        </h3>
+        {!passwordSet && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            You sign in with single sign-on. A password lets you sign in without it too, and confirm changes such as
+            two-factor sign-in. Set it within 15 minutes of signing in.
+          </p>
+        )}
 
         {[
-          { label: 'Current password', value: currentPassword, set: setCurrentPassword },
-          { label: 'New password', value: newPassword, set: setNewPassword },
-          { label: 'Confirm new password', value: confirmPassword, set: setConfirmPassword },
-        ].map(({ label, value, set }) => (
-          <div key={label}>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+          ...(passwordSet ? [{ id: 'current-password', label: 'Current password', value: currentPassword, set: setCurrentPassword }] : []),
+          { id: 'new-password', label: 'New password', value: newPassword, set: setNewPassword },
+          { id: 'confirm-password', label: 'Confirm new password', value: confirmPassword, set: setConfirmPassword },
+        ].map(({ id, label, value, set }) => (
+          <div key={id}>
+            <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
             <input
+              id={id}
               type="password"
+              autoComplete={id === 'current-password' ? 'current-password' : 'new-password'}
               value={value}
               onChange={(e) => set(e.target.value)}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -77,14 +91,14 @@ export default function Account() {
         ))}
 
         {pwError && <p className="text-sm text-red-600">{pwError}</p>}
-        {pwSuccess && <p className="text-sm text-green-600">Password changed successfully.</p>}
+        {pwSuccess && <p className="text-sm text-green-600">Password saved.</p>}
 
         <button
           onClick={handleChangePassword}
-          disabled={pwSaving || !currentPassword || !newPassword || !confirmPassword}
+          disabled={pwSaving || (passwordSet && !currentPassword) || !newPassword || !confirmPassword}
           className="px-5 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600 disabled:opacity-60 transition-colors"
         >
-          {pwSaving ? 'Saving…' : 'Update password'}
+          {pwSaving ? 'Saving…' : passwordSet ? 'Update password' : 'Set password'}
         </button>
       </section>
 

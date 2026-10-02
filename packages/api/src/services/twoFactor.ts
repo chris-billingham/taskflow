@@ -2,7 +2,7 @@ import { createHash, randomInt } from 'node:crypto';
 import { Secret, TOTP } from 'otpauth';
 import QRCode from 'qrcode';
 import { prisma } from '../config/database.js';
-import { env } from '../config/env.js';
+import { publicAppUrl } from '../config/env.js';
 import { getRedis } from '../config/redis.js';
 import { ConflictError, ValidationError, AppError } from '../errors/index.js';
 
@@ -22,7 +22,7 @@ const FAILURE_WINDOW_S = 15 * 60;
 
 const issuer = () => {
   try {
-    return `Taskflow (${new URL(env.APP_URL ?? env.CORS_ORIGIN).host})`;
+    return `Taskflow (${new URL(publicAppUrl()).host})`;
   } catch {
     return 'Taskflow';
   }

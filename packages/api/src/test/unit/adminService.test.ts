@@ -266,7 +266,7 @@ describe('resetUserPassword', () => {
     expect(result.temporaryPassword).toEqual(expect.any(String));
     expect(mockPrisma.user.update).toHaveBeenCalledWith({
       where: { id: TARGET_ID },
-      data: { passwordHash: `hashed:${result.temporaryPassword}` },
+      data: { passwordHash: `hashed:${result.temporaryPassword}`, passwordSet: true },
     });
     expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith({
       where: { userId: TARGET_ID },
@@ -280,7 +280,7 @@ describe('resetUserPassword', () => {
     expect(result.temporaryPassword).toBeNull();
     expect(mockPrisma.user.update).toHaveBeenCalledWith({
       where: { id: TARGET_ID },
-      data: { passwordHash: 'hashed:admin-chosen-pw' },
+      data: { passwordHash: 'hashed:admin-chosen-pw', passwordSet: true },
     });
   });
 

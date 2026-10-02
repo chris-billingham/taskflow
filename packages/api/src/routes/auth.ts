@@ -10,6 +10,7 @@ import {
   loginResponse,
   signedInResponse,
   twoFactorLoginSchema,
+  ssoStatusSchema,
   registerResponse,
   refreshResponse,
   registrationStatusSchema,
@@ -19,7 +20,10 @@ import {
 import * as authService from '../services/authService.js';
 import * as instanceSettings from '../services/instanceSettingsService.js';
 import { UnauthorizedError } from '../errors/index.js';
-import { env } from '../config/env.js';
+import { z } from 'zod';
+import { env, isOidcConfigured } from '../config/env.js';
+import * as oidc from '../services/oidc.js';
+import { generateChallengeToken } from '../utils/jwt.js';
 import { rateLimitMax } from '../config/rateLimits.js';
 
 // Refresh token cookie is httpOnly + SameSite=Strict.
@@ -35,6 +39,21 @@ const refreshCookieOptions = {
   path: '/api/v1/auth',
   maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
 };
+
+// The sign-in in progress at the provider. Lax, not Strict: the provider
+// sends the browser back with a cross-site navigation.
+const OIDC_COOKIE = 'oidcLogin';
+const oidcCookieOptions = {
+  httpOnly: true,
+  secure: env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/api/v1/auth/oidc',
+  maxAge: oidc.PENDING_TTL_S,
+};
+
+/** Only paths on this site, never another origin. */
+const safeRedirect = (value: string | undefined) =>
+  value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\') ? value : '/today';
 
 type SignedIn = Awaited<ReturnType<typeof authService.completeTwoFactorLogin>>;
 
@@ -137,6 +156,68 @@ export async function authRoutes(fastify: FastifyInstance) {
       return sendSignedIn(reply, client, result);
     },
   );
+
+  app.get(
+    '/sso',
+    {
+      schema: {
+        tags,
+        security,
+        summary: 'Whether single sign-on is available, and its name',
+        response: { 200: ok(ssoStatusSchema) },
+      },
+    },
+    async () => {
+      const enabled = isOidcConfigured();
+      return { success: true as const, data: { enabled, name: enabled ? env.OIDC_NAME : null } };
+    },
+  );
+
+  // Single sign-on happens in the browser by redirects, so these two aren't
+  // in the API document. The login page links to /oidc/start.
+  app.get(
+    '/oidc/start',
+    { schema: { hide: true, querystring: z.object({ redirect: z.string().max(2000).optional() }) } },
+    async (request, reply) => {
+      try {
+        const { url, pending } = await oidc.startLogin(safeRedirect(request.query.redirect));
+        reply.setCookie(OIDC_COOKIE, pending, oidcCookieOptions);
+        return reply.redirect(url);
+      } catch (err) {
+        if (err instanceof oidc.SsoError) return reply.redirect(`/login?sso_error=${err.reason}`);
+        request.log.error({ err }, 'single sign-on: could not reach the provider');
+        return reply.redirect('/login?sso_error=failed');
+      }
+    },
+  );
+
+  app.get('/oidc/callback', { schema: { hide: true } }, async (request, reply) => {
+    const pending = oidc.readPending(request.cookies[OIDC_COOKIE]);
+    reply.clearCookie(OIDC_COOKIE, { path: oidcCookieOptions.path });
+    const back = pending ? `&redirect=${encodeURIComponent(pending.redirect)}` : '';
+    const fail = (reason: oidc.SsoFailure) => reply.redirect(`/login?sso_error=${reason}${back}`);
+    if (!pending) return fail('expired');
+
+    try {
+      const claims = await oidc.finishLogin(new URL(request.url, oidc.redirectUri()), pending);
+      const user = await oidc.resolveUser(claims);
+      if (!user.isActive) return fail('suspended');
+      // Taskflow's own two-factor sign-in still applies. The challenge goes in
+      // the fragment, which browsers never send to a server or log.
+      if (user.twoFactorEnabledAt) {
+        return reply.redirect(
+          `/login?redirect=${encodeURIComponent(pending.redirect)}#two-factor=${generateChallengeToken(user.id)}`,
+        );
+      }
+      const session = await authService.signIn(user, { client: 'web', userAgent: request.headers['user-agent'] });
+      reply.setCookie(REFRESH_COOKIE, session.refreshToken, refreshCookieOptions);
+      return reply.redirect(pending.redirect);
+    } catch (err) {
+      if (err instanceof oidc.SsoError) return fail(err.reason);
+      request.log.error({ err }, 'single sign-on failed');
+      return fail('failed');
+    }
+  });
 
   app.post(
     '/logout',
