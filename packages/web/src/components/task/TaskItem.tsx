@@ -24,6 +24,7 @@ import { MoveTaskDialog } from './MoveTaskDialog';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useSubtasks } from '@/queries/tasks';
 import { useOpenTask } from '@/hooks/useTaskPanel';
+import { useCanEditTask } from '@/hooks/useProjectAccess';
 import type { Task } from '@/types/task';
 
 interface TaskItemProps {
@@ -53,6 +54,8 @@ export const TaskItem = memo(function TaskItem({
 }: TaskItemProps) {
   const { updateTask, completeTask, uncompleteTask, deleteTask, duplicateTask } = useTaskActions();
   const openTask = useOpenTask();
+  // Viewers and commenters can open and select a task, not change it.
+  const canEdit = useCanEditTask(task);
   const onUpdate = (id: string, data: Record<string, unknown>) => void updateTask(id, data);
   const onClick = (t: Task) => openTask(t.id);
   const selected = useSelectionStore((s) => s.ids.includes(task.id));
@@ -142,7 +145,7 @@ export const TaskItem = memo(function TaskItem({
         } ${task.isCompleted ? 'opacity-60' : ''} ${!isSubtask ? `border-l-2 ${borderColor}` : ''}`}
       >
         {/* Drag handle — only for top-level tasks */}
-        {dragHandleProps && !isSubtask && (
+        {dragHandleProps && !isSubtask && canEdit && (
           <div
             className="pt-3 pl-1 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
             {...dragHandleProps}
@@ -178,6 +181,7 @@ export const TaskItem = memo(function TaskItem({
           <TaskCheckbox
             checked={task.isCompleted}
             priority={task.priority}
+            disabled={!canEdit}
             onChange={handleCheckboxChange}
           />
         </div>
@@ -192,6 +196,7 @@ export const TaskItem = memo(function TaskItem({
           data-task-row=""
           data-task-id={task.id}
           data-completed={task.isCompleted ? 'true' : 'false'}
+          data-readonly={canEdit ? undefined : 'true'}
           aria-label={selecting ? `Select task: ${task.content}` : `Open task: ${task.content}`}
           aria-pressed={selecting ? selected : undefined}
           onClick={(e) => {
@@ -205,7 +210,7 @@ export const TaskItem = memo(function TaskItem({
             }
           }}
         >
-          {isEditing ? (
+          {isEditing && canEdit ? (
             <input
               ref={inputRef}
               className="w-full text-sm bg-transparent border-b border-primary-500 outline-hidden py-0.5"
@@ -227,6 +232,7 @@ export const TaskItem = memo(function TaskItem({
                 task.isCompleted ? 'line-through text-gray-500 dark:text-gray-400' : ''
               }`}
               onDoubleClick={(e) => {
+                if (!canEdit) return;
                 e.stopPropagation();
                 setIsEditing(true);
               }}
@@ -281,34 +287,44 @@ export const TaskItem = memo(function TaskItem({
 
         {/* Hover actions: also shown while the row has keyboard focus */}
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shrink-0 pt-2 pr-1">
-          <DueDatePicker
-            openRequest={dateRequest}
-            value={task.dueDate}
-            time={task.dueTime}
-            onChange={(date, time) => onUpdate(task.id, { dueDate: date, dueTime: time })}
-          />
-          <PriorityPicker
-            value={task.priority}
-            onChange={(priority) => onUpdate(task.id, { priority })}
-          />
+          {canEdit && (
+            <>
+              <DueDatePicker
+                openRequest={dateRequest}
+                value={task.dueDate}
+                time={task.dueTime}
+                onChange={(date, time) => onUpdate(task.id, { dueDate: date, dueTime: time })}
+              />
+              <PriorityPicker
+                value={task.priority}
+                onChange={(priority) => onUpdate(task.id, { priority })}
+              />
+            </>
+          )}
 
           <Menu label={`Options for ${task.content}`} trigger={<MoreHorizontal className="w-4 h-4" />}>
-            <MenuItem icon={Pencil} onSelect={() => setIsEditing(true)}>
-              Edit
-            </MenuItem>
+            {canEdit && (
+              <MenuItem icon={Pencil} onSelect={() => setIsEditing(true)}>
+                Edit
+              </MenuItem>
+            )}
             <MenuItem icon={CheckSquare} onSelect={() => toggleSelected(task.id)}>
               {selected ? 'Deselect' : 'Select'}
             </MenuItem>
-            <MenuItem icon={FolderInput} onSelect={() => setMoving(true)}>
-              Move to…
-            </MenuItem>
-            <MenuItem icon={Copy} onSelect={() => void duplicateTask(task.id)}>
-              Duplicate
-            </MenuItem>
-            <MenuSeparator />
-            <MenuItem icon={Trash2} tone="danger" onSelect={() => void deleteTask(task.id)}>
-              Delete
-            </MenuItem>
+            {canEdit && (
+              <>
+                <MenuItem icon={FolderInput} onSelect={() => setMoving(true)}>
+                  Move to…
+                </MenuItem>
+                <MenuItem icon={Copy} onSelect={() => void duplicateTask(task.id)}>
+                  Duplicate
+                </MenuItem>
+                <MenuSeparator />
+                <MenuItem icon={Trash2} tone="danger" onSelect={() => void deleteTask(task.id)}>
+                  Delete
+                </MenuItem>
+              </>
+            )}
           </Menu>
         </div>
       </div>

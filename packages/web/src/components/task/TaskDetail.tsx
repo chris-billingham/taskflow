@@ -43,6 +43,9 @@ interface TaskDetailProps {
   subtasks?: Task[];
   /** Open a subtask in the panel (it becomes the task shown). */
   onOpenSubtask?: (id: string) => void;
+  /** Without it the task is shown read-only. */
+  canEdit?: boolean;
+  canComment?: boolean;
 }
 
 export function TaskDetail({
@@ -55,6 +58,8 @@ export function TaskDetail({
   onAddSubtask,
   subtasks,
   onOpenSubtask,
+  canEdit = true,
+  canComment = true,
 }: TaskDetailProps) {
   const [editingContent, setEditingContent] = useState(false);
   const [content, setContent] = useState(task.content);
@@ -108,6 +113,7 @@ export function TaskDetail({
             <TaskCheckbox
               checked={task.isCompleted}
               priority={task.priority}
+              disabled={!canEdit}
               onChange={(checked) => {
                 if (checked) onComplete(task.id);
                 else onUncomplete(task.id);
@@ -126,10 +132,11 @@ export function TaskDetail({
             {task.project && (
               <button
                 type="button"
+                disabled={!canEdit}
                 onClick={() => setMoving(true)}
                 aria-label={`Move task (now in ${task.project.name}${task.section ? ` / ${task.section.name}` : ''})`}
                 title="Move to another project or section"
-                className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 px-1.5 py-0.5 -ml-1.5 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 px-1.5 py-0.5 -ml-1.5 rounded-sm enabled:hover:bg-gray-100 dark:enabled:hover:bg-gray-700"
               >
                 <span
                   className="w-2 h-2 rounded-full"
@@ -150,8 +157,16 @@ export function TaskDetail({
 
         {/* Content area */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
+          {!canEdit && (
+            <p role="note" className="mb-3 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-800 dark:text-amber-200">
+              {canComment
+                ? 'You can comment on this task, but not change it.'
+                : 'You can view this task, but not change it.'}
+            </p>
+          )}
+
           {/* Task content */}
-          {editingContent ? (
+          {editingContent && canEdit ? (
             <input
               ref={contentRef}
               className="w-full text-lg font-medium text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 outline-hidden pb-1 mb-3"
@@ -168,17 +183,23 @@ export function TaskDetail({
             />
           ) : (
             <h2
-              className={`text-lg font-medium mb-3 cursor-pointer hover:text-primary-500 ${
+              className={`text-lg font-medium mb-3 ${canEdit ? 'cursor-pointer hover:text-primary-500' : ''} ${
                 task.isCompleted ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'
               }`}
-              onClick={() => setEditingContent(true)}
+              onClick={() => canEdit && setEditingContent(true)}
             >
               {task.content}
             </h2>
           )}
 
           {/* Description */}
-          {editingDescription ? (
+          {!canEdit ? (
+            task.description && (
+              <div className="text-sm mb-4">
+                <Markdown className="text-gray-700 dark:text-gray-300">{task.description}</Markdown>
+              </div>
+            )
+          ) : editingDescription ? (
             <div className="mb-4">
               <textarea
                 ref={descRef}
@@ -242,7 +263,7 @@ export function TaskDetail({
             </button>
           )}
 
-          {/* Properties */}
+          {/* Properties. Reminders are your own, so they stay usable. */}
           <div className="space-y-3 mb-6">
             {/* Due date */}
             <div className="flex items-center gap-3">
@@ -250,11 +271,13 @@ export function TaskDetail({
                 <Calendar className="w-4 h-4" />
                 Due date
               </span>
-              <DueDatePicker
-                value={task.dueDate}
-                time={task.dueTime}
-                onChange={(date, time) => onUpdate(task.id, { dueDate: date, dueTime: time })}
-              />
+              <fieldset disabled={!canEdit} className="contents">
+                  <DueDatePicker
+                  value={task.dueDate}
+                  time={task.dueTime}
+                  onChange={(date, time) => onUpdate(task.id, { dueDate: date, dueTime: time })}
+                />
+              </fieldset>
             </div>
 
             {/* Reminders */}
@@ -272,19 +295,21 @@ export function TaskDetail({
                 <Repeat className="w-4 h-4" />
                 Repeat
               </span>
-              <RecurrencePicker
-                isRecurring={task.isRecurring}
-                recurrenceRule={task.recurrenceRule}
-                onChange={(recurrenceRule) =>
-                  // isRecurring is what the completion path checks before
-                  // spawning the next occurrence, so the flag and the rule have
-                  // to move together or the series silently does nothing.
-                  onUpdate(task.id, {
-                    recurrenceRule,
-                    isRecurring: recurrenceRule !== null,
-                  })
-                }
-              />
+              <fieldset disabled={!canEdit} className="contents">
+                  <RecurrencePicker
+                  isRecurring={task.isRecurring}
+                  recurrenceRule={task.recurrenceRule}
+                  onChange={(recurrenceRule) =>
+                    // isRecurring is what the completion path checks before
+                    // spawning the next occurrence, so the flag and the rule have
+                    // to move together or the series silently does nothing.
+                    onUpdate(task.id, {
+                      recurrenceRule,
+                      isRecurring: recurrenceRule !== null,
+                    })
+                  }
+                />
+              </fieldset>
             </div>
 
             {/* Deadline */}
@@ -293,10 +318,12 @@ export function TaskDetail({
                 <AlertCircle className="w-4 h-4" />
                 Deadline
               </span>
-              <DueDatePicker
-                value={task.deadline}
-                onChange={(date) => onUpdate(task.id, { deadline: date })}
-              />
+              <fieldset disabled={!canEdit} className="contents">
+                  <DueDatePicker
+                  value={task.deadline}
+                  onChange={(date) => onUpdate(task.id, { deadline: date })}
+                />
+              </fieldset>
             </div>
 
             {/* Priority */}
@@ -305,10 +332,12 @@ export function TaskDetail({
                 <Flag className="w-4 h-4" />
                 Priority
               </span>
-              <PriorityPicker
-                value={task.priority}
-                onChange={(priority) => onUpdate(task.id, { priority })}
-              />
+              <fieldset disabled={!canEdit} className="contents">
+                  <PriorityPicker
+                  value={task.priority}
+                  onChange={(priority) => onUpdate(task.id, { priority })}
+                />
+              </fieldset>
             </div>
 
             {/* Labels */}
@@ -319,11 +348,13 @@ export function TaskDetail({
               </span>
               <div className="flex items-center gap-2">
                 <LabelBadges labels={task.taskLabels} />
-                <LabelPicker
-                  projectId={task.projectId}
-                  selectedIds={task.taskLabels.map((tl) => tl.labelId)}
-                  onChange={(labelIds) => onUpdate(task.id, { labelIds })}
-                />
+                <fieldset disabled={!canEdit} className="contents">
+                    <LabelPicker
+                    projectId={task.projectId}
+                    selectedIds={task.taskLabels.map((tl) => tl.labelId)}
+                    onChange={(labelIds) => onUpdate(task.id, { labelIds })}
+                  />
+                </fieldset>
               </div>
             </div>
 
@@ -333,12 +364,14 @@ export function TaskDetail({
                 <User className="w-4 h-4" />
                 Assignee
               </span>
-              <AssigneePicker
-                projectId={task.projectId}
-                value={task.assigneeId}
-                assignee={task.assignee}
-                onChange={(assigneeId) => onUpdate(task.id, { assigneeId })}
-              />
+              <fieldset disabled={!canEdit} className="contents">
+                  <AssigneePicker
+                  projectId={task.projectId}
+                  value={task.assigneeId}
+                  assignee={task.assignee}
+                  onChange={(assigneeId) => onUpdate(task.id, { assigneeId })}
+                />
+              </fieldset>
             </div>
 
             {/* Duration */}
@@ -347,10 +380,12 @@ export function TaskDetail({
                 <Clock className="w-4 h-4" />
                 Duration
               </span>
-              <DurationPicker
-                value={task.duration}
-                onChange={(duration) => onUpdate(task.id, { duration })}
-              />
+              <fieldset disabled={!canEdit} className="contents">
+                  <DurationPicker
+                  value={task.duration}
+                  onChange={(duration) => onUpdate(task.id, { duration })}
+                />
+              </fieldset>
             </div>
           </div>
 
@@ -375,6 +410,7 @@ export function TaskDetail({
                     <TaskCheckbox
                       checked={sub.isCompleted}
                       priority={sub.priority}
+                      disabled={!canEdit}
                       onChange={(checked) => {
                         if (checked) onComplete(sub.id);
                         else onUncomplete(sub.id);
@@ -395,23 +431,29 @@ export function TaskDetail({
               </div>
             )}
 
-            <QuickAdd
-              projectId={task.projectId}
-              parentId={task.id}
-              onSubmit={onAddSubtask}
-              placeholder="Add subtask"
-              inline
-            />
+            {canEdit ? (
+              <QuickAdd
+                projectId={task.projectId}
+                parentId={task.id}
+                onSubmit={onAddSubtask}
+                placeholder="Add subtask"
+                inline
+              />
+            ) : (
+              (!subtasks || subtasks.length === 0) && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 italic py-1">No subtasks.</p>
+              )
+            )}
           </div>
 
           {/* Attachments */}
           <div className="mb-6">
-            <AttachmentList taskId={task.id} />
+            <AttachmentList taskId={task.id} canUpload={canEdit} />
           </div>
 
           {/* Comments */}
           <div className="mb-6">
-            <CommentList taskId={task.id} projectId={task.projectId} />
+            <CommentList taskId={task.id} projectId={task.projectId} canComment={canComment} />
           </div>
 
           {/* Activity */}
@@ -425,7 +467,7 @@ export function TaskDetail({
           <span className="text-xs text-gray-400 dark:text-gray-500">
             Created {formatUserDate(new Date(task.createdAt))}
           </span>
-          {showDeleteConfirm ? (
+          {!canEdit ? null : showDeleteConfirm ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-red-600 dark:text-red-400">Delete this task?</span>
               <button

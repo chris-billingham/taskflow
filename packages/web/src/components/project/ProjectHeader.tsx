@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/Menu';
 import type { Project } from '@/types/project';
+import { atLeast } from '@/hooks/useProjectAccess';
 
 interface ProjectHeaderProps {
   project: Project;
@@ -43,6 +44,10 @@ export function ProjectHeader({
   onCalendarFeed,
   onWebhooks,
 }: ProjectHeaderProps) {
+  // Unknown (an older response) counts as admin: the server checks anyway.
+  const access = project.access ?? 'ADMIN';
+  const isAdmin = atLeast(access, 'ADMIN');
+  const canEdit = atLeast(access, 'EDIT');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(project.name);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -82,7 +87,7 @@ export function ProjectHeader({
           style={{ backgroundColor: project.color }}
         />
 
-        {isEditingName ? (
+        {isEditingName && isAdmin ? (
           <input
             ref={nameInputRef}
             className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-primary-500 outline-hidden flex-1"
@@ -99,8 +104,10 @@ export function ProjectHeader({
           />
         ) : (
           <h1
-            className="text-2xl font-bold text-gray-900 dark:text-white cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
-            onClick={() => !project.isInbox && setIsEditingName(true)}
+            className={`text-2xl font-bold text-gray-900 dark:text-white ${
+              isAdmin && !project.isInbox ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-200' : ''
+            }`}
+            onClick={() => isAdmin && !project.isInbox && setIsEditingName(true)}
           >
             {project.name}
           </h1>
@@ -116,18 +123,33 @@ export function ProjectHeader({
       {project.isArchived && (
         <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-300">
           <span>This project is archived and hidden from the sidebar.</span>
-          <button
-            type="button"
-            className="shrink-0 font-medium text-primary-600 dark:text-primary-400 hover:underline"
-            onClick={onArchive}
-          >
-            Unarchive
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              className="shrink-0 font-medium text-primary-600 dark:text-primary-400 hover:underline"
+              onClick={onArchive}
+            >
+              Unarchive
+            </button>
+          )}
         </div>
       )}
 
+      {!canEdit && (
+        <p
+          role="note"
+          className="mb-3 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-sm text-amber-800 dark:text-amber-200"
+        >
+          {access === 'COMMENT'
+            ? 'You can view and comment on this project, but not change its tasks.'
+            : 'You can view this project, but not change it.'}{' '}
+          Tasks assigned to you can still be edited.
+        </p>
+      )}
+
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1">
+        {/* The view is the project's, so only admins can switch it. */}
+        <div className={`flex items-center gap-1 ${isAdmin ? '' : 'invisible'}`}>
           {/* View style switcher */}
           {(['LIST', 'BOARD', 'CALENDAR'] as const).map((style) => {
             const Icon = viewStyleIcons[style];
@@ -158,13 +180,15 @@ export function ProjectHeader({
               Share
             </button>
           )}
-          <button
-            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-            onClick={onAddSection}
-          >
-            <Plus className="w-4 h-4" />
-            Add section
-          </button>
+          {canEdit && (
+            <button
+              className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={onAddSection}
+            >
+              <Plus className="w-4 h-4" />
+              Add section
+            </button>
+          )}
 
           <Menu label="Project options" trigger={<MoreHorizontal className="w-4 h-4" />} menuClassName="w-48">
             <MenuItem icon={History} onSelect={onShowActivity}>
@@ -173,16 +197,20 @@ export function ProjectHeader({
             <MenuItem icon={CalendarPlus} onSelect={onCalendarFeed}>
               Calendar feed
             </MenuItem>
-            <MenuItem icon={Webhook} onSelect={onWebhooks}>
-              Webhooks
-            </MenuItem>
+            {isAdmin && (
+              <MenuItem icon={Webhook} onSelect={onWebhooks}>
+                Webhooks
+              </MenuItem>
+            )}
             <MenuItem icon={Copy} onSelect={onDuplicate}>
               Duplicate project
             </MenuItem>
-            <MenuItem icon={Archive} onSelect={onArchive}>
-              {project.isArchived ? 'Unarchive' : 'Archive'}
-            </MenuItem>
-            {!project.isInbox && (
+            {isAdmin && (
+              <MenuItem icon={Archive} onSelect={onArchive}>
+                {project.isArchived ? 'Unarchive' : 'Archive'}
+              </MenuItem>
+            )}
+            {!project.isInbox && isAdmin && (
               <>
                 <MenuSeparator />
                 <MenuItem icon={Trash2} tone="danger" onSelect={onDelete}>

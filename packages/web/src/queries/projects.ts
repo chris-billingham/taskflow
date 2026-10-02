@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { queryOptions, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import { reportMutationError } from '@/utils/reportError';
 import { buildProjectTree, type Project, type ProjectSection } from '@/types/project';
@@ -42,12 +42,15 @@ export function patchCachedProject(
   );
 }
 
+/** Every project you can see. */
+export const projectListQuery = queryOptions({
+  queryKey: projectKeys.list(),
+  queryFn: async () => (await api.get('/projects')).data.data as Project[],
+});
+
 /** Every project you can see, and the views of them the sidebar needs. */
 export function useProjects() {
-  const query = useQuery({
-    queryKey: projectKeys.list(),
-    queryFn: async () => (await api.get('/projects')).data.data as Project[],
-  });
+  const query = useQuery(projectListQuery);
   return useMemo(() => {
     const projects = [...(query.data ?? [])].sort(bySortOrder);
     return {

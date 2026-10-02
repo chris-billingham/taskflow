@@ -21,6 +21,8 @@ interface SectionListProps {
   ) => Promise<unknown>;
   onDeleteSection: (id: string) => Promise<void>;
   renderSectionContent?: (section: ProjectSection) => ReactNode;
+  /** You can only view the project: sections can be collapsed, not changed. */
+  readOnly?: boolean;
 }
 
 function SortableSectionItem({
@@ -28,6 +30,7 @@ function SortableSectionItem({
   onUpdate,
   onDelete,
   renderContent,
+  readOnly,
 }: {
   section: ProjectSection;
   onUpdate: (
@@ -36,11 +39,14 @@ function SortableSectionItem({
   ) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
   renderContent?: (section: ProjectSection) => ReactNode;
+  readOnly?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: section.id,
     data: { type: 'section' },
+    disabled: readOnly,
   });
+
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -51,12 +57,13 @@ function SortableSectionItem({
     <div ref={setNodeRef} style={style}>
       <SectionHeader
         section={section}
-        dragHandleProps={{ ...attributes, ...listeners }}
-        onUpdateName={(name) => onUpdate(section.id, { name })}
+        dragHandleProps={readOnly ? undefined : { ...attributes, ...listeners }}
+        onUpdateName={readOnly ? undefined : (name) => onUpdate(section.id, { name })}
+        // Collapsing is your own view of the section, so viewers can too.
         onToggleCollapse={() =>
           onUpdate(section.id, { isCollapsed: !section.isCollapsed })
         }
-        onDelete={() => onDelete(section.id)}
+        onDelete={readOnly ? undefined : () => onDelete(section.id)}
       />
       {!section.isCollapsed && (
         renderContent ? renderContent(section) : (
@@ -75,6 +82,7 @@ export function SectionList({
   onUpdateSection,
   onDeleteSection,
   renderSectionContent,
+  readOnly,
 }: SectionListProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -110,13 +118,14 @@ export function SectionList({
                 onUpdate={onUpdateSection}
                 onDelete={onDeleteSection}
                 renderContent={renderSectionContent}
+                readOnly={readOnly}
               />
             ))}
           </div>
         </SortableContext>
 
       {/* Add section */}
-      {isAdding ? (
+      {readOnly ? null : isAdding ? (
         <div className="mt-3 flex items-center gap-2">
           <Input
             value={newName}

@@ -72,6 +72,8 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
       }
 
       if (!row || !taskId) return;
+      // A task you can only view can still be selected, nothing else.
+      if (row.dataset.readonly === 'true' && e.key !== 'x') return;
       switch (e.key) {
         case 'e':
           handled();

@@ -35,6 +35,8 @@ interface BoardViewProps {
   ) => Promise<unknown>;
   onDeleteSection: (id: string) => Promise<void>;
   onReorderSections: (sectionIds: string[]) => Promise<void>;
+  /** You can only view the project: no adding, editing or dragging. */
+  readOnly?: boolean;
 }
 
 const UNSECTIONED_ID = '__unsectioned__';
@@ -47,6 +49,7 @@ export function BoardView({
   onUpdateSection,
   onDeleteSection,
   onReorderSections,
+  readOnly,
 }: BoardViewProps) {
   const {
     createTask: onCreateTask,
@@ -289,9 +292,10 @@ export function BoardView({
                   title={columnTitle}
                   tasks={columnTasks}
                   isVirtual={columnId === UNSECTIONED_ID}
-                  onCreateTask={(content) =>
-                    handleCreateTaskInColumn(columnId, content)
+                  onCreateTask={
+                    readOnly ? undefined : (content) => handleCreateTaskInColumn(columnId, content)
                   }
+                  readOnly={readOnly}
                   onUpdateSection={onUpdateSection}
                   onDeleteSection={onDeleteSection}
                 />
@@ -299,7 +303,7 @@ export function BoardView({
             })}
           </SortableContext>
 
-          <BoardAddColumn onCreateSection={onCreateSection} />
+          {!readOnly && <BoardAddColumn onCreateSection={onCreateSection} />}
         </div>
 
         <DragOverlay>

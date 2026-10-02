@@ -6,7 +6,7 @@ export type ProjectSection = Section;
  * A project as the web app handles it. List, detail and mutation responses
  * include sections, counts and children; archive/unarchive return the fields only.
  */
-export type Project = ProjectFields & Partial<Pick<ContractProject, 'sections' | '_count' | 'children'>>;
+export type Project = ProjectFields & Partial<Pick<ContractProject, 'sections' | '_count' | 'children' | 'access'>>;
 
 export interface ProjectTreeNode extends Project {
   childNodes: ProjectTreeNode[];

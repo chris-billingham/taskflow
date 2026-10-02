@@ -23,6 +23,8 @@ interface BoardColumnProps {
   onCreateTask?: (content: string) => Promise<void>;
   onUpdateSection?: (id: string, data: { name?: string }) => void;
   onDeleteSection?: (id: string) => void;
+  /** Can't be renamed, reordered or deleted (you can only view the project). */
+  readOnly?: boolean;
 }
 
 export function BoardColumn({
@@ -34,7 +36,9 @@ export function BoardColumn({
   onCreateTask,
   onUpdateSection,
   onDeleteSection,
+  readOnly,
 }: BoardColumnProps) {
+  const fixed = isVirtual || readOnly;
   const [collapsed, setCollapsed] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(title);
@@ -52,7 +56,7 @@ export function BoardColumn({
   } = useSortable({
     id: columnId,
     data: { type: 'column' },
-    disabled: !!isVirtual,
+    disabled: !!fixed,
   });
 
   // Droppable zone for receiving cards
@@ -97,7 +101,7 @@ export function BoardColumn({
     >
       {/* Column header */}
       <div className="px-3 py-2 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
-        {!isVirtual && (
+        {!fixed && (
           <div
             className="cursor-grab shrink-0 opacity-0 hover:opacity-100 transition-opacity"
             {...sortableAttributes}
@@ -120,7 +124,7 @@ export function BoardColumn({
           />
         </button>
 
-        {isEditing && !isVirtual ? (
+        {isEditing && !fixed ? (
           <input
             ref={inputRef}
             className="flex-1 text-sm font-semibold bg-white dark:bg-gray-800 border border-primary-500 rounded-sm px-1 py-0.5 outline-hidden"
@@ -139,7 +143,7 @@ export function BoardColumn({
           <span
             className="flex-1 text-sm font-semibold text-gray-700 dark:text-gray-300 truncate cursor-pointer"
             onClick={() => {
-              if (!isVirtual) setIsEditing(true);
+              if (!fixed) setIsEditing(true);
             }}
           >
             {title}
@@ -150,7 +154,7 @@ export function BoardColumn({
           {tasks.length}
         </span>
 
-        {!isVirtual && onDeleteSection && (
+        {!fixed && onDeleteSection && (
           <button
             className="p-1 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
             onClick={() => setConfirmDelete(true)}

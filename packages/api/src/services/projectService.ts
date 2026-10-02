@@ -46,11 +46,12 @@ export async function getUserProjects(userId: string) {
     orderBy: { sortOrder: 'asc' },
   });
 
-  return projects.map((project) => withProjectSettings(project));
+  const levels = await effectiveProjectLevels(projects, userId);
+  return projects.map((project) => ({ ...withProjectSettings(project), access: levels.get(project.id) }));
 }
 
 export async function getProjectById(id: string, userId: string) {
-  await requireProjectAccess(id, userId, 'VIEW');
+  const accessible = await requireProjectAccess(id, userId, 'VIEW');
 
   const project = await prisma.project.findUnique({
     where: { id },
@@ -81,7 +82,8 @@ export async function getProjectById(id: string, userId: string) {
     throw new NotFoundError('Project not found');
   }
 
-  return withProjectSettings(project);
+  const levels = await effectiveProjectLevels([accessible], userId);
+  return { ...withProjectSettings(project), access: levels.get(id) };
 }
 
 /**

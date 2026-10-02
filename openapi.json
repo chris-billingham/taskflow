@@ -1145,6 +1145,15 @@
             "type": "string",
             "format": "date-time"
           },
+          "access": {
+            "type": "string",
+            "enum": [
+              "VIEW",
+              "COMMENT",
+              "EDIT",
+              "ADMIN"
+            ]
+          },
           "sections": {
             "type": "array",
             "items": {

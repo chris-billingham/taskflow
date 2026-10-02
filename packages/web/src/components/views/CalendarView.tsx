@@ -23,12 +23,15 @@ interface CalendarViewProps {
   /** Tasks added from a calendar cell go here; otherwise quick-add decides. */
   defaultProjectId?: string;
   initialMode?: CalendarMode;
+  /** No adding tasks from a cell (you can only view the project). */
+  readOnly?: boolean;
 }
 
 export function CalendarView({
   tasks,
   defaultProjectId,
   initialMode = 'week',
+  readOnly,
 }: CalendarViewProps) {
   const calendar = useCalendar(tasks, initialMode);
   const { updateTask, quickAddTask } = useTaskActions();
@@ -76,9 +79,12 @@ export function CalendarView({
     [tasks, onUpdateTask],
   );
 
-  const handleSlotClick = useCallback((dateStr: string, time: string) => {
-    setQuickAddState({ isOpen: true, dateStr, time });
-  }, []);
+  const handleSlotClick = useCallback(
+    (dateStr: string, time: string) => {
+      if (!readOnly) setQuickAddState({ isOpen: true, dateStr, time });
+    },
+    [readOnly],
+  );
 
   const handleDayClick = useCallback(
     (dateStr: string) => {

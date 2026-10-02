@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { TaskCheckbox } from '@/components/task/TaskCheckbox';
+import { useCanEditTask } from '@/hooks/useProjectAccess';
 import { formatUserTimeCompact } from '@/utils/dateFormat';
 import type { Task } from '@/types/task';
 import { useTaskActions } from '@/queries/taskActions';
@@ -44,13 +45,14 @@ export function CalendarTask({
   style,
   onResizeDuration,
 }: CalendarTaskProps) {
+  const canEdit = useCanEditTask(task);
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
     isDragging,
-  } = useDraggable({ id: task.id });
+  } = useDraggable({ id: task.id, disabled: !canEdit });
   const { completeTask, uncompleteTask } = useTaskActions();
   const openTask = useOpenTask();
   const onTaskClick = (t: Task) => openTask(t.id);
@@ -137,6 +139,7 @@ export function CalendarTask({
           <TaskCheckbox
             checked={task.isCompleted}
             priority={task.priority}
+            disabled={!canEdit}
             onChange={(checked) => {
               if (checked) onComplete(task.id);
               else onUncomplete(task.id);
@@ -185,6 +188,7 @@ export function CalendarTask({
           <TaskCheckbox
             checked={task.isCompleted}
             priority={task.priority}
+            disabled={!canEdit}
             onChange={(checked) => {
               if (checked) onComplete(task.id);
               else onUncomplete(task.id);
@@ -201,10 +205,12 @@ export function CalendarTask({
         </div>
       </div>
       {/* Resize handle */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-2.5 cursor-s-resize opacity-0 group-hover/task:opacity-100 hover:opacity-100! bg-gray-400/30 rounded-b"
-        onPointerDown={handleResizePointerDown}
-      />
+      {canEdit && (
+        <div
+          className="absolute bottom-0 left-0 right-0 h-2.5 cursor-s-resize opacity-0 group-hover/task:opacity-100 hover:opacity-100! bg-gray-400/30 rounded-b"
+          onPointerDown={handleResizePointerDown}
+        />
+      )}
     </div>
   );
 }

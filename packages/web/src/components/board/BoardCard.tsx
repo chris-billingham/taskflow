@@ -7,6 +7,7 @@ import { LabelBadges } from '@/components/task/LabelPicker';
 import type { Task } from '@/types/task';
 import { useTaskActions } from '@/queries/taskActions';
 import { useOpenTask } from '@/hooks/useTaskPanel';
+import { useCanEditTask } from '@/hooks/useProjectAccess';
 
 interface BoardCardProps {
   task: Task;
@@ -24,6 +25,7 @@ export function BoardCard({ task }: BoardCardProps) {
   const openTask = useOpenTask();
   const onClick = (t: Task) => openTask(t.id);
   const subtasks = task.subtasks as Task[] | undefined;
+  const canEdit = useCanEditTask(task);
   const {
     attributes,
     listeners,
@@ -31,7 +33,7 @@ export function BoardCard({ task }: BoardCardProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id, data: { type: 'card', task } });
+  } = useSortable({ id: task.id, data: { type: 'card', task }, disabled: !canEdit });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -80,6 +82,7 @@ export function BoardCard({ task }: BoardCardProps) {
           <TaskCheckbox
             checked={task.isCompleted}
             priority={task.priority}
+            disabled={!canEdit}
             onChange={handleCheckbox}
           />
         </div>

@@ -10,9 +10,11 @@ import { ImagePreview } from './ImagePreview';
 
 interface AttachmentListProps {
   taskId: string;
+  /** Adding files to a task takes edit access. */
+  canUpload?: boolean;
 }
 
-export function AttachmentList({ taskId }: AttachmentListProps) {
+export function AttachmentList({ taskId, canUpload = true }: AttachmentListProps) {
   const { attachments, loading, error: fetchError, added, removed } = useAttachments(taskId);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const { uploading, progress, error: uploadError, upload } = useFileUpload();
@@ -52,14 +54,16 @@ export function AttachmentList({ taskId }: AttachmentListProps) {
         )}
       </h3>
 
-      <div className="mb-3">
-        <FileUpload
-          onFiles={handleFiles}
-          uploading={uploading}
-          progress={progress}
-          error={uploadError}
-        />
-      </div>
+      {canUpload && (
+        <div className="mb-3">
+          <FileUpload
+            onFiles={handleFiles}
+            uploading={uploading}
+            progress={progress}
+            error={uploadError}
+          />
+        </div>
+      )}
 
       {loading && (
         <div className="flex items-center justify-center py-4">

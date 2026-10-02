@@ -31,6 +31,7 @@ import { useProjectTasks } from '@/queries/tasks';
 import { useTaskActions } from '@/queries/taskActions';
 import type { Task } from '@/types/task';
 import { useWideLayout } from '@/hooks/useWideLayout';
+import { atLeast } from '@/hooks/useProjectAccess';
 
 const UNSECTIONED = '__unsectioned__';
 
@@ -170,6 +171,9 @@ export default function Project() {
     }
   };
 
+  // Viewers and commenters see the project without its editing controls.
+  const readOnly = !atLeast(project.access ?? 'EDIT', 'EDIT');
+
   const handleQuickAdd = async (text: string) => {
     await quickAddTask(text, project.id);
   };
@@ -193,7 +197,7 @@ export default function Project() {
       />
 
       {project.viewStyle === 'CALENDAR' ? (
-        <CalendarView tasks={ordered} defaultProjectId={project.id} />
+        <CalendarView tasks={ordered} defaultProjectId={project.id} readOnly={readOnly} />
       ) : project.viewStyle === 'BOARD' ? (
         <>
           <div className="flex justify-end -mb-2">
@@ -208,6 +212,7 @@ export default function Project() {
               onUpdateSection={updateSection}
               onDeleteSection={deleteSection}
               onReorderSections={reorderSections}
+              readOnly={readOnly}
             />
           ) : (
             <GroupedBoard tasks={ordered.filter((t) => !t.parentId)} grouping={grouping} />
@@ -224,15 +229,17 @@ export default function Project() {
             <TaskList
               tasks={unsectionedTasks}
               containerId={UNSECTIONED}
-              emptyMessage="No tasks yet. Add one below!"
+              emptyMessage={readOnly ? 'No tasks yet.' : 'No tasks yet. Add one below!'}
             />
-            <div className="mt-2">
-              <QuickAdd
-                projectId={project.id}
-                onSubmit={(text) => handleQuickAdd(text)}
-                placeholder="Add task"
-              />
-            </div>
+            {!readOnly && (
+              <div className="mt-2">
+                <QuickAdd
+                  projectId={project.id}
+                  onSubmit={(text) => handleQuickAdd(text)}
+                  placeholder="Add task"
+                />
+              </div>
+            )}
           </div>
 
           {/* Sections with tasks */}
@@ -241,6 +248,7 @@ export default function Project() {
             onCreateSection={createSection}
             onUpdateSection={updateSection}
             onDeleteSection={deleteSection}
+            readOnly={readOnly}
             renderSectionContent={(section) => {
               const sectionTasks = tasksBySection.get(section.id) || [];
               return (
@@ -250,17 +258,19 @@ export default function Project() {
                     containerId={section.id}
                     emptyMessage="No tasks in this section"
                   />
-                  <div className="mt-1">
-                    <QuickAdd
-                      projectId={project.id}
-                      sectionId={section.id}
-                      // Parsed like every other quick add ("p1 tomorrow" etc.).
-                      onSubmit={async (text) => {
-                        await quickAddTask(text, project.id, { sectionId: section.id });
-                      }}
-                      placeholder="Add task"
-                    />
-                  </div>
+                  {!readOnly && (
+                    <div className="mt-1">
+                      <QuickAdd
+                        projectId={project.id}
+                        sectionId={section.id}
+                        // Parsed like every other quick add ("p1 tomorrow" etc.).
+                        onSubmit={async (text) => {
+                          await quickAddTask(text, project.id, { sectionId: section.id });
+                        }}
+                        placeholder="Add task"
+                      />
+                    </div>
+                  )}
                 </div>
               );
             }}

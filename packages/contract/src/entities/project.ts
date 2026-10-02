@@ -39,7 +39,17 @@ export const projectFieldsSchema = z.object({
 export type ProjectFields = Wire<typeof projectFieldsSchema>;
 
 /** A project with its sections, open-task count and sub-projects. */
+/** What someone may do in a project: view < comment < edit < admin. */
+export const accessLevelSchema = z.enum(['VIEW', 'COMMENT', 'EDIT', 'ADMIN']);
+export type AccessLevel = Wire<typeof accessLevelSchema>;
+
 export const projectSchema = projectFieldsSchema.extend({
+  /**
+   * Your access to the project, on the list and detail responses, so apps can
+   * leave out controls you can't use. (An assignee may still edit their own
+   * task in a project they can only view.)
+   */
+  access: accessLevelSchema.optional(),
   sections: z.array(sectionSchema),
   /** Incomplete tasks. */
   _count: z.object({ tasks: z.number().int() }),

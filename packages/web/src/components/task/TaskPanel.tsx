@@ -5,6 +5,7 @@ import { useTaskDetail } from '@/queries/tasks';
 import { useTaskActions } from '@/queries/taskActions';
 import { toastError } from '@/stores/toastStore';
 import type { Task } from '@/types/task';
+import { atLeast, useTaskAccess } from '@/hooks/useProjectAccess';
 
 /**
  * The one task panel, mounted by the app layout and driven by `?task=` in the
@@ -29,6 +30,7 @@ function TaskPanelBody({
 }) {
   const { data: task, error } = useTaskDetail(taskId);
   const actions = useTaskActions();
+  const access = useTaskAccess(task ?? { projectId: '', assigneeId: null });
 
   useEffect(() => {
     if (!error) return;
@@ -43,6 +45,8 @@ function TaskPanelBody({
   return (
     <TaskDetail
       task={task}
+      canEdit={atLeast(access, 'EDIT')}
+      canComment={atLeast(access, 'COMMENT')}
       subtasks={(task.subtasks as Task[] | undefined) ?? []}
       onClose={onClose}
       onUpdate={(id, data) => void actions.updateTask(id, data)}

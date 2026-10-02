@@ -4,9 +4,10 @@ import type { ProjectSection } from '@/types/project';
 
 interface SectionHeaderProps {
   section: ProjectSection;
-  onUpdateName: (name: string) => void;
+  /** Without these, the name and section can't be changed. */
+  onUpdateName?: (name: string) => void;
   onToggleCollapse: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   /** Drag listeners for reordering sections; the header grip is the only handle. */
   dragHandleProps?: Record<string, any>;
 }
@@ -37,7 +38,7 @@ export function SectionHeader({
   const handleSubmit = () => {
     const trimmed = editName.trim();
     if (trimmed && trimmed !== section.name) {
-      onUpdateName(trimmed);
+      onUpdateName?.(trimmed);
     } else {
       setEditName(section.name);
     }
@@ -67,7 +68,7 @@ export function SectionHeader({
         />
       </button>
 
-      {isEditing ? (
+      {isEditing && onUpdateName ? (
         <input
           ref={inputRef}
           className="text-sm font-semibold text-gray-900 dark:text-white bg-transparent border-b border-primary-500 outline-hidden flex-1"
@@ -84,8 +85,8 @@ export function SectionHeader({
         />
       ) : (
         <span
-          className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer flex-1"
-          onClick={() => setIsEditing(true)}
+          className={`text-sm font-semibold text-gray-900 dark:text-white flex-1 ${onUpdateName ? 'cursor-pointer' : ''}`}
+          onClick={() => onUpdateName && setIsEditing(true)}
         >
           {section.name}
         </span>
@@ -95,12 +96,14 @@ export function SectionHeader({
         <span className="text-xs text-gray-400 dark:text-gray-500">{taskCount}</span>
       )}
 
-      <button
-        className="w-6 h-6 items-center justify-center rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600 hidden group-hover:flex shrink-0"
-        onClick={onDelete}
-      >
-        <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-      </button>
+      {onDelete && (
+        <button
+          className="w-6 h-6 items-center justify-center rounded-sm hover:bg-gray-200 dark:hover:bg-gray-600 hidden group-hover:flex shrink-0"
+          onClick={onDelete}
+        >
+          <Trash2 className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+        </button>
+      )}
     </div>
   );
 }
