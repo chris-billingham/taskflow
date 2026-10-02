@@ -8,6 +8,10 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // Stop once things are clearly broken (say, a page that won't load), with
+  // the errors reported, rather than retrying every test until the job's
+  // time limit cancels it and the report is lost.
+  maxFailures: process.env.CI ? 10 : undefined,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['html', { open: 'never' }], ['list']],
   timeout: 30000,

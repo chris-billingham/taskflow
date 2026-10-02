@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { id, instant, type Wire } from '../common.js';
+import { WEBHOOK_EVENTS } from '../logic/webhooks.js';
 
 /** A private calendar (iCal) subscription to a project's or a filter's dated tasks. */
 export const calendarFeedSchema = z.object({
@@ -15,16 +16,6 @@ export const calendarFeedSchema = z.object({
 });
 export type CalendarFeed = Wire<typeof calendarFeedSchema>;
 
-/** What a webhook can be sent for. */
-export const WEBHOOK_EVENTS = [
-  'task.created',
-  'task.updated',
-  'task.completed',
-  'task.uncompleted',
-  'task.deleted',
-  'comment.created',
-  'comment.deleted',
-] as const;
 export const webhookEventSchema = z.enum(WEBHOOK_EVENTS);
 export type WebhookEvent = Wire<typeof webhookEventSchema>;
 

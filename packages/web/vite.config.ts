@@ -13,6 +13,12 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       output: {
+        // Run modules in import order even across a cycle between chunks.
+        // Without it, a new shared chunk once led Rolldown to put its helpers
+        // in an app chunk that React's chunk imported while that chunk imported
+        // React back: "e is not a function" and a blank page in production
+        // only. Costs about 7% in bundle size.
+        strictExecutionOrder: true,
         // Libraries change far less often than the app, so keep them in their
         // own long-cached files rather than re-downloaded with every release.
         codeSplitting: {
