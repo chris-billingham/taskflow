@@ -44,7 +44,7 @@ export function startWebhookWorker() {
     QUEUE_NAME,
     async (job) => {
       const final = job.attemptsMade + 1 >= (job.opts.attempts ?? ATTEMPTS);
-      const result = await deliver(job.data.webhookId, job.data.delivery, { final });
+      const result = await deliver(job.data.webhookId, job.data.delivery, { final, attempt: job.attemptsMade + 1 });
       if (!result.ok) throw new Error(result.error ?? 'Delivery failed');
     },
     { connection: createBullMQConnection(), concurrency: 5 },

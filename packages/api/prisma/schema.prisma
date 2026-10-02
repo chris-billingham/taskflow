@@ -312,11 +312,35 @@ model Webhook {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdBy User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy  User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  deliveries WebhookDelivery[]
 
   @@index([projectId])
   @@map("webhooks")
+}
+
+// One attempt to deliver an event, for the webhook's log. The latest 50 per
+// webhook are kept.
+model WebhookDelivery {
+  id         String   @id @default(cuid())
+  webhookId  String
+  // The delivery's own id (X-Taskflow-Delivery), shared by its retries.
+  deliveryId String
+  event      String
+  attempt    Int
+  // The receiver's HTTP status, or null when it couldn't be reached.
+  status     Int?
+  error      String?
+  durationMs Int
+  // The JSON that was sent, so it can be inspected and sent again.
+  payload    String
+  createdAt  DateTime @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt])
+  @@map("webhook_deliveries")
 }
 
 // ─── Workspace ──────────────────────────────────────────────────────────────

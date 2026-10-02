@@ -202,6 +202,38 @@ describe('webhooks', () => {
     expect(resumed.json().data).toMatchObject({ isActive: true, failureCount: 0 });
   });
 
+  it('keeps a log of attempts that can be sent again, and only the latest 50', async () => {
+    const log = (await app.inject({ method: 'GET', url: `/api/v1/webhooks/${webhook.id}/deliveries`, headers: auth(owner) })).json().data;
+    expect(log.length).toBeGreaterThan(0);
+    const failed = log.find((d: { status: number | null }) => d.status === 500);
+    expect(failed).toMatchObject({ event: 'task.created', attempt: 1, error: 'The receiver answered 500' });
+    expect(JSON.parse(failed.payload)).toMatchObject({ event: 'task.created', projectId });
+
+    const before = received.length;
+    const resent = await app.inject({
+      method: 'POST',
+      url: `/api/v1/webhooks/${webhook.id}/deliveries/${failed.id}/redeliver`,
+      headers: auth(owner),
+    });
+    expect(resent.json().data).toMatchObject({ ok: true, status: 204 });
+    const again = received[before];
+    expect(again.headers['x-taskflow-event']).toBe('task.created');
+    // A new delivery, not a retry of the old one.
+    expect(again.headers['x-taskflow-delivery']).not.toBe(failed.deliveryId);
+
+    await prisma.webhookDelivery.createMany({
+      data: Array.from({ length: 55 }, (_, i) => ({
+        webhookId: webhook.id, deliveryId: `old-${i}`, event: 'task.updated', attempt: 1, status: 204, durationMs: 1, payload: '{}',
+        createdAt: new Date(Date.now() - 86_400_000 + i),
+      })),
+    });
+    await app.inject({ method: 'POST', url: `/api/v1/webhooks/${webhook.id}/test`, headers: auth(owner) });
+    expect(await prisma.webhookDelivery.count({ where: { webhookId: webhook.id } })).toBe(50);
+    // Someone who isn't a project admin can't read it.
+    const theirs = await app.inject({ method: 'GET', url: `/api/v1/webhooks/${webhook.id}/deliveries`, headers: auth(member) });
+    expect(theirs.statusCode).toBe(403);
+  });
+
   it('won’t reach private addresses unless allowed', async () => {
     env.WEBHOOK_ALLOW_PRIVATE_NETWORKS = 'false';
     const test = await app.inject({ method: 'POST', url: `/api/v1/webhooks/${webhook.id}/test`, headers: auth(owner) });

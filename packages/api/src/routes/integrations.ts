@@ -6,6 +6,8 @@ import {
   createCalendarFeedSchema,
   webhookSchema,
   webhookWithSecretSchema,
+  webhookDeliverySchema,
+  webhookDeliveryParamsSchema,
   createWebhookSchema,
   updateWebhookSchema,
   integrationParamsSchema,
@@ -166,6 +168,38 @@ export async function integrationRoutes(fastify: FastifyInstance) {
       },
     },
     async (request) => ({ success: true as const, data: await webhooks.sendPing(request.params.id, request.user.id) }),
+  );
+
+  app.get(
+    '/webhooks/:id/deliveries',
+    {
+      schema: {
+        tags: webhookTags,
+        summary: 'The latest delivery attempts, newest first',
+        params: integrationParamsSchema,
+        response: { 200: ok(z.array(webhookDeliverySchema)) },
+      },
+    },
+    async (request) => ({ success: true as const, data: await webhooks.listDeliveries(request.params.id, request.user.id) }),
+  );
+
+  app.post(
+    '/webhooks/:id/deliveries/:deliveryId/redeliver',
+    {
+      config: { rateLimit: { max: rateLimitMax(20), timeWindow: '1 minute' } },
+      schema: {
+        tags: webhookTags,
+        summary: 'Send a logged delivery again, now',
+        params: webhookDeliveryParamsSchema,
+        response: {
+          200: ok(z.object({ ok: z.boolean(), status: z.number().int().nullable(), error: z.string().nullable() })),
+        },
+      },
+    },
+    async (request) => ({
+      success: true as const,
+      data: await webhooks.redeliver(request.params.id, request.params.deliveryId, request.user.id),
+    }),
   );
 
   app.delete(

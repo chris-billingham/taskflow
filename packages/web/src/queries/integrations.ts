@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CalendarFeed, Webhook, WebhookEvent, WebhookWithSecret } from '@taskflow/contract';
+import type { CalendarFeed, Webhook, WebhookDelivery, WebhookEvent, WebhookWithSecret } from '@taskflow/contract';
 import api from '@/services/api';
 import { reportMutationError } from '@/utils/reportError';
 import { errorMessage } from './tasks';
@@ -8,6 +8,7 @@ import { errorMessage } from './tasks';
 export const integrationKeys = {
   feeds: ['calendar-feeds'] as const,
   webhooks: (projectId: string) => ['webhooks', projectId] as const,
+  deliveries: (webhookId: string) => ['webhook-deliveries', webhookId] as const,
 };
 
 export function useCalendarFeeds() {
@@ -59,6 +60,17 @@ export function useWebhooks(projectId: string) {
   };
 }
 
+/** A webhook's latest delivery attempts, fetched while shown. */
+export function useWebhookDeliveries(webhookId: string, enabled: boolean) {
+  const query = useQuery({
+    queryKey: integrationKeys.deliveries(webhookId),
+    queryFn: async () => (await api.get(`/webhooks/${webhookId}/deliveries`)).data.data as WebhookDelivery[],
+    enabled,
+    staleTime: 0,
+  });
+  return { deliveries: query.data ?? [], loading: query.isLoading };
+}
+
 export function useWebhookActions(projectId: string) {
   const qc = useQueryClient();
   return useMemo(() => {
@@ -70,6 +82,7 @@ export function useWebhookActions(projectId: string) {
         throw err;
       } finally {
         void qc.invalidateQueries({ queryKey: integrationKeys.webhooks(projectId) });
+        void qc.invalidateQueries({ queryKey: ['webhook-deliveries'] });
       }
     }
     return {
@@ -86,6 +99,16 @@ export function useWebhookActions(projectId: string) {
         run(
           async () => (await api.post(`/webhooks/${id}/test`)).data.data as { ok: boolean; status: number | null; error: string | null },
           'The test could not be sent',
+        ),
+      redeliver: (id: string, deliveryId: string) =>
+        run(
+          async () =>
+            (await api.post(`/webhooks/${id}/deliveries/${deliveryId}/redeliver`)).data.data as {
+              ok: boolean;
+              status: number | null;
+              error: string | null;
+            },
+          'The delivery could not be sent again',
         ),
       remove: (id: string) => run(() => api.delete(`/webhooks/${id}`), 'The webhook could not be deleted'),
     };

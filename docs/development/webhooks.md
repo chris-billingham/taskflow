@@ -64,7 +64,9 @@ Answer with any `2xx` status within 10 seconds. Anything else, or no answer,
 is retried five more times over about 15 minutes (30 seconds, then 1, 2, 4 and
 8 minutes). Redirects aren't followed. After 50 deliveries in a row fail
 completely, the webhook pauses itself; **Resume** in the dialog turns it back
-on. The dialog shows each webhook's last result.
+on.
+
+**Recent deliveries** in the dialog lists the latest 50 attempts: the event, when, which attempt, how long it took, and the receiver's status or the error. **Resend** sends one again now, as a new delivery (with a new `X-Taskflow-Delivery`). The API has the same log at `GET /api/v1/webhooks/:id/deliveries`.
 
 Webhooks can't reach private or local addresses unless the server sets
 `WEBHOOK_ALLOW_PRIVATE_NETWORKS=true` (see [configuration](../configuration.md)).

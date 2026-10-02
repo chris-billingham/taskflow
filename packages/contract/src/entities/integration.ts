@@ -35,6 +35,22 @@ export const webhookSchema = z.object({
 });
 export type Webhook = Wire<typeof webhookSchema>;
 
+/** One attempt to deliver an event, from a webhook's log. */
+export const webhookDeliverySchema = z.object({
+  id,
+  /** The delivery's id (X-Taskflow-Delivery), shared by its retries. */
+  deliveryId: z.string(),
+  event: z.string(),
+  attempt: z.number().int(),
+  status: z.number().int().nullable(),
+  error: z.string().nullable(),
+  durationMs: z.number().int(),
+  /** The JSON body that was sent. */
+  payload: z.string(),
+  createdAt: instant,
+});
+export type WebhookDelivery = Wire<typeof webhookDeliverySchema>;
+
 /** Creating a webhook or replacing its secret: the secret, to check signatures with. */
 export const webhookWithSecretSchema = webhookSchema.extend({ secret: z.string() });
 export type WebhookWithSecret = Wire<typeof webhookWithSecretSchema>;

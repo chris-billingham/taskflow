@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { WEBHOOK_EVENTS, type Webhook, type WebhookEvent } from '@taskflow/contract';
 import { Modal } from '@/components/ui/Modal';
-import { useWebhookActions, useWebhooks } from '@/queries/integrations';
+import { useWebhookActions, useWebhookDeliveries, useWebhooks } from '@/queries/integrations';
 
 const EVENT_LABELS: Record<WebhookEvent, string> = {
   'task.created': 'Task added',
@@ -48,9 +48,49 @@ function status(webhook: Webhook): { text: string; bad: boolean } {
     : { text: `Last delivered ${when}`, bad: false };
 }
 
+function Deliveries({ webhookId, projectId }: { webhookId: string; projectId: string }) {
+  const { deliveries, loading } = useWebhookDeliveries(webhookId, true);
+  const actions = useWebhookActions(projectId);
+  if (loading) return <p className="text-xs text-gray-500 dark:text-gray-400">Loading…</p>;
+  if (deliveries.length === 0) return <p className="text-xs text-gray-500 dark:text-gray-400">Nothing sent yet.</p>;
+  return (
+    <ul aria-label="Recent deliveries" className="max-h-60 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 text-xs dark:divide-gray-700 dark:border-gray-700">
+      {deliveries.map((d) => {
+        const ok = d.error === null;
+        return (
+          <li key={d.id} className="flex items-start gap-2 px-2 py-1.5">
+            <span aria-hidden className={`mt-1 h-2 w-2 shrink-0 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500'}`} />
+            <div className="min-w-0 flex-1">
+              <p className="text-gray-900 dark:text-gray-100">
+                {EVENT_LABELS[d.event as WebhookEvent] ?? d.event}
+                <span className="text-gray-500 dark:text-gray-400">
+                  {' '}
+                  · {formatDistanceToNow(new Date(d.createdAt), { addSuffix: true })}
+                  {d.attempt > 1 && ` · attempt ${d.attempt}`} · {d.durationMs} ms
+                </span>
+              </p>
+              <p className={ok ? 'text-gray-500 dark:text-gray-400' : 'break-words text-red-600 dark:text-red-400'}>
+                {ok ? `Delivered (${d.status})` : d.error}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 rounded px-1.5 py-0.5 text-primary-600 hover:bg-gray-100 dark:text-primary-400 dark:hover:bg-gray-700"
+              onClick={() => void actions.redeliver(webhookId, d.id)}
+            >
+              Resend
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function WebhookRow({ webhook, projectId, onSecret }: { webhook: Webhook; projectId: string; onSecret: (s: string) => void }) {
   const actions = useWebhookActions(projectId);
   const [result, setResult] = useState<string | null>(null);
+  const [showLog, setShowLog] = useState(false);
   const s = status(webhook);
   return (
     <li className="space-y-2 py-3">
@@ -79,7 +119,11 @@ function WebhookRow({ webhook, projectId, onSecret }: { webhook: Webhook; projec
         <button type="button" className={`${button} text-red-600 dark:text-red-400`} onClick={() => void actions.remove(webhook.id)}>
           Delete
         </button>
+        <button type="button" className={button} aria-expanded={showLog} onClick={() => setShowLog(!showLog)}>
+          {showLog ? 'Hide deliveries' : 'Recent deliveries'}
+        </button>
       </div>
+      {showLog && <Deliveries webhookId={webhook.id} projectId={projectId} />}
     </li>
   );
 }

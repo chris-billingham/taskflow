@@ -16,6 +16,10 @@ import { requireProjectAccess } from './access.js';
 
 /** Paused after this many failed deliveries in a row. */
 export const MAX_FAILURES = 50;
+/** Attempts kept in each webhook's delivery log. */
+export const LOG_SIZE = 50;
+/** Longest payload kept in the log, in characters. */
+const LOG_PAYLOAD_MAX = 100_000;
 const TIMEOUT_MS = 10_000;
 
 export interface WebhookDelivery {
@@ -163,15 +167,17 @@ export function sign(secret: string, timestamp: string, body: string): string {
 export async function deliver(
   webhookId: string,
   delivery: WebhookDelivery,
-  options: { final?: boolean; recordFailure?: boolean } = {},
+  options: { final?: boolean; recordFailure?: boolean; attempt?: number } = {},
 ): Promise<{ ok: boolean; status: number | null; error: string | null }> {
   const webhook = await prisma.webhook.findUnique({ where: { id: webhookId } });
-  if (!webhook || (!webhook.isActive && delivery.event !== 'ping')) return { ok: true, status: null, error: null };
+  // A paused webhook gets nothing, except what someone sends by hand.
+  if (!webhook || (!webhook.isActive && !options.recordFailure)) return { ok: true, status: null, error: null };
 
   const body = JSON.stringify(delivery);
   const timestamp = Math.floor(Date.now() / 1000).toString();
   let status: number | null = null;
   let error: string | null = null;
+  const started = Date.now();
   try {
     ({ status } = await safePost(
       webhook.url,
@@ -192,6 +198,7 @@ export async function deliver(
   }
 
   const ok = error === null;
+  await logAttempt(webhookId, delivery, options.attempt ?? 1, status, error, Date.now() - started, body);
   const countsAsFailure = !ok && (options.final || options.recordFailure);
   const failureCount = ok ? 0 : countsAsFailure ? webhook.failureCount + 1 : webhook.failureCount;
   await prisma.webhook.update({
@@ -208,4 +215,60 @@ export async function deliver(
     logger.warn({ webhookId, projectId: webhook.projectId }, 'webhook paused after repeated failures');
   }
   return { ok, status, error };
+}
+
+// ── Delivery log ────────────────────────────────────────────────────────────
+
+async function logAttempt(
+  webhookId: string,
+  delivery: WebhookDelivery,
+  attempt: number,
+  status: number | null,
+  error: string | null,
+  durationMs: number,
+  body: string,
+): Promise<void> {
+  await prisma.webhookDelivery.create({
+    data: {
+      webhookId,
+      deliveryId: delivery.id,
+      event: delivery.event,
+      attempt,
+      status,
+      error,
+      durationMs,
+      payload: body.length > LOG_PAYLOAD_MAX ? body.slice(0, LOG_PAYLOAD_MAX) : body,
+    },
+  });
+  const older = await prisma.webhookDelivery.findMany({
+    where: { webhookId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    skip: LOG_SIZE,
+    select: { id: true },
+  });
+  if (older.length) await prisma.webhookDelivery.deleteMany({ where: { id: { in: older.map((d) => d.id) } } });
+}
+
+/** The webhook's latest delivery attempts, newest first. */
+export async function listDeliveries(webhookId: string, userId: string) {
+  await manageable(webhookId, userId);
+  return prisma.webhookDelivery.findMany({
+    where: { webhookId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: LOG_SIZE,
+  });
+}
+
+/** Send a logged delivery's event again now, as a new delivery. */
+export async function redeliver(webhookId: string, attemptId: string, userId: string) {
+  await manageable(webhookId, userId);
+  const logged = await prisma.webhookDelivery.findUnique({ where: { id: attemptId } });
+  if (!logged || logged.webhookId !== webhookId) throw new NotFoundError('Delivery not found');
+  let original: WebhookDelivery;
+  try {
+    original = JSON.parse(logged.payload) as WebhookDelivery;
+  } catch {
+    throw new NotFoundError('That delivery was too large to keep, so it can’t be sent again');
+  }
+  return deliver(webhookId, { ...original, id: randomUUID() }, { recordFailure: true });
 }

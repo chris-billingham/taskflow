@@ -75,4 +75,30 @@ describe('WebhooksDialog', () => {
     expect(await screen.findByText(/Only this project’s admins/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add webhook' })).not.toBeInTheDocument();
   });
+
+  it('shows recent deliveries and sends one again', async () => {
+    mockApi.get.mockImplementation(async (url: string) => {
+      if (url === '/projects/p1/webhooks') return { data: { success: true, data: [WEBHOOK] } };
+      if (url === '/webhooks/w1/deliveries') {
+        return {
+          data: {
+            success: true,
+            data: [
+              { id: 'd1', deliveryId: 'x', event: 'task.completed', attempt: 6, status: 500, error: 'The receiver answered 500', durationMs: 120, payload: '{}', createdAt: '2026-10-02T09:00:00.000Z' },
+            ],
+          },
+        };
+      }
+      throw new Error(`unexpected GET ${url}`);
+    });
+    mockApi.post.mockResolvedValue({ data: { success: true, data: { ok: true, status: 200, error: null } } });
+    const user = userEvent.setup();
+    wrap(<WebhooksDialog projectId="p1" name="Launch" onClose={() => {}} />);
+    await user.click(await screen.findByRole('button', { name: 'Recent deliveries' }));
+    const log = await screen.findByRole('list', { name: 'Recent deliveries' });
+    expect(log).toHaveTextContent('Task completed');
+    expect(log).toHaveTextContent('attempt 6');
+    await user.click(screen.getByRole('button', { name: 'Resend' }));
+    await waitFor(() => expect(mockApi.post).toHaveBeenCalledWith('/webhooks/w1/deliveries/d1/redeliver'));
+  });
 });

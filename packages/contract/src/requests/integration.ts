@@ -23,4 +23,5 @@ export const updateWebhookSchema = z.object({
 });
 
 export const integrationParamsSchema = z.object({ id: z.string().min(1) });
+export const webhookDeliveryParamsSchema = z.object({ id: z.string().min(1), deliveryId: z.string().min(1) });
 export const calendarFileParamsSchema = z.object({ file: z.string().min(1).max(200) });
