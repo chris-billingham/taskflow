@@ -65,9 +65,9 @@ GARAGE_RPC_SECRET=CHANGE_ME   # openssl rand -hex 32
 JWT_SECRET=CHANGE_ME
 JWT_REFRESH_SECRET=CHANGE_ME
 
-# Web origin (used for CORS and links in emails)
-CORS_ORIGIN=https://your-domain.example.com
-APP_URL=https://your-domain.example.com
+# Links in emails go to https://$DOMAIN. Set APP_URL only if people reach
+# the app somewhere else.
+# APP_URL=https://your-domain.example.com
 
 # Email (optional — requires a REACHABLE SMTP server; the API verifies the
 # connection at boot and only enables email features when it succeeds)

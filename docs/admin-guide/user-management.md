@@ -42,7 +42,7 @@ at your convenience — it is config, not the source of truth.
 After editing `.env`:
 
 ```bash
-docker compose -f docker-compose.yml restart api
+docker compose -f docker-compose.yml up -d api worker
 docker compose -f docker-compose.yml logs api | grep '\[admin\]'
 ```
 
@@ -132,7 +132,7 @@ and restart the API:
 # .env
 ADMIN_EMAILS=recovery@example.com
 
-docker compose -f docker-compose.yml restart api
+docker compose -f docker-compose.yml up -d api worker
 ```
 
 The account must already exist. If it does not, register it normally first — a

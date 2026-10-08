@@ -180,7 +180,7 @@ secure-only cookies and breaks sign-in over `http://localhost`.
 The Vite dev server needs no `.env`; it proxies `/api` and `/socket.io` to
 `localhost:3001`.
 
-See [configuration.md](../admin-guide/configuration.md) for all variables.
+See [configuration.md](../configuration.md) for all variables.
 
 ## IDE Setup
 

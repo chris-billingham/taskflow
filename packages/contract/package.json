@@ -1,6 +1,6 @@
 {
   "name": "@taskflow/contract",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "description": "The Taskflow API contract: Zod schemas and types for every request and response, shared by the API, the web app and (via the generated OpenAPI) native clients.",
   "type": "module",

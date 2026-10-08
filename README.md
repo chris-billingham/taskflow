@@ -8,33 +8,31 @@ A self-hosted, open-source task management application — a Todoist-style workf
 - **Projects** — color-coded projects with sections, one level of sub-projects, favorites and archiving
 - **Labels & Filters** — personal labels, and saved filters written in a text query language (`today & p1 & @work`)
 - **List / Board / Calendar views** — list, Kanban board, and week or month calendar
-- **Workspaces** — share team projects with invited members, with Owner, Admin, Member and Guest roles
-- **Real-time updates** — task, section, project and comment changes broadcast live over WebSockets
+- **Workspaces and sharing** — share team projects with invited members (Owner, Admin, Member and Guest roles), or share a single project with someone as an admin, member, commenter or viewer
+- **Real-time updates** — task, section, project and comment changes broadcast live over WebSockets, with who's viewing a task and who's typing
 - **Comments & Activity** — per-task discussion with Markdown and @mentions, plus an audit log
 - **File Attachments** — drag-and-drop uploads stored in the bundled Garage server or any S3-compatible bucket
-- **Reminders** — time-based notifications delivered via browser push (email delivery is stored but not yet selectable in the UI)
+- **Reminders** — time-based reminders delivered by browser push and in the app
 - **Notifications** — in-app, browser push, and email (immediately or as a daily/weekly digest)
 - **Project templates** — start a project from a built-in template or save your own
 - **Global Search** — full-text search across tasks, projects, and comments
 - **Quick Add** — natural language input ("Buy milk tomorrow p1 #work")
 - **Recurring Tasks** — daily, weekly, monthly, yearly and custom rules, from the task panel or Quick Add ("every Monday")
+- **Bulk actions** — select several tasks to complete, reschedule, prioritise, label, move or delete them together
+- **Works offline** — installable as an app; changes made offline are kept and sent when you reconnect
+- **Import and export** — your data as a ZIP, and imports from Todoist and CSV
+- **Integrations** — calendar feeds for any calendar app, signed webhooks, and personal access tokens for the REST API (with a published OpenAPI document and a Swift client)
+- **Security** — two-factor sign-in, single sign-on through OpenID Connect, and a list of signed-in devices you can sign out
 - **Dark Mode** — light, dark, or follow the system
-- **Keyboard Shortcuts** — `Q` for Quick Add and `/` for search (more are planned)
+- **Keyboard Shortcuts** — Quick Add, search, a command palette, and moving through and acting on tasks from the keyboard (press `?` in the app)
 - **Mobile Responsive** — responsive layout with a drawer sidebar on phones
 - **Admin console** — invite-only sign-up by default, user management, suspension and password resets
 
 ### Not yet implemented
 
-Listed so the settings screens don't overpromise: **presence and typing
-indicators** are built but not surfaced in the UI, **reminder delivery method**
-is always browser push (the email path exists server-side but isn't
-selectable), **two-factor auth** and **integrations** (Google Calendar, Outlook,
-Slack, GitHub) are placeholders, and there is **no email-change flow** and
-**no Todoist import**. Also missing: **keyboard navigation** of task lists,
-**bulk actions** on several tasks, **moving a task to another project** (the
-API supports it; the UI doesn't), **per-project sharing** (workspaces are the
-only sharing unit), a list of **archived projects**, a **PWA install** (no web
-app manifest), and **leaving a workspace or transferring ownership** from the UI.
+- **Native iOS app**. It's planned; the API, push support (APNs) and Swift client it will use are in place.
+- **Email reminders**. Reminders are always delivered by push; the email path exists on the server but can't be chosen in the app.
+- **Changing your email address**. An account's email can't be changed after sign-up, by its owner or an admin.
 
 ## Tech Stack
 
@@ -129,7 +127,7 @@ bash scripts/install.sh
 | [Projects](docs/user-guide/projects.md) | Project management |
 | [Keyboard Shortcuts](docs/user-guide/keyboard-shortcuts.md) | All keyboard shortcuts |
 | [Installation](docs/admin-guide/installation.md) | Production setup |
-| [Configuration](docs/admin-guide/configuration.md) | All environment variables |
+| [Configuration](docs/configuration.md) | All environment variables |
 | [User Management](docs/admin-guide/user-management.md) | Admin role, creating and suspending accounts |
 | [Single Sign-On](docs/admin-guide/single-sign-on.md) | Signing in through Authentik, Keycloak or Google Workspace |
 | [Backup & Restore](docs/admin-guide/backup-restore.md) | Data backup procedures |

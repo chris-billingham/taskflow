@@ -48,6 +48,10 @@ Click **Share** at the top of a project to share it with specific people, as lon
 | **Commenter** | Read and comment |
 | **Viewer** | Read only |
 
+Commenters and viewers see the project without the controls they can't use: no
+adding, editing, dragging or completing tasks, and a note at the top of the
+project and the task says what they can do.
+
 - They get a notification, and the project appears in their sidebar under **Shared with me** straight away (or in the workspace's section, for workspace guests).
 - In a team project, everyone in the workspace except guests can already see it, so share it with guests or with people outside the workspace. Sharing can raise someone's access in one project (a workspace member can be made its admin), but never lowers it.
 - Admins can change roles or remove people in the same dialog. Removing someone also unassigns them from that project's tasks.

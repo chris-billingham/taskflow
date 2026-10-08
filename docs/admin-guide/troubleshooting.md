@@ -44,7 +44,7 @@ docker compose -f docker-compose.yml exec redis redis-cli -a "$REDIS_PASSWORD" p
 
 ### "Cannot connect to database"
 
-1. Confirm `DATABASE_URL` in `.env` matches the Postgres container credentials
+1. Confirm `POSTGRES_PASSWORD` in `.env` hasn't changed since the database was created (compose builds `DATABASE_URL` from it, and Postgres keeps the password it started with)
 2. Ensure the `postgres` container is healthy: `docker compose -f docker-compose.yml ps`
 3. Run migrations if this is a fresh install: `docker compose -f docker-compose.yml exec api npx prisma migrate deploy`
 
@@ -52,10 +52,11 @@ docker compose -f docker-compose.yml exec redis redis-cli -a "$REDIS_PASSWORD" p
 
 ### "JWT secret not set" on startup
 
-The `JWT_SECRET` variable is missing or empty in `.env`. Generate a secure one:
+The `JWT_SECRET` variable is missing or empty in `.env`. Generate a secure one,
+then run `docker compose -f docker-compose.yml up -d api worker`:
 
 ```bash
-openssl rand -base64 32
+openssl rand -hex 32
 ```
 
 ---
@@ -89,7 +90,7 @@ nm.createTransport({ host: process.env.SMTP_HOST, port: 587, auth: { user: proce
 
 ### WebSocket connections fail
 
-1. Ensure the `CORS_ORIGIN` in `.env` matches the frontend URL exactly (no trailing slash)
+1. Open the app at exactly `https://$DOMAIN`: the API only accepts browser connections from that address
 2. Check that your reverse proxy forwards the `Upgrade` and `Connection` headers
 3. For Nginx, ensure your config includes:
 
@@ -103,16 +104,18 @@ proxy_set_header Connection "upgrade";
 
 ### "Port already in use"
 
-Change the conflicting port in `.env`:
-
-- API: `API_PORT=3002`
-- Web (dev only): edit `vite.config.ts`
+In production only Traefik publishes ports (80 and 443); stop whatever else is
+using them. In development, the API port is `API_PORT` in `.env` and the web
+port is set in `packages/web/vite.config.ts`.
 
 ---
 
 ### High memory usage
 
-- Redis: set `maxmemory` and an eviction policy in `docker-compose.yml`
+- Redis: capped at 256 MB with eviction off (`docker-compose.yml`). Keep
+  eviction off: Redis holds the job queues and rate limits, and evicting them
+  loses work. If it fills up, look for a backlog of failed jobs in the worker
+  log.
 - Postgres: tune `shared_buffers` and `work_mem` in `docker-compose.yml` environment
 
 ---

@@ -4,19 +4,19 @@
 
 All sensitive values go in `.env` and are never committed to source control. The `.env.example` file shows which variables are needed with placeholder values.
 
-**Rotate secrets** by updating `.env` and restarting services:
+**Rotate secrets** by updating `.env` and recreating the services. (`docker
+compose restart` keeps the old environment; `up -d` picks up the new `.env`.)
 
 ```bash
 # Generate a new JWT secret
 openssl rand -base64 32
 # Update JWT_SECRET and JWT_REFRESH_SECRET in .env
-# Restart API (all existing sessions will be invalidated)
-docker compose -f docker-compose.yml restart api
+# Recreate the API and worker (all existing sessions will be invalidated)
+docker compose -f docker-compose.yml up -d api worker
 ```
 
 Rotating `JWT_REFRESH_SECRET` signs every stored refresh token out at once, so
-all users on all devices must log in again. Restart `worker` alongside `api`
-whenever you rotate a value both of them read.
+all users on all devices must log in again.
 
 ## Network Security
 
@@ -77,11 +77,9 @@ a client that reaches the API directly can't set its own key by sending
 
 ## CORS
 
-`CORS_ORIGIN` should be set to exactly the frontend URL (no wildcard). Example:
-
-```env
-CORS_ORIGIN=https://tasks.example.com
-```
+The API accepts browser requests only from `https://$DOMAIN`.
+`docker-compose.yml` sets this from `DOMAIN`, so there is no wildcard to
+misconfigure, and a value in `.env` has no effect.
 
 ## File Uploads
 

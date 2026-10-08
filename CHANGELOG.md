@@ -4,6 +4,45 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-08
+
+Fixes from a review of everything shipped so far.
+
+- **Commenters and viewers see what they can do.** Projects shared with
+  you as a commenter or viewer no longer show buttons that always fail:
+  adding, editing, dragging and completing tasks are hidden, with a note
+  saying what you can do. Comments stay open to commenters, and a task
+  assigned to you stays editable. Project settings only admins can change
+  (name, view, archive, delete, webhooks) are hidden from everyone else.
+  Project responses carry your access level (`access`).
+- **Removed members lose their assigned tasks.** Someone removed from a
+  workspace or project, or made a guest, could still open and edit tasks
+  assigned to them. Being assigned now only raises access in a project you
+  can still see.
+- **Stolen refresh tokens are caught.** Reusing a refresh token that was
+  already exchanged signs that session out everywhere (after a 10-second
+  grace for two tabs refreshing at once). The check used to be rolled back
+  along with the refusal, so it never ended anything.
+- **Notification email and push are retried.** A failed send is retried by
+  the worker, channel by channel, without repeating channels that worked.
+  The daily and weekly digests no longer mark a failed send as sent.
+- **Push notifications to iPhones work from Docker.** The APNs settings
+  weren't passed into the containers.
+- **Exports leave out the Trash, and bulk delete reaches every level.**
+  Deleting several tasks at once now trashes all their subtasks, not only
+  the first level, and restoring brings them all back.
+- **No false "changed by someone else" after offline edits.** Several
+  offline edits to one task are sent in order, each against the version the
+  last one produced.
+- **Invites and shares in the notification list.** Clicking a workspace
+  invite opens the join page. Sharing a project with someone now sends push
+  and email too, and "Project shared with you" can be muted again.
+- **Docs.** The README lists what's built and the few things that aren't.
+  The admin guides no longer suggest `CORS_ORIGIN` or `API_PORT` in `.env`
+  (production ignores both), use `up -d` rather than `restart` after
+  editing `.env` (restart keeps the old values), and no longer suggest a
+  Redis eviction policy.
+
 ## [1.0.1] - 2026-10-02
 
 - **Keep working offline in the browser.** Completing, reopening, editing

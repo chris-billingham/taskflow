@@ -14,15 +14,16 @@ picks it up as soon as the release exists.
 ## Steps
 
 1. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [1.2.0] - 2026-10-02` and add a fresh `## [Unreleased]` above it. Call out anything an admin must do before upgrading.
-2. Commit, push, and let CI pass.
-3. Tag and push:
+2. Set `"version"` to `1.2.0` in the root `package.json` and each `packages/*/package.json`. (The running version comes from the tag, baked into the images; this keeps the source in step with it.)
+3. Commit, push, and let CI pass.
+4. Tag and push:
 
    ```bash
    git tag -a v1.2.0 -m "Taskflow 1.2.0"
    git push origin v1.2.0
    ```
 
-4. Watch the run: `gh run watch $(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')`.
+5. Watch the run: `gh run watch $(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')`.
 
 Versions follow [semantic versioning](https://semver.org): a major version
 for changes that need an admin's attention or break installed apps, a minor

@@ -112,11 +112,11 @@ S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `NODE_ENV` | No | `development` | Runtime environment (compose sets `production`) |
-| `API_PORT` | No | `3001` | Port the API listens on |
-| `HOST` | No | `0.0.0.0` | Bind address |
+| `API_PORT` | No | `3001` | Port the API listens on (development only: compose always runs it on 3001 behind the proxy) |
+| `HOST` | No | `0.0.0.0` | Bind address (development only) |
 | `LOG_LEVEL` | No | `info` | Pino log level (`trace`, `debug`, `info`, `warn`, `error`) |
-| `CORS_ORIGIN` | No | `http://localhost:5173` | Allowed CORS origin (compose sets `https://<DOMAIN>`) |
-| `APP_URL` | No | falls back to `CORS_ORIGIN` | Public base URL used for links in email |
+| `CORS_ORIGIN` | No | `http://localhost:5173` | Allowed CORS origin. Compose always sets it to `https://<DOMAIN>`, so it can't be changed from `.env` in production |
+| `APP_URL` | No | `https://<DOMAIN>` in compose | Public base URL used for links in email. Set it only if people reach the app somewhere other than `https://$DOMAIN` |
 | `TRUST_PROXY_HOPS` | No | `1` | Number of proxy hops in front of the API |
 | `TRUST_PROXY_ADDRS` | No | `loopback,linklocal,uniquelocal` | Networks a proxy hop must come from to be trusted |
 | `RATE_LIMIT_MULTIPLIER` | No | `1` | Multiplies every production rate limit (minimum 1) |

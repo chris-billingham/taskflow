@@ -4,26 +4,38 @@ For the full environment variable reference, see [../configuration.md](../config
 
 ## Minimum Required Variables
 
+`scripts/install.sh` writes all of these for you. To write `.env` by hand:
+
 ```env
-DATABASE_URL=postgresql://taskflow:PASSWORD@postgres:5432/taskflow
-REDIS_URL=redis://redis:6379
-JWT_SECRET=<at least 32 random bytes>
-JWT_REFRESH_SECRET=<at least 32 random bytes>
+DOMAIN=tasks.example.com
+ACME_EMAIL=you@example.com
+POSTGRES_PASSWORD=<random>
+REDIS_PASSWORD=<random>
+JWT_SECRET=<at least 32 random characters>
+JWT_REFRESH_SECRET=<at least 32 random characters>
+S3_ACCESS_KEY=GK<24 hex characters>
+S3_SECRET_KEY=<64 hex characters>
+GARAGE_RPC_SECRET=<64 hex characters>
 ```
 
-Generate secrets:
+`docker-compose.yml` builds `DATABASE_URL` and `REDIS_URL` from these, so
+don't set them. Generate secrets with:
 
 ```bash
-openssl rand -base64 32
+openssl rand -hex 32
 ```
 
 ## Common Configuration Groups
 
-### App URLs (required for production)
+### App URLs
+
+The app is served at `https://$DOMAIN`, and `docker-compose.yml` derives the
+API's allowed origin and the base for emailed links from it. Set `APP_URL`
+only if people reach the app at a different address (another proxy in front,
+for example):
 
 ```env
-APP_URL=https://your-domain.example.com
-CORS_ORIGIN=https://your-domain.example.com
+APP_URL=https://tasks.example.com
 ```
 
 ### Instance administrators
@@ -86,7 +98,6 @@ S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 ### Performance Tuning
 
 ```env
-API_PORT=3001
 LOG_LEVEL=info            # debug | info | warn | error
 MAX_FILE_SIZE_MB=50       # Maximum upload size
 ```

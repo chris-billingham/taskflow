@@ -6,10 +6,13 @@ Taskflow is a pnpm + Turborepo monorepo:
 
 ```
 packages/
-├── api/     — Fastify REST API, Socket.IO server, BullMQ workers (TypeScript, Prisma)
-├── web/     — React 19 single-page app (Vite, React Router 8, TanStack Query, Zustand, Tailwind 4)
-├── e2e/     — Playwright end-to-end suite
-└── shared/  — Placeholder. Both api and web list it as a dependency, but nothing imports it.
+├── api/       — Fastify REST API, Socket.IO server, BullMQ workers (TypeScript, Prisma)
+├── web/       — React 19 single-page app (Vite, React Router, TanStack Query, Zustand, Tailwind 4)
+├── contract/  — Zod schemas for every request and response, shared by api and web;
+│                the API's OpenAPI document (openapi.json) is generated from them
+└── e2e/       — Playwright end-to-end suite
+clients/
+└── swift/     — Swift package generated from openapi.json, for the iOS app
 ```
 
 ## Infrastructure
