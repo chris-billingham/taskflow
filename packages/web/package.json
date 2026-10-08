@@ -25,7 +25,7 @@
     "@tanstack/react-query-persist-client": "^5.104.0",
     "@taskflow/contract": "workspace:*",
     "axios": "^1.16.0",
-    "date-fns": "^3.2.0",
+    "date-fns": "^4.4.0",
     "idb-keyval": "^6.3.0",
     "lucide-react": "^1.48.0",
     "react": "^19.3.0",
