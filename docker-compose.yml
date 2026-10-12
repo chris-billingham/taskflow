@@ -120,7 +120,7 @@ services:
   # One-shot S3 client for scripts/backup.sh and scripts/restore.sh (the
   # Garage image has no tools of its own). Never started by `up`.
   rclone:
-    image: rclone/rclone:1.75.1
+    image: rclone/rclone:1.75.2
     profiles: ["tools"]
     environment:
       RCLONE_CONFIG_STORE_TYPE: s3
