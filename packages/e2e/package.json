@@ -10,6 +10,6 @@
     "lint": "eslint tests global-setup.ts api-context.ts --max-warnings 0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.41.0"
+    "@playwright/test": "^1.64.1"
   }
 }
