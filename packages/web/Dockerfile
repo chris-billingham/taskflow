@@ -21,7 +21,7 @@ RUN pnpm --filter @taskflow/web build
 
 # Production stage: nginx running as an unprivileged user (uid 101), so it
 # listens on 8080 rather than 80.
-FROM nginxinc/nginx-unprivileged:1.30-alpine AS production
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS production
 
 COPY packages/web/nginx.conf /etc/nginx/nginx.conf
 COPY packages/web/security-headers.conf /etc/nginx/snippets/security-headers.conf
