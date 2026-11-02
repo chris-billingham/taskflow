@@ -93,7 +93,7 @@ services:
     # `--single-node --default-bucket` creates the layout, the S3 key and the
     # bucket from the GARAGE_DEFAULT_* variables on first start; later starts
     # leave them as they are.
-    image: dxflrs/garage:v2.4.1
+    image: dxflrs/garage:v2.5.0
     restart: unless-stopped
     logging: *default-logging
     command: ["/garage", "server", "--single-node", "--default-bucket"]
