@@ -34,7 +34,7 @@ services:
       retries: 5
 
   garage:
-    image: dxflrs/garage:v2.4.1
+    image: dxflrs/garage:v2.5.0
     container_name: taskflow-garage
     restart: unless-stopped
     command: ['/garage', 'server', '--single-node', '--default-bucket']
